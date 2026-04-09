@@ -530,6 +530,9 @@ function renderPromotions() {
                 <td>${p.active ? '<span style="color:#10B981; font-weight:bold;">Active ✓</span>' : '<span style="color:#EF4444;">Inactive</span>'}</td>
             </tr>`;
         });
+    });
+}
+
 // ===================================
 // AUTHENTICATION LOGIC (MULTI-USER)
 // ===================================
