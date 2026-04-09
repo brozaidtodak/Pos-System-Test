@@ -455,7 +455,84 @@
         </div>
 
         <!-- ============================================== -->
+        <!-- SECTION: FINANCE & P&L (ADMIN ONLY)            -->
+        <!-- ============================================== -->
+        <div id="financeSection" class="tab-section" style="display:none;">
+            <!-- P&L OVERVIEW WIDGETS -->
+            <div class="dash-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                <div class="metric-card" style="border-left:5px solid #22C55E;">
+                    <h3>Total Gross Revenue</h3>
+                    <p class="value" id="financeGrossRev" style="color:#22C55E;">RM 0.00</p>
+                </div>
+                <div class="metric-card" style="border-left:5px solid #EF4444;">
+                    <h3>Total Expenses (OPEX + COGS + CAPEX)</h3>
+                    <p class="value" id="financeTotalExp" style="color:#EF4444;">RM 0.00</p>
+                </div>
+                <div class="metric-card" style="border-left:5px solid #8B5CF6;">
+                    <h3>Net Profit / Loss</h3>
+                    <p class="value" id="financeNetProfit" style="color:#8B5CF6;">RM 0.00</p>
+                </div>
+            </div>
+
+            <!-- CHART & FORM INPUT -->
+            <div class="dash-grid" style="grid-template-columns: 2fr 1fr; margin-top:20px;">
+                <!-- Chart -->
+                <div class="admin-card">
+                    <h3>P&L Trend (Monthly)</h3>
+                    <canvas id="financeChart" style="width:100%; height:300px;"></canvas>
+                </div>
+                
+                <!-- Input Form -->
+                <div class="admin-card" style="border-color:#EF4444;">
+                    <h3 style="color:#EF4444;">Record Expense (Debit)</h3>
+                    <label>Month (e.g. Jan, Feb, Mar)</label>
+                    <input type="text" id="expMonth" class="login-input" placeholder="Jan" style="margin-bottom:10px;">
+                    
+                    <label>Year</label>
+                    <input type="number" id="expYear" class="login-input" value="2025" style="margin-bottom:10px;">
+                    
+                    <label>Category</label>
+                    <select id="expCategory" class="login-input" style="margin-bottom:10px;">
+                        <option value="OPEX">OPEX (Rent, Salary, Ads, Utilities)</option>
+                        <option value="COGS">COGS (Stock Purchase, Supplier)</option>
+                        <option value="CAPEX">CAPEX (Assets, Machine, Software)</option>
+                    </select>
+
+                    <label>Expense Value (RM)</label>
+                    <input type="number" id="expAmount" class="login-input" placeholder="1000.00" style="margin-bottom:10px;">
+                    
+                    <label>Notes / Receipt ID</label>
+                    <input type="text" id="expNote" class="login-input" placeholder="Gaji Pekerja / Sewa Bangunan" style="margin-bottom:15px;">
+                    
+                    <button id="saveExpenseBtn" class="btn-success" style="background:#EF4444; width:100%;">Record Ledger</button>
+                </div>
+            </div>
+
+            <!-- LEDGER TABLE -->
+            <div class="admin-card" style="margin-top:20px;">
+                <h3>Company Ledger (Expenses Statement)</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Period</th>
+                                <th>Category</th>
+                                <th>Notes</th>
+                                <th>Amount Deducted (RM)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financeLedgerBody">
+                            <tr><td colspan="5"><i>Loading Ledger...</i></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
         <!-- SECTION: SETTINGS                              -->
+
         <!-- ============================================== -->
         <div id="settingsSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px;">
