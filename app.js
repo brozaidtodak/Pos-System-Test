@@ -635,8 +635,138 @@ function renderPublicStorefront() {
     });
 }
 
+let publicCart = [];
+
+window.togglePublicCart = function() {
+    const drw = document.getElementById("publicCartDrawer");
+    if(drw.style.display === "none") {
+        drw.style.display = "flex";
+        renderPublicCart();
+    } else {
+        drw.style.display = "none";
+    }
+}
+
 window.addToPublicCart = function(sku) {
-    alert("Peringatan Fasa Prototaip: Fungsi troli pelanggan awam sedang dibina! Hubungi Staf kami untuk tempahan buat masa ini.");
+    const p = masterProducts.find(x => x.sku === sku);
+    const totalAvail = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).reduce((s, b) => s + b.qty_remaining, 0);
+    const cartItem = publicCart.find(c => c.sku === sku);
+    
+    if(cartItem) { if (cartItem.quantity < totalAvail) cartItem.quantity++; else alert("Limits reached!"); } 
+    else { if (totalAvail > 0) publicCart.push({ sku: sku, name: p.name, price: parseFloat(p.price), quantity: 1 }); }
+    
+    document.getElementById("btnPublicCartCount").textContent = `Cart (${publicCart.reduce((s, c) => s + c.quantity, 0)})`;
+    alert("Ditambah ke troli!");
+}
+
+window.decreasePublicQty = function(sku) {
+    const c = publicCart.find(x => x.sku === sku);
+    if(c) { if(c.quantity > 1) c.quantity--; else publicCart = publicCart.filter(x => x.sku !== sku); }
+    renderPublicCart();
+}
+
+window.increasePublicQty = function(sku) {
+    const p = masterProducts.find(x => x.sku === sku);
+    const totalAvail = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).reduce((s, b) => s + b.qty_remaining, 0);
+    const cartItem = publicCart.find(c => c.sku === sku);
+    if(cartItem) { if (cartItem.quantity < totalAvail) cartItem.quantity++; } 
+    renderPublicCart();
+}
+
+window.removePublicCart = function(sku) {
+    publicCart = publicCart.filter(c => c.sku !== sku); 
+    renderPublicCart(); 
+}
+
+function renderPublicCart() {
+    const container = document.getElementById("publicCartItems");
+    const label = document.getElementById("publicCartTotalLabel");
+    document.getElementById("btnPublicCartCount").textContent = `Cart (${publicCart.reduce((s, c) => s + c.quantity, 0)})`;
+    
+    if(!container) return; 
+    container.innerHTML = ""; 
+    let total = 0;
+    
+    if(publicCart.length === 0) { container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding-top:20px;">Your cart is empty.</p>'; label.textContent = "0.00"; return; }
+
+    publicCart.forEach(item => {
+        total += item.price * item.quantity;
+        container.innerHTML += `
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #f9f9f9; padding-bottom:10px;">
+                <div>
+                    <strong style="font-size:14px; display:block;">${item.name}</strong>
+                    <small style="color:var(--text-muted);">RM${item.price.toFixed(2)} x ${item.quantity}</small>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button onclick="decreasePublicQty('${item.sku}')" style="border:1px solid #ddd; background:#fff; width:24px; height:24px; cursor:pointer;">-</button>
+                    <span>${item.quantity}</span>
+                    <button onclick="increasePublicQty('${item.sku}')" style="border:1px solid #ddd; background:#fff; width:24px; height:24px; cursor:pointer;">+</button>
+                    <button onclick="removePublicCart('${item.sku}')" style="color:red; background:none; border:none; cursor:pointer; margin-left:5px;">X</button>
+                </div>
+            </div>`;
+    });
+    label.textContent = total.toFixed(2);
+}
+
+window.processPublicCheckout = async function() {
+    if(publicCart.length === 0) return alert("Cart is empty!");
+    
+    const cName = document.getElementById("custNamePub").value.trim();
+    const cPhone = document.getElementById("custPhonePub").value.trim();
+    const cAddr = document.getElementById("custAddressPub").value.trim();
+    
+    if(!cName || !cPhone || !cAddr) return alert("Sila isikan Nama, Telefon, dan Alamat Penghantaran dengan lengkap!");
+    
+    const btn = document.getElementById("btnPublicCheckout");
+    btn.disabled = true; btn.textContent = "Processing Payment...";
+
+    try {
+        let transactionsPayload = []; let totalVal = 0;
+
+        for (const item of publicCart) {
+            totalVal += item.price * item.quantity;
+            let needed = item.quantity;
+            let batches = inventoryBatches.filter(b => b.sku===item.sku && b.qty_remaining>0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
+            
+            for (let batch of batches) {
+                if (needed <= 0) break;
+                let deduct = Math.min(needed, batch.qty_remaining);
+                needed -= deduct;
+                await db.from('inventory_batches').update({qty_remaining: batch.qty_remaining - deduct}).eq('id', batch.id);
+                transactionsPayload.push({sku: item.sku, batch_id: batch.id, transaction_type: 'OUTBOUND_SALE', qty_change: -deduct});
+            }
+        }
+
+        if(transactionsPayload.length > 0) await db.from('inventory_transactions').insert(transactionsPayload);
+
+        // Simple CRM Concept
+        const existing = customersData.find(c => c.name.toLowerCase() === cName.toLowerCase());
+        if(!existing) await db.from('customers').insert([{name: cName, phone: cPhone, address: cAddr, points: 5}]);
+
+        // Push to Sales History as E-Commerce Website Order
+        const invStr = "WEB-10C-" + Math.floor(1000 + Math.random() * 9000);
+        await db.from('sales_history').insert([{
+            channel: 'Website',
+            status: 'Pending Fulfillment',
+            customer_name: cName, 
+            payment_method: 'Online Transfer',
+            total: totalVal, 
+            items: publicCart
+        }]);
+
+        publicCart = []; 
+        document.getElementById("custNamePub").value = "";
+        document.getElementById("custPhonePub").value = "";
+        document.getElementById("custAddressPub").value = "";
+        
+        // Let the customer see the simulated success pop up
+        togglePublicCart();
+        alert(`Pembayaran Berjaya! Nombor Resit: ${invStr}.\nTerima kasih kerana membeli bersama 10camp.`);
+        
+        await initApp(); // refresh background dashboard data
+    } catch (e) { alert("Fatal Error: " + e.message); }
+    
+    btn.disabled = false; btn.textContent = "Confirm Order";
 }
 
 // ===================================

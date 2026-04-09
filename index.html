@@ -52,7 +52,7 @@
             <h2 style="font-weight:900; letter-spacing:-1px; margin:0; font-size:24px;">10camp E-Commerce</h2>
             
             <div style="display:flex; gap:15px; align-items:center;">
-                <button style="background:none; border:none; font-weight:bold; cursor:pointer;">Cart (0)</button>
+                <button id="btnPublicCartCount" onclick="togglePublicCart()" style="background:none; border:none; font-weight:bold; cursor:pointer; font-size:15px;">Cart (0)</button>
                 <button onclick="document.getElementById('loginGate').style.display='flex'" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:12px; font-weight:bold; cursor:pointer;">Staff Login / Backdoor</button>
             </div>
         </header>
@@ -68,6 +68,34 @@
             <h3 style="margin-bottom:20px; font-size:20px; font-weight:800;">Featured Gear</h3>
             <div id="publicProductsList" class="products-grid">
                 <i>Loading E-Commerce Engine...</i>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0.2 PUBLIC CART OVERLAY (DRAWER) -->
+    <div id="publicCartDrawer" class="login-overlay" style="display:none; z-index:2000; align-items:flex-end; justify-content:flex-end; background:rgba(0,0,0,0.4);">
+        <div style="background:#fff; height:100vh; width:100%; max-width:400px; padding:30px; display:flex; flex-direction:column; overflow-y:auto; box-shadow:-5px 0 25px rgba(0,0,0,0.1); animation: slideInRight 0.3s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-weight:900; letter-spacing:-1px; margin:0;">Shopping Cart</h2>
+                <button onclick="togglePublicCart()" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+            </div>
+            
+            <div id="publicCartItems" style="flex:1; border-top:1px solid #eee; padding-top:15px; overflow-y:auto;">
+                <p style="color:var(--text-muted); text-align:center; padding-top:20px;">Your cart is empty.</p>
+            </div>
+            
+            <div style="border-top:1px dashed #ccc; padding-top:20px; padding-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:18px; margin-bottom:15px;">
+                    <span>Total</span>
+                    <span>RM <span id="publicCartTotalLabel">0.00</span></span>
+                </div>
+                
+                <h4 style="margin-bottom:10px; font-size:13px; color:var(--text-main);">Delivery Information</h4>
+                <input type="text" id="custNamePub" class="login-input" placeholder="Full Name" style="margin-bottom:10px; border:1px solid #ccc;">
+                <input type="text" id="custPhonePub" class="login-input" placeholder="Phone Number" style="margin-bottom:10px; border:1px solid #ccc;">
+                <textarea id="custAddressPub" class="login-input" placeholder="Full Delivery Address" style="margin-bottom:15px; height:60px; border:1px solid #ccc; font-family:inherit;"></textarea>
+                
+                <button id="btnPublicCheckout" onclick="processPublicCheckout()" class="login-btn" style="background:#F37021; color:#fff; border:none; border-radius:8px; width:100%;">Confirm Order</button>
             </div>
         </div>
     </div>
