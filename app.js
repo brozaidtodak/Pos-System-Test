@@ -73,6 +73,8 @@ async function initApp() {
         renderWMS();
         renderPOS();
         renderHistory();
+        renderCustomers();
+        renderPromotions();
         renderDashboard();
     } catch(e) {
         alert("Server Error: " + e.message);
@@ -486,6 +488,44 @@ document.getElementById("checkoutBtn").onclick = async function() {
     } catch (e) { alert("Fatal Error: " + e.message); }
     
     this.disabled = false; this.textContent = "Send Order to Queue";
+}
+
+// ===================================
+// CUSTOMERS CRM TABLE
+// ===================================
+function renderCustomers() {
+    const tbody = document.getElementById("customersTableBody");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    if(customersData.length === 0) { tbody.innerHTML = '<tr><td colspan="4">Tiada pelanggan berdaftar.</td></tr>'; return; }
+    customersData.forEach(c => {
+        tbody.innerHTML += `<tr>
+            <td><strong>${c.name}</strong></td>
+            <td>${c.phone || '-'}</td>
+            <td style="color:#F59E0B; font-weight:bold;">${c.points || 0} pts</td>
+            <td>${c.is_member ? '<span style="color:#10B981; font-weight:bold;">VIP ✓</span>' : '<span style="color:#aaa;">Non-Member</span>'}</td>
+        </tr>`;
+    });
+}
+
+// ===================================
+// PROMOTIONS TABLE
+// ===================================
+function renderPromotions() {
+    const tbody = document.getElementById("promotionsTableBody");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+    db.from('promotions').select('*').then(({data}) => {
+        if(!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="4">Tiada promosi aktif.</td></tr>'; return; }
+        data.forEach(p => {
+            tbody.innerHTML += `<tr>
+                <td><strong>${p.code}</strong></td>
+                <td>${p.discount_type}</td>
+                <td style="font-weight:bold;">${p.discount_type === 'percent' ? p.discount_value + '%' : 'RM' + parseFloat(p.discount_value).toFixed(2)}</td>
+                <td>${p.active ? '<span style="color:#10B981; font-weight:bold;">Active ✓</span>' : '<span style="color:#EF4444;">Inactive</span>'}</td>
+            </tr>`;
+        });
+    });
 }
 
 setTimeout(() => {
