@@ -65,7 +65,7 @@
         <div id="homeSection" class="tab-section">
             
             <!-- A. Date Filter Control -->
-            <div class="dashboard-controls" style="background:white; padding:15px; border-radius:10px; margin-bottom:20px; display:flex; gap:10px; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            <div class="dashboard-controls" style="background:var(--card-bg); padding:20px; border-radius:var(--radius-md); margin-bottom:20px; display:flex; gap:10px; align-items:center; border:1px solid var(--border-color);">
                 <label style="font-weight:bold; font-size:14px;">Select Range:</label>
                 <input type="date" id="dashStartDate" style="max-width:150px; margin:0;">
                 <span> - </span>
@@ -81,15 +81,15 @@
                 </div>
                 <div class="dash-card">
                     <h3>Total Orders</h3>
-                    <p class="dash-value" style="font-size:20px;" id="dashTotalOrders">0</p>
+                    <p class="dash-value" style="font-size:24px; font-weight:700;" id="dashTotalOrders">0</p>
                 </div>
-                <div class="dash-card" style="border-top-color:#8B5CF6;">
+                <div class="dash-card" style="border-top-color:var(--secondary);">
                     <h3>Top Channel</h3>
-                    <p class="dash-value" style="font-size:18px; color:#8B5CF6;" id="dashTopChannel">-</p>
+                    <p class="dash-value" style="font-size:18px; color:var(--secondary); font-weight:700;" id="dashTopChannel">-</p>
                 </div>
-                <div class="dash-card" style="border-top-color:#EC4899;">
+                <div class="dash-card" style="border-top-color:#121212;">
                     <h3>New Buyers</h3>
-                    <p class="dash-value" style="font-size:20px; color:#EC4899;" id="dashNewBuyers">0</p>
+                    <p class="dash-value" style="font-size:24px; color:#121212; font-weight:700;" id="dashNewBuyers">0</p>
                 </div>
             </div>
 
@@ -185,7 +185,7 @@
                     <h2 class="cart-title">Order Cart</h2>
                     <div id="cartItems" class="cart-items"><p class="empty-cart-message">Cart is empty</p></div>
                     <div class="cart-total"><h3>Total: RM <span id="totalPrice">0.00</span></h3></div>
-                    <div class="checkout-form" style="background:#f9fafb; padding:15px; border-radius:10px; border:1px solid #ccc;">
+                    <div class="checkout-form" style="background:var(--bg-color); padding:20px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
                         
                         <label class="small-lbl">Customer / Phone (For CRM)</label>
                         <input type="text" id="customerName" placeholder="Contoh: Ali / 0123456">
@@ -245,7 +245,7 @@
             <div class="inventory-controls" style="display: flex; gap:10px; margin-bottom: 20px;">
                 <button onclick="toggleInvForm('inboundForm')" class="btn-primary">Truck Arrives (Inbound)</button>
                 <button onclick="toggleInvForm('newSkuForm')" class="btn-secondary">Register New SKU</button>
-                <button onclick="toggleInvForm('csvForm')" class="btn-dark" style="background:#111827; color:white; padding:12px; border-radius:10px; border:none; cursor:pointer;">Excel/CSV Import</button>
+                <button onclick="toggleInvForm('csvForm')" class="btn-dark">Excel/CSV Import</button>
             </div>
 
             <!-- FORM 1: REGISTER NEW SKU -->

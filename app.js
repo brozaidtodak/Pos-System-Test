@@ -184,7 +184,7 @@ window.renderDashboard = function() {
         tbodyLines.innerHTML += `<tr>
             <td style="width:20px; font-weight:bold; color:#888;">#${i+1}</td>
             <td><strong>${o.name}</strong></td>
-            <td style="color:#10B981; font-weight:bold;">${o.qty} Sold</td>
+            <td style="color:#000000; font-weight:bold;">${o.qty} Sold</td>
             <td style="text-align:right;">RM${o.revenue.toFixed(2)}</td>
         </tr>`;
     });
@@ -211,8 +211,8 @@ window.renderDashboard = function() {
             datasets: [{
                 label: 'Gross Sales (RM)',
                 data: gData,
-                backgroundColor: 'rgba(79, 70, 229, 0.2)',
-                borderColor: '#4F46E5',
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                borderColor: '#000000',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.3,
@@ -230,7 +230,7 @@ function renderHistory() {
     salesHistory.forEach(sale => {
         let sc = sale.channel || 'In-Store';
         let st = sale.status || 'Completed';
-        let stColor = st==='Completed'?'#10B981': (st==='Unpaid'?'#6B7280': (st==='To Fulfil'?'#F59E0B':'#EF4444'));
+        let stColor = st==='Completed'?'#000000': (st==='Unpaid'?'#6F6F6F': (st==='To Fulfil'?'#F37021':'#D80000'));
 
         const d = new Date(sale.created_at);
         el.innerHTML += `
