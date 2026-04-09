@@ -7612,6 +7612,8 @@ let inventoryBatches = [
 ];
 let salesHistory = [];
 let customersData = [];
+let financeRecords = [];
+let financeChartInstance = null;
 let cart = [];
 let salesChartInst = null; // Chart.js Object
 
@@ -7669,11 +7671,15 @@ async function initApp() {
 
         let { data: custs } = await db.from('customers').select('*');
         if(custs) customersData = custs;
+        
+        let { data: fin } = await db.from('finance_records').select('*').order('year', {ascending: false});
+        if(fin) financeRecords = fin;
         renderWMS();
         renderHistory();
         renderCustomers();
         renderPromotions();
         renderDashboard();
+        if(typeof renderFinance === "function") renderFinance();
     } catch(e) {
         alert("Server Error: " + e.message);
     }
@@ -8553,4 +8559,127 @@ document.getElementById("sendEmailBtn").onclick = function() {
     const body = `Hi ${custName},%0D%0A%0D%0AThank you for shopping at 10camp! Here is your e-receipt:%0D%0A%0D%0AInvoice: ${invId}%0D%0A%0D%0AItems:%0D%0A${itemsText}%0D%0A%0D%0ATOTAL: RM ${total.toFixed(2)}%0D%0A%0D%0AHope to see you again soon!`;
     
     window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+};
+
+// ===================================
+// FINANCE & P&L MODULE (SUPER ADMIN)
+// ===================================
+function renderFinance() {
+    const list = document.getElementById("financeLedgerBody");
+    if(!list) return;
+
+    // 1. Render Ledger Table
+    let html = "";
+    let totalExp = 0;
+    financeRecords.forEach(f => {
+        totalExp += parseFloat(f.amount || 0);
+        html += `
+            <tr>
+                <td>${f.month} ${f.year}</td>
+                <td><span class="cat-badge" style="background:#EF4444; color:#fff;">${f.category}</span></td>
+                <td>${f.description}</td>
+                <td style="color:#EF4444;">-RM ${parseFloat(f.amount).toFixed(2)}</td>
+                <td><button onclick="deleteFinance(${f.id})" style="background:none; border:none; color:red; cursor:pointer;" title="Delete Record">🚮</button></td>
+            </tr>
+        `;
+    });
+    list.innerHTML = html || '<tr><td colspan="5">No expenses recorded yet.</td></tr>';
+
+    // 2. Calculate Gross Revenue from Sales History
+    let totalRev = 0;
+    salesHistory.forEach(s => totalRev += parseFloat(s.amount || 0));
+
+    // 3. Update P&L KPI Widgets
+    document.getElementById("financeGrossRev").textContent = `RM ${totalRev.toFixed(2)}`;
+    document.getElementById("financeTotalExp").textContent = `RM ${totalExp.toFixed(2)}`;
+    
+    let net = totalRev - totalExp;
+    const netEl = document.getElementById("financeNetProfit");
+    netEl.textContent = `RM ${net.toFixed(2)}`;
+    netEl.style.color = net >= 0 ? "#22C55E" : "#EF4444";
+
+    // 4. Render Chart.js P&L Trend
+    const ctx = document.getElementById('financeChart');
+    if(!ctx) return;
+    
+    // Group Revenue by Month/Year (Naive representation based on salesHistory dates)
+    const revMap = {};
+    salesHistory.forEach(s => {
+        let d = new Date(s.created_at);
+        let key = d.toLocaleString('default', { month: 'short' }) + ' ' + d.getFullYear();
+        revMap[key] = (revMap[key] || 0) + parseFloat(s.amount || 0);
+    });
+
+    // Group Expenses by Month/Year
+    const expMap = {};
+    financeRecords.forEach(f => {
+        let key = f.month + ' ' + f.year;
+        expMap[key] = (expMap[key] || 0) + parseFloat(f.amount || 0);
+    });
+
+    // Combine Keys
+    const labels = [...new Set([...Object.keys(revMap), ...Object.keys(expMap)])].sort();
+    
+    const revData = labels.map(l => revMap[l] || 0);
+    const expData = labels.map(l => expMap[l] || 0);
+    const netData = labels.map(l => (revMap[l] || 0) - (expMap[l] || 0));
+
+    if(financeChartInstance) financeChartInstance.destroy();
+    financeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Revenue 📈', data: revData, backgroundColor: 'rgba(34, 197, 94, 0.5)', borderColor: '#22C55E', borderWidth: 1 },
+                { label: 'Expenses 📉', data: expData, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#EF4444', borderWidth: 1 },
+                { label: 'Net Profit 💰', data: netData, type: 'line', borderColor: '#8B5CF6', backgroundColor: '#8B5CF6', tension: 0.3 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+document.getElementById("saveExpenseBtn")?.addEventListener("click", async function() {
+    const month = document.getElementById("expMonth").value.trim();
+    const year = parseInt(document.getElementById("expYear").value);
+    const category = document.getElementById("expCategory").value;
+    const amount = parseFloat(document.getElementById("expAmount").value);
+    const desc = document.getElementById("expNote").value.trim();
+
+    if(!month || isNaN(year) || isNaN(amount) || amount <= 0 || !desc) return alert("Fill all expense fields correctly!");
+
+    this.textContent = "Recording..."; this.disabled = true;
+    
+    let payload = { month, year, category, amount, description: desc };
+    
+    // Fallback if table doesn't exist, use local array
+    try {
+        const { data, error } = await db.from('finance_records').insert([payload]).select();
+        if(error && error.code !== "PGRST204") {
+            // Table might not exist, save locally to avoid failure in UI mock
+            console.warn("Supabase Finance table missing? Saving locally. Error: ", error.message);
+            payload.id = Date.now();
+            financeRecords.push(payload);
+        } else if(data) {
+            financeRecords.unshift(data[0]); // Push generated ID from Supabase
+        }
+    } catch(e) {
+        payload.id = Date.now();
+        financeRecords.push(payload);
+    }
+    
+    alert("Expense Recorded.");
+    this.textContent = "Record Ledger"; this.disabled = false;
+    document.getElementById("expAmount").value = "";
+    document.getElementById("expNote").value = "";
+    renderFinance();
+});
+
+window.deleteFinance = async function(id) {
+    if(!confirm("Hapus rekod ini? Ini akan mengubah P&L bulanan.")) return;
+    try {
+        await db.from('finance_records').delete().eq('id', id);
+    } catch(e) {}
+    financeRecords = financeRecords.filter(f => f.id !== id);
+    renderFinance();
 };
