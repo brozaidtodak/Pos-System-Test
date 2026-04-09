@@ -12,6 +12,24 @@ try {
     console.error("API Error: ", e.message);
 }
 
+
+// Pagination Defaults
+let publicCurrentPage = 1;
+let posCurrentPage = 1;
+const itemsPerPage = 20;
+let lastPosSearchTerm = "";
+
+window.changePublicPage = function(dir) {
+    publicCurrentPage += dir;
+    renderPublicStorefront();
+    // Scroll slightly up or to top of catalog (optional, but good UX)
+    document.getElementById('publicProductsList').parentElement.scrollTop = 0;
+}
+window.changePosPage = function(dir) {
+    posCurrentPage += dir;
+    renderPOS(lastPosSearchTerm);
+    document.getElementById('productsList').parentElement.scrollTop = 0;
+}
 // Memory State
 let masterProducts = [
     {
@@ -7904,10 +7922,26 @@ function renderPOS(searchTerm = "") {
     const list = document.getElementById("productsList");
     if(!list) return;
     let htmlBuf = "";
+    
+    // Reset page if searching
+    if(searchTerm !== lastPosSearchTerm) {
+        lastPosSearchTerm = searchTerm;
+        posCurrentPage = 1;
+    }
 
-    masterProducts.forEach(p => {
-        if(p.is_published === false) return; // Hide drafts
-        if(searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase()) && !p.sku.toLowerCase().includes(searchTerm.toLowerCase())) return;
+    let filtered = masterProducts.filter(p => {
+        if(p.is_published === false) return false;
+        if(searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase()) && !p.sku.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        return true;
+    });
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    if(posCurrentPage > totalPages) posCurrentPage = totalPages;
+    if(posCurrentPage < 1) posCurrentPage = 1;
+
+    let sliced = filtered.slice((posCurrentPage - 1) * itemsPerPage, posCurrentPage * itemsPerPage);
+
+    sliced.forEach(p => {
 
         const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
         const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
@@ -7924,6 +7958,15 @@ function renderPOS(searchTerm = "") {
             </div>
         `;
     });
+    
+    // Pagination Controls UI
+    htmlBuf += `
+        <div style="width:100%; display:flex; justify-content:center; align-items:center; gap:15px; margin-top:20px; grid-column: 1 / -1; font-size:14px; color:#555;">
+            <button onclick="changePosPage(-1)" ${posCurrentPage <= 1 ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} class="custom-btn"> < Prev </button>
+            <span>Page <b>${posCurrentPage}</b> of ${totalPages}</span>
+            <button onclick="changePosPage(1)" ${posCurrentPage >= totalPages ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} class="custom-btn"> Next > </button>
+        </div>
+    `;
     list.innerHTML = htmlBuf;
 }
 
@@ -8133,8 +8176,14 @@ function renderPublicStorefront() {
     if(!list) return;
     let htmlBuf2 = "";
 
-    masterProducts.forEach(p => {
-        if(p.is_published === false) return; // Hide drafts
+    let filtered = masterProducts.filter(p => p.is_published !== false);
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    if(publicCurrentPage > totalPages) publicCurrentPage = totalPages;
+    if(publicCurrentPage < 1) publicCurrentPage = 1;
+
+    let sliced = filtered.slice((publicCurrentPage - 1) * itemsPerPage, publicCurrentPage * itemsPerPage);
+
+    sliced.forEach(p => {
 
         const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
         const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
@@ -8152,6 +8201,14 @@ function renderPublicStorefront() {
             </div>
         `;
     });
+    
+    htmlBuf2 += `
+        <div style="width:100%; display:flex; justify-content:center; align-items:center; gap:20px; margin-top:30px; grid-column: 1 / -1; font-family:Inter;">
+            <button onclick="changePublicPage(-1)" ${publicCurrentPage <= 1 ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} style="padding:10px 20px; background:#f0f0f0; border:none; border-radius:5px; font-weight:bold;">◀ Back</button>
+            <span style="font-size:15px; color:#444;">Page <b>${publicCurrentPage}</b> / ${totalPages}</span>
+            <button onclick="changePublicPage(1)" ${publicCurrentPage >= totalPages ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} style="padding:10px 20px; background:#111; color:white; border:none; border-radius:5px; font-weight:bold;">Next ▶</button>
+        </div>
+    `;
     list.innerHTML = htmlBuf2;
 }
 
