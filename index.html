@@ -15,6 +15,25 @@
 </head>
 <body>
 
+    <!-- 0. LOGIN OVERLAY -->
+    <div id="loginGate" class="login-overlay">
+        <div class="login-box">
+            <h2 style="margin-bottom:5px; font-weight:800; font-size:24px; letter-spacing:-1px;">10camp</h2>
+            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Please select your role to proceed.</p>
+            
+            <label class="small-lbl" style="text-align:left;">User Role</label>
+            <select id="loginRole" class="login-input">
+                <option value="staff">Staff (Cashier / POS)</option>
+                <option value="admin">Back Office (Management)</option>
+            </select>
+            
+            <label class="small-lbl" style="text-align:left;">PIN / Password</label>
+            <input type="password" id="loginPin" class="login-input" placeholder="Enter PIN (e.g., 1234)" value="1234">
+
+            <button onclick="handleLogin()" class="login-btn">Secure Login</button>
+        </div>
+    </div>
+
     <!-- 1. SIDEBAR MENU -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <div class="sidebar" id="appSidebar">
@@ -23,7 +42,7 @@
             <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>
         </div>
         <div class="menu-list">
-            <div class="menu-item active" data-tab="home" onclick="switchTab('home', 'Overview')">
+            <div class="menu-item admin-only active" data-tab="home" onclick="switchTab('home', 'Overview')">
                 Dashboard
             </div>
             <div class="menu-item" data-tab="pos" onclick="switchTab('pos', 'Cashier POS')">
@@ -32,19 +51,19 @@
             <div class="menu-item" data-tab="orders" onclick="switchTab('orders', 'Orders History')">
                 Orders
             </div>
-            <div class="menu-item" data-tab="inventory" onclick="switchTab('inventory', 'Warehouse Logistics')">
+            <div class="menu-item admin-only" data-tab="inventory" onclick="switchTab('inventory', 'Warehouse Logistics')">
                 Inventory & SKU
             </div>
-            <div class="menu-item" data-tab="customers" onclick="switchTab('customers', 'Customers')">
+            <div class="menu-item admin-only" data-tab="customers" onclick="switchTab('customers', 'Customers')">
                 Customers
             </div>
-            <div class="menu-item" data-tab="promotions" onclick="switchTab('promotions', 'Promotions')">
+            <div class="menu-item admin-only" data-tab="promotions" onclick="switchTab('promotions', 'Promotions')">
                 Promotion
             </div>
-            <div class="menu-item" data-tab="reports" onclick="switchTab('reports', 'Analytics Report')">
+            <div class="menu-item admin-only" data-tab="reports" onclick="switchTab('reports', 'Analytics Report')">
                 Report
             </div>
-            <div class="menu-item" data-tab="settings" onclick="switchTab('settings', 'Store Settings')">
+            <div class="menu-item admin-only" data-tab="settings" onclick="switchTab('settings', 'Store Settings')">
                 Settings
             </div>
         </div>

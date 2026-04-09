@@ -528,8 +528,33 @@ function renderPromotions() {
     });
 }
 
+let currentUserRole = null;
+
+function handleLogin() {
+    const role = document.getElementById("loginRole").value;
+    const pin = document.getElementById("loginPin").value;
+    if(!pin) { alert("Sila masukkan PIN!"); return; }
+    
+    currentUserRole = role;
+    document.getElementById("loginGate").style.display = "none";
+    
+    const adminMenus = document.querySelectorAll(".admin-only");
+    
+    if(role === 'staff') {
+        // Only show POS & Orders for staff
+        adminMenus.forEach(el => el.style.display = "none");
+        document.querySelector('.menu-item[data-tab="home"]').classList.remove('active');
+        switchTab("pos", "Cashier POS"); // Force Staff to POS natively
+    } else {
+        // Show everything for admin
+        adminMenus.forEach(el => el.style.display = "flex");
+        switchTab("home", "Dashboard"); // Managers see Dashboard first
+    }
+    
+    if(db) initApp(); // Load data only when logged in
+}
+
 setTimeout(() => {
-    switchTab("home", "Dashboard");
     document.getElementById("searchInput")?.addEventListener('input', e => renderPOS(e.target.value));
     
     // Set default date range to Current Month
@@ -537,6 +562,4 @@ setTimeout(() => {
     const firstDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
     document.getElementById('dashStartDate').value = firstDay.toISOString().split('T')[0];
     document.getElementById('dashEndDate').value = dateObj.toISOString().split('T')[0];
-
-    if(db) initApp();
 }, 200);
