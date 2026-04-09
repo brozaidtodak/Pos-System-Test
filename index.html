@@ -24,28 +24,28 @@
         </div>
         <div class="menu-list">
             <div class="menu-item active" data-tab="home" onclick="switchTab('home', 'Overview')">
-                <span class="menu-icon">🏠</span> Dashboard
+                Dashboard
             </div>
             <div class="menu-item" data-tab="pos" onclick="switchTab('pos', 'Cashier POS')">
-                <span class="menu-icon">🛒</span> Menu (POS)
+                Menu (POS)
             </div>
             <div class="menu-item" data-tab="orders" onclick="switchTab('orders', 'Orders History')">
-                <span class="menu-icon">🛍️</span> Orders
+                Orders
             </div>
             <div class="menu-item" data-tab="inventory" onclick="switchTab('inventory', 'Warehouse Logistics')">
-                <span class="menu-icon">📦</span> Inventory & SKU
+                Inventory & SKU
             </div>
             <div class="menu-item" data-tab="customers" onclick="switchTab('customers', 'Customers')">
-                <span class="menu-icon">👥</span> Customers
+                Customers
             </div>
             <div class="menu-item" data-tab="promotions" onclick="switchTab('promotions', 'Promotions')">
-                <span class="menu-icon">🎁</span> Promotion
+                Promotion
             </div>
             <div class="menu-item" data-tab="reports" onclick="switchTab('reports', 'Analytics Report')">
-                <span class="menu-icon">📊</span> Report
+                Report
             </div>
             <div class="menu-item" data-tab="settings" onclick="switchTab('settings', 'Store Settings')">
-                <span class="menu-icon">⚙️</span> Settings
+                Settings
             </div>
         </div>
     </div>
@@ -108,7 +108,7 @@
                     
                     <!-- Top 10 Best Sellers -->
                     <div class="admin-card" style="padding:15px; margin-top:20px;">
-                        <h3 style="margin-bottom:10px; font-size:15px;">🔥 Top 10 Best Selling Items</h3>
+                        <h3 style="margin-bottom:10px; font-size:15px; color:var(--text-main);">Top 10 Best Selling Items</h3>
                         <table class="inventory-table" style="font-size:13px;">
                             <tbody id="topSellingList">
                                 <tr><td><i>Loading...</i></td></tr>
@@ -121,8 +121,8 @@
                 <div style="flex:1; min-width:260px; display:flex; flex-direction:column; gap:20px;">
                     
                     <!-- Order Fulfillment Need Action -->
-                    <div class="admin-card" style="padding:15px; border:2px solid #F59E0B;">
-                        <h3 style="color:#F59E0B; margin-bottom:15px; font-size:15px;">🚨 To-Do Operations</h3>
+                    <div class="admin-card" style="padding:15px; border:1px solid var(--border-color);">
+                        <h3 style="color:var(--text-main); margin-bottom:15px; font-size:15px;">To-Do Operations</h3>
                         <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                             <span>To Fulfil (Ship)</span><strong id="badgeToFulfil" style="background:#F59E0B; color:white; padding:2px 8px; border-radius:12px;">0</strong>
                         </div>
@@ -138,8 +138,8 @@
                     </div>
 
                     <!-- Inventory Health -->
-                    <div class="admin-card" style="padding:15px; border:2px solid #8B5CF6;">
-                        <h3 style="color:#8B5CF6; margin-bottom:15px; font-size:15px;">📦 Stock Health</h3>
+                    <div class="admin-card" style="padding:15px; border:1px solid var(--border-color);">
+                        <h3 style="color:var(--text-main); margin-bottom:15px; font-size:15px;">Stock Health</h3>
                         <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                             <span>Out of Stock (OOS)</span><strong id="badgeOos" style="color:#EF4444;">0</strong>
                         </div>
@@ -156,8 +156,8 @@
                     </div>
 
                     <!-- CRM Snapshots -->
-                    <div class="admin-card" style="padding:15px; border:2px solid #EC4899;">
-                        <h3 style="color:#EC4899; margin-bottom:15px; font-size:15px;">👥 CRM Stats</h3>
+                    <div class="admin-card" style="padding:15px; border:1px solid var(--border-color);">
+                        <h3 style="color:var(--text-main); margin-bottom:15px; font-size:15px;">CRM Stats</h3>
                         <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                             <span>Repeat Customers</span><strong id="badgeRepeat">0</strong>
                         </div>
