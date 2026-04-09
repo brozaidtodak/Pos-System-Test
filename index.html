@@ -19,16 +19,10 @@
     <div id="loginGate" class="login-overlay">
         <div class="login-box">
             <h2 style="margin-bottom:5px; font-weight:800; font-size:24px; letter-spacing:-1px;">10camp</h2>
-            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Please select your role to proceed.</p>
+            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Enter your unique Security PIN to proceed.</p>
             
-            <label class="small-lbl" style="text-align:left;">User Role</label>
-            <select id="loginRole" class="login-input">
-                <option value="staff">Staff (Cashier / POS)</option>
-                <option value="admin">Back Office (Management)</option>
-            </select>
-            
-            <label class="small-lbl" style="text-align:left;">PIN / Password</label>
-            <input type="password" id="loginPin" class="login-input" placeholder="Enter PIN (e.g., 1234)" value="1234">
+            <label class="small-lbl" style="text-align:left;">Employee PIN</label>
+            <input type="password" id="loginPin" class="login-input" placeholder="****" style="text-align:center; font-size:24px; letter-spacing:10px; font-weight:bold;">
 
             <button onclick="handleLogin()" class="login-btn">Secure Login</button>
         </div>
@@ -38,7 +32,7 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <div class="sidebar" id="appSidebar">
         <div class="sidebar-header">
-            <span class="store-name">EasyPOS PRO</span>
+            <span class="store-name" id="sessionUsername">EasyPOS PRO</span>
             <div>
                 <button onclick="handleLogout()" style="font-size:10px; background:var(--bg-color); border:1px solid var(--border-color); color:var(--text-main); font-weight:bold; padding:4px 8px; border-radius:4px; cursor:pointer; margin-right:10px;">Log Out</button>
                 <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>

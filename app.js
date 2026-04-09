@@ -525,51 +525,69 @@ function renderPromotions() {
                 <td>${p.active ? '<span style="color:#10B981; font-weight:bold;">Active ✓</span>' : '<span style="color:#EF4444;">Inactive</span>'}</td>
             </tr>`;
         });
-    });
-}
+// ===================================
+// AUTHENTICATION LOGIC (MULTI-USER)
+// ===================================
 
+const authUsers = [
+    { name: 'Admin Bos', role: 'admin', pin: '8888' },
+    { name: 'Staff Aina', role: 'staff', pin: '1111' },
+    { name: 'Staff Badrul', role: 'staff', pin: '2222' },
+    { name: 'Staff Chong', role: 'staff', pin: '3333' },
+    { name: 'Staff Diana', role: 'staff', pin: '4444' },
+    { name: 'Staff Ewan', role: 'staff', pin: '5555' },
+    { name: 'Staff Farah', role: 'staff', pin: '6666' },
+    { name: 'Staff Gopi', role: 'staff', pin: '7777' },
+    { name: 'Staff Hafiz', role: 'staff', pin: '1010' },
+    { name: 'Staff Izzat', role: 'staff', pin: '2020' },
+    { name: 'Staff Jamil', role: 'staff', pin: '3030' }
+];
+
+let currentUser = null;
 let currentUserRole = null;
 
 function handleLogin() {
-    const role = document.getElementById("loginRole").value;
     const pin = document.getElementById("loginPin").value;
     if(!pin) { alert("Sila masukkan PIN!"); return; }
     
-    currentUserRole = role;
+    const user = authUsers.find(u => u.pin === pin);
+    if(!user) { alert("Akses Ditolak: PIN Salah atau Tidak Wujud!"); return; }
+    
+    currentUser = user;
+    currentUserRole = user.role;
+    
     document.getElementById("loginGate").style.display = "none";
+    document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (user.role === 'admin' ? ' 👑' : '');
     
     const adminMenus = document.querySelectorAll(".admin-only");
     
-    if(role === 'staff') {
-        // Only show POS & Orders for staff
+    if(user.role === 'staff') {
         adminMenus.forEach(el => el.style.display = "none");
         document.querySelector('.menu-item[data-tab="home"]').classList.remove('active');
-        switchTab("pos", "Cashier POS"); // Force Staff to POS natively
+        switchTab("pos", "Cashier POS"); 
     } else {
-        // Show everything for admin
         adminMenus.forEach(el => el.style.display = "flex");
-        switchTab("home", "Dashboard"); // Managers see Dashboard first
+        switchTab("home", "Dashboard"); 
     }
     
-    if(db) initApp(); // Load data only when logged in
+    if(db) initApp();
 }
 
 function handleLogout() {
+    currentUser = null;
     currentUserRole = null;
     document.getElementById("loginGate").style.display = "flex";
     document.getElementById("loginPin").value = "";
+    document.getElementById("sessionUsername").textContent = "EasyPOS PRO";
     document.getElementById("appSidebar").classList.remove('open');
     document.getElementById("sidebarOverlay").classList.remove('active');
     
-    // Clear out main views so staff cant inspect elements or see leftover data
     const allSections = document.querySelectorAll(".tab-section");
     allSections.forEach(el => el.style.display = "none");
 }
 
 setTimeout(() => {
     document.getElementById("searchInput")?.addEventListener('input', e => renderPOS(e.target.value));
-    
-    // Set default date range to Current Month
     const dateObj = new Date();
     const firstDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
     document.getElementById('dashStartDate').value = firstDay.toISOString().split('T')[0];
