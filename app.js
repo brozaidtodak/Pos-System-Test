@@ -16,7 +16,7 @@ try {
 // Pagination Defaults
 let publicCurrentPage = 1;
 let posCurrentPage = 1;
-const itemsPerPage = 20;
+const itemsPerPage = 22;
 let lastPosSearchTerm = "";
 
 window.changePublicPage = function(dir) {
