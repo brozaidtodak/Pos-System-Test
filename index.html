@@ -379,6 +379,10 @@
             <!-- FORM 2: CSV IMPORTER -->
             <div id="csvForm" class="admin-card" style="display:none; border-color:#111827;">
                 <h3>Bulk System Importer (CSV)</h3>
+                <select id="csvImportType" class="login-input" style="margin-bottom:15px;">
+                    <option value="products">Migrate Products & Inventory</option>
+                    <option value="sales">Migrate Sales/Order History</option>
+                </select>
                 <div style="border:2px dashed #ccc; padding:20px; text-align:center; border-radius:10px;">
                     <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom:0;">
                 </div>

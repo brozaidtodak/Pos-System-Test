@@ -7947,7 +7947,54 @@ document.getElementById("startCsvBtn").onclick = function() {
     Papa.parse(fileInput.files[0], {
         header: true, skipEmptyLines: true,
         complete: async function(res) {
+            const typeSelect = document.getElementById("csvImportType");
+            const importMode = typeSelect ? typeSelect.value : "products";
             const headers = res.meta.fields || [];
+            
+            if(importMode === "sales") {
+                const isShopSales = headers.includes("Name") && headers.includes("Total");
+                const isEasySales = headers.includes("Order Number") && headers.includes("Total");
+                let salesPayload = [];
+                
+                res.data.forEach(r => {
+                    let s_oid = "", s_amt = 0, s_cust = "Unknown", s_date = new Date().toISOString();
+                    if(isShopSales) {
+                        s_oid = r["Name"]; s_amt = r["Total"] || r["Subtotal"]; s_cust = r["Email"] || "Shopify Customer";
+                        s_date = r["Created at"] || s_date;
+                    } else if(isEasySales) {
+                        s_oid = r["Order Number"]; s_amt = r["Total"]; s_cust = r["Customer Name"];
+                        s_date = r["Date"] || s_date;
+                    } else {
+                        s_oid = r.order_id || r.id; s_amt = r.amount || r.total; s_cust = r.customer || r.name;
+                    }
+                    if(s_oid) {
+                        salesPayload.push({
+                            order_id: s_oid,
+                            platform: isShopSales ? "Shopify" : (isEasySales ? "EasyStore" : "Imported"),
+                            amount: parseFloat(s_amt || 0),
+                            customer_name: s_cust || "Unknown",
+                            created_at: new Date(s_date).toISOString()
+                        });
+                    }
+                });
+                
+                if(salesPayload.length === 0) return alert("Format CSV Sales Tidak Sah / Kosong.");
+                const btn = document.getElementById("startCsvBtn");
+                try {
+                    let chunkSize = 500;
+                    for(let i=0; i<salesPayload.length; i+=chunkSize) {
+                        btn.textContent = `Pushing Sales: ${Math.min(i+chunkSize, salesPayload.length)} / ${salesPayload.length}...`;
+                        let chunk = salesPayload.slice(i, i+chunkSize);
+                        let { error } = await db.from('sales_history').upsert(chunk, { onConflict: 'order_id' });
+                        if(error) throw error;
+                    }
+                    alert(`Migrasi ${salesPayload.length} Rekod Jualan Berjaya!`);
+                    await initApp(); toggleInvForm('');
+                } catch(e) { alert("Error: " + e.message); } finally { btn.disabled = false; btn.textContent = "Process Robot Upload"; }
+                return;
+            }
+
+            // Products Migration Flow
             const isShopify = headers.includes("Variant SKU");
             const isEasyStore = headers.includes("Product Name") && headers.includes("Price");
             
