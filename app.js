@@ -69,9 +69,9 @@ async function initApp() {
 
         let { data: custs } = await db.from('customers').select('*');
         if(custs) customersData = custs;
-
         renderWMS();
         renderPOS();
+        renderPublicStorefront();
         renderHistory();
         renderCustomers();
         renderPromotions();
@@ -565,6 +565,8 @@ function handleLogin() {
     currentUserRole = user.role;
     
     document.getElementById("loginGate").style.display = "none";
+    document.getElementById("shopAppLayout").style.display = "none";
+    document.getElementById("posAppLayout").style.display = "block";
     document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (user.role === 'admin' ? ' 👑' : '');
     
     const adminMenus = document.querySelectorAll(".admin-only");
@@ -577,14 +579,14 @@ function handleLogin() {
         adminMenus.forEach(el => el.style.display = "flex");
         switchTab("home", "Dashboard"); 
     }
-    
-    if(db) initApp();
 }
 
 function handleLogout() {
     currentUser = null;
     currentUserRole = null;
-    document.getElementById("loginGate").style.display = "flex";
+    document.getElementById("loginGate").style.display = "none";
+    document.getElementById("shopAppLayout").style.display = "block";
+    document.getElementById("posAppLayout").style.display = "none";
     document.getElementById("loginPin").value = "";
     document.getElementById("sessionUsername").textContent = "EasyPOS PRO";
     document.getElementById("appSidebar").classList.remove('open');
@@ -600,7 +602,42 @@ setTimeout(() => {
     const firstDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
     document.getElementById('dashStartDate').value = firstDay.toISOString().split('T')[0];
     document.getElementById('dashEndDate').value = dateObj.toISOString().split('T')[0];
+    
+    if(db) initApp();
 }, 200);
+
+// ===================================
+// PUBLIC E-COMMERCE ENGINE
+// ===================================
+function renderPublicStorefront() {
+    const list = document.getElementById("publicProductsList");
+    if(!list) return;
+    list.innerHTML = "";
+
+    masterProducts.forEach(p => {
+        if(p.is_published === false) return; // Hide drafts
+
+        const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
+        const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+        let thumb = p.images && p.images[0] ? p.images[0] : "https://placehold.co/300x200?text=No+Img";
+
+        list.innerHTML += `
+            <div class="product-card" style="border:none; box-shadow:0 4px 15px rgba(0,0,0,0.05); padding:0; overflow:hidden;">
+                <img src="${thumb}" style="width:100%; height:200px; object-fit:cover;">
+                <div style="padding:15px;">
+                    <span class="cat-badge">${p.category||'Uncat'}</span>
+                    <h3 style="margin-top:10px; font-size:16px; height:40px; overflow:hidden; font-weight:700;">${p.name}</h3>
+                    <p class="price" style="font-size:18px; font-weight:900;">RM ${parseFloat(p.price).toFixed(2)}</p>
+                    <button onclick="addToPublicCart('${p.sku}')" style="width:100%; border-radius:50px; background:#111; color:white; padding:12px; border:none; margin-top:10px; cursor:pointer; font-weight:bold; font-size:13px;" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Sold Out' : 'Add to Cart 🛒'}</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+window.addToPublicCart = function(sku) {
+    alert("Peringatan Fasa Prototaip: Fungsi troli pelanggan awam sedang dibina! Hubungi Staf kami untuk tempahan buat masa ini.");
+}
 
 // ===================================
 // E-RECEIPT & EMAIL SYSTEM
