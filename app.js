@@ -482,8 +482,13 @@ document.getElementById("checkoutBtn").onclick = async function() {
             customer_name: custNameText, payment_method: pm, channel: cn, status: cst, total: totalVal, items: cart
         }]);
 
-        cart = []; alert("Order Successfully Pushed to Queue!");
+        const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
+        const email = document.getElementById("customerEmail").value.trim();
+        showReceiptModal(invId, custNameText, email, totalVal, [...cart]);
+
+        cart = []; 
         document.getElementById("customerName").value = "";
+        document.getElementById("customerEmail").value = "";
         await initApp(); renderCart();
     } catch (e) { alert("Fatal Error: " + e.message); }
     
@@ -593,3 +598,48 @@ setTimeout(() => {
     document.getElementById('dashStartDate').value = firstDay.toISOString().split('T')[0];
     document.getElementById('dashEndDate').value = dateObj.toISOString().split('T')[0];
 }, 200);
+
+// ===================================
+// E-RECEIPT & EMAIL SYSTEM
+// ===================================
+let currentReceiptContext = null;
+
+function showReceiptModal(invId, custName, email, total, cartData) {
+    const rc = document.getElementById("receiptContent");
+    const d = new Date().toLocaleString('en-GB');
+    let itemsHtml = "";
+    cartData.forEach(c => {
+        itemsHtml += `<div style="margin-bottom:5px;">${c.quantity}x ${c.name} <span style="float:right">RM ${(c.price * c.quantity).toFixed(2)}</span></div>`;
+    });
+
+    rc.innerHTML = `
+        <div style="font-weight:bold; margin-bottom:10px;">INVOICE: ${invId}</div>
+        <div style="color:var(--text-muted);">Date: ${d}</div>
+        <div style="color:var(--text-muted);">Customer: ${custName}</div>
+        <div style="color:var(--text-muted); margin-bottom:10px;">Cashier: ${currentUser?.name || 'Staff'}</div>
+        <hr style="border-top:1px dashed #ccc; margin:10px 0;">
+        ${itemsHtml}
+        <hr style="border-top:1px dashed #ccc; margin:10px 0;">
+        <div style="font-size:16px; font-weight:bold;">TOTAL <span style="float:right">RM ${total.toFixed(2)}</span></div>
+        <div style="text-align:center; margin-top:30px; font-weight:bold; font-size:11px; color:var(--text-muted);">THANK YOU FOR SHOPPING AT 10CAMP</div>
+    `;
+    
+    currentReceiptContext = { invId, custName, email, total, itemsText: cartData.map(c => `${c.quantity}x ${c.name} - RM ${(c.price * c.quantity).toFixed(2)}`).join('%0D%0A') };
+    document.getElementById("receiptModal").style.display = "flex";
+}
+
+window.closeReceipt = function() {
+    document.getElementById("receiptModal").style.display = "none";
+};
+
+document.getElementById("sendEmailBtn").onclick = function() {
+    if(!currentReceiptContext) return;
+    const { invId, custName, email, total, itemsText } = currentReceiptContext;
+    const targetEmail = email || "";
+    if(!targetEmail) { alert("Sila masukkan emel pelanggan terlebih dahulu sebelum menghantar resit."); return; }
+
+    const subject = `E-Receipt ${invId} from 10camp`;
+    const body = `Hi ${custName},%0D%0A%0D%0AThank you for shopping at 10camp! Here is your e-receipt:%0D%0A%0D%0AInvoice: ${invId}%0D%0A%0D%0AItems:%0D%0A${itemsText}%0D%0A%0D%0ATOTAL: RM ${total.toFixed(2)}%0D%0A%0D%0AHope to see you again soon!`;
+    
+    window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+};
