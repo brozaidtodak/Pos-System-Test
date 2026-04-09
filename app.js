@@ -7775,6 +7775,8 @@ function renderWMS() {
     if(!tbody) return;
     tbody.innerHTML = "";
 
+    let htmlBuf3 = "";
+
     masterProducts.forEach(p => {
         const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
         const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
@@ -7784,7 +7786,7 @@ function renderWMS() {
 
         let sBadge = p.is_published ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
 
-        tbody.innerHTML += `
+        htmlBuf3 += `
             <tr>
                 <td>
                     <img src="${thumb}"><br>
@@ -7810,6 +7812,7 @@ function renderWMS() {
             </tr>
         `;
     });
+    tbody.innerHTML = htmlBuf3;
 }
 
 document.getElementById("saveMasterBtn").onclick = async function() {
@@ -7900,7 +7903,7 @@ document.getElementById("saveInboundBtn").onclick = async function() {
 function renderPOS(searchTerm = "") {
     const list = document.getElementById("productsList");
     if(!list) return;
-    list.innerHTML = "";
+    let htmlBuf = "";
 
     masterProducts.forEach(p => {
         if(p.is_published === false) return; // Hide drafts
@@ -7910,17 +7913,18 @@ function renderPOS(searchTerm = "") {
         const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
         let thumb = p.images && p.images[0] ? p.images[0] : "https://placehold.co/300x200?text=No+Img";
 
-        list.innerHTML += `
+        htmlBuf += `
             <div class="product-card">
                 <img src="${thumb}">
                 <span class="sku-badge">${p.sku}</span><span class="cat-badge">${p.category||'Uncat'}</span>
                 <h3 style="margin-top:5px; font-size:14px; height:35px; overflow:hidden;">${p.name}</h3>
                 <p class="price">RM ${parseFloat(p.price).toFixed(2)}</p>
-                <p style="font-size:12px; margin-bottom:8px;">Instock: ${totalStock} ${p.unit}</p>
+                <p style="font-size:12px; margin-bottom:8px;">Instock: ${totalStock} ${p.unit||''}</p>
                 <button onclick="addToCart('${p.sku}')" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Out of Stock' : 'Add >'}</button>
             </div>
         `;
     });
+    list.innerHTML = htmlBuf;
 }
 
 window.addToCart = function(sku) {
@@ -8127,7 +8131,7 @@ setTimeout(() => {
 function renderPublicStorefront() {
     const list = document.getElementById("publicProductsList");
     if(!list) return;
-    list.innerHTML = "";
+    let htmlBuf2 = "";
 
     masterProducts.forEach(p => {
         if(p.is_published === false) return; // Hide drafts
@@ -8136,7 +8140,7 @@ function renderPublicStorefront() {
         const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
         let thumb = p.images && p.images[0] ? p.images[0] : "https://placehold.co/300x200?text=No+Img";
 
-        list.innerHTML += `
+        htmlBuf2 += `
             <div class="product-card" style="border:none; box-shadow:0 4px 15px rgba(0,0,0,0.05); padding:0; overflow:hidden;">
                 <img src="${thumb}" style="width:100%; height:200px; object-fit:cover;">
                 <div style="padding:15px;">
@@ -8148,6 +8152,7 @@ function renderPublicStorefront() {
             </div>
         `;
     });
+    list.innerHTML = htmlBuf2;
 }
 
 let publicCart = [];
