@@ -38,7 +38,10 @@ let masterProducts = [
         "category": "Camping Tent",
         "price": 1799.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1504280741562-60234eb0fdd5?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD002",
@@ -46,7 +49,10 @@ let masterProducts = [
         "category": "Flysheet / Tarp / Canopy",
         "price": 227.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD003",
@@ -54,7 +60,10 @@ let masterProducts = [
         "category": "Flysheet / Tarp / Canopy",
         "price": 327.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1628131336467-fbd78cf67215?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD004",
@@ -62,7 +71,10 @@ let masterProducts = [
         "category": "Flysheet / Tarp / Canopy",
         "price": 459.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1525811902-f2342640856e?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD005",
@@ -70,7 +82,10 @@ let masterProducts = [
         "category": "Accessories",
         "price": 95.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD005#",
@@ -78,7 +93,10 @@ let masterProducts = [
         "category": "Uncategorized",
         "price": 99.0,
         "is_published": true,
-        "brand": "10camp"
+        "brand": "10camp",
+        "images": [
+            "https://images.unsplash.com/photo-1534880606858-29b0e8a24e8d?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD006",
@@ -86,7 +104,10 @@ let masterProducts = [
         "category": "Lighting & Lamp",
         "price": 93.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1682687982501-1e5898cb8f4b?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD007",
@@ -94,7 +115,10 @@ let masterProducts = [
         "category": "Lighting & Lamp",
         "price": 97.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1563299796-17596f351e75?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD008",
@@ -102,7 +126,10 @@ let masterProducts = [
         "category": "Accessories",
         "price": 211.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1481971727749-e5884e1b8b8b?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD008#",
@@ -110,7 +137,10 @@ let masterProducts = [
         "category": "Uncategorized",
         "price": 99.0,
         "is_published": true,
-        "brand": "10camp"
+        "brand": "10camp",
+        "images": [
+            "https://images.unsplash.com/photo-1504851149312-7a075b496cc7?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD009",
@@ -118,7 +148,10 @@ let masterProducts = [
         "category": "Accessories",
         "price": 412.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1496080174650-637e3f22fa03?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD009#",
@@ -126,7 +159,10 @@ let masterProducts = [
         "category": "Uncategorized",
         "price": 390.0,
         "is_published": true,
-        "brand": "10camp"
+        "brand": "10camp",
+        "images": [
+            "https://images.unsplash.com/photo-1559827291-72ee739d0d9a?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD010",
@@ -134,7 +170,10 @@ let masterProducts = [
         "category": "Table & Chair",
         "price": 189.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1533240332313-0db49b459ad6?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD010#",
@@ -142,7 +181,10 @@ let masterProducts = [
         "category": "Uncategorized",
         "price": 99.0,
         "is_published": true,
-        "brand": "10camp"
+        "brand": "10camp",
+        "images": [
+            "https://images.unsplash.com/photo-1455448972184-de647495d428?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD011",
@@ -150,7 +192,10 @@ let masterProducts = [
         "category": "Table & Chair",
         "price": 79.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD012",
@@ -158,7 +203,10 @@ let masterProducts = [
         "category": "Accessories",
         "price": 119.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1596700088924-41d1a19f2ba9?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD013",
@@ -166,7 +214,10 @@ let masterProducts = [
         "category": "Table & Chair",
         "price": 199.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1587304603091-ebd062af8798?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD013#",
@@ -174,7 +225,10 @@ let masterProducts = [
         "category": "Uncategorized",
         "price": 99.0,
         "is_published": true,
-        "brand": "10camp"
+        "brand": "10camp",
+        "images": [
+            "https://images.unsplash.com/photo-1566453186259-86ab717bd96a?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD014",
@@ -182,7 +236,10 @@ let masterProducts = [
         "category": "Camping Tent",
         "price": 99.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1517686566-6b216447833a?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD014#",
@@ -190,7 +247,10 @@ let masterProducts = [
         "category": "Uncategorized",
         "price": 99.0,
         "is_published": true,
-        "brand": "10camp"
+        "brand": "10camp",
+        "images": [
+            "https://images.unsplash.com/photo-1537249048383-7c3e7f4115b8?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD015",
@@ -198,7 +258,10 @@ let masterProducts = [
         "category": "Flysheet / Tarp / Canopy",
         "price": 99.0,
         "is_published": true,
-        "brand": "BLACKDOG"
+        "brand": "BLACKDOG",
+        "images": [
+            "https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=500"
+        ]
     },
     {
         "sku": "BD016",
