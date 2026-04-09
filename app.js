@@ -554,6 +554,18 @@ function handleLogin() {
     if(db) initApp(); // Load data only when logged in
 }
 
+function handleLogout() {
+    currentUserRole = null;
+    document.getElementById("loginGate").style.display = "flex";
+    document.getElementById("loginPin").value = "";
+    document.getElementById("appSidebar").classList.remove('open');
+    document.getElementById("sidebarOverlay").classList.remove('active');
+    
+    // Clear out main views so staff cant inspect elements or see leftover data
+    const allSections = document.querySelectorAll(".tab-section");
+    allSections.forEach(el => el.style.display = "none");
+}
+
 setTimeout(() => {
     document.getElementById("searchInput")?.addEventListener('input', e => renderPOS(e.target.value));
     

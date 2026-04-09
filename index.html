@@ -39,7 +39,10 @@
     <div class="sidebar" id="appSidebar">
         <div class="sidebar-header">
             <span class="store-name">EasyPOS PRO</span>
-            <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>
+            <div>
+                <button onclick="handleLogout()" style="font-size:10px; background:var(--bg-color); border:1px solid var(--border-color); color:var(--text-main); font-weight:bold; padding:4px 8px; border-radius:4px; cursor:pointer; margin-right:10px;">Log Out</button>
+                <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>
+            </div>
         </div>
         <div class="menu-list">
             <div class="menu-item admin-only active" data-tab="home" onclick="switchTab('home', 'Overview')">
