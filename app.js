@@ -7943,24 +7943,76 @@ document.getElementById("startCsvBtn").onclick = function() {
     const fileInput = document.getElementById("csvFileInput");
     if(!fileInput.files.length) return alert("Pilih fail CSV!");
     
-    this.disabled = true; this.textContent = "Parsing Excel...";
+    this.disabled = true; this.textContent = "Analyzing Smart Migrator...";
     Papa.parse(fileInput.files[0], {
         header: true, skipEmptyLines: true,
         complete: async function(res) {
-            let payload = res.data.map(r => ({
-                sku: (r.sku || "").toUpperCase(), name: r.name || "Untitled",
-                parent_sku: (r.parent_sku || "").toUpperCase(), category: r.category || "General",
-                unit: r.unit || "Pcs", cost_price: parseFloat(r.cost_price || 0),
-                price: parseFloat(r.price || 0), commission_rate: parseFloat(r.commission_rate || 0),
-                is_published: true, images: []
-            })).filter(x => x.sku !== "");
-
-            if(payload.length === 0) return alert("Format CSV Salah.");
-            const { error } = await db.from('products_master').insert(payload);
-            if(error) alert("Error: " + error.message); else { alert("Excel Imported!"); await initApp(); toggleInvForm(''); }
+            const headers = res.meta.fields || [];
+            const isShopify = headers.includes("Variant SKU");
+            const isEasyStore = headers.includes("Product Name") && headers.includes("Price");
             
-            document.getElementById("startCsvBtn").disabled = false; 
-            document.getElementById("startCsvBtn").textContent = "Process Robot Upload";
+            let payload = [];
+            let inventoryPayload = [];
+
+            res.data.forEach(r => {
+                let s_sku = "", s_name = "", s_price = 0, s_cost = 0, s_img = "", s_qty = 0;
+                if(isShopify) {
+                    s_sku = r["Variant SKU"]; s_name = r["Handle"] || r["Title"]; s_price = r["Variant Price"];
+                    s_cost = r["Variant Compare At Price"] || 0; s_img = r["Image Src"] || "";
+                    s_qty = parseInt(r["Variant Inventory Qty"] || 0);
+                } else if(isEasyStore) {
+                    s_sku = r["SKU"]; s_name = r["Product Name"]; s_price = r["Price"]; s_cost = r["Cost"];
+                    s_qty = parseInt(r["Quantity"] || 0);
+                } else {
+                    s_sku = r.sku; s_name = r.name; s_price = r.price; s_cost = r.cost_price;
+                }
+                
+                s_sku = (s_sku || "").trim().toUpperCase();
+                if(s_sku && s_sku !== "NAN") {
+                    payload.push({
+                        sku: s_sku, name: s_name || "Migrated Item",
+                        category: "Migrated", unit: "Pcs", cost_price: parseFloat(s_cost || 0),
+                        price: parseFloat(s_price || 0), commission_rate: 0,
+                        is_published: true, images: s_img ? [s_img] : []
+                    });
+                    if(s_qty > 0) {
+                        inventoryPayload.push({
+                            sku: s_sku, batch_year: new Date().getFullYear(),
+                            qty_received: s_qty, qty_remaining: s_qty
+                        });
+                    }
+                }
+            });
+
+            if(payload.length === 0) return alert("Format CSV Tidak Dikenalpasti / Tiada SKU.");
+            const btn = document.getElementById("startCsvBtn");
+            
+            try {
+                // Chunking logic (500 items per chunk) to avoid Server Timeout
+                let chunkSize = 500;
+                for(let i=0; i<payload.length; i+=chunkSize) {
+                    btn.textContent = `Upserting Products: ${Math.min(i+chunkSize, payload.length)} / ${payload.length}...`;
+                    let chunk = payload.slice(i, i+chunkSize);
+                    let { error } = await db.from('products_master').upsert(chunk, { onConflict: 'sku' });
+                    if(error) throw error;
+                }
+                
+                for(let i=0; i<inventoryPayload.length; i+=chunkSize) {
+                    btn.textContent = `Migrating Inventory: ${Math.min(i+chunkSize, inventoryPayload.length)} / ${inventoryPayload.length}...`;
+                    let chunk = inventoryPayload.slice(i, i+chunkSize);
+                    let { error } = await db.from('inventory_batches').insert(chunk);
+                    if(error) throw error;
+                }
+
+                alert(`Migrasi Berjaya! dipindahkan sebanyak: ${payload.length} produk & ${inventoryPayload.length} susunan stok.`); 
+                await initApp(); 
+                toggleInvForm('');
+            } catch(e) {
+                alert("Migration Error: " + e.message);
+            } finally {
+                btn.disabled = false; 
+                btn.textContent = "Process Robot Upload";
+            }
         }
     });
 };
