@@ -145,101 +145,106 @@
                 <button onclick="renderDashboard()" class="btn-primary" style="margin:0; padding:10px 15px;">Apply Filter</button>
             </div>
 
-            <!-- B. CORE METRICS -->
-            <div class="dashboard-cards" style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));">
-                <div class="dash-card">
-                    <h3>Gross Sales</h3>
-                    <p class="dash-value" style="font-size:20px;">RM <span id="dashTotalSales">0</span></p>
-                </div>
-                <div class="dash-card">
-                    <h3>Total Orders</h3>
-                    <p class="dash-value" style="font-size:24px; font-weight:700;" id="dashTotalOrders">0</p>
-                </div>
-                <div class="dash-card" style="border-top-color:var(--secondary);">
-                    <h3>Top Channel</h3>
-                    <p class="dash-value" style="font-size:18px; color:var(--secondary); font-weight:700;" id="dashTopChannel">-</p>
-                </div>
-                <div class="dash-card" style="border-top-color:#121212;">
-                    <h3>New Buyers</h3>
-                    <p class="dash-value" style="font-size:24px; color:#121212; font-weight:700;" id="dashNewBuyers">0</p>
-                </div>
-            </div>
-
-            <!-- C. MAIN SPLIT: CHART vs ORDERS -->
-            <div style="display:flex; flex-wrap:wrap; gap:20px; margin-top:20px;">
-                
-                <!-- Left Column -->
-                <div style="flex:2; min-width:300px;">
-                    <!-- Chart -->
-                    <div class="admin-card" style="padding:15px;">
-                        <h3 style="margin-bottom:10px; font-size:15px;">Sales Trajectory</h3>
-                        <div style="position:relative; height:250px; width:100%;">
+            <!-- ============================== -->
+            <!-- 1. SALES TEAM OVERVIEW         -->
+            <!-- ============================== -->
+            <div style="margin-bottom:30px;">
+                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid var(--primary); display:inline-block; padding-bottom:5px;">📈 Sales Team Dept.</h2>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 2fr; gap:20px;">
+                    <div class="dash-card">
+                        <h3>Gross Sales</h3>
+                        <p class="dash-value" style="font-size:24px; color:var(--primary);">RM <span id="dashTotalSales">0</span></p>
+                    </div>
+                    <div class="dash-card">
+                        <h3>Total Orders</h3>
+                        <p class="dash-value" style="font-size:24px; font-weight:700;" id="dashTotalOrders">0</p>
+                    </div>
+                    <div class="admin-card" style="padding:15px; height:200px;">
+                        <h3 style="margin-bottom:10px; font-size:13px; color:var(--text-muted);">Sales Trajectory</h3>
+                        <div style="position:relative; height:150px; width:100%;">
                             <canvas id="salesChart"></canvas>
                         </div>
                     </div>
-                    
-                    <!-- Top 10 Best Sellers -->
-                    <div class="admin-card" style="padding:15px; margin-top:20px;">
-                        <h3 style="margin-bottom:10px; font-size:15px; color:var(--text-main);">Top 10 Best Selling Items</h3>
-                        <table class="inventory-table" style="font-size:13px;">
-                            <tbody id="topSellingList">
-                                <tr><td><i>Loading...</i></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
+            </div>
 
-                <!-- Right Column (Status Board) -->
-                <div style="flex:1; min-width:260px; display:flex; flex-direction:column; gap:20px;">
-                    
-                    <!-- Order Fulfillment Need Action -->
+            <!-- ============================== -->
+            <!-- 2. MARKETING TEAM OVERVIEW     -->
+            <!-- ============================== -->
+            <div style="margin-bottom:30px;">
+                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #8B5CF6; display:inline-block; padding-bottom:5px;">🎯 Marketing Dept.</h2>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1.5fr; gap:20px;">
+                    <div class="dash-card" style="border-top-color:#8B5CF6;">
+                        <h3>Top Sales Channel</h3>
+                        <p class="dash-value" style="font-size:20px; color:#8B5CF6; font-weight:700;" id="dashTopChannel">-</p>
+                    </div>
+                    <div class="dash-card" style="border-top-color:#121212;">
+                        <h3>New Buyers</h3>
+                        <p class="dash-value" style="font-size:24px; color:#121212; font-weight:700;" id="dashNewBuyers">0</p>
+                    </div>
                     <div class="admin-card" style="padding:15px; border:1px solid var(--border-color);">
-                        <h3 style="color:var(--text-main); margin-bottom:15px; font-size:15px;">To-Do Operations</h3>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>To Fulfil (Ship)</span><strong id="badgeToFulfil" style="background:#F59E0B; color:white; padding:2px 8px; border-radius:12px;">0</strong>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Processing (Packing)</span><strong id="badgeProcessing" style="background:#3B82F6; color:white; padding:2px 8px; border-radius:12px;">0</strong>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Return Request</span><strong id="badgeReturn" style="background:#EF4444; color:white; padding:2px 8px; border-radius:12px;">0</strong>
+                        <h3 style="color:var(--text-muted); margin-bottom:10px; font-size:13px;">CRM Retention Snapshots</h3>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-size:14px;">Repeat Customers</span><strong id="badgeRepeat" style="font-size:16px;">0</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
-                            <span>Unpaid (Abandoned)</span><strong id="badgeUnpaid" style="background:#6B7280; color:white; padding:2px 8px; border-radius:12px;">0</strong>
+                            <span style="font-size:14px;">VIP Members</span><strong id="badgeMembers" style="font-size:16px;">0</strong>
                         </div>
                     </div>
-
-                    <!-- Inventory Health -->
-                    <div class="admin-card" style="padding:15px; border:1px solid var(--border-color);">
-                        <h3 style="color:var(--text-main); margin-bottom:15px; font-size:15px;">Stock Health</h3>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Out of Stock (OOS)</span><strong id="badgeOos" style="color:#EF4444;">0</strong>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Low Stock (<5)</span><strong id="badgeLow" style="color:#F59E0B;">0</strong>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Draft (Not Published)</span><strong id="badgeDraft" style="color:#6B7280;">0</strong>
-                        </div>
-                        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <span>Active Products</span><strong id="badgeActive" style="color:#10B981;">0</strong>
-                        </div>
-                    </div>
-
-                    <!-- CRM Snapshots -->
-                    <div class="admin-card" style="padding:15px; border:1px solid var(--border-color);">
-                        <h3 style="color:var(--text-main); margin-bottom:15px; font-size:15px;">CRM Stats</h3>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Repeat Customers</span><strong id="badgeRepeat">0</strong>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                            <span>Total VIP Members</span><strong id="badgeMembers">0</strong>
-                        </div>
-                    </div>
-
                 </div>
+            </div>
 
+            <!-- ============================== -->
+            <!-- 3. INVENTORY DEPARTMENT        -->
+            <!-- ============================== -->
+            <div style="margin-bottom:30px;">
+                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #10B981; display:inline-block; padding-bottom:5px;">📦 Warehouse & Inventory Dept.</h2>
+                <div style="display:flex; flex-wrap:wrap; gap:20px;">
+                    <div style="flex:1; min-width:260px;" class="admin-card">
+                        <div style="padding:15px; border-bottom:1px solid #eee;"><h3 style="color:var(--text-main); font-size:14px;">Stock Health Alerts</h3></div>
+                        <div style="padding:15px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Out of Stock (OOS)</span><strong id="badgeOos" style="color:#EF4444; font-size:16px;">0</strong></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Low Stock (<5)</span><strong id="badgeLow" style="color:#F59E0B; font-size:16px;">0</strong></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Draft (Not Published)</span><strong id="badgeDraft" style="color:#6B7280; font-size:16px;">0</strong></div>
+                            <hr style="border:0; border-top:1px dashed #eee; margin:10px 0;">
+                            <div style="display:flex; justify-content:space-between;"><span>Active Products</span><strong id="badgeActive" style="color:#10B981; font-size:16px;">0</strong></div>
+                        </div>
+                    </div>
+                    <div style="flex:2; min-width:300px;" class="admin-card">
+                        <div style="padding:15px; border-bottom:1px solid #eee;"><h3 style="color:var(--text-main); font-size:14px;">Top 10 Best Selling Items (Priority Restock)</h3></div>
+                        <div style="padding:15px;">
+                            <table class="inventory-table" style="font-size:13px; margin:0;">
+                                <tbody id="topSellingList">
+                                    <tr><td><i>Loading...</i></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================== -->
+            <!-- 4. LOGISTIC DEPARTMENT         -->
+            <!-- ============================== -->
+            <div>
+                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #F59E0B; display:inline-block; padding-bottom:5px;">🚚 Logistic & Fulfillment Dept.</h2>
+                <div class="admin-card" style="padding:20px; border:1px solid #F59E0B; background:#FFFBEB;">
+                    <h3 style="color:var(--text-main); margin-bottom:15px; font-size:14px;">To-Do Operations (Queue)</h3>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                        <div style="background:#fff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <span style="font-weight:600;">To Fulfil (Ship)</span><strong id="badgeToFulfil" style="background:#F59E0B; color:white; padding:4px 12px; border-radius:20px; font-size:18px;">0</strong>
+                        </div>
+                        <div style="background:#fff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <span style="font-weight:600;">Processing (Pack)</span><strong id="badgeProcessing" style="background:#3B82F6; color:white; padding:4px 12px; border-radius:20px; font-size:18px;">0</strong>
+                        </div>
+                        <div style="background:#fff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <span style="font-weight:600;">Return Request</span><strong id="badgeReturn" style="background:#EF4444; color:white; padding:4px 12px; border-radius:20px; font-size:18px;">0</strong>
+                        </div>
+                        <div style="background:#fff; padding:15px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <span style="font-weight:600;">Unpaid (Abandoned)</span><strong id="badgeUnpaid" style="background:#6B7280; color:white; padding:4px 12px; border-radius:20px; font-size:18px;">0</strong>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div>
