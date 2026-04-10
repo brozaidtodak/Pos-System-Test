@@ -89,3 +89,62 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 
 .history-card { background: var(--card-bg); padding: 20px; border-left: 4px solid var(--primary); margin-bottom:15px; border-radius: var(--radius-md); border: 1px solid var(--border-color); }
 .badge-status { padding: 4px 10px; border-radius: var(--radius-pill); font-size: 10px; font-weight: 700; color:white; text-transform: uppercase; letter-spacing: 0.5px;}
+
+/* MOBILE POS MODE EXCLUSIVE STYLES */
+body.pos-mobile-mode .main-content {
+    display: block;
+    padding-bottom: 80px; /* Space for the floating bottom bar */
+}
+body.pos-mobile-mode .products-section {
+    width: 100%;
+    border: none;
+    padding: 0;
+}
+body.pos-mobile-mode .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+body.pos-mobile-mode .cart-section {
+    position: fixed;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 90vh; /* Bottom sheet height */
+    z-index: 5001;
+    background: #FFFFFF;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -5px 40px rgba(0,0,0,0.15);
+    transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    padding-bottom: 50px;
+}
+body.pos-mobile-mode .cart-section.drawer-open {
+    top: 10vh; /* slides up and stops 10vh from top */
+}
+body.pos-mobile-mode .desktop-cart-title {
+    display: none;
+}
+body.pos-mobile-mode .mobile-cart-header {
+    display: flex !important;
+}
+body.pos-mobile-mode #mobileCartFloatingBar {
+    display: flex !important;
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: var(--primary);
+    color: white;
+    padding: 16px 20px;
+    border-radius: var(--radius-pill);
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    z-index: 4999;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+body.pos-mobile-mode #mobileCartFloatingBar:active {
+    transform: scale(0.98);
+}
+

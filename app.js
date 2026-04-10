@@ -7652,6 +7652,17 @@ window.toggleInvForm = function(formId) {
     if(!formId) { f1.style.display = 'none'; f2.style.display = 'none'; f3.style.display = 'none'; }
 }
 
+window.togglePosLayoutMode = function() {
+    const isMobile = document.body.classList.toggle('pos-mobile-mode');
+    localStorage.setItem('posMode', isMobile ? 'mobile' : 'desktop');
+}
+window.toggleMobileCartSheet = function() {
+    const cartSec = document.getElementById('posCartDrawer');
+    if(cartSec) cartSec.classList.toggle('drawer-open');
+}
+
+
+
 async function initApp() {
     try {
         console.log("Loading Cloud Omnichannel Data...");
@@ -8160,11 +8171,26 @@ window.removeFromCart = function(sku) { cart = cart.filter(c => c.sku !== sku); 
 function renderCart() {
     const container = document.getElementById("cartItems");
     const label = document.getElementById("totalPrice");
-    if(!container) return; container.innerHTML = ""; let total = 0;
-    if(cart.length === 0) { container.innerHTML = "<p>Cart Empty.</p>"; label.textContent = "0.00"; return; }
+    if(!container) return; container.innerHTML = ""; let total = 0; let totalItems = 0;
+    
+    // safe update helper for mobile bar
+    const updateMobileBar = (t, i) => {
+        const tEl = document.getElementById("mobileCartTotal");
+        const iEl = document.getElementById("mobileCartItemCount");
+        if(tEl) tEl.textContent = t.toFixed(2);
+        if(iEl) iEl.textContent = i.toString();
+    };
+
+    if(cart.length === 0) { 
+        container.innerHTML = "<p>Cart Empty.</p>"; 
+        label.textContent = "0.00"; 
+        updateMobileBar(0, 0);
+        return; 
+    }
 
     cart.forEach(item => {
         total += item.price * item.quantity;
+        totalItems += item.quantity;
         container.innerHTML += `
             <div class="cart-item">
                 <div><strong style="font-size:14px;">[${item.sku}] ${item.name}</strong><br><small>RM${item.price.toFixed(2)} x ${item.quantity}</small></div>
@@ -8175,6 +8201,7 @@ function renderCart() {
             </div>`;
     });
     label.textContent = total.toFixed(2);
+    updateMobileBar(total, totalItems);
 }
 
 document.getElementById("checkoutBtn").onclick = async function() {
@@ -8335,6 +8362,10 @@ setTimeout(() => {
     document.getElementById('dashStartDate').value = firstDay.toISOString().split('T')[0];
     document.getElementById('dashEndDate').value = dateObj.toISOString().split('T')[0];
     
+    if(localStorage.getItem('posMode') === 'mobile') {
+        document.body.classList.add('pos-mobile-mode');
+    }
+
     if(db) initApp();
 }, 200);
 
