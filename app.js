@@ -880,10 +880,10 @@ function renderPromotions() {
 // ===================================
 
 const authUsers = [
-    { name: 'brozaidtodak', role: 'admin', pin: '1999', dept: 'Managing Director' },
-    { name: 'Aliff', role: 'admin', pin: '1111', dept: 'Administrative Department' },
-    { name: 'Farhan Moyy', role: 'admin', pin: '2222', dept: 'Business Development Department' },
-    { name: 'Zack', role: 'admin', pin: '3333', dept: 'System Manager Department' },
+    { name: 'brozaidtodak', role: 'mgmt', pin: '1999', dept: 'Managing Director' },
+    { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department' },
+    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department' },
+    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department' },
     { name: 'Ariff', role: 'staff', pin: '4444', dept: 'Sales & Product Department' },
     { name: 'Irfan', role: 'admin', pin: '5555', dept: 'Marketing Interim' },
     { name: 'Tarmizi Kael', role: 'admin', pin: '6666', dept: 'Chief Inventory' },
@@ -950,17 +950,23 @@ window.handleCustomerLogin = async function() {
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
     switchHub(['posSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
-    document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (user.role === 'admin' ? ' 👑' : '');
+    document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (['admin', 'mgmt'].includes(user.role) ? ' 👑' : '');
     
     const adminMenus = document.querySelectorAll(".admin-only");
+    const mgmtMenus = document.querySelectorAll(".mgmt-only");
     
-    if(user.role === 'staff') {
-        adminMenus.forEach(el => el.style.display = "none");
-        document.querySelector('.menu-item[data-tab="home"]').classList.remove('active');
-        switchTab("pos", "Cashier POS"); 
+    // Default hiding
+    adminMenus.forEach(el => el.style.display = "none");
+    mgmtMenus.forEach(el => el.style.display = "none");
+
+    if (user.role === 'mgmt') {
+        adminMenus.forEach(el => el.style.display = "block");
+        mgmtMenus.forEach(el => el.style.display = "block");
+    } else if (user.role === 'admin') {
+        adminMenus.forEach(el => el.style.display = "block");
     } else {
-        adminMenus.forEach(el => el.style.display = "flex");
-        switchTab("home", "Dashboard"); 
+        // 'staff' role
+        // all admin/mgmt menus stay hidden
     }
 }
 
