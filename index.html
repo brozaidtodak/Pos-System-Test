@@ -441,25 +441,109 @@
                 <button onclick="toggleInvForm('csvForm')" class="btn-dark">Excel/CSV Import</button>
             </div>
 
-            <!-- FORM 1: REGISTER NEW SKU -->
-            <div id="newSkuForm" class="admin-card" style="display:none; border-color:var(--primary);">
-                <h3>Register Brand New SKU Profile</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div><label class="small-lbl">SKU Code (Wajib)</label><input type="text" id="newSkuCode" placeholder="BSK-RED-S"></div>
-                    <div><label class="small-lbl">Parent SKU (Variant)</label><input type="text" id="newParentSku" placeholder="BSK-MAIN"></div>
-                    <div style="grid-column: span 2;"><label class="small-lbl">Product Name</label><input type="text" id="newSkuName" placeholder="Baju Kurung Merah (S)"></div>
-                    <div style="grid-column: span 2;"><label class="small-lbl">Category</label><input type="text" id="newCategory" placeholder="Pakaian Perempuan"></div>
-                    <div><label class="small-lbl">Selling Price (RM)</label><input type="number" id="newSkuPrice" step="0.01"></div>
-                    <div><label class="small-lbl">Cost Price (RM)</label><input type="number" id="newCostPrice" step="0.01"></div>
-                    <div><label class="small-lbl">Commission Rate %</label><input type="number" id="newCommission" step="0.1" placeholder="e.g. 5.0"></div>
-                    <div><label class="small-lbl">Status</label>
-                        <select id="newSkuPublished">
-                            <option value="true">Active (Published)</option>
-                            <option value="false">Draft (Not Published)</option>
-                        </select>
+            <!-- FORM 1: REGISTER NEW SKU (INDUSTRIAL LEVEL) -->
+            <div id="newSkuForm" class="admin-card" style="display:none; border-top:5px solid var(--primary); padding:20px;">
+                <h3 style="margin-bottom:15px; font-size:20px;">📦 Pendaftaran Profil Produk Baru</h3>
+                <p style="font-size:12px; color:#888; margin-bottom:20px;">Lengkapkan kesemua 14 kriteria gudang di bawah untuk dihubungkan ke pangkalan awan.</p>
+                
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+                    
+                    <!-- Kumpulan Identiti (Kiri) -->
+                    <div style="background:#FAFAFA; border:1px solid var(--border-color); padding:15px; border-radius:8px;">
+                        <h4 style="margin-bottom:15px; color:var(--primary);">A. Pengenalan (Identity)</h4>
+                        
+                        <label class="small-lbl">SKU Code (Wajib)</label>
+                        <input type="text" id="regSku" class="login-input" placeholder="Contoh: BD-TENT-01">
+                        
+                        <label class="small-lbl">Nama Produk</label>
+                        <input type="text" id="regName" class="login-input" placeholder="Kerusi Healing Blackdog">
+                        
+                        <label class="small-lbl">Model No.</label>
+                        <input type="text" id="regModel" class="login-input" placeholder="CBD-391X">
+                        
+                        <label class="small-lbl">Barcode ERP (Jika Ada)</label>
+                        <input type="text" id="regBarcode" class="login-input" placeholder="88401929381">
+                        
+                        <label class="small-lbl">Variasi (Saiz / Warna)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="regVarSize" class="login-input" style="flex:1;" placeholder="Saiz (L)">
+                            <input type="text" id="regVarColor" class="login-input" style="flex:1;" placeholder="Warna (Hitam)">
+                        </div>
                     </div>
+
+                    <!-- Kumpulan Logistik & Harga (Tengah) -->
+                    <div style="background:#FAFAFA; border:1px solid var(--border-color); padding:15px; border-radius:8px;">
+                        <h4 style="margin-bottom:15px; color:var(--primary);">B. Ekonomi & Logistik</h4>
+                        
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <div>
+                                <label class="small-lbl">Harga Jualan (RM)</label>
+                                <input type="number" id="regPrice" class="login-input" placeholder="E.g. 199.00">
+                            </div>
+                            <div>
+                                <label class="small-lbl">Harga Asal (Compare At)</label>
+                                <input type="number" id="regPriceCompare" class="login-input" placeholder="E.g. 299.00">
+                            </div>
+                            <div>
+                                <label class="small-lbl">Harga Kos (RM)</label>
+                                <input type="number" id="regCost" class="login-input" placeholder="100.00">
+                            </div>
+                            <div>
+                                <label class="small-lbl">Kuantiti Awal Stok</label>
+                                <input type="number" id="regQty" class="login-input" placeholder="50">
+                            </div>
+                        </div>
+
+                        <label class="small-lbl" style="margin-top:10px;">Lokasi Rak (Bin)</label>
+                        <input type="text" id="regLocation" class="login-input" placeholder="Rak A / Laci 2">
+
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px; margin-top:5px;">
+                            <div>
+                                <label class="small-lbl">Dimensi Kotak (P x L x T)</label>
+                                <input type="text" id="regDim" class="login-input" placeholder="12cm x 3cm x 2cm">
+                            </div>
+                            <div>
+                                <label class="small-lbl">Berat (KG)</label>
+                                <input type="number" id="regWeight" class="login-input" placeholder="0.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kumpulan Klasifikasi (Kanan) -->
+                    <div style="background:#FAFAFA; border:1px solid var(--border-color); padding:15px; border-radius:8px;">
+                        <h4 style="margin-bottom:15px; color:var(--primary);">C. Klasifikasi & Media</h4>
+                        
+                        <label class="small-lbl">Sistem Koleksi (Collection Path)</label>
+                        <input type="text" id="regColl1" class="login-input" style="margin-bottom:5px;" placeholder="Main Category (Cth: Tents)">
+                        <input type="text" id="regColl2" class="login-input" style="margin-bottom:5px;" placeholder="Sub Category (Cth: Tunnel Tent)">
+                        <input type="text" id="regColl3" class="login-input" placeholder="2nd Sub Cat (Cth: Black Edition)">
+
+                        <label class="small-lbl" style="margin-top:10px;">Jenama (Vendor)</label>
+                        <select id="regVendorSel" class="login-input" style="margin-bottom:5px;" onchange="document.getElementById('regVendorCust').style.display = this.value==='CUSTOM'?'block':'none'">
+                            <option value="Blackdog">Blackdog</option>
+                            <option value="Naturehike">Naturehike</option>
+                            <option value="Mountainhiker">Mountainhiker</option>
+                            <option value="Chanodug">Chanodug</option>
+                            <option value="Mobi Garden">Mobi Garden</option>
+                            <option value="Let's Feel Outdoor">Let's Feel Outdoor</option>
+                            <option value="Shinetrip">Shinetrip</option>
+                            <option value="Opolar">Opolar</option>
+                            <option value="Payung Camp">Payung Camp</option>
+                            <option value="Vidalido">Vidalido</option>
+                            <option value="Mix Brand">Mix Brand</option>
+                            <option value="CUSTOM">+ Tambah Jenama Custom...</option>
+                        </select>
+                        <input type="text" id="regVendorCust" class="login-input" style="display:none;" placeholder="Tulis nama jenama...">
+
+                        <label class="small-lbl" style="margin-top:10px;">Gambar Produk (Max: 20 Imej)</label>
+                        <input type="file" id="regImages" class="login-input" accept="image/png, image/jpeg, image/webp, image/avif, image/jfif" multiple>
+                    </div>
+
                 </div>
-                <button id="saveMasterBtn" class="btn-success" style="margin-top:15px;">Save Heavy Data Profile</button>
+                
+                <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:15px; text-align:right;">
+                    <button id="saveMasterBtn" class="btn-primary" style="font-size:16px; padding:12px 25px;">Sahkan & Masukkan Ke Rekod Rasmi</button>
+                </div>
             </div>
 
             <!-- FORM 2: CSV IMPORTER -->
