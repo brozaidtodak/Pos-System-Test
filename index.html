@@ -705,88 +705,165 @@
         <div id="mgmtPlaceholders" class="tab-section" style="display: none; padding-bottom:50px;">
             <h2 style="font-size:22px; color:var(--text-main); margin-bottom:20px; border-bottom:2px solid #8B5CF6; display:inline-block; padding-bottom:5px; margin-top:10px;">👔 Pengurusan Eksekutif</h2>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                <!-- 1. Petty Cash Module -->
-                <div class="admin-card" style="border-top:4px solid #10B981;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3>💵 Petty Cash (Buku Tunai)</h3>
-                        <button class="btn-success" style="padding:5px 10px; font-size:12px;" onclick="downloadPettyCSV()">📥 CSV</button>
+            <!-- ADMIN & GENERAL MANAGEMENT VIEW (Aliff, Moyy, Superior) -->
+            <div id="adminMgmtView">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <!-- 1. Petty Cash Module -->
+                    <div class="admin-card" style="border-top:4px solid #10B981;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h3>💵 Petty Cash (Buku Tunai)</h3>
+                            <button class="btn-success" style="padding:5px 10px; font-size:12px;" onclick="downloadPettyCSV()">📥 CSV</button>
+                        </div>
+                        
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 2fr auto; gap:10px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #ddd;">
+                            <select id="pcType" class="login-input" style="margin:0;"><option value="IN">Inflow (+)</option><option value="OUT">Outflow (-)</option></select>
+                            <input type="number" id="pcAmount" class="login-input" style="margin:0;" placeholder="RM" min="0">
+                            <input type="text" id="pcNotes" class="login-input" style="margin:0;" placeholder="Nota / ID Resit...">
+                            <button class="btn-primary" style="margin:0; padding:10px;" id="savePettyBtn">Rekod</button>
+                        </div>
+                        
+                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Tarikh</th><th>Jenis</th><th>Nota</th><th>Amaun</th><th>Baki</th></tr>
+                                </thead>
+                                <tbody id="pettyTbody">
+                                    <tr><td colspan="5" style="text-align:center;">Tiada rekod.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    
-                    <div style="display:grid; grid-template-columns: 1fr 1fr 2fr auto; gap:10px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #ddd;">
-                        <select id="pcType" class="login-input" style="margin:0;"><option value="IN">Inflow (+)</option><option value="OUT">Outflow (-)</option></select>
-                        <input type="number" id="pcAmount" class="login-input" style="margin:0;" placeholder="RM" min="0">
-                        <input type="text" id="pcNotes" class="login-input" style="margin:0;" placeholder="Nota / ID Resit...">
-                        <button class="btn-primary" style="margin:0; padding:10px;" id="savePettyBtn">Rekod</button>
-                    </div>
-                    
-                    <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
-                        <table class="data-table" style="font-size:12px;">
-                            <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                <tr><th>Tarikh</th><th>Jenis</th><th>Nota</th><th>Amaun</th><th>Baki</th></tr>
-                            </thead>
-                            <tbody id="pettyTbody">
-                                <tr><td colspan="5" style="text-align:center;">Tiada rekod.</td></tr>
-                            </tbody>
-                        </table>
+
+                    <!-- 2. Memo Module -->
+                    <div class="admin-card" style="border-top:4px solid #F59E0B;">
+                        <h3>📢 Sistem Memo Dalaman</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pengumuman pop-up kepada semua staf ketika log masuk.</p>
+                        <textarea id="memoInputText" class="login-input" rows="3" placeholder="Contoh: Esok promosi 50%. Sila bersedia..."></textarea>
+                        
+                        <div style="display:flex; align-items:center; justify-content:space-between; background:#FFFBEB; border:1px solid #FCD34D; padding:10px; border-radius:6px; margin-bottom:15px;">
+                            <div>
+                                <strong style="color:#D97706;">Status Memo Global:</strong>
+                                <span id="memoStatusLabel" style="margin-left:5px; font-weight:bold; color:red;">TIDAK AKTIF</span>
+                            </div>
+                            <label class="switch" style="position:relative; display:inline-block; width:50px; height:24px;">
+                                <input type="checkbox" id="memoToggle" style="opacity:0; width:0; height:0;">
+                                <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:24px;"></span>
+                            </label>
+                        </div>
+                        <button class="btn-success" id="saveMemoBtn" style="width:100%;">Set & Beritahu Semua</button>
                     </div>
                 </div>
 
-                <!-- 2. Memo Module -->
-                <div class="admin-card" style="border-top:4px solid #F59E0B;">
-                    <h3>📢 Sistem Memo Dalaman</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Pengumuman pop-up kepada semua staf ketika log masuk.</p>
-                    <textarea id="memoInputText" class="login-input" rows="3" placeholder="Contoh: Esok promosi 50%. Sila bersedia..."></textarea>
-                    
-                    <div style="display:flex; align-items:center; justify-content:space-between; background:#FFFBEB; border:1px solid #FCD34D; padding:10px; border-radius:6px; margin-bottom:15px;">
-                        <div>
-                            <strong style="color:#D97706;">Status Memo Global:</strong>
-                            <span id="memoStatusLabel" style="margin-left:5px; font-weight:bold; color:red;">TIDAK AKTIF</span>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <!-- 3. Sales Report Semua Staf -->
+                    <div class="admin-card" style="border-top:4px solid #3B82F6;">
+                        <h3 style="margin-bottom:15px;">🏆 Executive Staff Sales Report</h3>
+                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="inventory-table">
+                                <thead style="position:sticky; top:0;">
+                                    <tr><th>Rank</th><th>Nama Staf</th><th>Total Transaksi</th><th>Gross Sales (RM)</th></tr>
+                                </thead>
+                                <tbody id="mgmtStaffSalesTbody">
+                                    <tr><td colspan="4" style="text-align:center;">Loading performance...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <label class="switch" style="position:relative; display:inline-block; width:50px; height:24px;">
-                            <input type="checkbox" id="memoToggle" style="opacity:0; width:0; height:0;">
-                            <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:24px;"></span>
-                        </label>
                     </div>
-                    <button class="btn-success" id="saveMemoBtn" style="width:100%;">Set & Beritahu Semua</button>
+
+                    <!-- 4. Customer CRM Issues -->
+                    <div class="admin-card" style="border-top:4px solid #EF4444;">
+                        <h3>🚨 Customer Log Issues</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pemantauan pertikaian, masalah atau tiket pelanggan.</p>
+                        
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <input type="text" id="issueCustName" class="login-input" style="flex:1; margin:0;" placeholder="Akaun/Inv...">
+                            <input type="text" id="issueDesc" class="login-input" style="flex:2; margin:0;" placeholder="Aduan...">
+                            <button class="btn-primary" id="saveIssueBtn" style="margin:0;">+ Tiket</button>
+                        </div>
+
+                        <div class="table-responsive" style="max-height:190px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Pelanggan</th><th>Isu / Aduan</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="issueTbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <!-- 3. Sales Report Semua Staf -->
-                <div class="admin-card" style="border-top:4px solid #3B82F6;">
-                    <h3 style="margin-bottom:15px;">🏆 Executive Staff Sales Report</h3>
-                    <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
-                        <table class="inventory-table">
-                            <thead style="position:sticky; top:0;">
-                                <tr><th>Rank</th><th>Nama Staf</th><th>Total Transaksi</th><th>Gross Sales (RM)</th></tr>
-                            </thead>
-                            <tbody id="mgmtStaffSalesTbody">
-                                <tr><td colspan="4" style="text-align:center;">Loading performance...</td></tr>
-                            </tbody>
-                        </table>
+            
+            <!-- WAREHOUSE MANAGEMENT VIEW (Zack, Superior) -->
+            <div id="warehouseMgmtView" style="display:none; margin-top:30px;">
+                <h3 style="font-size:18px; margin-bottom:15px; color:#F97316;">📦 Penyeliaan Gudang Pusat</h3>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <!-- Low Stock Alert -->
+                    <div class="admin-card" style="border-top:4px solid #F87171;">
+                        <h3>⚠️ Amaran Stok Rendah (Reorder)</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Item kritikal di bawah 10 unit.</p>
+                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>SKU</th><th>Nama Produk</th><th>Baki Tally</th></tr>
+                                </thead>
+                                <tbody id="whLowStockTbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Pekerja -->
+                    <div class="admin-card" style="border-top:4px solid #10B981;">
+                        <h3>🏃‍♂️ KPI Operasi Inventori</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Jejak kelajuan tugasan Tarmizi & Fahmi.</p>
+                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Nama Staf</th><th>Packs Fulfilled</th><th>Stok Diaudit</th></tr>
+                                </thead>
+                                <tbody id="whKpiTbody">
+                                    <tr><td><strong>Tarmizi Kael</strong></td><td id="kpiTarmiziPack">0</td><td id="kpiTarmiziAudit">0</td></tr>
+                                    <tr><td><strong>Fahmi</strong></td><td id="kpiFahmiPack">0</td><td id="kpiFahmiAudit">0</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-
-                <!-- 4. Customer CRM Issues -->
-                <div class="admin-card" style="border-top:4px solid #EF4444;">
-                    <h3>🚨 Customer Log Issues</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Pemantauan pertikaian, masalah atau tiket pelanggan.</p>
-                    
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <input type="text" id="issueCustName" class="login-input" style="flex:1; margin:0;" placeholder="Akaun/Inv...">
-                        <input type="text" id="issueDesc" class="login-input" style="flex:2; margin:0;" placeholder="Aduan...">
-                        <button class="btn-primary" id="saveIssueBtn" style="margin:0;">+ Tiket</button>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                    <!-- Discrepancy Log -->
+                    <div class="admin-card" style="border-top:4px solid #6366F1;">
+                        <h3>📝 Discrepancy & Write-Off Log</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Laporan stok hilang/rosak menunggu kelulusan anda.</p>
+                        <div class="table-responsive" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>SKU / Kes</th><th>Dilapor Oleh</th><th>Tindakan</th></tr>
+                                </thead>
+                                <tbody id="whAuditTbody">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-
-                    <div class="table-responsive" style="max-height:190px; overflow-y:auto; border:1px solid var(--border-color);">
-                        <table class="data-table" style="font-size:12px;">
-                            <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                <tr><th>Pelanggan</th><th>Isu / Aduan</th><th>Status</th></tr>
-                            </thead>
-                            <tbody id="issueTbody">
-                            </tbody>
-                        </table>
+                    
+                    <!-- Supplier Manager -->
+                    <div class="admin-card" style="border-top:4px solid #8B5CF6;">
+                        <h3>🏭 Master Supplier Database</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Urus Rangkaian Pembekal & Pukal.</p>
+                        <ul style="list-style:none; padding:0; flex:1;">
+                            <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                                <strong>BLACKDOG Official (CN)</strong> <span>Aktif</span>
+                            </li>
+                            <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                                <strong>10Camp HQ (MY)</strong> <span>Aktif</span>
+                            </li>
+                            <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; color:#888;">
+                                <em>Custom Supplier</em> <span>-</span>
+                            </li>
+                        </ul>
+                        <button class="btn-primary" style="width:100%; margin-top:15px; opacity:0.6;">+ Add Core Vendor</button>
                     </div>
                 </div>
             </div>

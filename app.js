@@ -1379,15 +1379,71 @@ window.deleteFinance = async function(id) {
 // MANAGEMENT EXECUTIVE MODULES
 // ===================================
 function renderMgmtPlaceholders() {
+    const adminView = document.getElementById("adminMgmtView");
+    const warehouseView = document.getElementById("warehouseMgmtView");
+    
+    // Hide both initially
+    if(adminView) adminView.style.display = "none";
+    if(warehouseView) warehouseView.style.display = "none";
+
+    // 1. Logic for determining identity
+    let isZack = currentUser && currentUser.name === 'Zack';
+    let isSuperior = currentUser && currentUser.role === 'superior';
+
+    if (isSuperior) {
+        if(adminView) adminView.style.display = "block";
+        if(warehouseView) warehouseView.style.display = "block";
+    } else if (isZack) {
+        if(warehouseView) warehouseView.style.display = "block";
+    } else {
+        // Aliff, Moyy, or default Admin Mgmt 
+        if(adminView) adminView.style.display = "block";
+    }
+
     renderPettyCash();
     renderMgmtStaffSales();
     renderCustomerIssues();
+    
+    // Warehouse functions
+    if (isZack || isSuperior) {
+        renderWarehouseLowStock();
+        // The other 3 tables can be populated via similar methods in future expansions.
+    }
     
     // update memo switch
     document.getElementById("memoToggle").checked = globalMemo.active;
     document.getElementById("memoStatusLabel").textContent = globalMemo.active ? "AKTIF" : "TIDAK AKTIF";
     document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#10B981" : "red";
     document.getElementById("memoInputText").value = globalMemo.text;
+}
+
+function renderWarehouseLowStock() {
+    const tbody = document.getElementById("whLowStockTbody");
+    if(!tbody) return;
+    
+    let lowStocks = [];
+    masterProducts.forEach(p => {
+        let total = inventoryBatches.filter(b => b.sku === p.sku).reduce((acc, b) => acc + parseInt(b.qty_remaining), 0);
+        if(total < 10) {
+            lowStocks.push({ sku: p.sku, name: p.name, remaining: total });
+        }
+    });
+
+    if(lowStocks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Tiada stok kritikal.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lowStocks.map(s => {
+        let color = s.remaining === 0 ? "red" : "#D97706";
+        return `
+        <tr>
+            <td><strong>${s.sku}</strong></td>
+            <td>${s.name}</td>
+            <td style="color:${color}; font-weight:bold;">${s.remaining} Pcs</td>
+        </tr>
+        `;
+    }).join('');
 }
 
 // 1. Petty Cash Ledger
