@@ -949,7 +949,7 @@ window.handleCustomerLogin = async function() {
     
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
-    switchHub(['posSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
+    switchHub(['dashboardSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
     document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (['admin', 'mgmt'].includes(user.role) ? ' 👑' : '');
     
     const adminMenus = document.querySelectorAll(".admin-only");
