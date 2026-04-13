@@ -221,8 +221,26 @@ async function initApp() {
                 let oldRoster = JSON.parse(oldRosterStr);
                 if(oldRoster && oldRoster.length > 0) {
                     staffSchedules = oldRoster;
-                    await db.from('roster_schedules').insert(oldRoster);
+                    await db.from('roster_schedules').insert(oldRoster).catch(e=>console.log(e));
                 }
+            } else {
+                // Auto-Generate April Loop if EVERYTHING is completely raw
+                let pattern = ["Zakwan", "Aliff", "Fahmi", "Tarmizi", "Irfan", "Ariff", "Farhan Moyy"];
+                let genSchedules = [];
+                let todayMs = Date.now();
+                for(let d=1; d<=30; d++) {
+                    let st = pattern[(d-1) % 7];
+                    let dStr = d < 10 ? '0'+d : d;
+                    genSchedules.push({
+                        id: todayMs + d,
+                        staff_name: st,
+                        date: '2026-04-' + dStr,
+                        shift: 'OFF',
+                        mc_name: ''
+                    });
+                }
+                staffSchedules = genSchedules;
+                try { await db.from('roster_schedules').insert(genSchedules); } catch(e){}
             }
         }
 
