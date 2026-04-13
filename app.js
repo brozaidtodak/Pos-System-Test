@@ -215,48 +215,35 @@ async function initApp() {
         if(rSched && rSched.length > 0) {
             staffSchedules = rSched;
         } else {
-            // One-Time Recovery from LocalStorage
-            let oldRosterStr = localStorage.getItem('saved_staffSchedules');
-            if(oldRosterStr) {
-                let oldRoster = JSON.parse(oldRosterStr);
-                if(oldRoster && oldRoster.length > 0) {
-                    staffSchedules = oldRoster;
-                    await db.from('roster_schedules').insert(oldRoster).catch(e=>console.log(e));
-                }
-            } else {
-                // Auto-Generate April Loop if EVERYTHING is completely raw
-                let pattern = ["Zakwan", "Aliff", "Fahmi", "Tarmizi", "Irfan", "Ariff", "Farhan Moyy"];
-                let genSchedules = [];
-                let todayMs = Date.now();
-                for(let d=1; d<=30; d++) {
-                    let st = pattern[(d-1) % 7];
-                    let dStr = d < 10 ? '0'+d : d;
-                    genSchedules.push({
-                        id: todayMs + d,
-                        staff_name: st,
-                        date: '2026-04-' + dStr,
-                        shift: 'OFF',
-                        mc_name: ''
-                    });
-                }
-                staffSchedules = genSchedules;
-                try { await db.from('roster_schedules').insert(genSchedules); } catch(e){}
+            // Auto-Generate April Loop if EVERYTHING is completely raw
+            let pattern = ["Zack", "Aliff", "Fahmi", "Tarmizi", "Irfan", "Ariff", "Farhan Moyy"];
+            let genSchedules = [];
+            let todayMs = Date.now();
+            for(let d=1; d<=30; d++) {
+                let st = pattern[(d-1) % 7];
+                let dStr = d < 10 ? '0'+d : d;
+                genSchedules.push({
+                    id: todayMs + d,
+                    staff_name: st,
+                    date: '2026-04-' + dStr,
+                    shift: 'OFF',
+                    mc_name: ''
+                });
             }
+            staffSchedules = genSchedules;
+            try { await db.from('roster_schedules').insert(genSchedules); } catch(e){}
         }
 
         let { data: pSched } = await db.from('pending_requests').select('*');
         if(pSched && pSched.length > 0) {
             pendingSchedules = pSched;
         } else {
-            let oldPendStr = localStorage.getItem('saved_pendingSchedules');
-            if(oldPendStr) {
-                let oldPend = JSON.parse(oldPendStr);
-                if(oldPend && oldPend.length > 0) {
-                    pendingSchedules = oldPend;
-                    await db.from('pending_requests').insert(oldPend);
-                }
-            }
+            pendingSchedules = [];
         }
+
+        // Tsunami Pembersihan Zombie Cache
+        localStorage.removeItem('saved_staffSchedules');
+        localStorage.removeItem('saved_pendingSchedules');
 
         // Supabase Real-time Roster Broadcaster
         db.channel('roster-sync-channel')
