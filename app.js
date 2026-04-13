@@ -1860,6 +1860,22 @@ window.renderStaffSchedule = function() {
     
     if(!tbodyAdmin && !tbodyPublic) return;
 
+    // Fix: dynamically inject missing names from staffSchedules to prevent invisible rows
+    let existingNames = staffProfiles.map(p => p.name);
+    staffSchedules.forEach(s => {
+        if(!existingNames.includes(s.staff_name)) {
+            staffProfiles.push({ name: s.staff_name, leave_balance: 0 });
+            existingNames.push(s.staff_name);
+        }
+    });
+    // Fix: also from pendingSchedules so they appear in leave balances even if not approved yet
+    pendingSchedules.forEach(s => {
+        if(!existingNames.includes(s.staff_name)) {
+            staffProfiles.push({ name: s.staff_name, leave_balance: 0 });
+            existingNames.push(s.staff_name);
+        }
+    });
+
     // Refresh Leave Balance panel
     const leaveTbody = document.getElementById("leaveBalanceTbody");
     if(leaveTbody) {
