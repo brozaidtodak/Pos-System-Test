@@ -35,24 +35,12 @@ let masterProducts = [
     { "sku": "BD001", "name": "Tunnel tent (dummy)", "category": "Camping Tent", "price": 1799.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/tent?lock=1"] },
     { "sku": "BD002", "name": "Hexagon tarp PU (dummy)", "category": "Flysheet / Tarp", "price": 227.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/camping?lock=2"] },
     { "sku": "BD003", "name": "Hexagon tarp silver coated (dummy)", "category": "Flysheet", "price": 327.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/mountain?lock=3"] },
-    { "sku": "BD004", "name": "Large Hexagon tarp (dummy)", "category": "Flysheet", "price": 459.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/outdoor?lock=4"] },
-    { "sku": "BD005", "name": "Ultrasonic picnic mat (dummy)", "category": "Accessories", "price": 95.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/picnic?lock=5"] },
-    { "sku": "BD006", "name": "Atmosphere Lamp (dummy)", "category": "Lighting", "price": 93.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/lamp?lock=7"] },
-    { "sku": "BD007", "name": "Retro Hanging Lamp (dummy)", "category": "Lighting", "price": 97.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/lantern?lock=8"] },
-    { "sku": "BD008", "name": "Camping cart (dummy)", "category": "Accessories", "price": 211.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/cart?lock=9"] },
-    { "sku": "BD009", "name": "Four-way folding cart (dummy)", "category": "Accessories", "price": 412.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/wagon?lock=11"] },
-    { "sku": "BD010", "name": "Feathered moon chair (dummy)", "category": "Table & Chair", "price": 189.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/chair?lock=13"] },
-    { "sku": "BD011", "name": "Kermit folding chair (dummy)", "category": "Table & Chair", "price": 79.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/seat?lock=15"] },
-    { "sku": "BD012", "name": "Storage bag (dummy)", "category": "Accessories", "price": 119.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/bag?lock=16"] },
-    { "sku": "BD013", "name": "Double folding chair (dummy)", "category": "Table & Chair", "price": 199.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/sofa?lock=17"] },
-    { "sku": "BD014", "name": "Automatic tent 2.0 (dummy)", "category": "Camping Tent", "price": 99.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/tent?lock=19"] },
-    { "sku": "BD015", "name": "Canopy door curtain (dummy)", "category": "Flysheet", "price": 99.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/curtain?lock=21"] },
-    { "sku": "BD019", "name": "Portable round table (dummy)", "category": "Table & Chair", "price": 99.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/table?lock=22"] },
-    { "sku": "BD020", "name": "IGT folding table (dummy)", "category": "Table & Chair", "price": 99.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/desk?lock=23"] },
-    { "sku": "BD021", "name": "Floating Moon Chair (dummy)", "category": "Table & Chair", "price": 99.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/chair?lock=24"] },
-    { "sku": "BD039", "name": "Camping incubator (dummy)", "category": "Storage", "price": 99.0, "is_published": true, "brand": "10camp", "images": ["https://loremflickr.com/500/500/box?lock=25"] },
-    { "sku": "BD047", "name": "Dinner party gas stove (dummy)", "category": "Cookware", "price": 99.0, "is_published": true, "brand": "10camp", "images": ["https://loremflickr.com/500/500/stove?lock=26"] }
+    { "sku": "BD004", "name": "Large Hexagon tarp (dummy)", "category": "Flysheet", "price": 459.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/outdoor?lock=4"] }
 ];
+
+let pettyCashLedger = [];
+let customerIssues = [];
+let globalMemo = { active: false, text: "" };
 
 let inventoryBatches = [
     { "id": 1, "sku": "BD001", "qty_remaining": 15, "inbound_date": "2025-01-01" },
@@ -136,6 +124,7 @@ function switchHub(sectionIds, title, btnElement) {
     }
     if(sectionIds.includes('stockTakeSection')) renderStockTake();
     if(sectionIds.includes('packagingSection')) renderPackaging();
+    if(sectionIds.includes('mgmtPlaceholders')) renderMgmtPlaceholders();
 }
 window.switchHub = switchHub;
 
@@ -794,7 +783,7 @@ document.getElementById("checkoutBtn").onclick = async function() {
         }
 
         await db.from('sales_history').insert([{
-            customer_name: custNameText, payment_method: pm, channel: cn, status: cst, total: totalVal, items: cart
+            customer_name: custNameText, payment_method: pm, channel: cn, status: cst, total: totalVal, items: cart, staff_name: currentUser ? currentUser.name : 'Unknown'
         }]);
 
         const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
@@ -939,6 +928,10 @@ window.handleCustomerLogin = async function() {
     document.getElementById("loginGate").style.display = "none";
     
     // Popup Greeting Staff
+    if(globalMemo.active) {
+        alert("📢 PENGUMUMAN DARI PENGURUSAN:\n\n" + globalMemo.text);
+    }
+
     const modalName = document.getElementById("welcomeStaffName");
     const modalDept = document.getElementById("welcomeStaffDept");
     if(modalName) modalName.textContent = `Selamat Datang, ${user.name}!`;
@@ -1369,3 +1362,184 @@ window.deleteFinance = async function(id) {
     financeRecords = financeRecords.filter(f => f.id !== id);
     renderFinance();
 };
+
+// ===================================
+// MANAGEMENT EXECUTIVE MODULES
+// ===================================
+function renderMgmtPlaceholders() {
+    renderPettyCash();
+    renderMgmtStaffSales();
+    renderCustomerIssues();
+    
+    // update memo switch
+    document.getElementById("memoToggle").checked = globalMemo.active;
+    document.getElementById("memoStatusLabel").textContent = globalMemo.active ? "AKTIF" : "TIDAK AKTIF";
+    document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#10B981" : "red";
+    document.getElementById("memoInputText").value = globalMemo.text;
+}
+
+// 1. Petty Cash Ledger
+document.getElementById("savePettyBtn")?.addEventListener('click', () => {
+    const type = document.getElementById("pcType").value;
+    const amount = parseFloat(document.getElementById("pcAmount").value);
+    const notes = document.getElementById("pcNotes").value.trim();
+    
+    if(!amount || !notes) return alert("Sila isi Amaun dan Nota!");
+    
+    pettyCashLedger.push({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        type: type,
+        amount: amount,
+        notes: notes
+    });
+    
+    alert("Buku tunai dikemaskini.");
+    document.getElementById("pcAmount").value = "";
+    document.getElementById("pcNotes").value = "";
+    renderPettyCash();
+});
+
+function renderPettyCash() {
+    const tbody = document.getElementById("pettyTbody");
+    if(!tbody) return;
+    
+    if(pettyCashLedger.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Tiada rekod.</td></tr>';
+        return;
+    }
+    
+    let runningBalance = 0;
+    let html = "";
+    
+    // Sort chronological to build balance
+    const sorted = [...pettyCashLedger].sort((a,b) => new Date(a.date) - new Date(b.date));
+    
+    sorted.forEach(p => {
+        if(p.type === 'IN') runningBalance += p.amount;
+        else runningBalance -= p.amount;
+        
+        let color = p.type === 'IN' ? 'green' : 'red';
+        let op = p.type === 'IN' ? '+' : '-';
+        
+        html += `<tr>
+            <td>${new Date(p.date).toLocaleString('en-GB')}</td>
+            <td><strong style="color:${color}">${p.type}</strong></td>
+            <td>${p.notes}</td>
+            <td style="color:${color}">${op} RM${p.amount.toFixed(2)}</td>
+            <td style="font-weight:bold;">RM${runningBalance.toFixed(2)}</td>
+        </tr>`;
+    });
+    
+    // Render descending for view but balance remains correct
+    tbody.innerHTML = html;
+}
+
+window.downloadPettyCSV = function() {
+    if(pettyCashLedger.length === 0) return alert("Tiada data.");
+    let csvStr = "Date,Type,Notes,Amount\n";
+    pettyCashLedger.forEach(p => {
+        csvStr += `"${p.date}","${p.type}","${p.notes}","${p.amount}"\n`;
+    });
+    
+    const blob = new Blob([csvStr], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Petty_Cash_${new Date().getTime()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+// 2. Memo Module
+document.getElementById("saveMemoBtn")?.addEventListener('click', () => {
+    const isActive = document.getElementById("memoToggle").checked;
+    const text = document.getElementById("memoInputText").value.trim();
+    
+    if(isActive && !text) return alert("Sila isikan teks memo jika anda ingin AKTIFKAN.");
+    
+    globalMemo.active = isActive;
+    globalMemo.text = text;
+    
+    alert("Status Memo dikemaskini.");
+    renderMgmtPlaceholders();
+});
+
+// 3. Staff Leaderboard (Mgmt Only)
+function renderMgmtStaffSales() {
+    const tbody = document.getElementById("mgmtStaffSalesTbody");
+    if(!tbody) return;
+    
+    const targetStaff = ["Aliff", "Irfan", "Ariff", "Tarmizi Kael", "Farhan Moyy"];
+    let performance = {};
+    
+    targetStaff.forEach(s => performance[s] = { txCount: 0, gross: 0 });
+    
+    salesHistory.forEach(sale => {
+        let name = sale.staff_name;
+        if(name && performance[name]) {
+            performance[name].txCount++;
+            performance[name].gross += parseFloat(sale.total || 0);
+        }
+    });
+    
+    const sortedPerformers = Object.entries(performance)
+                            .map(([name, data]) => ({name, ...data}))
+                            .sort((a,b) => b.gross - a.gross);
+                            
+    tbody.innerHTML = sortedPerformers.map((p, index) => `
+        <tr>
+            <td><h3>#${index+1}</h3></td>
+            <td><strong>${p.name}</strong></td>
+            <td>${p.txCount} Resit</td>
+            <td style="color:green; font-weight:bold;">RM ${p.gross.toFixed(2)}</td>
+        </tr>
+    `).join('');
+}
+
+// 4. Customer Issues Tracker
+document.getElementById("saveIssueBtn")?.addEventListener('click', () => {
+    const cust = document.getElementById("issueCustName").value.trim();
+    const desc = document.getElementById("issueDesc").value.trim();
+    if(!cust || !desc) return alert("Maklumat pelanggan & aduan wajib diisi.");
+    
+    customerIssues.unshift({
+        id: Date.now(),
+        cust: cust,
+        desc: desc,
+        status: 'OPEN'
+    });
+    
+    document.getElementById("issueCustName").value = "";
+    document.getElementById("issueDesc").value = "";
+    renderCustomerIssues();
+});
+
+function renderCustomerIssues() {
+    const tbody = document.getElementById("issueTbody");
+    if(!tbody) return;
+    
+    if(customerIssues.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Tiada isu dilaporkan.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = customerIssues.map(c => `
+        <tr>
+            <td><strong>${c.cust}</strong></td>
+            <td>${c.desc}</td>
+            <td>
+                ${c.status === 'OPEN' 
+                    ? `<button class="btn-success" style="padding:2px 8px; font-size:10px; background:#F59E0B;" onclick="resolveIssue(${c.id})">Mark Resolved</button>` 
+                    : `<span style="color:#10B981; font-weight:bold;">TUTUP ✓</span>`}
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.resolveIssue = function(id) {
+    const issue = customerIssues.find(c => c.id === id);
+    if(issue) issue.status = 'RESOLVED';
+    renderCustomerIssues();
+}
