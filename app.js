@@ -210,11 +210,35 @@ async function initApp() {
         
         let { data: fin } = await db.from('finance_records').select('*').order('year', {ascending: false});
         if(fin) financeRecords = fin;
+        
         let { data: rSched } = await db.from('roster_schedules').select('*');
-        if(rSched) staffSchedules = rSched;
+        if(rSched && rSched.length > 0) {
+            staffSchedules = rSched;
+        } else {
+            // One-Time Recovery from LocalStorage
+            let oldRosterStr = localStorage.getItem('saved_staffSchedules');
+            if(oldRosterStr) {
+                let oldRoster = JSON.parse(oldRosterStr);
+                if(oldRoster && oldRoster.length > 0) {
+                    staffSchedules = oldRoster;
+                    await db.from('roster_schedules').insert(oldRoster);
+                }
+            }
+        }
 
         let { data: pSched } = await db.from('pending_requests').select('*');
-        if(pSched) pendingSchedules = pSched;
+        if(pSched && pSched.length > 0) {
+            pendingSchedules = pSched;
+        } else {
+            let oldPendStr = localStorage.getItem('saved_pendingSchedules');
+            if(oldPendStr) {
+                let oldPend = JSON.parse(oldPendStr);
+                if(oldPend && oldPend.length > 0) {
+                    pendingSchedules = oldPend;
+                    await db.from('pending_requests').insert(oldPend);
+                }
+            }
+        }
 
         // Supabase Real-time Roster Broadcaster
         db.channel('roster-sync-channel')
