@@ -869,10 +869,10 @@ function renderPromotions() {
 // ===================================
 
 const authUsers = [
-    { name: 'brozaidtodak', role: 'mgmt', pin: '1999', dept: 'Managing Director' },
+    { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director' },
     { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department' },
-    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department' },
-    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department' },
+    { name: 'Farhan Moyy', role: 'sales', pin: '2222', dept: 'Business Development Department' },
+    { name: 'Zack', role: 'inventory', pin: '3333', dept: 'System Manager Department' },
     { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department' },
     { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim' },
     { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory' },
@@ -942,19 +942,31 @@ window.handleCustomerLogin = async function() {
     
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
-    document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (['inventory', 'mgmt'].includes(user.role) ? ' 👑' : '');
+    
+    // Crown indicator for top tiers
+    let displayCrown = ['superior', 'mgmt', 'inventory'].includes(user.role) ? ' 👑' : '';
+    document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + displayCrown;
     
     const salesMenus = document.querySelectorAll(".sales-only");
     const invMenus = document.querySelectorAll(".inv-only");
     const mgmtMenus = document.querySelectorAll(".mgmt-only");
+    const superiorMenus = document.querySelectorAll(".superior-only");
     
     // Hide all restricted menus initially
     salesMenus.forEach(el => el.style.display = "none");
     invMenus.forEach(el => el.style.display = "none");
     mgmtMenus.forEach(el => el.style.display = "none");
+    superiorMenus.forEach(el => el.style.display = "none");
 
-    if (user.role === 'mgmt') {
-        // Management sees everything
+    if (user.role === 'superior') {
+        // Superior sees everything
+        salesMenus.forEach(el => el.style.display = "block");
+        invMenus.forEach(el => el.style.display = "block");
+        mgmtMenus.forEach(el => el.style.display = "block");
+        superiorMenus.forEach(el => el.style.display = "block");
+        switchHub(['homeSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
+    } else if (user.role === 'mgmt') {
+        // Management sees Mgmt, Sales, Inv, but NOT superior
         salesMenus.forEach(el => el.style.display = "block");
         invMenus.forEach(el => el.style.display = "block");
         mgmtMenus.forEach(el => el.style.display = "block");
