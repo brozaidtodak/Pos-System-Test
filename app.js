@@ -1381,22 +1381,28 @@ window.deleteFinance = async function(id) {
 function renderMgmtPlaceholders() {
     const adminView = document.getElementById("adminMgmtView");
     const warehouseView = document.getElementById("warehouseMgmtView");
+    const salesView = document.getElementById("salesMgmtView");
     
-    // Hide both initially
+    // Hide all initially
     if(adminView) adminView.style.display = "none";
     if(warehouseView) warehouseView.style.display = "none";
+    if(salesView) salesView.style.display = "none";
 
     // 1. Logic for determining identity
     let isZack = currentUser && currentUser.name === 'Zack';
+    let isMoyy = currentUser && currentUser.name === 'Farhan Moyy';
     let isSuperior = currentUser && currentUser.role === 'superior';
 
     if (isSuperior) {
         if(adminView) adminView.style.display = "block";
         if(warehouseView) warehouseView.style.display = "block";
+        if(salesView) salesView.style.display = "block";
     } else if (isZack) {
         if(warehouseView) warehouseView.style.display = "block";
+    } else if (isMoyy) {
+        if(salesView) salesView.style.display = "block";
     } else {
-        // Aliff, Moyy, or default Admin Mgmt 
+        // Aliff or default Admin Mgmt 
         if(adminView) adminView.style.display = "block";
     }
 
@@ -1407,7 +1413,11 @@ function renderMgmtPlaceholders() {
     // Warehouse functions
     if (isZack || isSuperior) {
         renderWarehouseLowStock();
-        // The other 3 tables can be populated via similar methods in future expansions.
+    }
+    
+    // Sales functions
+    if (isMoyy || isSuperior) {
+        renderSalesMgmtTarget();
     }
     
     // update memo switch
@@ -1415,6 +1425,29 @@ function renderMgmtPlaceholders() {
     document.getElementById("memoStatusLabel").textContent = globalMemo.active ? "AKTIF" : "TIDAK AKTIF";
     document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#10B981" : "red";
     document.getElementById("memoInputText").value = globalMemo.text;
+}
+
+function renderSalesMgmtTarget() {
+    // Tally Ariff and Irfan performance
+    let ariffTotal = 0;
+    let irfanTotal = 0;
+    
+    salesHistory.forEach(sale => {
+        if(sale.staff_name === 'Ariff') ariffTotal += parseFloat(sale.total_amount || 0);
+        if(sale.staff_name === 'Irfan') irfanTotal += parseFloat(sale.total_amount || 0);
+    });
+    
+    const domAriff = document.getElementById("tgtAriffSales");
+    const domIrfan = document.getElementById("tgtIrfanSales");
+    const commAriff = document.getElementById("tgtAriffComm");
+    const commIrfan = document.getElementById("tgtIrfanComm");
+    
+    if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((ariffTotal/10000)*100, 100)}%;background:#3B82F6;height:100%;border-radius:5px;"></div></div>`;
+    if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((irfanTotal/10000)*100, 100)}%;background:#F59E0B;height:100%;border-radius:5px;"></div></div>`;
+    
+    // Assumption: 5% flat commission. We can upgrade this logic later based on BD rules.
+    if(commAriff) commAriff.textContent = `RM ${(ariffTotal * 0.05).toFixed(2)}`;
+    if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * 0.05).toFixed(2)}`;
 }
 
 function renderWarehouseLowStock() {
