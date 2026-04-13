@@ -871,8 +871,8 @@ function renderPromotions() {
 const authUsers = [
     { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director' },
     { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department' },
-    { name: 'Farhan Moyy', role: 'sales', pin: '2222', dept: 'Business Development Department' },
-    { name: 'Zack', role: 'inventory', pin: '3333', dept: 'System Manager Department' },
+    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department' },
+    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department' },
     { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department' },
     { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim' },
     { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory' },
