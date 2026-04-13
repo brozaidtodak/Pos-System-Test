@@ -216,17 +216,27 @@
         <!-- ============================================== -->
         <div id="rosterSection" class="tab-section" style="display:none;">
             <div class="admin-card" style="padding:20px; border-top:4px solid var(--primary);">
-                <h2 style="margin-bottom:15px; color:var(--primary);">📅 Jadual Syif Bulanan Staf</h2>
+                <h2 style="margin-bottom:15px; color:var(--primary);">📅 Jadual Syif Bulanan Staf (Grid Format)</h2>
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Rujukan jadual waktu bekerja untuk semua kakitangan. Sila rujuk Aliff (HR Pentadbiran) untuk sebarang pindaan jadual.</p>
-                <div class="table-responsive" style="max-height:600px; overflow-y:auto; border:1px solid var(--border-color);">
-                    <table class="data-table" style="font-size:13px; width:100%;">
-                        <thead style="position:sticky; top:0; background:var(--secondary); color:#fff;">
-                            <tr><th>Tarikh (Hari)</th><th>Nama Pekerja</th><th>Ketentuan Syif</th><th>Berkerja</th><th>Waktu Rehat</th><th>Status Lampiran</th></tr>
+                <div class="table-responsive" style="overflow-x:auto; overflow-y:auto; max-height:600px; border:1px solid var(--border-color); position:relative;">
+                    <table class="data-table" id="publicRosterTable" style="font-size:12px; width:max-content; border-collapse:collapse; text-align:center;">
+                        <thead id="publicRosterThead" style="position:sticky; top:0; background:var(--secondary); color:#fff; z-index:2;">
                         </thead>
                         <tbody id="publicRosterTbody">
-                            <tr><td colspan="6" style="text-align:center;">Memuat turun kalendar...</td></tr>
+                            <tr><td style="text-align:center; padding:20px;">Memuat turun kalendar grid...</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Legend Bawah -->
+                <div style="margin-top:20px; padding:15px; border:1px solid #eee; background:#FAFAFA; border-radius:6px; display:flex; flex-wrap:wrap; gap:15px; font-size:11px;">
+                    <div><span style="background:#fde047; padding:2px 8px; border-radius:4px;">A</span> Shift A: 11am-9pm</div>
+                    <div><span style="background:#86efac; padding:2px 8px; border-radius:4px;">B</span> Shift B: 2pm-8pm</div>
+                    <div><span style="background:#c4b5fd; padding:2px 8px; border-radius:4px;">C</span> Shift C: 11am-8pm</div>
+                    <div><span style="color:red; font-weight:bold;">OFF</span> Off Day</div>
+                    <div><span style="background:#3b82f6; color:white; padding:2px 8px; border-radius:4px;">AL</span> Annual Leave</div>
+                    <div><span style="background:#fbbf24; padding:2px 8px; border-radius:4px;">MC</span> Sick Leave</div>
+                    <div><span style="background:#ef4444; color:white; padding:2px 8px; border-radius:4px;">EL</span> Emergency Leave</div>
                 </div>
             </div>
         </div>
@@ -928,10 +938,13 @@
                         <div style="flex:1; min-width:180px;">
                             <label class="small-lbl">Ketentuan Syif / Cuti</label>
                             <select id="scheduleShift" class="login-input" style="margin:0;" onchange="toggleMcUpload(this.value)">
-                                <option value="Syif 1">☀️ Syif 1 (11pagi - 8malam)</option>
-                                <option value="Syif 2">🌙 Syif 2 (2petang - 8malam)</option>
-                                <option value="Cuti">🏠 Cuti Tahunan (Deduct Balance)</option>
-                                <option value="MC">🩺 Cuti Sakit / MC</option>
+                                <option value="A">Shift A (11:00 am - 9:00 pm)</option>
+                                <option value="B">Shift B (2:00 pm - 8:00 pm)</option>
+                                <option value="C">Shift C (11:00 am - 8:00 pm)</option>
+                                <option value="OFF">OFF Day (Tiada Pemotongan AL)</option>
+                                <option value="AL">AL (Annual Leave: Potong Baki Cuti)</option>
+                                <option value="MC">MC (Sick Leave: Perlukan Sijil)</option>
+                                <option value="EL">EL (Emergency Leave)</option>
                             </select>
                         </div>
                         <div id="mcAttachmentBox" style="flex:1; min-width:180px; display:none;">
@@ -939,19 +952,18 @@
                             <input type="file" id="scheduleMcFile" class="login-input" style="margin:0; padding:10px;" accept="image/*,application/pdf">
                         </div>
                         <div style="flex:1; min-width:120px;">
-                            <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%; height:44px;">Set & Simpan</button>
+                            <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%; height:44px;">Set & Overwrite</button>
                         </div>
                     </div>
 
-                    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
-                        <!-- Monthly Roster Display (Admin View) -->
-                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px; width:100%;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>Tarikh</th><th>Nama Pekerja</th><th>Ketentuan Syif</th><th>Waktu Rehat</th><th>Lampiran</th><th>Padam</th></tr>
+                    <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
+                        <!-- Monthly Roster Display (Admin View) : Full width for grid -->
+                        <div class="table-responsive" style="overflow-x:auto; border:1px solid var(--border-color); position:relative;">
+                            <table class="data-table" id="adminRosterTable" style="font-size:12px; width:max-content; border-collapse:collapse; text-align:center;">
+                                <thead id="adminRosterThead" style="position:sticky; top:0; background:#FAFAFA; z-index:2;">
                                 </thead>
                                 <tbody id="scheduleTbody">
-                                    <tr><td colspan="6" style="text-align:center;">Tiada jadual bulan ini.</td></tr>
+                                    <tr><td style="text-align:center; padding:20px;">Sila tunggu penjanaan grid bulanan...</td></tr>
                                 </tbody>
                             </table>
                         </div>

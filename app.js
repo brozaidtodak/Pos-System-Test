@@ -1675,23 +1675,28 @@ function getBreakTimeString(dateStr) {
 
 document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
     const name = document.getElementById("scheduleStaffName").value;
-    const date = document.getElementById("scheduleDate").value;
+    const dateStrInput = document.getElementById("scheduleDate").value; // e.g. YYYY-MM-DD
     const shift = document.getElementById("scheduleShift").value;
     const fileInput = document.getElementById("scheduleMcFile");
 
-    if(!name || !date || !shift) {
+    if(!name || !dateStrInput || !shift) {
         alert("Sila lengkapkan nama, tarikh, dan syif.");
         return;
     }
 
-    const existing = staffSchedules.find(s => s.staff_name === name && s.date === date);
-    if(existing) {
-        alert(`Ralat: Jadual bagi ${name} pada tarikh ${date} telah wujud sebagai ${existing.shift}. Sila padam rekod lama dahulu.`);
-        return;
+    const existingIndex = staffSchedules.findIndex(s => s.staff_name === name && s.date === dateStrInput);
+    if(existingIndex !== -1) {
+        // Pulangkan semula baki cuti jika rekod lama adalah AL
+        if(staffSchedules[existingIndex].shift === 'AL') {
+             let profile = staffProfiles.find(p => p.name === name);
+             if(profile) profile.leave_balance += 1;
+        }
+        // Buang rekod lama (Overwrite)
+        staffSchedules.splice(existingIndex, 1);
     }
 
-    // Deduct AL process
-    if(shift === 'Cuti') {
+    // Pemotongan Baki Cuti jika AL baru
+    if(shift === 'AL') {
         let profile = staffProfiles.find(p => p.name === name);
         if(profile && profile.leave_balance <= 0) {
             if(!confirm(`Baki cuti (AL) ${name} telah habis! Teruskan potong baki negatif?`)) return;
@@ -1704,25 +1709,25 @@ document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
     if(shift === 'MC' && fileInput && fileInput.files.length > 0) {
         mcNameStr = fileInput.files[0].name;
     } else if (shift === 'MC') {
-        mcNameStr = "Tiada Dokumen / Sijil";
+        mcNameStr = "Tiada Sijil";
     }
 
     staffSchedules.push({
         id: Date.now(),
         staff_name: name,
-        date: date,
+        date: dateStrInput,
         shift: shift,
         mc_name: mcNameStr
     });
     
-    alert("Jadual & Kehadiran berjaya ditetapkan!");
-    document.getElementById("scheduleDate").value = '';
-    if(fileInput) fileInput.value = '';
+    alert(`Jadual Harian (${shift}) berjaya ditetapkan untuk ${name}!`);
     renderStaffSchedule();
 });
 
 window.renderStaffSchedule = function() {
+    const theadAdmin = document.getElementById("adminRosterThead");
     const tbodyAdmin = document.getElementById("scheduleTbody");
+    const theadPublic = document.getElementById("publicRosterThead");
     const tbodyPublic = document.getElementById("publicRosterTbody");
     
     if(!tbodyAdmin && !tbodyPublic) return;
@@ -1736,53 +1741,77 @@ window.renderStaffSchedule = function() {
         }).join("");
     }
 
-    if(staffSchedules.length === 0) {
-        let emp = '<tr><td colspan="6" style="text-align:center;">Tiada jadual direkodkan.</td></tr>';
-        if(tbodyAdmin) tbodyAdmin.innerHTML = emp;
-        if(tbodyPublic) tbodyPublic.innerHTML = emp;
-        return;
+    // Tentukan bulan. Kita baca dari item tarikh input jika ada, atau bulan semasa
+    const inputDateDom = document.getElementById("scheduleDate");
+    let baseDate = new Date();
+    if(inputDateDom && inputDateDom.value) {
+        baseDate = new Date(inputDateDom.value);
     }
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // Sort ascending
-    const sorted = [...staffSchedules].sort((a,b) => new Date(a.date) - new Date(b.date));
+    // 1. Build Headers (1 to 31)
+    let headerStr = `<tr><th style="min-width:120px; text-align:left; position:sticky; left:0; background:var(--secondary); z-index:3;">Staf / Tarikh<br><small style="font-weight:normal;">${baseDate.toLocaleString('default', { month: 'long' })} ${year}</small></th>`;
+    
+    for(let d=1; d<=daysInMonth; d++) {
+        const loopDate = new Date(year, month, d);
+        const hariArr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const dayName = hariArr[loopDate.getDay()];
+        let bgHead = loopDate.getDay() === 0 || loopDate.getDay() === 6 ? "#888" : "inherit"; // Gelapkan sikit hjg minggu
+        headerStr += `<th style="min-width:30px; font-weight:bold; background:${bgHead}; border:1px solid rgba(255,255,255,0.2);">${d}<br><small style="font-size:9px; font-weight:normal;">${dayName}</small></th>`;
+    }
+    headerStr += `</tr>`;
 
-    // Common rows generator
-    const generateRows = (isAdmin) => sorted.map(s => {
-        let badgeColor = "var(--primary)";
-        if(s.shift === 'Syif 1') badgeColor = "#3B82F6";
-        else if(s.shift === 'Syif 2') badgeColor = "#F37021";
-        else if(s.shift === 'Cuti') badgeColor = "var(--danger)";
-        else if(s.shift === 'MC') badgeColor = "#9333EA"; // Purple for MC
-        
-        // Date parsing to get local Day name (Isnin, Selasa)
-        const dateObj = new Date(s.date);
-        const hariArr = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
-        const hari = hariArr[dateObj.getDay()];
-        const displayDate = `${s.date} <br><small>(${hari})</small>`;
-        
-        let breakInfo = (s.shift === 'Syif 1' || s.shift === 'Syif 2') ? getBreakTimeString(s.date) : "N/A - Rehat Seharian";
-        let mcInfo = s.shift === 'MC' ? `<span style="font-size:10px; color:#9333EA; font-weight:bold;">📎 ${s.mc_name}</span>` : "-";
+    if(theadAdmin) theadAdmin.innerHTML = headerStr;
+    if(theadPublic) theadPublic.innerHTML = headerStr;
 
-        let actionBtn = isAdmin ? `<button onclick="deleteSchedule(${s.id})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold; font-size:16px;">&times;</button>` : "-";
+    // 2. Build Grid Rows
+    const generateTbody = (isAdmin) => {
+        let rows = "";
+        staffProfiles.forEach((staff, index) => {
+            let rowBg = index % 2 === 0 ? "#FAFAFA" : "#FFF";
+            rows += `<tr><td style="text-align:left; font-weight:600; font-size:11px; position:sticky; left:0; background:${rowBg}; border-right:1px solid #ccc;">${staff.name}</td>`;
+            
+            for(let d=1; d<=daysInMonth; d++) {
+                let dayStr = d < 10 ? '0'+d : d;
+                let monthStr = (month+1) < 10 ? '0'+(month+1) : (month+1);
+                let targetDate = `${year}-${monthStr}-${dayStr}`;
+                
+                let shiftData = staffSchedules.find(s => s.staff_name === staff.name && s.date === targetDate);
+                
+                if(!shiftData) {
+                    rows += `<td style="border:1px solid #ddd; background:${rowBg}; color:#ccc; font-size:10px;">-</td>`;
+                } else {
+                    let code = shiftData.shift;
+                    let bg = rowBg, col = "#333", fw = "normal";
+                    // Color Mapping
+                    if(code === 'A') { bg = "#fde047"; fw = "bold"; }
+                    else if(code === 'B') { bg = "#86efac"; fw = "bold"; }
+                    else if(code === 'C') { bg = "#c4b5fd"; fw = "bold"; }
+                    else if(code === 'OFF') { col = "red"; fw = "bold"; }
+                    else if(code === 'AL') { bg = "#3b82f6"; col = "white"; fw = "bold"; }
+                    else if(code === 'MC') { bg = "#fbbf24"; fw = "bold"; }
+                    else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
+                    
+                    let attachStr = code === 'MC' && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
+                    
+                    let onClickStr = isAdmin ? `onclick="deleteSchedulePrompt(${shiftData.id})" style="cursor:pointer;" title="Klik untuk PADAM"` : "";
+                    
+                    rows += `<td ${onClickStr} style="border:1px solid #ccc; background:${bg}; color:${col}; font-weight:${fw}; font-size:11px;">${code}${attachStr}</td>`;
+                }
+            }
+            rows += `</tr>`;
+        });
+        return rows;
+    };
 
-        return `
-        <tr>
-            <td>${displayDate}</td>
-            <td><strong>${s.staff_name}</strong></td>
-            <td><span style="background:${badgeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:bold;">${s.shift}</span></td>
-            <td style="color:#666;">${breakInfo}</td>
-            <td>${mcInfo}</td>
-            <td style="text-align:center;">${actionBtn}</td>
-        </tr>
-        `;
-    }).join("");
-
-    if(tbodyAdmin) tbodyAdmin.innerHTML = generateRows(true);
-    if(tbodyPublic) tbodyPublic.innerHTML = generateRows(false);
+    if(tbodyAdmin) tbodyAdmin.innerHTML = generateTbody(true);
+    if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
 }
 
-window.deleteSchedule = function(id) {
-    if(!confirm("Anda pasti mahu membuang fail jadual ini? (Nota: Jika anda hapuskan rekod Cuti AL, kuota Leave Balance TIDAK akan bertambah secara automatik, sila rekod manual di sistem luar atau cipta kuota baru kelak).")) return;
+window.deleteSchedulePrompt = function(id) {
+    if(!confirm("Buang jadual ini? (Jika ia adalah AL, baki TIDAK dipulangkan secara automatik dalam fungsi padam ini. Rujuk admin.)")) return;
     staffSchedules = staffSchedules.filter(s => s.id !== id);
     renderStaffSchedule();
 };
