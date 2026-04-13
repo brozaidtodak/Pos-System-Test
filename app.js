@@ -244,11 +244,12 @@ window.renderDashboard = function() {
     let statusToFulfil = 0; let statusUnpaid = 0; let statusProcessing = 0; let statusReturn = 0;
 
     filteredSales.forEach(sale => {
-        totalSales += Number(sale.total);
+        let rev = Number(sale.total || sale.total_amount || 0);
+        totalSales += rev;
         
         // Channels
         let ch = sale.channel || 'In-Store';
-        channelFreq[ch] = (channelFreq[ch] || 0) + Number(sale.total);
+        channelFreq[ch] = (channelFreq[ch] || 0) + rev;
 
         // Status
         let st = sale.status || 'Completed';
@@ -327,7 +328,7 @@ window.renderDashboard = function() {
     let dailyMap = {};
     filteredSales.forEach(s => {
         let dStr = new Date(s.created_at).toLocaleDateString('en-GB'); 
-        dailyMap[dStr] = (dailyMap[dStr] || 0) + Number(s.total);
+        dailyMap[dStr] = (dailyMap[dStr] || 0) + Number(s.total || s.total_amount || 0);
     });
     // Sort chronological
     let sortedDates = Object.keys(dailyMap).sort((a,b)=> new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')));
@@ -370,7 +371,7 @@ function renderHistory() {
         el.innerHTML += `
             <div class="history-card">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <strong>[#${sale.id}] RM ${sale.total.toFixed(2)}</strong>
+                    <strong>[#${sale.id}] RM ${parseFloat(sale.total || sale.total_amount || 0).toFixed(2)}</strong>
                     <span class="badge-status" style="background:${stColor};">${st}</span>
                 </div>
                 <div style="font-size:13px; color:#666; margin-bottom:5px;">Buyer: ${sale.customer_name||'Walk-in'} • Channel: <strong>${sc}</strong> • ${sale.payment_method}</div>
