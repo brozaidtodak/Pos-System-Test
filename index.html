@@ -249,6 +249,18 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- KALENDAR NAVIGATOR (PUBLIC/STAFF) -->
+                <div style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <select id="publicRosterYear" class="login-input" style="margin:0; width:90px; padding:6px; font-weight:bold; background:#fafafa;" onchange="setRosterYear(this.value)">
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                    <div id="publicMonthBtns" style="display:flex; flex-wrap:wrap; gap:5px; flex:1;">
+                        <!-- Butang Bulan Dijana Automatik Pihak JS -->
+                    </div>
+                </div>
                 <div class="table-responsive" style="overflow-x:auto; overflow-y:auto; max-height:600px; border:1px solid var(--border-color); position:relative;">
                     <table class="data-table" id="publicRosterTable" style="font-size:12px; width:max-content; border-collapse:collapse; text-align:center;">
                         <thead id="publicRosterThead" style="position:sticky; top:0; background:var(--secondary); color:#fff; z-index:2;">
@@ -999,6 +1011,18 @@
                         </div>
                         <div style="flex:1; min-width:120px;">
                             <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%; height:44px;">Set & Overwrite</button>
+                        </div>
+                    </div>
+
+                    <!-- KALENDAR NAVIGATOR (ADMIN/MGMT) -->
+                    <div style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                        <select id="adminRosterYear" class="login-input" style="margin:0; width:90px; padding:6px; font-weight:bold; background:#fafafa;" onchange="setRosterYear(this.value)">
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                        <div id="adminMonthBtns" style="display:flex; flex-wrap:wrap; gap:5px; flex:1;">
+                            <!-- Butang Bulan Dijana Automatik Pihak JS -->
                         </div>
                     </div>
 

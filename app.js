@@ -52,6 +52,19 @@ let hrSettings = {
     normalBreak: "2:00 PM - 3:00 PM"
 };
 
+let activeRosterMonth = new Date().getMonth();
+let activeRosterYear = new Date().getFullYear();
+
+window.setRosterMonth = function(m) {
+    activeRosterMonth = parseInt(m);
+    renderStaffSchedule();
+};
+
+window.setRosterYear = function(y) {
+    activeRosterYear = parseInt(y);
+    renderStaffSchedule();
+};
+
 let moyySettings = {
     target: 10000,
     commRate: 5
@@ -1899,15 +1912,30 @@ window.renderStaffSchedule = function() {
         }).join("");
     }
 
-    // Tentukan bulan. Kita baca dari item tarikh input jika ada, atau bulan semasa
-    const inputDateDom = document.getElementById("scheduleDate");
-    let baseDate = new Date();
-    if(inputDateDom && inputDateDom.value) {
-        baseDate = new Date(inputDateDom.value);
-    }
-    const year = baseDate.getFullYear();
-    const month = baseDate.getMonth();
+    // Tentukan bulan. (Guna Global Navigasi)
+    const year = activeRosterYear;
+    const month = activeRosterMonth;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let baseDate = new Date(year, month, 1);
+
+    // Lukis butang bulan di navigator
+    const monthNames = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
+    let btnHtml = "";
+    monthNames.forEach((mn, mIdx) => {
+        let isAct = mIdx === month ? "background:var(--primary); color:#fff; font-weight:bold;" : "background:#efefef; color:#555;";
+        btnHtml += `<button onclick="setRosterMonth(${mIdx})" style="${isAct} border:1px solid #ddd; padding:6px 12px; border-radius:4px; font-size:11px; cursor:pointer; flex:1; min-width:40px;">${mn}</button>`;
+    });
+    
+    // Kemaskini Navigator (Public dan Admin jika wujud)
+    const pubBtns = document.getElementById("publicMonthBtns");
+    if(pubBtns) pubBtns.innerHTML = btnHtml;
+    const pubYr = document.getElementById("publicRosterYear");
+    if(pubYr) pubYr.value = year;
+
+    const admBtns = document.getElementById("adminMonthBtns");
+    if(admBtns) admBtns.innerHTML = btnHtml;
+    const admYr = document.getElementById("adminRosterYear");
+    if(admYr) admYr.value = year;
 
     // 1. Build Headers (1 to 31)
     let headerStr = `<tr><th style="min-width:120px; text-align:left; position:sticky; left:0; background:var(--secondary); z-index:3;">Staf / Tarikh<br><small style="font-weight:normal;">${baseDate.toLocaleString('default', { month: 'long' })} ${year}</small></th>`;
