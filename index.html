@@ -472,31 +472,30 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- SECTION: STOCK TAKE COUNT (INV PAGE 2)         -->
+        <!-- SECTION: INDIVIDUAL STOCK CHECK (INV PAGE 2)   -->
         <!-- ============================================== -->
         <div id="stockTakeSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;">📋 Stock Take Count Template</h2>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <p style="font-size:13px; color:#888;">Isi "Kiraan Tangan (Fizikal)" dan periksa perbezaan selisih (Variance).</p>
-                    <button class="btn-success" style="background:#10B981; border:none; padding:8px 15px; border-radius:4px; font-weight:bold;">Simpan Sesi Kiraan</button>
+                <h2 style="margin-bottom:15px;">📋 Semakan Audit Inventori Per-Item</h2>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Kira dan sahkan kuantiti secara teliti. Tekan "Submit" bagi setiap item yang dikira.</p>
+                
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <div style="flex:1;">
+                        <label class="small-lbl">Carian SKU / Barcode</label>
+                        <input type="text" id="auditSearchInput" onkeyup="renderAuditCards()" class="login-input" placeholder="Contoh: BD001..." style="margin:0;">
+                    </div>
+                    <div style="flex:1;">
+                        <label class="small-lbl">Penapis Prestasi Stok (Speed)</label>
+                        <select id="auditFilterSelect" onchange="renderAuditCards()" class="login-input" style="margin:0;">
+                            <option value="all">Semua Produk (All)</option>
+                            <option value="laku">Produk Laku (Fast-Moving)</option>
+                            <option value="tak-laku">Produk Tak Laku (Dead Stock)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr style="background:#f4f4f4;">
-                                <th>SKU & Item</th>
-                                <th>Lokasi Terakhir</th>
-                                <th style="text-align:center;">Stok Sistem</th>
-                                <th style="text-align:center; background:#FFFBEB;">Kiraan Tangan (Fizikal)</th>
-                                <th>Catatan Selisih</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stockTakeTableBody">
-                            <!-- Populated in app.js -->
-                            <tr><td colspan="5">Loading template...</td></tr>
-                        </tbody>
-                    </table>
+
+                <div id="auditCardsContainer" style="display:flex; flex-direction:column; gap:15px;">
+                    <!-- Audit Cards will be populated here by JS -->
                 </div>
             </div>
         </div>

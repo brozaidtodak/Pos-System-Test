@@ -408,29 +408,148 @@ function renderWMS() {
     tbody.innerHTML = htmlBuf3;
 }
 
+window.renderAuditCards = function() {
+    renderStockTake();
+}
+
+// Global variable to keep track of audit timestamps per SKU
+let auditTimestamps = {};
+
 function renderStockTake() {
-    const tbody = document.getElementById("stockTakeTableBody");
-    if(!tbody) return;
+    const container = document.getElementById("auditCardsContainer");
+    if(!container) return;
+    
+    let searchTxt = (document.getElementById("auditSearchInput")?.value || "").toLowerCase();
+    let filterVal = document.getElementById("auditFilterSelect")?.value || "all";
     
     let html = "";
-    masterProducts.forEach(p => {
+    
+    let filteredProducts = masterProducts.filter(p => {
+        let matchName = p.name.toLowerCase().includes(searchTxt);
+        let matchSku = p.sku.toLowerCase().includes(searchTxt);
+        if(!matchName && !matchSku) return false;
+        
+        let qty = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0).reduce((sum, b) => sum + b.qty_remaining, 0);
+        
+        if(filterVal === "laku" && qty <= 10) return false; // fast moving is >10
+        if(filterVal === "tak-laku" && qty > 10) return false; // dead stock is <=10
+        
+        return true;
+    });
+
+    if(filteredProducts.length === 0) {
+        container.innerHTML = "<p style='text-align:center; padding:20px; color:#888;'>Tiada produk dijumpai yang padan dengan tapisan.</p>";
+        return;
+    }
+
+    filteredProducts.forEach(p => {
         const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
         const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
-        const locText = "T" + ((p.sku.charCodeAt(2)||48)%3+1) + "/B" + ((p.sku.charCodeAt(3)||48)%6+1) + "/R" + ((p.sku.charCodeAt(4)||48)%10+1) + "/L" + ((p.sku.charCodeAt(4)||48)%4+1);
         
+        // Mock properties based on user request:
+        const modelNo = p.sku + "-X";
+        const erpBarcode = "884" + p.sku.replace(/\D/g,'') + Math.floor(Math.random()*10);
+        const locText = "Rak T" + ((p.sku.charCodeAt(2)||48)%3+1) + "/B" + ((p.sku.charCodeAt(3)||48)%6+1);
+        const statusStok = totalStock > 10 ? "Fast-Moving (Laku)" : "Dead Stock (Perlahan)";
+        const statusColor = totalStock > 10 ? "var(--success)" : "var(--danger)";
+        const imgUrl = (p.images && p.images[0]) ? p.images[0] : "https://via.placeholder.com/150?text=No+Image";
+        
+        let stampHtml = auditTimestamps[p.sku] ? `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold;">✅ Disemak pada: ${auditTimestamps[p.sku]}</p>` : "";
+
         html += `
-            <tr>
-                <td><strong>${p.sku}</strong><br><small>${p.name}</small></td>
-                <td><span style="background:#eee; padding:3px 6px; border-radius:4px; font-family:monospace;">${locText}</span></td>
-                <td style="text-align:center; font-weight:bold; font-size:16px;">${totalStock}</td>
-                <td style="text-align:center; background:#FFFBEB;">
-                    <input type="number" class="login-input" style="width:80px; text-align:center; margin:0;" placeholder="0">
-                </td>
-                <td><input type="text" class="login-input" style="margin:0;" placeholder="Catatan..."></td>
-            </tr>
+            <div class="admin-card" style="padding:15px; border-left:5px solid var(--primary); margin-bottom:0px; background:#fff; display:flex; gap:15px; flex-wrap:wrap;">
+                
+                <!-- Product Image & Basic Info (Left) -->
+                <div style="flex:1; min-width:200px; display:flex; gap:10px;">
+                    <img src="${imgUrl}" style="width:80px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);">
+                    <div>
+                        <strong style="color:var(--primary); font-size:16px;">${p.sku}</strong>
+                        <p style="font-size:14px; font-weight:bold; margin-bottom:5px;">${p.name}</p>
+                        <p style="font-size:11px; color:#888; margin-bottom:2px;">Model No: ${modelNo}</p>
+                        <p style="font-size:11px; color:#888; margin-bottom:2px;">ERP Barcode: ${erpBarcode}</p>
+                    </div>
+                </div>
+
+                <!-- Stock Location & Status (Middle) -->
+                <div style="flex:1; min-width:180px; padding-left:10px; border-left:1px dashed var(--border-color);">
+                    <p class="small-lbl">Lokasi Stok</p>
+                    <p style="font-family:monospace; font-size:13px; font-weight:bold; background:#eee; padding:3px 6px; border-radius:4px; display:inline-block; margin-bottom:10px;">${locText}</p>
+                    <p class="small-lbl">Status Stok</p>
+                    <span style="font-size:11px; color:white; background:${statusColor}; padding:2px 8px; border-radius:12px; font-weight:bold;">${statusStok}</span>
+                </div>
+
+                <!-- Audit Execution Panel (Right) -->
+                <div style="flex:1.5; min-width:280px; padding-left:10px; border-left:1px dashed var(--border-color); background:#FAFAFA; border-radius:6px; padding:10px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; align-items:center;">
+                        <div style="text-align:center;">
+                            <p class="small-lbl" style="margin:0;">Stok Sistem</p>
+                            <span style="font-size:20px; font-weight:900;" id="sysQty-${p.sku}">${totalStock}</span>
+                        </div>
+                        <div style="text-align:center;">
+                            <p class="small-lbl" style="margin:0; color:var(--primary);">Kiraan Fizikal</p>
+                            <input type="number" id="fizikalQty-${p.sku}" onkeyup="calculateVariance('${p.sku}')" class="login-input" style="width:80px; text-align:center; margin:0; padding:8px; border-color:var(--primary);" placeholder="Qty">
+                        </div>
+                        <div style="text-align:center;">
+                            <p class="small-lbl" style="margin:0;">Selisih (+/-)</p>
+                            <span style="font-size:16px; font-weight:bold;" id="varianceQty-${p.sku}">0</span>
+                        </div>
+                    </div>
+                    
+                    <input type="text" id="auditKomen-${p.sku}" class="login-input" style="margin:0; padding:8px; font-size:12px; margin-bottom:10px;" placeholder="Tulis catatan (Cth: 2 item rosak)...">
+                    
+                    <button onclick="submitAuditSingle('${p.sku}')" class="btn-primary" style="width:100%; margin:0; padding:10px;">SUBMIT KIRAAN ITEM</button>
+                    <div id="stampWrapper-${p.sku}">${stampHtml}</div>
+                </div>
+            </div>
         `;
     });
-    tbody.innerHTML = html;
+    
+    container.innerHTML = html;
+}
+
+window.calculateVariance = function(sku) {
+    let sys = parseInt(document.getElementById("sysQty-"+sku).textContent) || 0;
+    let fiz = parseInt(document.getElementById("fizikalQty-"+sku).value);
+    let vDom = document.getElementById("varianceQty-"+sku);
+    
+    if(isNaN(fiz)) {
+        vDom.textContent = "0";
+        vDom.style.color = "var(--text-main)";
+        return;
+    }
+    
+    let diff = fiz - sys;
+    if(diff > 0) {
+        vDom.textContent = "+" + diff;
+        vDom.style.color = "var(--success)";
+    } else if(diff < 0) {
+        vDom.textContent = diff;
+        vDom.style.color = "var(--danger)";
+    } else {
+        vDom.textContent = "Tepat (0)";
+        vDom.style.color = "var(--text-main)";
+    }
+}
+
+window.submitAuditSingle = function(sku) {
+    let fizDom = document.getElementById("fizikalQty-"+sku);
+    if(fizDom.value === "") {
+        alert("Sila masukkan nilai kiraan fizikal dahulu!");
+        return;
+    }
+    
+    // Save timestamp
+    let today = new Date();
+    auditTimestamps[sku] = today.toLocaleString('en-MY', { weekday:'short', day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
+    
+    // Refresh that component
+    let stampWrap = document.getElementById("stampWrapper-"+sku);
+    if(stampWrap) {
+        stampWrap.innerHTML = `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold; animation: fadeIn 0.5s;">✅ Disemak pada: ${auditTimestamps[sku]}</p>`;
+    }
+    
+    // Optional border color change to signify done
+    fizDom.parentElement.parentElement.parentElement.style.background = "#F0FDF4";
 }
 
 function renderPackaging() {
