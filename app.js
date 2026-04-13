@@ -129,7 +129,7 @@ function switchHub(sectionIds, title, btnElement) {
     if(sidebar && sidebar.classList.contains("open")) toggleSidebar();
 
     // Contextual renders based on the hub being opened
-    if(sectionIds.includes('dashboardSection')) renderDashboard();
+    if(sectionIds.includes('homeSection')) renderDashboard();
     if(sectionIds.includes('posSection')) {
         const term = document.getElementById("posSearchBox") ? document.getElementById("posSearchBox").value : "";
         renderPOS(term);
@@ -949,7 +949,7 @@ window.handleCustomerLogin = async function() {
     
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
-    switchHub(['dashboardSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
+    switchHub(['homeSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
     document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (['admin', 'mgmt'].includes(user.role) ? ' 👑' : '');
     
     const adminMenus = document.querySelectorAll(".admin-only");
