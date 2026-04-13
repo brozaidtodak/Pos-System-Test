@@ -43,15 +43,18 @@ let customerIssues = [];
 let globalMemo = { active: false, text: "" };
 
 // Staff Scheduling Roster
-let staffSchedules = [
+let savedStaffSchedules = JSON.parse(localStorage.getItem('saved_staffSchedules'));
+let staffSchedules = savedStaffSchedules || [
     {id: 1, staff_name: "Aliff", date: "2026-04-03", shift: "A", mc_name: ""},
     {id: 2, staff_name: "Ariff", date: "2026-04-03", shift: "B", mc_name: ""},
     {id: 3, staff_name: "Tarmizi", date: "2026-04-14", shift: "A", mc_name: "" },
     {id: 4, staff_name: "Irfan", date: "2026-04-14", shift: "B", mc_name: "" }
 ];
-let pendingSchedules = [
+
+let savedPendingSchedules = JSON.parse(localStorage.getItem('saved_pendingSchedules'));
+let pendingSchedules = savedPendingSchedules || [
     { id: 9991, staff_name: "Zack (Ujian)", date: "2026-04-20", shift: "AL", mc_name: "" }
-]; // Holds requests from ordinary staffs
+];
 
 let hrSettings = {
     wedBreak: "Tiada Rehat (Non-Stop)",
@@ -1933,6 +1936,9 @@ window.renderStaffSchedule = function() {
 
     if(tbodyAdmin) tbodyAdmin.innerHTML = generateTbody(true);
     if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
+    
+    // Auto Save
+    localStorage.setItem('saved_staffSchedules', JSON.stringify(staffSchedules));
 }
 
 window.deleteSchedulePrompt = function(id) {
@@ -1974,6 +1980,9 @@ window.renderPendingSchedules = function() {
         `;
     });
     tbody.innerHTML = html;
+    
+    // Auto Save
+    localStorage.setItem('saved_pendingSchedules', JSON.stringify(pendingSchedules));
 };
 
 window.approveRequest = function(id) {
