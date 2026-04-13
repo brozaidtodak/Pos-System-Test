@@ -43,18 +43,8 @@ let customerIssues = [];
 let globalMemo = { active: false, text: "" };
 
 // Staff Scheduling Roster
-let savedStaffSchedules = JSON.parse(localStorage.getItem('saved_staffSchedules'));
-let staffSchedules = savedStaffSchedules || [
-    {id: 1, staff_name: "Aliff", date: "2026-04-03", shift: "A", mc_name: ""},
-    {id: 2, staff_name: "Ariff", date: "2026-04-03", shift: "B", mc_name: ""},
-    {id: 3, staff_name: "Tarmizi", date: "2026-04-14", shift: "A", mc_name: "" },
-    {id: 4, staff_name: "Irfan", date: "2026-04-14", shift: "B", mc_name: "" }
-];
-
-let savedPendingSchedules = JSON.parse(localStorage.getItem('saved_pendingSchedules'));
-let pendingSchedules = savedPendingSchedules || [
-    { id: 9991, staff_name: "Zack (Ujian)", date: "2026-04-20", shift: "AL", mc_name: "" }
-];
+let staffSchedules = [];
+let pendingSchedules = [];
 
 let hrSettings = {
     wedBreak: "Tiada Rehat (Non-Stop)",
@@ -207,6 +197,12 @@ async function initApp() {
         
         let { data: fin } = await db.from('finance_records').select('*').order('year', {ascending: false});
         if(fin) financeRecords = fin;
+        let { data: rSched } = await db.from('roster_schedules').select('*');
+        if(rSched) staffSchedules = rSched;
+
+        let { data: pSched } = await db.from('pending_requests').select('*');
+        if(pSched) pendingSchedules = pSched;
+
         renderWMS();
         renderHistory();
         renderCustomers();
@@ -1757,7 +1753,7 @@ function getBreakTimeString(dateStr) {
     return hrSettings.normalBreak;
 }
 
-document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
+document.getElementById("saveScheduleBtn")?.addEventListener('click', async () => {
     const name = document.getElementById("scheduleStaffName").value;
     const dateStrInput = document.getElementById("scheduleDate").value; // e.g. YYYY-MM-DD
     const shift = document.getElementById("scheduleShift").value;
@@ -1771,11 +1767,13 @@ document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
     const existingIndex = staffSchedules.findIndex(s => s.staff_name === name && s.date === dateStrInput);
     if(existingIndex !== -1) {
         // Pulangkan semula baki cuti jika rekod lama adalah AL
-        if(staffSchedules[existingIndex].shift === 'AL') {
+        let oldObj = staffSchedules[existingIndex];
+        if(oldObj.shift === 'AL') {
              let profile = staffProfiles.find(p => p.name === name);
              if(profile) profile.leave_balance += 1;
         }
         // Buang rekod lama (Overwrite)
+        await db.from('roster_schedules').delete().eq('id', oldObj.id);
         staffSchedules.splice(existingIndex, 1);
     }
 
@@ -1796,27 +1794,23 @@ document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
         mcNameStr = "Tiada Sijil";
     }
 
-    staffSchedules.push({
+    let newSched = {
         id: Date.now(),
         staff_name: name,
         date: dateStrInput,
         shift: shift,
         mc_name: mcNameStr
-    });
+    };
+    staffSchedules.push(newSched);
+    await db.from('roster_schedules').insert([newSched]);
     
     alert(`Jadual Harian (${shift}) berjaya ditetapkan untuk ${name}!`);
     renderStaffSchedule();
 });
 
 // Listener untuk butang Pemohonan Umum (Ordinary Staff Request)
-document.getElementById("reqScheduleBtn")?.addEventListener('click', () => {
-    // Ordinary staff requests (We rely on them choosing their correct auth, but for demo they select Name)
-    // Normally we use currentUser.name if auth is strictly enforced.
+document.getElementById("reqScheduleBtn")?.addEventListener('click', async () => {
     let name = currentUser ? currentUser.name : "Tarmizi"; // fallback if anon
-    // If it's superior/admin testing the form: allow them to choose, but since there's no dropdown in public form, 
-    // wait, we didn't put a Name dropdown in the public form because we wanted auto-identity. 
-    // Let's modify index.html to add Name Dropdown in Public form just for testing seamlessly, 
-    // OR we just use `currentUser.name`. Oh wait! The user didn't see a dropdown. So currentUser.name!
     if (!currentUser) {
         alert("Sila Log Masuk (Login) terlebih dahulu untuk membuat permohonan.");
         return;
@@ -1839,13 +1833,15 @@ document.getElementById("reqScheduleBtn")?.addEventListener('click', () => {
         mcNameStr = "Tiada Sijil";
     }
 
-    pendingSchedules.push({
+    let newReq = {
         id: Date.now(),
         staff_name: name,
         date: dateStrInput,
         shift: shift,
         mc_name: mcNameStr
-    });
+    };
+    pendingSchedules.push(newReq);
+    await db.from('pending_requests').insert([newReq]);
     
     alert(`Permohonan ${shift} pada ${dateStrInput} dihantar! Sila tunggu kelulusan bos.`);
     document.getElementById("reqScheduleDate").value = '';
@@ -1952,14 +1948,12 @@ window.renderStaffSchedule = function() {
 
     if(tbodyAdmin) tbodyAdmin.innerHTML = generateTbody(true);
     if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
-    
-    // Auto Save
-    localStorage.setItem('saved_staffSchedules', JSON.stringify(staffSchedules));
 }
 
-window.deleteSchedulePrompt = function(id) {
+window.deleteSchedulePrompt = async function(id) {
     if(!confirm("Buang jadual ini? (Jika ia adalah AL, baki TIDAK dipulangkan secara automatik dalam fungsi padam ini. Rujuk admin.)")) return;
     staffSchedules = staffSchedules.filter(s => s.id !== id);
+    await db.from('roster_schedules').delete().eq('id', id);
     renderStaffSchedule();
 };
 
@@ -1996,12 +1990,9 @@ window.renderPendingSchedules = function() {
         `;
     });
     tbody.innerHTML = html;
-    
-    // Auto Save
-    localStorage.setItem('saved_pendingSchedules', JSON.stringify(pendingSchedules));
 };
 
-window.approveRequest = function(id) {
+window.approveRequest = async function(id) {
     let reqIndex = pendingSchedules.findIndex(r => r.id === id);
     if(reqIndex === -1) return;
     let req = pendingSchedules[reqIndex];
@@ -2009,10 +2000,12 @@ window.approveRequest = function(id) {
     // Proses semakan Overwrite & Potong AL seperti admin biasa
     const existingIndex = staffSchedules.findIndex(s => s.staff_name === req.staff_name && s.date === req.date);
     if(existingIndex !== -1) {
-        if(staffSchedules[existingIndex].shift === 'AL') {
+        let oldSched = staffSchedules[existingIndex];
+        if(oldSched.shift === 'AL') {
              let profile = staffProfiles.find(p => p.name === req.staff_name);
              if(profile) profile.leave_balance += 1;
         }
+        await db.from('roster_schedules').delete().eq('id', oldSched.id);
         staffSchedules.splice(existingIndex, 1);
     }
 
@@ -2024,23 +2017,28 @@ window.approveRequest = function(id) {
         if(profile) profile.leave_balance -= 1;
     }
 
-    staffSchedules.push({
+    let newSched = {
         id: Date.now(),
         staff_name: req.staff_name,
         date: req.date,
         shift: req.shift,
         mc_name: req.mc_name
-    });
+    };
+    staffSchedules.push(newSched);
+    await db.from('roster_schedules').insert([newSched]);
 
     pendingSchedules.splice(reqIndex, 1); // Remove from pending
+    await db.from('pending_requests').delete().eq('id', id);
+    
     renderPendingSchedules();
     renderStaffSchedule();
     alert(`Permohonan ${req.staff_name} DILULUSKAN!`);
 };
 
-window.rejectRequest = function(id) {
+window.rejectRequest = async function(id) {
     if(!confirm("Tolak permohonan staf ini?")) return;
     pendingSchedules = pendingSchedules.filter(r => r.id !== id);
+    await db.from('pending_requests').delete().eq('id', id);
     renderPendingSchedules();
 };
 
