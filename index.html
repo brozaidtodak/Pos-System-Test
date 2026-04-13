@@ -155,32 +155,17 @@
             </div>
         </div>
         <div class="menu-list">
-            <div class="menu-item admin-only active" data-tab="home" onclick="switchTab('home', 'Overview')">
-                Dashboard
+            <div class="menu-item active" data-tab="overview" onclick="switchHub(['posSection'], 'Overview', this)">
+                📱 Overview
             </div>
-            <div class="menu-item" data-tab="pos" onclick="switchTab('pos', 'Cashier POS')">
-                Cashier
+            <div class="menu-item" data-tab="sales_dept" onclick="switchHub(['ordersSection', 'customersSection', 'promotionsSection'], 'Sales Department', this)">
+                🛒 Sales Department
             </div>
-            <div class="menu-item" data-tab="orders" onclick="switchTab('orders', 'Orders History')">
-                Orders
+            <div class="menu-item admin-only" data-tab="inventory_dept" onclick="switchHub(['ordersSection', 'inventorySection'], 'Inventory Department', this)">
+                📦 Inventory Department
             </div>
-            <div class="menu-item admin-only" data-tab="inventory" onclick="switchTab('inventory', 'Warehouse Logistics')">
-                Inventory
-            </div>
-            <div class="menu-item admin-only" data-tab="customers" onclick="switchTab('customers', 'Customers')">
-                Customers
-            </div>
-            <div class="menu-item admin-only" data-tab="promotions" onclick="switchTab('promotions', 'Promotions')">
-                Promotion
-            </div>
-            <div class="menu-item admin-only" data-tab="reports" onclick="switchTab('reports', 'Analytics Report')">
-                Report
-            </div>
-            <div class="menu-item admin-only" data-tab="finance" onclick="switchTab('finance', 'P&L Accounting')">
-                Finance & P&L
-            </div>
-            <div class="menu-item admin-only" data-tab="settings" onclick="switchTab('settings', 'Store Settings')">
-                Settings
+            <div class="menu-item admin-only" data-tab="management_mode" onclick="switchHub(['dashboardSection', 'financeSection', 'reportsSection', 'mgmtPlaceholders'], 'Management Mode', this)">
+                💼 Management Mode
             </div>
 
             <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
@@ -587,11 +572,40 @@
         <!-- SECTION: SETTINGS                              -->
 
         <!-- ============================================== -->
-        <div id="settingsSection" class="tab-section" style="display: none;">
-            <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;">⚙️ Store Settings</h2>
-                <p style="font-size:13px; color:#888; margin-bottom:20px;">Tetapan kedai, profil perniagaan dan konfigurasi sistem.</p>
-                <p style="color:#aaa; text-align:center; padding:40px 0;">🚧 Modul ini akan datang dalam fasa seterusnya.</p>
+        <!-- SECTION: MANAGEMENT PLACEHOLDERS               -->
+        <!-- ============================================== -->
+        <div id="mgmtPlaceholders" class="tab-section" style="display: none;">
+            <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #EC4899; display:inline-block; padding-bottom:5px; margin-top:30px;">👔 Other Management Modules</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
+                
+                <div class="admin-card" style="padding:20px; border-top:4px solid #F59E0B; text-align:center;">
+                    <div style="font-size:30px; margin-bottom:10px;">🏢</div>
+                    <h3 style="margin-bottom:10px;">Administrative</h3>
+                    <p style="font-size:12px; color:#888;">Manage staff payroll, company documents, HR details, and internal memos.</p>
+                    <button class="btn-primary" style="margin-top:15px; width:100%; padding:8px; opacity:0.5; cursor:not-allowed;">Coming Soon</button>
+                </div>
+
+                <div class="admin-card" style="padding:20px; border-top:4px solid #10B981; text-align:center;">
+                    <div style="font-size:30px; margin-bottom:10px;">💵</div>
+                    <h3 style="margin-bottom:10px;">Petty Cash</h3>
+                    <p style="font-size:12px; color:#888;">Daily operational cash tracking, minor branch expenses, and loose cash tally.</p>
+                    <button class="btn-primary" style="margin-top:15px; width:100%; padding:8px; opacity:0.5; cursor:not-allowed;">Coming Soon</button>
+                </div>
+
+                <div class="admin-card" style="padding:20px; border-top:4px solid #3B82F6; text-align:center;">
+                    <div style="font-size:30px; margin-bottom:10px;">🤝</div>
+                    <h3 style="margin-bottom:10px;">Bussiness Dev Tools</h3>
+                    <p style="font-size:12px; color:#888;">B2B prospects, tender info, expansion tracking & B.D. specific reports.</p>
+                    <button class="btn-primary" style="margin-top:15px; width:100%; padding:8px; opacity:0.5; cursor:not-allowed;">Coming Soon</button>
+                </div>
+
+                <div class="admin-card" style="padding:20px; border-top:4px solid #EF4444; text-align:center;">
+                    <div style="font-size:30px; margin-bottom:10px;">⚙️</div>
+                    <h3 style="margin-bottom:10px;">System Management</h3>
+                    <p style="font-size:12px; color:#888;">Database resets, API keys, global branch variables, and master configuration.</p>
+                    <button class="btn-primary" style="margin-top:15px; width:100%; padding:8px; opacity:0.5; cursor:not-allowed;">Coming Soon</button>
+                </div>
+
             </div>
         </div>
 

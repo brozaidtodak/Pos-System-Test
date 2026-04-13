@@ -107,21 +107,35 @@ function toggleSidebar() {
 }
 window.toggleSidebar = toggleSidebar;
 
-function switchTab(tabName, title) {
+function switchHub(sectionIds, title, btnElement) {
+    // Hide all sections first
     document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
-    document.getElementById(tabName + 'Section').style.display = 'block';
-    document.getElementById('pageTitle').textContent = title;
-    document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.remove('active');
-        if(item.dataset.tab === tabName) item.classList.add('active');
+    
+    // Show requested sections
+    sectionIds.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.display = 'block';
     });
+    
+    // Set Window Title
+    document.getElementById('pageTitle').textContent = title;
+    
+    // Update active state in sidebar
+    document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+    if(btnElement) btnElement.classList.add('active');
+    
+    // Close sidebar on mobile if open
     const sidebar = document.getElementById("appSidebar");
-    if(sidebar.classList.contains("open")) toggleSidebar();
+    if(sidebar && sidebar.classList.contains("open")) toggleSidebar();
 
-    // Re-render chart if going to home
-    if(tabName === 'home') renderDashboard();
+    // Contextual renders based on the hub being opened
+    if(sectionIds.includes('dashboardSection')) renderDashboard();
+    if(sectionIds.includes('posSection')) {
+        const term = document.getElementById("posSearchBox") ? document.getElementById("posSearchBox").value : "";
+        renderPOS(term);
+    }
 }
-window.switchTab = switchTab;
+window.switchHub = switchHub;
 
 window.toggleInvForm = function(formId) {
     const f1 = document.getElementById("newSkuForm");
@@ -879,6 +893,7 @@ window.handleCustomerLogin = async function() {
     
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
+    switchHub(['posSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
     document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (user.role === 'admin' ? ' 👑' : '');
     
     const adminMenus = document.querySelectorAll(".admin-only");
