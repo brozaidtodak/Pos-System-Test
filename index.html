@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Enterprise Omnichannel POS</title>
-    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=17">
     <!-- Supabase Core -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
@@ -28,6 +27,20 @@
         </div>
     </div>
 
+    <!-- 0.0 CUSTOMER LOGIN OVERLAY -->
+    <div id="customerLoginGate" class="login-overlay" style="display:none;">
+        <div class="login-box">
+            <button onclick="document.getElementById('customerLoginGate').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px; margin-right:-10px;">&times;</button>
+            <h2 style="margin-bottom:5px; font-weight:800; font-size:24px; letter-spacing:-1px;">Customer VIP</h2>
+            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Log masuk menggunakan No. Telefon anda</p>
+            
+            <label class="small-lbl" style="text-align:left;">Nombor Telefon</label>
+            <input type="tel" id="customerLoginPhone" class="login-input" placeholder="0123456789" style="text-align:center; font-size:18px; font-weight:bold;">
+
+            <button onclick="handleCustomerLogin()" class="login-btn" style="background:#F37021;">Log Masuk / Daftar</button>
+        </div>
+    </div>
+
     <!-- 0.1 E-RECEIPT POPUP -->
     <div id="receiptModal" class="login-overlay" style="display:none; z-index:3000;">
         <div class="login-box" style="max-width:400px; text-align:left; padding:30px;">
@@ -43,6 +56,21 @@
             <button onclick="closeReceipt()" class="login-btn" style="background:#FFF; color:var(--text-main); border:1px solid var(--border-color);">Close (Next Customer)</button>
         </div>
     </div>
+
+    <!-- 0.2 CUSTOMER HISTORY MODAL (STAFF ONLY) -->
+    <div id="staffCustomerHistoryModal" class="login-overlay" style="display:none; z-index:3000;">
+        <div class="login-box" style="max-width:600px; width:95%; text-align:left; padding:30px;">
+            <button onclick="document.getElementById('staffCustomerHistoryModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px;">&times;</button>
+            <h2 style="font-weight:800; font-size:20px; margin-bottom:5px;">Rekod Pembelian</h2>
+            <p id="staffHistoryCustName" style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Pelanggan: -</p>
+            
+            <div id="staffHistoryContent" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px; padding:15px; background:#FAFAFA;">
+                <!-- History blocks go here -->
+            </div>
+            
+            <button onclick="document.getElementById('staffCustomerHistoryModal').style.display='none'" class="login-btn" style="margin-top:20px; background:#111;">Tutup</button>
+        </div>
+    </div>
     <!-- ============================================== -->
     <!-- THE PUBLIC STOREFRONT (E-COMMERCE)           -->
     <!-- ============================================== -->
@@ -52,6 +80,7 @@
             <h2 style="font-weight:900; letter-spacing:-1px; margin:0; font-size:24px;">10camp E-Commerce</h2>
             
             <div style="display:flex; gap:15px; align-items:center;">
+                <button id="btnCustomerPortal" onclick="document.getElementById('customerLoginGate').style.display='flex'" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 12px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; color:var(--primary);">VIP Login</button>
                 <button id="btnPublicCartCount" onclick="togglePublicCart()" style="background:none; border:none; font-weight:bold; cursor:pointer; font-size:15px;">Cart (0)</button>
                 <button onclick="document.getElementById('loginGate').style.display='flex'" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:12px; font-weight:bold; cursor:pointer;">Staff Login / Backdoor</button>
             </div>
@@ -433,8 +462,8 @@
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Senarai pelanggan berdaftar dan maklumat keahlian.</p>
                 <div class="table-responsive">
                     <table class="inventory-table">
-                        <thead><tr><th>Nama</th><th>Telefon</th><th>Points</th><th>Member</th></tr></thead>
-                        <tbody id="customersTableBody"><tr><td colspan="4"><i>Loading...</i></td></tr></tbody>
+                        <thead><tr><th>Nama</th><th>Telefon</th><th>Points</th><th>Member</th><th>Tindakan (Staf)</th></tr></thead>
+                        <tbody id="customersTableBody"><tr><td colspan="5"><i>Loading...</i></td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -560,6 +589,6 @@
     </div> <!-- End posAppLayout -->
 
     <!-- JS Core -->
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=17"></script>
 </body>
 </html>

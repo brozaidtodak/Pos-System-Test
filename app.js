@@ -8231,10 +8231,15 @@ document.getElementById("checkoutBtn").onclick = async function() {
 
         if(transactionsPayload.length > 0) await db.from('inventory_transactions').insert(transactionsPayload);
 
-        // Simple CRM Insert (Checks if name exist, if not, save as basic returning mechanism)
+        // Points & CRM System
+        const earnedPoints = Math.floor(totalVal);
         if(custNameText !== 'Walk-In') {
              const existing = customersData.find(c => c.name.toLowerCase() === custNameText.toLowerCase());
-             if(!existing) await db.from('customers').insert([{name: custNameText, points: 10}]);
+             if(!existing) {
+                 await db.from('customers').insert([{name: custNameText, points: earnedPoints}]);
+             } else {
+                 await db.from('customers').update({points: (existing.points || 0) + earnedPoints}).eq('id', existing.id);
+             }
         }
 
         await db.from('sales_history').insert([{
@@ -8255,19 +8260,46 @@ document.getElementById("checkoutBtn").onclick = async function() {
 }
 
 // ===================================
-// CUSTOMERS CRM TABLE
+// CUSTOMERS CRM TABLE & HISTORY
 // ===================================
+window.viewCustomerHistory = function(cName) {
+    const hist = salesHistory.filter(s => s.customer_name === cName);
+    const container = document.getElementById("staffHistoryContent");
+    document.getElementById("staffHistoryCustName").textContent = `Pelanggan: ${cName} (Keseluruhan: ${hist.length} Rekod)`;
+    
+    if(hist.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); margin-top:20px;">Tiada rekod pembelian dijumpai untuk pelanggan ini.</p>';
+    } else {
+        container.innerHTML = hist.map(h => `
+            <div style="background:#FFF; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <strong style="font-size:14px;">${new Date(h.created_at).toLocaleString('en-GB')}</strong>
+                    <span style="font-weight:bold; color:var(--primary);">RM ${parseFloat(h.total || 0).toFixed(2)}</span>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+                    Channel: ${h.channel} | Kaedah: ${h.payment_method}
+                </div>
+                <div style="font-size:12px; border-top:1px dashed #eee; padding-top:8px;">
+                    ${(h.items || []).map(i => `${i.quantity}x ${i.name}`).join('<br>')}
+                </div>
+            </div>
+        `).join('');
+    }
+    document.getElementById("staffCustomerHistoryModal").style.display = "flex";
+};
+
 function renderCustomers() {
     const tbody = document.getElementById("customersTableBody");
     if(!tbody) return;
     tbody.innerHTML = "";
-    if(customersData.length === 0) { tbody.innerHTML = '<tr><td colspan="4">Tiada pelanggan berdaftar.</td></tr>'; return; }
+    if(customersData.length === 0) { tbody.innerHTML = '<tr><td colspan="5">Tiada pelanggan berdaftar.</td></tr>'; return; }
     customersData.forEach(c => {
         tbody.innerHTML += `<tr>
             <td><strong>${c.name}</strong></td>
             <td>${c.phone || '-'}</td>
             <td style="color:#F59E0B; font-weight:bold;">${c.points || 0} pts</td>
             <td>${c.is_member ? '<span style="color:#10B981; font-weight:bold;">VIP ✓</span>' : '<span style="color:#aaa;">Non-Member</span>'}</td>
+            <td><button onclick="viewCustomerHistory('${c.name}')" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Lihat Rekod</button></td>
         </tr>`;
     });
 }
@@ -8312,8 +8344,41 @@ const authUsers = [
 
 let currentUser = null;
 let currentUserRole = null;
+let currentPublicCustomer = null;
 
-function handleLogin() {
+window.handleCustomerLogin = async function() {
+    const phone = document.getElementById("customerLoginPhone").value.trim();
+    if(!phone) return alert("Sila masukkan nombor telefon yang sah.");
+    
+    // Check if customer exists in current customersData
+    let existing = customersData.find(c => c.phone === phone);
+    
+    if(!existing) {
+        // Pseudo-registration: create a new skeleton record without name to force them to fill their name at checkout
+        const newCustomerObj = { name: "Pelanggan VIP", phone: phone, points: 0, address: "" };
+        try {
+            const { data } = await db.from('customers').insert([newCustomerObj]).select();
+            if(data) {
+                existing = data[0];
+                customersData.push(existing);
+            } else {
+                existing = newCustomerObj; // Fallback
+            }
+        } catch(e) {
+            existing = newCustomerObj; 
+        }
+    }
+    
+    currentPublicCustomer = existing;
+    document.getElementById("customerLoginGate").style.display = "none";
+    
+    const btn = document.getElementById("btnCustomerPortal");
+    if(btn) {
+        btn.textContent = `Hi, ${existing.name.split(' ')[0]} (Pts: ${existing.points || 0})`;
+    }
+    
+    alert(`Berjaya Log Masuk. Anda kini mempunyai ${existing.points || 0} Points.`);
+};function handleLogin() {
     const pin = document.getElementById("loginPin").value;
     if(!pin) { alert("Sila masukkan PIN!"); return; }
     
@@ -8418,6 +8483,11 @@ let publicCart = [];
 window.togglePublicCart = function() {
     const drw = document.getElementById("publicCartDrawer");
     if(drw.style.display === "none") {
+        if(currentPublicCustomer) {
+            document.getElementById("custNamePub").value = currentPublicCustomer.name !== "Pelanggan VIP" ? currentPublicCustomer.name : "";
+            document.getElementById("custPhonePub").value = currentPublicCustomer.phone || "";
+            document.getElementById("custAddressPub").value = currentPublicCustomer.address || "";
+        }
         drw.style.display = "flex";
         renderPublicCart();
     } else {
@@ -8517,9 +8587,22 @@ window.processPublicCheckout = async function() {
 
         if(transactionsPayload.length > 0) await db.from('inventory_transactions').insert(transactionsPayload);
 
-        // Simple CRM Concept
-        const existing = customersData.find(c => c.name.toLowerCase() === cName.toLowerCase());
-        if(!existing) await db.from('customers').insert([{name: cName, phone: cPhone, address: cAddr, points: 5}]);
+        // Points System Concept (RM 1 = 1 Point)
+        const earnedPoints = Math.floor(totalVal);
+        let existing = null;
+        if(currentPublicCustomer) {
+            existing = currentPublicCustomer;
+            currentPublicCustomer.name = cName;
+            currentPublicCustomer.address = cAddr;
+            await db.from('customers').update({name: cName, address: cAddr, points: (existing.points || 0) + earnedPoints}).eq('id', existing.id);
+        } else {
+            existing = customersData.find(c => c.phone === cPhone || c.name.toLowerCase() === cName.toLowerCase());
+            if(!existing) {
+                await db.from('customers').insert([{name: cName, phone: cPhone, address: cAddr, points: earnedPoints}]);
+            } else {
+                await db.from('customers').update({points: (existing.points || 0) + earnedPoints}).eq('id', existing.id);
+            }
+        }
 
         // Push to Sales History as E-Commerce Website Order
         const invStr = "WEB-10C-" + Math.floor(1000 + Math.random() * 9000);
