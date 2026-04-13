@@ -404,7 +404,14 @@ function renderWMS() {
                 <td>
                     <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span><br>
                     <strong>${p.name}</strong><br>
-                    <small style="color:#888;">${p.parent_sku ? 'Variant: '+p.parent_sku : 'Main Product'}</small>
+                    <small style="color:#888;">Jenama: <strong>${p.brand || 'N/A'}</strong></small>
+                </td>
+                <td>
+                    <div style="font-size:12px; color:#555;">
+                        Model: ${p.model_no || '-'}<br>
+                        Variant: ${p.variant_size || '-'} / ${p.variant_color || '-'}<br>
+                        Dimensi: ${p.dimensions || '-'} (${p.weight_kg ? p.weight_kg+'Kg' : '-'})
+                    </div>
                 </td>
                 <td style="font-weight:bold; color:${totalStock <= 0 ? 'red' : 'green'};">
                     ${totalStock} ${p.unit||'Pcs'}<br>
@@ -412,7 +419,7 @@ function renderWMS() {
                 </td>
                 <td>
                     <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
-                        📍 T${(p.sku.charCodeAt(2)||48)%3+1} / B${(p.sku.charCodeAt(3)||48)%6+1} / R${(p.sku.charCodeAt(4)||48)%10+1} / L${(p.sku.charCodeAt(4)||48)%4+1}
+                        📍 ${p.location_bin || "Tiada Maklumat Rak"}
                     </div>
                 </td>
                 <td>
@@ -681,7 +688,7 @@ document.getElementById("saveMasterBtn").onclick = async function() {
     btn.disabled = false;
     
     if(typeof toggleInvForm === 'function') toggleInvForm('');
-    if(typeof renderInventory === 'function') renderInventory();
+    if(typeof renderWMS === 'function') renderWMS();
 };
 
 document.getElementById("startCsvBtn").onclick = function() {
