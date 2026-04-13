@@ -134,6 +134,8 @@ function switchHub(sectionIds, title, btnElement) {
         const term = document.getElementById("posSearchBox") ? document.getElementById("posSearchBox").value : "";
         renderPOS(term);
     }
+    if(sectionIds.includes('stockTakeSection')) renderStockTake();
+    if(sectionIds.includes('packagingSection')) renderPackaging();
 }
 window.switchHub = switchHub;
 
@@ -392,13 +394,14 @@ function renderWMS() {
                     <strong>${p.name}</strong><br>
                     <small style="color:#888;">${p.parent_sku ? 'Variant: '+p.parent_sku : 'Main Product'}</small>
                 </td>
-                <td>
-                    <small>Dim: ${p.length_cm||0}x${p.width_cm||0}x${p.height_cm||0}cm</small><br>
-                    <small>Comm: ${p.commission_rate||0}%</small>
-                </td>
                 <td style="font-weight:bold; color:${totalStock <= 0 ? 'red' : 'green'};">
-                    ${totalStock} ${p.unit}<br>
+                    ${totalStock} ${p.unit||'Pcs'}<br>
                     <small style="font-weight:normal; color:#888;">${myBatches.length} batch(es)</small>
+                </td>
+                <td>
+                    <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
+                        📍 T${(p.sku.charCodeAt(2)||48)%3+1} / B${(p.sku.charCodeAt(3)||48)%6+1} / R${(p.sku.charCodeAt(4)||48)%10+1} / L${(p.sku.charCodeAt(4)||48)%4+1}
+                    </div>
                 </td>
                 <td>
                     <small>Cost: RM${parseFloat(p.cost_price||0).toFixed(2)}</small><br>
@@ -408,6 +411,59 @@ function renderWMS() {
         `;
     });
     tbody.innerHTML = htmlBuf3;
+}
+
+function renderStockTake() {
+    const tbody = document.getElementById("stockTakeTableBody");
+    if(!tbody) return;
+    
+    let html = "";
+    masterProducts.forEach(p => {
+        const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
+        const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+        const locText = "T" + ((p.sku.charCodeAt(2)||48)%3+1) + "/B" + ((p.sku.charCodeAt(3)||48)%6+1) + "/R" + ((p.sku.charCodeAt(4)||48)%10+1) + "/L" + ((p.sku.charCodeAt(4)||48)%4+1);
+        
+        html += `
+            <tr>
+                <td><strong>${p.sku}</strong><br><small>${p.name}</small></td>
+                <td><span style="background:#eee; padding:3px 6px; border-radius:4px; font-family:monospace;">${locText}</span></td>
+                <td style="text-align:center; font-weight:bold; font-size:16px;">${totalStock}</td>
+                <td style="text-align:center; background:#FFFBEB;">
+                    <input type="number" class="login-input" style="width:80px; text-align:center; margin:0;" placeholder="0">
+                </td>
+                <td><input type="text" class="login-input" style="margin:0;" placeholder="Catatan..."></td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+function renderPackaging() {
+    const container = document.getElementById("packagingCardsContainer");
+    if(!container) return;
+    
+    // Filter dummy or real orders that need packing (e.g., status pending/processing)
+    const toPack = salesHistory.filter(s => s.status && s.status.toLowerCase() !== 'completed' && s.status !== 'Refunded');
+    
+    if(toPack.length === 0) {
+        container.innerHTML = '<p style="color:#888;">Hebat! Tiada pesanan yang tertunggak untuk dibungkus hari ini.</p>';
+        return;
+    }
+    
+    container.innerHTML = toPack.map(s => `
+        <div class="dash-card" style="border-left:5px solid #F37021;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <strong>Order: ${s.id || '#INV_XXX'}</strong>
+                <span style="font-size:12px; color:#F37021; font-weight:bold;">To Pack</span>
+            </div>
+            <p style="font-size:13px; margin-bottom:5px;"><strong>Customer:</strong> ${s.customer_name}</p>
+            <p style="font-size:13px; color:#888; margin-bottom:10px;"><strong>Channel:</strong> ${s.channel}</p>
+            <div style="background:#f9f9f9; padding:8px; border-radius:4px; font-size:12px; margin-bottom:15px; border:1px solid #eee;">
+                ${(s.items || []).map(i => `• ${i.quantity}x ${i.name}`).join('<br>')}
+            </div>
+            <button class="btn-primary" style="width:100%; font-size:12px;" onclick="alert('Consignment Note sedang dijana untuk ${s.customer_name}!')">Print AWB & Selesai</button>
+        </div>
+    `).join('');
 }
 
 document.getElementById("saveMasterBtn").onclick = async function() {
