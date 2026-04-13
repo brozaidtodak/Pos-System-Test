@@ -59,6 +59,11 @@ let hrSettings = {
     normalBreak: "2:00 PM - 3:00 PM"
 };
 
+let moyySettings = {
+    target: 10000,
+    commRate: 5
+};
+
 let staffProfiles = [
     { name: "Aliff", leave_balance: 14 },
     { name: "Farhan Moyy", leave_balance: 14 },
@@ -93,11 +98,11 @@ let inventoryBatches = [
 ];
 
 let salesHistory = [
-    { id: 101, created_at: new Date(Date.now() - 86400000*2).toISOString(), customer_name: 'Ahmad Faiz (dummy)', payment_method: 'Online Transfer', channel: 'Website', status: 'Completed', total: 1799.00, items: [{sku: 'BD001', name: 'Tunnel tent (dummy)', quantity: 1, price: 1799.0}] },
-    { id: 102, created_at: new Date(Date.now() - 86400000*1).toISOString(), customer_name: 'Siti Sarah (dummy)', payment_method: 'Card', channel: 'In-Store', status: 'Completed', total: 454.00, items: [{sku: 'BD002', name: 'Hexagon tarp PU (dummy)', quantity: 2, price: 227.0}] },
-    { id: 103, created_at: new Date(Date.now() - 3600000*5).toISOString(), customer_name: 'Kevin (dummy)', payment_method: 'E-Wallet', channel: 'TikTok', status: 'To Fulfil', total: 95.00, items: [{sku: 'BD005', name: 'Ultrasonic picnic mat (dummy)', quantity: 1, price: 95.0}] },
-    { id: 104, created_at: new Date(Date.now() - 3600000*2).toISOString(), customer_name: 'Muthu (dummy)', payment_method: 'Cash', channel: 'In-Store', status: 'Completed', total: 211.00, items: [{sku: 'BD008', name: 'Camping cart (dummy)', quantity: 1, price: 211.0}] },
-    { id: 105, created_at: new Date().toISOString(), customer_name: 'Siti Sarah (dummy)', payment_method: 'Card', channel: 'Website', status: 'Processing', total: 186.00, items: [{sku: 'BD006', name: 'Atmosphere Lamp (dummy)', quantity: 2, price: 93.0}] }
+    { id: 101, created_at: new Date(Date.now() - 86400000*2).toISOString(), customer_name: 'Ahmad Faiz (dummy)', payment_method: 'Online Transfer', channel: 'Tiktok', status: 'Completed', staff_name: 'Ariff', total_amount: 1799.00, items: [{sku: 'BD001', name: 'Tunnel tent', quantity: 1, price: 1799.0}] },
+    { id: 102, created_at: new Date(Date.now() - 86400000*1).toISOString(), customer_name: 'Siti Sarah (dummy)', payment_method: 'Card', channel: 'In-Store', status: 'Completed', staff_name: 'Irfan', total_amount: 454.00, items: [{sku: 'BD002', name: 'Hexagon tarp PU', quantity: 2, price: 227.0}] },
+    { id: 103, created_at: new Date(Date.now() - 3600000*5).toISOString(), customer_name: 'Kevin (dummy)', payment_method: 'E-Wallet', channel: 'Shopee', status: 'To Fulfil', staff_name: 'Ariff', total_amount: 4325.00, items: [{sku: 'BD123', name: 'Blackdog Cabin Tent', quantity: 1, price: 4325.0}] },
+    { id: 104, created_at: new Date(Date.now() - 3600000*2).toISOString(), customer_name: 'Muthu (B2B)', payment_method: 'Invoice', channel: 'In-Store', status: 'Unpaid', staff_name: 'Irfan', total_amount: 8520.00, customer_phone: '012-99998888', items: [{sku: 'WHB', name: 'Bulk Camp Chairs', quantity: 20, price: 426.0}] },
+    { id: 105, created_at: new Date().toISOString(), customer_name: 'Rozita (dummy)', payment_method: 'Card', channel: 'Website', status: 'Processing', staff_name: 'Ariff', total_amount: 186.00, items: [{sku: 'BD006', name: 'Atmosphere Lamp', quantity: 2, price: 93.0}] }
 ];
 
 let customersData = [
@@ -1632,27 +1637,97 @@ function renderMgmtPlaceholders() {
     document.getElementById("memoInputText").value = globalMemo.text;
 }
 
+window.updateMoyySettings = function() {
+    moyySettings.target = parseFloat(document.getElementById("moyyTargetInput").value) || 10000;
+    moyySettings.commRate = parseFloat(document.getElementById("moyyCommInput").value) || 5;
+    alert(`Sasaran Jualan dikemaskini: RM ${moyySettings.target} | Komisen: ${moyySettings.commRate}%`);
+    renderSalesMgmtTarget();
+};
+
 function renderSalesMgmtTarget() {
-    // Tally Ariff and Irfan performance
+    // 1. Tally Ariff and Irfan performance
     let ariffTotal = 0;
     let irfanTotal = 0;
     
+    // Tally Omnichannel
+    let channels = { 'In-Store': 0, 'Tiktok': 0, 'Shopee': 0, 'Website': 0, 'Lain-Lain': 0 };
+    let totalSalesSystem = 0;
+    let totalTransactions = salesHistory.length;
+
     salesHistory.forEach(sale => {
-        if(sale.staff_name === 'Ariff') ariffTotal += parseFloat(sale.total_amount || 0);
-        if(sale.staff_name === 'Irfan') irfanTotal += parseFloat(sale.total_amount || 0);
+        let amt = parseFloat(sale.total_amount || sale.total || 0);
+        
+        if(sale.staff_name === 'Ariff') ariffTotal += amt;
+        if(sale.staff_name === 'Irfan') irfanTotal += amt;
+        
+        // Taburan Omnichannel
+        let ch = sale.channel || 'Lain-Lain';
+        if(!channels[ch]) channels[ch] = 0;
+        channels[ch] += amt;
+        totalSalesSystem += amt;
     });
     
+    // 2. Render Target & Commission
     const domAriff = document.getElementById("tgtAriffSales");
     const domIrfan = document.getElementById("tgtIrfanSales");
     const commAriff = document.getElementById("tgtAriffComm");
     const commIrfan = document.getElementById("tgtIrfanComm");
+    const subtitle = document.getElementById("moyyTargetSubtitle");
     
-    if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((ariffTotal/10000)*100, 100)}%;background:var(--primary);height:100%;border-radius:5px;"></div></div>`;
-    if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((irfanTotal/10000)*100, 100)}%;background:var(--secondary);height:100%;border-radius:5px;"></div></div>`;
+    if(subtitle) subtitle.textContent = `Pantauan prestasi jualan Ariff & Irfan berbanding target bulanan (RM ${moyySettings.target.toLocaleString()}).`;
     
-    // Assumption: 5% flat commission. We can upgrade this logic later based on BD rules.
-    if(commAriff) commAriff.textContent = `RM ${(ariffTotal * 0.05).toFixed(2)}`;
-    if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * 0.05).toFixed(2)}`;
+    let ariffPct = Math.min((ariffTotal / (moyySettings.target || 1)) * 100, 100);
+    let irfanPct = Math.min((irfanTotal / (moyySettings.target || 1)) * 100, 100);
+    
+    if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${ariffPct}%;background:var(--primary);height:100%;border-radius:5px;"></div></div>`;
+    if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${irfanPct}%;background:#10B981;height:100%;border-radius:5px;"></div></div>`;
+    
+    if(commAriff) commAriff.textContent = `RM ${(ariffTotal * (moyySettings.commRate / 100)).toFixed(2)}`;
+    if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * (moyySettings.commRate / 100)).toFixed(2)}`;
+
+    // 3. Render Omnichannel Dist
+    const tbodyOmni = document.getElementById("salesChannelTbody");
+    if(tbodyOmni) {
+        let omniHtml = "";
+        for (let ch in channels) {
+            if(channels[ch] > 0 || ch === 'In-Store' || ch === 'Tiktok') {
+                let pct = totalSalesSystem > 0 ? ((channels[ch] / totalSalesSystem) * 100).toFixed(1) : 0;
+                let count = salesHistory.filter(s => (s.channel || 'Lain-Lain') === ch).length;
+                omniHtml += `<tr>
+                    <td><strong>${ch}</strong></td>
+                    <td>${count} resit</td>
+                    <td>RM ${channels[ch].toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    <td>${pct}%</td>
+                </tr>`;
+            }
+        }
+        tbodyOmni.innerHTML = omniHtml;
+    }
+
+    // 4. Render Pending / Unpaid Invoices (Follow up Tracker)
+    const tbodyPending = document.getElementById("salesMgmtPendingTbody");
+    if(tbodyPending) {
+        let pendingRecords = salesHistory.filter(s => s.status === 'Unpaid' || s.status === 'To Fulfil');
+        if(pendingRecords.length === 0) {
+            tbodyPending.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#10B981; font-weight:bold;">✨ Hebat! Tiada sebarang hutang atau invois tergantung.</td></tr>`;
+        } else {
+            let phtml = "";
+            pendingRecords.forEach(p => {
+                let amt = parseFloat(p.total_amount || p.total || 0).toFixed(2);
+                let phone = p.customer_phone || "Tiada";
+                let btn = `<button onclick="window.open('https://wa.me/6${phone.replace(/[^0-9]/g, '')}', '_blank')" style="background:#25D366; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;" ${phone === 'Tiada' ? 'disabled' : ''}>WhatsApp</button>`;
+                phtml += `<tr>
+                    <td>#${p.id} <br><span style="font-size:9px; background:#fecaca; color:#7f1d1d; padding:2px 4px; border-radius:3px;">${p.status}</span></td>
+                    <td style="font-weight:bold;">${p.customer_name || 'Pelanggan'}</td>
+                    <td>${phone}</td>
+                    <td style="color:#b91c1c; font-weight:bold;">RM ${amt}</td>
+                    <td>${p.staff_name || '-'}</td>
+                    <td>${btn}</td>
+                </tr>`;
+            });
+            tbodyPending.innerHTML = phtml;
+        }
+    }
 }
 
 // Staff Scheduling & HR Logic
