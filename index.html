@@ -158,9 +158,20 @@
             <div class="menu-item active" data-tab="overview" onclick="switchHub(['posSection'], 'Overview', this)">
                 📱 Overview
             </div>
-            <div class="menu-item" data-tab="sales_dept" onclick="switchHub(['ordersSection', 'customersSection', 'promotionsSection'], 'Sales Department', this)">
+            <!-- SALES DEPARTMENT HUB & SUB-MENUS -->
+            <div class="menu-item" style="cursor:default; background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
                 🛒 Sales Department
             </div>
+            <div class="menu-item" style="padding-left:35px; font-size:13px;" data-tab="sales_cashier" onclick="switchHub(['posSection', 'ordersSection', 'customersSection', 'promotionsSection'], 'Cashier Mode', this)">
+                Page 1: Cashier Mode
+            </div>
+            <div class="menu-item" style="padding-left:35px; font-size:13px;" data-tab="sales_commission" onclick="switchHub(['commissionSection'], 'Personal Sales & Commission', this)">
+                Page 2: Commission Tracker
+            </div>
+            <div class="menu-item" style="padding-left:35px; font-size:13px;" data-tab="sales_invoice" onclick="switchHub(['invoiceSection'], 'Invoice & Quotation', this)">
+                Page 3: Create Invoice/Quotation
+            </div>
+            <!-- END SALES DEPT -->
             <div class="menu-item admin-only" data-tab="inventory_dept" onclick="switchHub(['ordersSection', 'inventorySection'], 'Inventory Department', this)">
                 📦 Inventory Department
             </div>
@@ -570,6 +581,69 @@
 
         <!-- ============================================== -->
         <!-- SECTION: SETTINGS                              -->
+
+        <!-- ============================================== -->
+        <!-- SECTION: COMMISSION TRACKER (SALES PAGE 2)     -->
+        <!-- ============================================== -->
+        <div id="commissionSection" class="tab-section" style="display: none;">
+            <div class="admin-card" style="padding:20px;">
+                <h2 style="margin-bottom:15px;">💰 Personal Sales & Commission Tracker</h2>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
+                        <h4 style="color:var(--text-muted); font-size:12px;">Total Jualan Anda (Bulan Ini)</h4>
+                        <p style="font-size:24px; font-weight:bold; color:var(--primary);">RM 12,450.00</p>
+                    </div>
+                    <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
+                        <h4 style="color:var(--text-muted); font-size:12px;">Anggaran Komisen (5%)</h4>
+                        <p style="font-size:24px; font-weight:bold; color:#10B981;">RM 622.50</p>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead><tr><th>Tarikh</th><th>ID Pesanan</th><th>Nilai Jualan (RM)</th><th>Komisen (RM)</th></tr></thead>
+                        <tbody>
+                            <tr><td>13 Apr 2026</td><td>INV-10C-1092</td><td>1,799.00</td><td>89.95</td></tr>
+                            <tr><td>12 Apr 2026</td><td>INV-10C-5582</td><td>459.00</td><td>22.95</td></tr>
+                            <tr><td>10 Apr 2026</td><td>INV-10C-3112</td><td>211.00</td><td>10.55</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="text-align:center; color:#aaa; font-size:12px; margin-top:20px;">*Rekod komisen dummy untuk sesi prototyping.</p>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SECTION: INVOICE / QUOTATION (SALES PAGE 3)    -->
+        <!-- ============================================== -->
+        <div id="invoiceSection" class="tab-section" style="display: none;">
+            <div class="admin-card" style="padding:20px;">
+                <h2 style="margin-bottom:15px;">📝 Create Invoice / Quotation</h2>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Bina sebut harga rasmi atau Invois B2B secara manual.</p>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <div>
+                        <label class="small-lbl">Nama Syarikat / Pelanggan</label>
+                        <input type="text" class="login-input" placeholder="Contoh: Majlis Bandaraya...">
+                    </div>
+                    <div>
+                        <label class="small-lbl">Tarikh Invois</label>
+                        <input type="date" class="login-input">
+                    </div>
+                </div>
+                
+                <div style="border:1px dashed var(--border-color); padding:20px; border-radius:8px; text-align:center; margin-bottom:20px;">
+                    <div style="font-size:30px; margin-bottom:10px;">📄</div>
+                    <h4 style="margin-bottom:10px;">Select Items to Quote</h4>
+                    <p style="font-size:12px; color:#888;">Cari produk dari inventori dan masukkan ke senarai quotation.</p>
+                    <button class="btn-primary" style="margin-top:10px; opacity:0.5; cursor:not-allowed;">+ Tambah Barang</button>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn-primary" style="background:#fff; color:#333; border:1px solid #ccc;">Jana PDF Quotation</button>
+                    <button class="btn-primary">Jana PDF Invoice</button>
+                </div>
+            </div>
+        </div>
 
         <!-- ============================================== -->
         <!-- SECTION: MANAGEMENT PLACEHOLDERS               -->
