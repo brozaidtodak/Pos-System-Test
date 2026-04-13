@@ -44,8 +44,24 @@ let globalMemo = { active: false, text: "" };
 
 // Staff Scheduling Roster
 let staffSchedules = [
-    { id: 1, staff_name: "Tarmizi", date: "2026-04-14", shift: "Pagi" },
-    { id: 2, staff_name: "Irfan", date: "2026-04-14", shift: "Petang" }
+    { id: 1, staff_name: "Tarmizi", date: "2026-04-14", shift: "Syif 1", mc_name: "" },
+    { id: 2, staff_name: "Irfan", date: "2026-04-14", shift: "Syif 2", mc_name: "" }
+];
+
+let hrSettings = {
+    wedBreak: "Tiada Rehat (Non-Stop)",
+    friBreak: "1:00 PM - 3:00 PM (Solat)",
+    normalBreak: "2:00 PM - 3:00 PM"
+};
+
+let staffProfiles = [
+    { name: "Aliff", leave_balance: 14 },
+    { name: "Farhan Moyy", leave_balance: 14 },
+    { name: "Zack", leave_balance: 12 },
+    { name: "Ariff", leave_balance: 10 },
+    { name: "Irfan", leave_balance: 10 },
+    { name: "Tarmizi", leave_balance: 8 },
+    { name: "Fahmi", leave_balance: 8 }
 ];
 
 let inventoryBatches = [
@@ -128,9 +144,10 @@ function switchHub(sectionIds, title, btnElement) {
         const term = document.getElementById("posSearchBox") ? document.getElementById("posSearchBox").value : "";
         renderPOS(term);
     }
-    if(sectionIds.includes('stockTakeSection')) renderStockTake();
+    if(sectionIds.includes('stockTakeSection')) renderAuditCards();
     if(sectionIds.includes('packagingSection')) renderPackaging();
     if(sectionIds.includes('mgmtPlaceholders')) renderMgmtPlaceholders();
+    if(sectionIds.includes('rosterSection')) renderStaffSchedule();
 }
 window.switchHub = switchHub;
 
@@ -1580,70 +1597,139 @@ function renderSalesMgmtTarget() {
     if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * 0.05).toFixed(2)}`;
 }
 
-// Staff Scheduling Logic
+// Staff Scheduling & HR Logic
+window.toggleMcUpload = function(val) {
+    const box = document.getElementById("mcAttachmentBox");
+    if(box) box.style.display = (val === 'MC') ? 'block' : 'none';
+};
+
+window.saveHrSettings = function() {
+    hrSettings.friBreak = document.getElementById("setRestFri").value;
+    hrSettings.wedBreak = document.getElementById("setRestWed").value;
+    hrSettings.normalBreak = document.getElementById("setRestNor").value;
+    document.getElementById("hrSettingsModal").style.display='none';
+    alert("Ketetapan masa rehat mingguan berjaya diselaraskan.");
+    renderStaffSchedule();
+};
+
+function getBreakTimeString(dateStr) {
+    const d = new Date(dateStr);
+    const day = d.getDay(); // 0=Sun, 1=Mon, ..., 3=Wed, ..., 5=Fri, 6=Sat
+    if(day === 5) return hrSettings.friBreak;
+    if(day === 3) return hrSettings.wedBreak;
+    return hrSettings.normalBreak;
+}
+
 document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
     const name = document.getElementById("scheduleStaffName").value;
     const date = document.getElementById("scheduleDate").value;
     const shift = document.getElementById("scheduleShift").value;
+    const fileInput = document.getElementById("scheduleMcFile");
 
     if(!name || !date || !shift) {
         alert("Sila lengkapkan nama, tarikh, dan syif.");
         return;
     }
 
-    // Check for duplicate date assignment for same user
     const existing = staffSchedules.find(s => s.staff_name === name && s.date === date);
     if(existing) {
-        alert(`Jadual bagi ${name} pada tarikh ${date} sudah ditetapkan sebagai Syif ${existing.shift}.`);
+        alert(`Ralat: Jadual bagi ${name} pada tarikh ${date} telah wujud sebagai ${existing.shift}. Sila padam rekod lama dahulu.`);
         return;
+    }
+
+    // Deduct AL process
+    if(shift === 'Cuti') {
+        let profile = staffProfiles.find(p => p.name === name);
+        if(profile && profile.leave_balance <= 0) {
+            if(!confirm(`Baki cuti (AL) ${name} telah habis! Teruskan potong baki negatif?`)) return;
+        }
+        if(profile) profile.leave_balance -= 1;
+    }
+
+    // MC logic
+    let mcNameStr = "";
+    if(shift === 'MC' && fileInput && fileInput.files.length > 0) {
+        mcNameStr = fileInput.files[0].name;
+    } else if (shift === 'MC') {
+        mcNameStr = "Tiada Dokumen / Sijil";
     }
 
     staffSchedules.push({
         id: Date.now(),
         staff_name: name,
         date: date,
-        shift: shift
+        shift: shift,
+        mc_name: mcNameStr
     });
     
-    alert("Jadual berjaya ditetapkan!");
+    alert("Jadual & Kehadiran berjaya ditetapkan!");
     document.getElementById("scheduleDate").value = '';
+    if(fileInput) fileInput.value = '';
     renderStaffSchedule();
 });
 
-function renderStaffSchedule() {
-    const tbody = document.getElementById("scheduleTbody");
-    if(!tbody) return;
+window.renderStaffSchedule = function() {
+    const tbodyAdmin = document.getElementById("scheduleTbody");
+    const tbodyPublic = document.getElementById("publicRosterTbody");
+    
+    if(!tbodyAdmin && !tbodyPublic) return;
+
+    // Refresh Leave Balance panel
+    const leaveTbody = document.getElementById("leaveBalanceTbody");
+    if(leaveTbody) {
+        leaveTbody.innerHTML = staffProfiles.map(p => {
+            let color = p.leave_balance > 3 ? "var(--text-main)" : "var(--danger)";
+            return `<tr><td><b>${p.name}</b></td><td style="color:${color}; font-weight:bold;">${p.leave_balance} Hari</td></tr>`;
+        }).join("");
+    }
 
     if(staffSchedules.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tiada jadual ditetapkan.</td></tr>';
+        let emp = '<tr><td colspan="6" style="text-align:center;">Tiada jadual direkodkan.</td></tr>';
+        if(tbodyAdmin) tbodyAdmin.innerHTML = emp;
+        if(tbodyPublic) tbodyPublic.innerHTML = emp;
         return;
     }
 
-    // Sort by date (nearest first)
+    // Sort ascending
     const sorted = [...staffSchedules].sort((a,b) => new Date(a.date) - new Date(b.date));
 
-    tbody.innerHTML = sorted.map(s => {
-        let badgeColor = "var(--primary)"; // default Sunset Bronze
-        if(s.shift === 'Pagi') badgeColor = "#3B82F6"; // Blue
-        if(s.shift === 'Cuti') badgeColor = "var(--danger)"; // Red
+    // Common rows generator
+    const generateRows = (isAdmin) => sorted.map(s => {
+        let badgeColor = "var(--primary)";
+        if(s.shift === 'Syif 1') badgeColor = "#3B82F6";
+        else if(s.shift === 'Syif 2') badgeColor = "#F37021";
+        else if(s.shift === 'Cuti') badgeColor = "var(--danger)";
+        else if(s.shift === 'MC') badgeColor = "#9333EA"; // Purple for MC
+        
+        // Date parsing to get local Day name (Isnin, Selasa)
+        const dateObj = new Date(s.date);
+        const hariArr = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
+        const hari = hariArr[dateObj.getDay()];
+        const displayDate = `${s.date} <br><small>(${hari})</small>`;
+        
+        let breakInfo = (s.shift === 'Syif 1' || s.shift === 'Syif 2') ? getBreakTimeString(s.date) : "N/A - Rehat Seharian";
+        let mcInfo = s.shift === 'MC' ? `<span style="font-size:10px; color:#9333EA; font-weight:bold;">📎 ${s.mc_name}</span>` : "-";
+
+        let actionBtn = isAdmin ? `<button onclick="deleteSchedule(${s.id})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold; font-size:16px;">&times;</button>` : "-";
 
         return `
         <tr>
-            <td>${s.date}</td>
+            <td>${displayDate}</td>
             <td><strong>${s.staff_name}</strong></td>
-            <td>
-                <span style="background:${badgeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:bold;">${s.shift}</span>
-            </td>
-            <td>
-                <button onclick="deleteSchedule(${s.id})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold; font-size:16px;">&times;</button>
-            </td>
+            <td><span style="background:${badgeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:bold;">${s.shift}</span></td>
+            <td style="color:#666;">${breakInfo}</td>
+            <td>${mcInfo}</td>
+            <td style="text-align:center;">${actionBtn}</td>
         </tr>
         `;
     }).join("");
+
+    if(tbodyAdmin) tbodyAdmin.innerHTML = generateRows(true);
+    if(tbodyPublic) tbodyPublic.innerHTML = generateRows(false);
 }
 
 window.deleteSchedule = function(id) {
-    if(!confirm("Buang jadual ini?")) return;
+    if(!confirm("Anda pasti mahu membuang fail jadual ini? (Nota: Jika anda hapuskan rekod Cuti AL, kuota Leave Balance TIDAK akan bertambah secara automatik, sila rekod manual di sistem luar atau cipta kuota baru kelak).")) return;
     staffSchedules = staffSchedules.filter(s => s.id !== id);
     renderStaffSchedule();
 };

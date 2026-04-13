@@ -189,6 +189,9 @@
             <div class="menu-item mgmt-only" data-tab="management_mode" onclick="switchHub(['mgmtPlaceholders'], 'Management Mode', this)">
                 Management Mode
             </div>
+            <div class="menu-item" data-tab="roster_mode" onclick="switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', this)">
+                Jadual Operasi 10 CAMP
+            </div>
 
             <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
             <a href="https://www.10camp.com/" target="_blank" style="text-decoration:none;">
@@ -208,6 +211,26 @@
     <!-- 3. MAIN DASHBOARD AREA -->
     <div class="app-container">
         
+        <!-- ============================================== -->
+        <!-- PUBLIC ROSTER SECTION -->
+        <!-- ============================================== -->
+        <div id="rosterSection" class="tab-section" style="display:none;">
+            <div class="admin-card" style="padding:20px; border-top:4px solid var(--primary);">
+                <h2 style="margin-bottom:15px; color:var(--primary);">📅 Jadual Syif Bulanan Staf</h2>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Rujukan jadual waktu bekerja untuk semua kakitangan. Sila rujuk Aliff (HR Pentadbiran) untuk sebarang pindaan jadual.</p>
+                <div class="table-responsive" style="max-height:600px; overflow-y:auto; border:1px solid var(--border-color);">
+                    <table class="data-table" style="font-size:13px; width:100%;">
+                        <thead style="position:sticky; top:0; background:var(--secondary); color:#fff;">
+                            <tr><th>Tarikh (Hari)</th><th>Nama Pekerja</th><th>Ketentuan Syif</th><th>Berkerja</th><th>Waktu Rehat</th><th>Status Lampiran</th></tr>
+                        </thead>
+                        <tbody id="publicRosterTbody">
+                            <tr><td colspan="6" style="text-align:center;">Memuat turun kalendar...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- ============================================== -->
         <!-- SECTION: HOMEPAGE (DASHBOARD OMNICHANNEL)      -->
         <!-- ============================================== -->
@@ -792,51 +815,94 @@
                     </div>
                 </div>
 
-                <!-- 5. Staff Schedule / Rostering -->
+                <!-- 5. Staff Schedule / Rostering & HR -->
                 <div class="admin-card" style="border-top:4px solid var(--primary); margin-top:20px;">
-                    <h3>🗓️ Jadual Syif Pekerja (Staff Duty Roster)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Penyelarasan syif operasi (Pagi / Petang / Cuti) untuk kelancaran logistik & jualan kedai.</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>🗓️ Pengurusan Cuti & Jadual Roster (HR)</h3>
+                        <button onclick="document.getElementById('hrSettingsModal').style.display='flex'" class="btn-secondary" style="font-size:10px; padding:4px 8px; margin:0;">⚙️ Tetapan Masa</button>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-bottom:15px; margin-top:5px;">Penyelarasan syif operasi (11pg-8mlm / 2ptg-8mlm), Cuti Berbayar, dan MC berserta Sijil Sokongan.</p>
                     
                     <!-- Roster Assignment Form -->
-                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center; background:#FFF; border:1px solid var(--border-color); padding:10px; border-radius:6px;">
-                        <div style="flex:1;">
+                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:flex-end; background:#FFF; border:1px solid var(--border-color); padding:10px; border-radius:6px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:150px;">
                             <label class="small-lbl">Nama Pekerja</label>
                             <select id="scheduleStaffName" class="login-input" style="margin:0;">
+                                <option value="Aliff">Aliff</option>
+                                <option value="Farhan Moyy">Farhan Moyy</option>
+                                <option value="Zack">Zack</option>
                                 <option value="Irfan">Irfan</option>
                                 <option value="Ariff">Ariff</option>
                                 <option value="Tarmizi">Tarmizi</option>
                                 <option value="Fahmi">Fahmi</option>
-                                <option value="Farhan Moyy">Farhan Moyy</option>
-                                <option value="Zack">Zack</option>
                             </select>
                         </div>
-                        <div style="flex:1;">
-                            <label class="small-lbl">Tarikh</label>
+                        <div style="flex:1; min-width:130px;">
+                            <label class="small-lbl">Tarikh Bertugas</label>
                             <input type="date" id="scheduleDate" class="login-input" style="margin:0;">
                         </div>
-                        <div style="flex:1;">
-                            <label class="small-lbl">Jenis Syif</label>
-                            <select id="scheduleShift" class="login-input" style="margin:0;">
-                                <option value="Pagi">☀️ Syif Pagi (8am - 5pm)</option>
-                                <option value="Petang">🌙 Syif Petang (2pm - 11pm)</option>
-                                <option value="Cuti">🏠 Cuti Rehat (Off-Day)</option>
+                        <div style="flex:1; min-width:180px;">
+                            <label class="small-lbl">Ketentuan Syif / Cuti</label>
+                            <select id="scheduleShift" class="login-input" style="margin:0;" onchange="toggleMcUpload(this.value)">
+                                <option value="Syif 1">☀️ Syif 1 (11pagi - 8malam)</option>
+                                <option value="Syif 2">🌙 Syif 2 (2petang - 8malam)</option>
+                                <option value="Cuti">🏠 Cuti Tahunan (Deduct Balance)</option>
+                                <option value="MC">🩺 Cuti Sakit / MC</option>
                             </select>
                         </div>
-                        <div style="flex:0.5; padding-top:20px;">
-                            <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%;">Set & Simpan</button>
+                        <div id="mcAttachmentBox" style="flex:1; min-width:180px; display:none;">
+                            <label class="small-lbl">Sijil MC (Lampiran)</label>
+                            <input type="file" id="scheduleMcFile" class="login-input" style="margin:0; padding:10px;" accept="image/*,application/pdf">
+                        </div>
+                        <div style="flex:1; min-width:120px;">
+                            <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%; height:44px;">Set & Simpan</button>
                         </div>
                     </div>
 
-                    <!-- Weekly Roster Display -->
-                    <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
-                        <table class="data-table" style="font-size:12px; width:100%;">
-                            <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                <tr><th>Tarikh</th><th>Nama Pekerja</th><th>Ketetapan Syif</th><th>Tindakan</th></tr>
-                            </thead>
-                            <tbody id="scheduleTbody">
-                                <tr><td colspan="4" style="text-align:center;">Tiada jadual ditetapkan.</td></tr>
-                            </tbody>
-                        </table>
+                    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+                        <!-- Monthly Roster Display (Admin View) -->
+                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px; width:100%;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Tarikh</th><th>Nama Pekerja</th><th>Ketentuan Syif</th><th>Waktu Rehat</th><th>Lampiran</th><th>Padam</th></tr>
+                                </thead>
+                                <tbody id="scheduleTbody">
+                                    <tr><td colspan="6" style="text-align:center;">Tiada jadual bulan ini.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Leave Balance Board -->
+                        <div class="table-responsive" style="border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px; width:100%;">
+                                <thead style="background:var(--secondary); color:#fff;">
+                                    <tr><th>Staf</th><th>Leave Balance (AL)</th></tr>
+                                </thead>
+                                <tbody id="leaveBalanceTbody">
+                                    <tr><td colspan="2">Loading balances...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Setting Modal for Aliff -->
+                <div id="hrSettingsModal" class="login-overlay" style="display:none; z-index:3500;">
+                    <div class="login-box" style="text-align:left; max-width:400px;">
+                        <button onclick="document.getElementById('hrSettingsModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+                        <h3 style="margin-bottom:15px; color:var(--primary);">⚙️ Tetapan Roster (Override)</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Tetapkan waku rehat rasmi mingguan.</p>
+                        
+                        <label class="small-lbl">Rehat (Jumaat Sahaja)</label>
+                        <input type="text" id="setRestFri" class="login-input" value="1:00 PM - 3:00 PM (Solat Jumaat)">
+                        
+                        <label class="small-lbl">Rehat (Rabu)</label>
+                        <input type="text" id="setRestWed" class="login-input" value="Tiada Rehat (Non-Stop)">
+                        
+                        <label class="small-lbl">Rehat (Hari Biasa: Isnin,Sel,Kha,Sab,Ahad)</label>
+                        <input type="text" id="setRestNor" class="login-input" value="2:00 PM - 3:00 PM">
+
+                        <button onclick="saveHrSettings()" class="btn-primary" style="width:100%;">Terapkan Tetapan</button>
                     </div>
                 </div>
             </div>
