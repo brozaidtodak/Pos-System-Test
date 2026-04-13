@@ -8329,17 +8329,14 @@ function renderPromotions() {
 // ===================================
 
 const authUsers = [
-    { name: 'Admin Bos', role: 'admin', pin: '8888' },
-    { name: 'Staff Aina', role: 'staff', pin: '1111' },
-    { name: 'Staff Badrul', role: 'staff', pin: '2222' },
-    { name: 'Staff Chong', role: 'staff', pin: '3333' },
-    { name: 'Staff Diana', role: 'staff', pin: '4444' },
-    { name: 'Staff Ewan', role: 'staff', pin: '5555' },
-    { name: 'Staff Farah', role: 'staff', pin: '6666' },
-    { name: 'Staff Gopi', role: 'staff', pin: '7777' },
-    { name: 'Staff Hafiz', role: 'staff', pin: '1010' },
-    { name: 'Staff Izzat', role: 'staff', pin: '2020' },
-    { name: 'Staff Jamil', role: 'staff', pin: '3030' }
+    { name: 'brozaidtodak', role: 'admin', pin: '1999', dept: 'Managing Director' },
+    { name: 'Aliff', role: 'admin', pin: '1111', dept: 'Administrative Department' },
+    { name: 'Farhan Moyy', role: 'admin', pin: '2222', dept: 'Business Development Department' },
+    { name: 'Zack', role: 'admin', pin: '3333', dept: 'System Manager Department' },
+    { name: 'Ariff', role: 'staff', pin: '4444', dept: 'Sales & Product Department' },
+    { name: 'Irfan', role: 'admin', pin: '5555', dept: 'Marketing Interim' },
+    { name: 'Tarmizi Kael', role: 'admin', pin: '6666', dept: 'Chief Inventory' },
+    { name: 'Fahmi', role: 'staff', pin: '7777', dept: 'Inventory Assistance' }
 ];
 
 let currentUser = null;
