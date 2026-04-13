@@ -1442,8 +1442,8 @@ function renderSalesMgmtTarget() {
     const commAriff = document.getElementById("tgtAriffComm");
     const commIrfan = document.getElementById("tgtIrfanComm");
     
-    if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((ariffTotal/10000)*100, 100)}%;background:#3B82F6;height:100%;border-radius:5px;"></div></div>`;
-    if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((irfanTotal/10000)*100, 100)}%;background:#F59E0B;height:100%;border-radius:5px;"></div></div>`;
+    if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((ariffTotal/10000)*100, 100)}%;background:var(--primary);height:100%;border-radius:5px;"></div></div>`;
+    if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM 10,000 <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${Math.min((irfanTotal/10000)*100, 100)}%;background:var(--secondary);height:100%;border-radius:5px;"></div></div>`;
     
     // Assumption: 5% flat commission. We can upgrade this logic later based on BD rules.
     if(commAriff) commAriff.textContent = `RM ${(ariffTotal * 0.05).toFixed(2)}`;
@@ -1632,7 +1632,7 @@ function renderCustomerIssues() {
             <td>${c.desc}</td>
             <td>
                 ${c.status === 'OPEN' 
-                    ? `<button class="btn-success" style="padding:2px 8px; font-size:10px; background:#F59E0B;" onclick="resolveIssue(${c.id})">Mark Resolved</button>` 
+                    ? `<button class="btn-success" style="padding:2px 8px; font-size:10px; background:var(--secondary);" onclick="resolveIssue(${c.id})">Mark Resolved</button>` 
                     : `<span style="color:#10B981; font-weight:bold;">TUTUP ✓</span>`}
             </td>
         </tr>
