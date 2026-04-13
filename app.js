@@ -44,6 +44,10 @@ let globalMemo = { active: false, text: "" };
 
 // Staff Scheduling Roster
 let staffSchedules = [
+    {id: 1, staff_name: "Aliff", date: "2026-04-03", shift: "A", mc_name: ""},
+    {id: 2, staff_name: "Ariff", date: "2026-04-03", shift: "B", mc_name: ""}
+];
+let pendingSchedules = []; // Holds requests from ordinary staffs
     { id: 1, staff_name: "Tarmizi", date: "2026-04-14", shift: "Syif 1", mc_name: "" },
     { id: 2, staff_name: "Irfan", date: "2026-04-14", shift: "Syif 2", mc_name: "" }
 ];
@@ -1724,6 +1728,50 @@ document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
     renderStaffSchedule();
 });
 
+// Listener untuk butang Pemohonan Umum (Ordinary Staff Request)
+document.getElementById("reqScheduleBtn")?.addEventListener('click', () => {
+    // Ordinary staff requests (We rely on them choosing their correct auth, but for demo they select Name)
+    // Normally we use currentUser.name if auth is strictly enforced.
+    let name = currentUser ? currentUser.name : "Tarmizi"; // fallback if anon
+    // If it's superior/admin testing the form: allow them to choose, but since there's no dropdown in public form, 
+    // wait, we didn't put a Name dropdown in the public form because we wanted auto-identity. 
+    // Let's modify index.html to add Name Dropdown in Public form just for testing seamlessly, 
+    // OR we just use `currentUser.name`. Oh wait! The user didn't see a dropdown. So currentUser.name!
+    if (!currentUser) {
+        alert("Sila Log Masuk (Login) terlebih dahulu untuk membuat permohonan.");
+        return;
+    }
+    name = currentUser.name;
+
+    const dateStrInput = document.getElementById("reqScheduleDate").value;
+    const shift = document.getElementById("reqScheduleShift").value;
+    const fileInput = document.getElementById("reqMcFile");
+
+    if(!dateStrInput || !shift) {
+        alert("Sila lengkapkan tarikh dan pilihan syif/cuti.");
+        return;
+    }
+
+    let mcNameStr = "";
+    if(shift === 'MC' && fileInput && fileInput.files.length > 0) {
+        mcNameStr = fileInput.files[0].name;
+    } else if (shift === 'MC') {
+        mcNameStr = "Tiada Sijil";
+    }
+
+    pendingSchedules.push({
+        id: Date.now(),
+        staff_name: name,
+        date: dateStrInput,
+        shift: shift,
+        mc_name: mcNameStr
+    });
+    
+    alert(`Permohonan ${shift} pada ${dateStrInput} dihantar! Sila tunggu kelulusan bos.`);
+    document.getElementById("reqScheduleDate").value = '';
+    renderPendingSchedules();
+});
+
 window.renderStaffSchedule = function() {
     const theadAdmin = document.getElementById("adminRosterThead");
     const tbodyAdmin = document.getElementById("scheduleTbody");
@@ -1814,6 +1862,91 @@ window.deleteSchedulePrompt = function(id) {
     if(!confirm("Buang jadual ini? (Jika ia adalah AL, baki TIDAK dipulangkan secara automatik dalam fungsi padam ini. Rujuk admin.)")) return;
     staffSchedules = staffSchedules.filter(s => s.id !== id);
     renderStaffSchedule();
+};
+
+window.renderPendingSchedules = function() {
+    const tbody = document.getElementById("pendingRequestsTbody");
+    if(!tbody) return;
+
+    if(pendingSchedules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:10px;">Tiada permohonan terkini.</td></tr>';
+        return;
+    }
+
+    let html = "";
+    pendingSchedules.forEach(req => {
+        let badgeBg = "#eee"; let col = "#333";
+        if(req.shift === 'OFF') { col = "red"; }
+        else if(req.shift === 'AL') { badgeBg = "#3b82f6"; col="white"; }
+        else if(req.shift === 'MC') { badgeBg = "#fbbf24"; }
+        else if(req.shift === 'EL') { badgeBg = "#ef4444"; col="white"; }
+
+        let attachStr = req.shift === 'MC' ? `📎 ${req.mc_name}` : "-";
+
+        html += `
+            <tr style="border-bottom:1px solid #fee2e2;">
+                <td style="font-weight:bold;">${req.staff_name}</td>
+                <td>${req.date}</td>
+                <td><span style="background:${badgeBg}; color:${col}; padding:3px 8px; border-radius:4px; font-weight:bold;">${req.shift}</span></td>
+                <td><small>${attachStr}</small></td>
+                <td>
+                    <button onclick="approveRequest(${req.id})" style="background:#10b981; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:5px;">Terima</button>
+                    <button onclick="rejectRequest(${req.id})" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Tolak</button>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+};
+
+window.approveRequest = function(id) {
+    let reqIndex = pendingSchedules.findIndex(r => r.id === id);
+    if(reqIndex === -1) return;
+    let req = pendingSchedules[reqIndex];
+
+    // Proses semakan Overwrite & Potong AL seperti admin biasa
+    const existingIndex = staffSchedules.findIndex(s => s.staff_name === req.staff_name && s.date === req.date);
+    if(existingIndex !== -1) {
+        if(staffSchedules[existingIndex].shift === 'AL') {
+             let profile = staffProfiles.find(p => p.name === req.staff_name);
+             if(profile) profile.leave_balance += 1;
+        }
+        staffSchedules.splice(existingIndex, 1);
+    }
+
+    if(req.shift === 'AL') {
+        let profile = staffProfiles.find(p => p.name === req.staff_name);
+        if(profile && profile.leave_balance <= 0) {
+            if(!confirm(`Baki AL pemohon habis! Teruskan meluluskan AL (baki jadi negatif)?`)) return;
+        }
+        if(profile) profile.leave_balance -= 1;
+    }
+
+    staffSchedules.push({
+        id: Date.now(),
+        staff_name: req.staff_name,
+        date: req.date,
+        shift: req.shift,
+        mc_name: req.mc_name
+    });
+
+    pendingSchedules.splice(reqIndex, 1); // Remove from pending
+    renderPendingSchedules();
+    renderStaffSchedule();
+    alert(`Permohonan ${req.staff_name} DILULUSKAN!`);
+};
+
+window.rejectRequest = function(id) {
+    if(!confirm("Tolak permohonan staf ini?")) return;
+    pendingSchedules = pendingSchedules.filter(r => r.id !== id);
+    renderPendingSchedules();
+};
+
+// Call renderPending in main switchHub
+const oldRenderStaffSchedule = renderStaffSchedule;
+renderStaffSchedule = function() {
+    oldRenderStaffSchedule();
+    renderPendingSchedules();
 };
 
 function renderWarehouseLowStock() {
