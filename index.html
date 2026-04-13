@@ -792,6 +792,54 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 5. Staff Schedule / Rostering -->
+                <div class="admin-card" style="border-top:4px solid var(--primary); margin-top:20px;">
+                    <h3>🗓️ Jadual Syif Pekerja (Staff Duty Roster)</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Penyelarasan syif operasi (Pagi / Petang / Cuti) untuk kelancaran logistik & jualan kedai.</p>
+                    
+                    <!-- Roster Assignment Form -->
+                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center; background:#FFF; border:1px solid var(--border-color); padding:10px; border-radius:6px;">
+                        <div style="flex:1;">
+                            <label class="small-lbl">Nama Pekerja</label>
+                            <select id="scheduleStaffName" class="login-input" style="margin:0;">
+                                <option value="Irfan">Irfan</option>
+                                <option value="Ariff">Ariff</option>
+                                <option value="Tarmizi">Tarmizi</option>
+                                <option value="Fahmi">Fahmi</option>
+                                <option value="Farhan Moyy">Farhan Moyy</option>
+                                <option value="Zack">Zack</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;">
+                            <label class="small-lbl">Tarikh</label>
+                            <input type="date" id="scheduleDate" class="login-input" style="margin:0;">
+                        </div>
+                        <div style="flex:1;">
+                            <label class="small-lbl">Jenis Syif</label>
+                            <select id="scheduleShift" class="login-input" style="margin:0;">
+                                <option value="Pagi">☀️ Syif Pagi (8am - 5pm)</option>
+                                <option value="Petang">🌙 Syif Petang (2pm - 11pm)</option>
+                                <option value="Cuti">🏠 Cuti Rehat (Off-Day)</option>
+                            </select>
+                        </div>
+                        <div style="flex:0.5; padding-top:20px;">
+                            <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%;">Set & Simpan</button>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Roster Display -->
+                    <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
+                        <table class="data-table" style="font-size:12px; width:100%;">
+                            <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                <tr><th>Tarikh</th><th>Nama Pekerja</th><th>Ketetapan Syif</th><th>Tindakan</th></tr>
+                            </thead>
+                            <tbody id="scheduleTbody">
+                                <tr><td colspan="4" style="text-align:center;">Tiada jadual ditetapkan.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             
             <!-- WAREHOUSE MANAGEMENT VIEW (Zack, Superior) -->

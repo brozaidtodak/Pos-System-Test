@@ -42,6 +42,12 @@ let pettyCashLedger = [];
 let customerIssues = [];
 let globalMemo = { active: false, text: "" };
 
+// Staff Scheduling Roster
+let staffSchedules = [
+    { id: 1, staff_name: "Tarmizi", date: "2026-04-14", shift: "Pagi" },
+    { id: 2, staff_name: "Irfan", date: "2026-04-14", shift: "Petang" }
+];
+
 let inventoryBatches = [
     { "id": 1, "sku": "BD001", "qty_remaining": 15, "inbound_date": "2025-01-01" },
     { "id": 2, "sku": "BD002", "qty_remaining": 20, "inbound_date": "2025-01-01" },
@@ -1410,6 +1416,11 @@ function renderMgmtPlaceholders() {
     renderMgmtStaffSales();
     renderCustomerIssues();
     
+    let isAliff = currentUser && currentUser.name === 'Aliff';
+    if (isAliff || isSuperior || (!isZack && !isMoyy)) {
+        renderStaffSchedule();
+    }
+    
     // Warehouse functions
     if (isZack || isSuperior) {
         renderWarehouseLowStock();
@@ -1449,6 +1460,74 @@ function renderSalesMgmtTarget() {
     if(commAriff) commAriff.textContent = `RM ${(ariffTotal * 0.05).toFixed(2)}`;
     if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * 0.05).toFixed(2)}`;
 }
+
+// Staff Scheduling Logic
+document.getElementById("saveScheduleBtn")?.addEventListener('click', () => {
+    const name = document.getElementById("scheduleStaffName").value;
+    const date = document.getElementById("scheduleDate").value;
+    const shift = document.getElementById("scheduleShift").value;
+
+    if(!name || !date || !shift) {
+        alert("Sila lengkapkan nama, tarikh, dan syif.");
+        return;
+    }
+
+    // Check for duplicate date assignment for same user
+    const existing = staffSchedules.find(s => s.staff_name === name && s.date === date);
+    if(existing) {
+        alert(`Jadual bagi ${name} pada tarikh ${date} sudah ditetapkan sebagai Syif ${existing.shift}.`);
+        return;
+    }
+
+    staffSchedules.push({
+        id: Date.now(),
+        staff_name: name,
+        date: date,
+        shift: shift
+    });
+    
+    alert("Jadual berjaya ditetapkan!");
+    document.getElementById("scheduleDate").value = '';
+    renderStaffSchedule();
+});
+
+function renderStaffSchedule() {
+    const tbody = document.getElementById("scheduleTbody");
+    if(!tbody) return;
+
+    if(staffSchedules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tiada jadual ditetapkan.</td></tr>';
+        return;
+    }
+
+    // Sort by date (nearest first)
+    const sorted = [...staffSchedules].sort((a,b) => new Date(a.date) - new Date(b.date));
+
+    tbody.innerHTML = sorted.map(s => {
+        let badgeColor = "var(--primary)"; // default Sunset Bronze
+        if(s.shift === 'Pagi') badgeColor = "#3B82F6"; // Blue
+        if(s.shift === 'Cuti') badgeColor = "var(--danger)"; // Red
+
+        return `
+        <tr>
+            <td>${s.date}</td>
+            <td><strong>${s.staff_name}</strong></td>
+            <td>
+                <span style="background:${badgeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:bold;">${s.shift}</span>
+            </td>
+            <td>
+                <button onclick="deleteSchedule(${s.id})" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold; font-size:16px;">&times;</button>
+            </td>
+        </tr>
+        `;
+    }).join("");
+}
+
+window.deleteSchedule = function(id) {
+    if(!confirm("Buang jadual ini?")) return;
+    staffSchedules = staffSchedules.filter(s => s.id !== id);
+    renderStaffSchedule();
+};
 
 function renderWarehouseLowStock() {
     const tbody = document.getElementById("whLowStockTbody");
