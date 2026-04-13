@@ -49,7 +49,9 @@ let staffSchedules = [
     {id: 3, staff_name: "Tarmizi", date: "2026-04-14", shift: "A", mc_name: "" },
     {id: 4, staff_name: "Irfan", date: "2026-04-14", shift: "B", mc_name: "" }
 ];
-let pendingSchedules = []; // Holds requests from ordinary staffs
+let pendingSchedules = [
+    { id: 9991, staff_name: "Zack (Ujian)", date: "2026-04-20", shift: "AL", mc_name: "" }
+]; // Holds requests from ordinary staffs
 
 let hrSettings = {
     wedBreak: "Tiada Rehat (Non-Stop)",
