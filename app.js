@@ -203,6 +203,24 @@ async function initApp() {
         let { data: pSched } = await db.from('pending_requests').select('*');
         if(pSched) pendingSchedules = pSched;
 
+        // Supabase Real-time Roster Broadcaster
+        db.channel('roster-sync-channel')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_schedules' }, async (payload) => {
+              let { data } = await db.from('roster_schedules').select('*');
+              if(data) {
+                  staffSchedules = data;
+                  if(typeof renderStaffSchedule === 'function') renderStaffSchedule();
+              }
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_requests' }, async (payload) => {
+              let { data } = await db.from('pending_requests').select('*');
+              if(data) {
+                  pendingSchedules = data;
+                  if(typeof renderPendingSchedules === 'function') renderPendingSchedules();
+              }
+          })
+          .subscribe();
+
         renderWMS();
         renderHistory();
         renderCustomers();
