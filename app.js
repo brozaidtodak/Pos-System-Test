@@ -386,7 +386,7 @@ function renderWMS() {
         htmlBuf3 += `
             <tr>
                 <td>
-                    <img src="${thumb}"><br>
+                    <img src="${thumb}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; background:#eee;"><br>
                     ${sBadge}
                 </td>
                 <td>
