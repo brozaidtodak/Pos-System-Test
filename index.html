@@ -27,6 +27,17 @@
         </div>
     </div>
 
+    <!-- 0.01 STAFF WELCOME POPUP -->
+    <div id="staffWelcomeModal" class="login-overlay" style="display:none; z-index:3500; animation: fadeIn 0.3s;">
+        <div class="login-box" style="transform: scale(0.9); animation: popIn 0.3s forwards;">
+            <div style="font-size:40px; margin-bottom:10px;">👋</div>
+            <h2 id="welcomeStaffName" style="font-weight:900; font-size:24px; margin-bottom:5px; color:var(--primary);">Selamat Datang</h2>
+            <p id="welcomeStaffDept" style="color:var(--text-muted); margin-bottom:20px; font-weight:bold; font-size:14px;">-</p>
+            <p style="font-size:12px; color:#888; margin-bottom:20px;">Sistem omni-channel sedang dimuatkan...</p>
+            <button onclick="document.getElementById('staffWelcomeModal').style.display='none'" class="login-btn" style="background:#10B981; margin-top:10px;">Teruskan</button>
+        </div>
+    </div>
+
     <!-- 0.0 CUSTOMER LOGIN OVERLAY -->
     <div id="customerLoginGate" class="login-overlay" style="display:none;">
         <div class="login-box">

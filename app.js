@@ -8386,6 +8386,16 @@ window.handleCustomerLogin = async function() {
     currentUserRole = user.role;
     
     document.getElementById("loginGate").style.display = "none";
+    
+    // Popup Greeting Staff
+    const modalName = document.getElementById("welcomeStaffName");
+    const modalDept = document.getElementById("welcomeStaffDept");
+    if(modalName) modalName.textContent = `Selamat Datang, ${user.name}!`;
+    if(modalDept) modalDept.textContent = `Jawatan: ${user.dept || 'Staff'}`;
+    
+    const welcomeModal = document.getElementById("staffWelcomeModal");
+    if(welcomeModal) welcomeModal.style.display = "flex";
+    
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
     document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + (user.role === 'admin' ? ' 👑' : '');
