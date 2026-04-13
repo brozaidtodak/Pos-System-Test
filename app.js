@@ -45,12 +45,11 @@ let globalMemo = { active: false, text: "" };
 // Staff Scheduling Roster
 let staffSchedules = [
     {id: 1, staff_name: "Aliff", date: "2026-04-03", shift: "A", mc_name: ""},
-    {id: 2, staff_name: "Ariff", date: "2026-04-03", shift: "B", mc_name: ""}
+    {id: 2, staff_name: "Ariff", date: "2026-04-03", shift: "B", mc_name: ""},
+    {id: 3, staff_name: "Tarmizi", date: "2026-04-14", shift: "A", mc_name: "" },
+    {id: 4, staff_name: "Irfan", date: "2026-04-14", shift: "B", mc_name: "" }
 ];
 let pendingSchedules = []; // Holds requests from ordinary staffs
-    { id: 1, staff_name: "Tarmizi", date: "2026-04-14", shift: "Syif 1", mc_name: "" },
-    { id: 2, staff_name: "Irfan", date: "2026-04-14", shift: "Syif 2", mc_name: "" }
-];
 
 let hrSettings = {
     wedBreak: "Tiada Rehat (Non-Stop)",
