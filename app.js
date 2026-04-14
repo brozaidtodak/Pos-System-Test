@@ -671,7 +671,6 @@ function renderPackaging() {
             <button class="btn-primary" style="width:100%; font-size:12px;" onclick="alert('Consignment Note sedang dijana untuk ${s.customer_name}!')">Print AWB & Selesai</button>
         </div>
     `).join('');
-    `).join('');
 }
 
 window.toggleVariantBuilder = function(isEnabled) {
