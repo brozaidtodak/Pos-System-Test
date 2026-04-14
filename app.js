@@ -191,12 +191,11 @@ window.toggleMobileCartSheet = function() {
 async function initApp() {
     try {
         console.log("Loading Cloud Omnichannel Data...");
-        // Temporarily Disabled to allow 600+ items dummy injection test
-        // let { data: master } = await db.from('products_master').select('*');
-        // if(master) masterProducts = master;
+        let { data: master } = await db.from('products_master').select('*');
+        if(master) masterProducts = master;
 
-        // let { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date', {ascending: true});
-        // if(batches) inventoryBatches = batches;
+        let { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date', {ascending: true});
+        if(batches) inventoryBatches = batches;
 
         // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
         renderPublicStorefront();
