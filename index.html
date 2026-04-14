@@ -11,6 +11,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -607,9 +608,12 @@
                     <option value="sales">Migrate Sales/Order History</option>
                 </select>
                 <div style="border:2px dashed #ccc; padding:20px; text-align:center; border-radius:10px;">
-                    <input type="file" id="csvFileInput" accept=".csv" style="margin-bottom:0;">
+                    <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls" style="margin-bottom:0;">
                 </div>
-                <button id="startCsvBtn" class="btn-success" style="background:#111827; margin-top:10px;">Process Robot Upload</button>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button id="startCsvBtn" class="btn-success" style="background:#111827; flex:1;">📥 Process Robot Upload</button>
+                    <button id="exportExcelBtn" class="btn-success" style="background:#10B981; flex:1;">📤 Export Products (.xlsx)</button>
+                </div>
                 <div id="csvResultLog"></div>
             </div>
 
