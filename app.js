@@ -698,7 +698,8 @@ window.addVariantRow = function() {
     tr.innerHTML = `
         <td style="text-align:center;">▶</td>
         <td><input type="text" class="login-input var-sku" style="margin:0; padding:5px; height:30px;" placeholder="Cth: BD-HITAM-L"></td>
-        <td><input type="text" class="login-input var-opt" style="margin:0; padding:5px; height:30px;" placeholder="Saiz L, Hitam"></td>
+        <td><input type="text" class="login-input var-size" style="margin:0; padding:5px; height:30px;" placeholder="Saiz (L)"></td>
+        <td><input type="text" class="login-input var-color" style="margin:0; padding:5px; height:30px;" placeholder="Warna (Hitam)"></td>
         <td><input type="number" class="login-input var-qty" style="margin:0; padding:5px; height:30px;" placeholder="0"></td>
         <td><input type="number" class="login-input var-price" style="margin:0; padding:5px; height:30px;" placeholder="(Ikut Induk)"></td>
         <td style="text-align:center;"><button onclick="document.getElementById('varRow-${rowId}').remove()" style="background:#EF4444; color:white; padding:5px 10px; margin:0; border:none; border-radius:3px; cursor:pointer;">X</button></td>
@@ -778,7 +779,8 @@ document.getElementById("saveMasterBtn").onclick = async function() {
         
         trs.forEach((tr, idx) => {
             let vSku = tr.querySelector('.var-sku').value.trim().toUpperCase();
-            let vOpt = tr.querySelector('.var-opt').value.trim();
+            let vSize = tr.querySelector('.var-size').value.trim();
+            let vColor = tr.querySelector('.var-color').value.trim();
             let vQty = parseInt(tr.querySelector('.var-qty').value || 0);
             let vPrice = tr.querySelector('.var-price').value;
             
@@ -786,9 +788,11 @@ document.getElementById("saveMasterBtn").onclick = async function() {
             
             let prod = { ...baseProd };
             prod.sku = vSku;
-            prod.name = vOpt ? `${name} - ${vOpt}` : name;
-            prod.variant_size = vOpt;
-            prod.variant_color = ""; // Merged into opt
+            
+            let combinedLabels = [vSize, vColor].filter(Boolean).join(" - ");
+            prod.name = combinedLabels ? `${name} - ${combinedLabels}` : name;
+            prod.variant_size = vSize;
+            prod.variant_color = vColor;
             if(vPrice && vPrice.trim() !== "") prod.price = parseFloat(vPrice);
             
             productsPayloads.push(prod);
