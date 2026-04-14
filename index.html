@@ -589,8 +589,12 @@
 
                         <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px; margin-top:5px;">
                             <div>
-                                <label class="small-lbl">Dimensi Kotak (P x L x T)</label>
-                                <input type="text" id="regDim" class="login-input" placeholder="12cm x 3cm x 2cm">
+                                <label class="small-lbl">Dimensi Kotak (cm)</label>
+                                <div style="display:flex; gap:5px;">
+                                    <input type="number" id="regLen" class="login-input" placeholder="L">
+                                    <input type="number" id="regWid" class="login-input" placeholder="W">
+                                    <input type="number" id="regHei" class="login-input" placeholder="H">
+                                </div>
                             </div>
                             <div>
                                 <label class="small-lbl">Berat (KG)</label>
@@ -604,7 +608,17 @@
                         <h4 style="margin-bottom:15px; color:var(--primary);">C. Klasifikasi & Media</h4>
                         
                         <label class="small-lbl">Sistem Koleksi (Collection Path)</label>
-                        <input type="text" id="regColl1" class="login-input" style="margin-bottom:5px;" placeholder="Main Category (Cth: Tents)">
+                        <select id="regColl1" class="login-input" style="margin-bottom:5px;">
+                            <option value="">-- Main Category --</option>
+                            <option value="Shelter">Shelter</option>
+                            <option value="Cookware">Cookware</option>
+                            <option value="Storage">Storage</option>
+                            <option value="Lighting">Lighting</option>
+                            <option value="Sleeping Gear">Sleeping Gear</option>
+                            <option value="Camping Furniture">Camping Furniture</option>
+                            <option value="Fan">Fan</option>
+                            <option value="Accessories">Accessories</option>
+                        </select>
                         <input type="text" id="regColl2" class="login-input" style="margin-bottom:5px;" placeholder="Sub Category (Cth: Tunnel Tent)">
                         <input type="text" id="regColl3" class="login-input" placeholder="2nd Sub Cat (Cth: Black Edition)">
 
@@ -626,7 +640,16 @@
                         <input type="text" id="regVendorCust" class="login-input" style="display:none;" placeholder="Tulis nama jenama...">
 
                         <label class="small-lbl" style="margin-top:10px;">Gambar Produk (Max: 20 Imej)</label>
-                        <input type="file" id="regImages" class="login-input" accept="image/png, image/jpeg, image/webp, image/avif, image/jfif" multiple>
+                        <div style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:5px; margin-bottom:10px;">
+                            <label style="font-size:11px; font-weight:bold;">1. Upload Image</label>
+                            <input type="file" id="regImages" class="login-input" style="margin-bottom:10px; font-size:11px; padding:2px;" accept="image/png, image/jpeg, image/webp, image/avif, image/jfif" multiple>
+                            
+                            <label style="font-size:11px; font-weight:bold;">2. Add with URL Image</label>
+                            <input type="text" id="regImageUrl" class="login-input" style="margin-bottom:10px; font-size:12px; padding:8px;" placeholder="https://contoh.com/gambar.jpg">
+                            
+                            <label style="font-size:11px; font-weight:bold;">3. Add with URL Video</label>
+                            <input type="text" id="regVideoUrl" class="login-input" style="margin-bottom:5px; font-size:12px; padding:8px;" placeholder="https://youtube.com/watch?v=...">
+                        </div>
                     </div>
 
                 </div>
@@ -1289,6 +1312,6 @@
     </div> <!-- End posAppLayout -->
 
     <!-- JS Core -->
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
 </body>
 </html>

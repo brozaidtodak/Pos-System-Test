@@ -724,7 +724,9 @@ document.getElementById("saveMasterBtn").onclick = async function() {
     const cost = document.getElementById("regCost")?.value || 0;
     const qty = parseInt(document.getElementById("regQty")?.value || 0);
     const loc = document.getElementById("regLocation")?.value || '';
-    const dim = document.getElementById("regDim")?.value || '';
+    const len_cm = parseFloat(document.getElementById("regLen")?.value || 0);
+    const wid_cm = parseFloat(document.getElementById("regWid")?.value || 0);
+    const hei_cm = parseFloat(document.getElementById("regHei")?.value || 0);
     const weight = document.getElementById("regWeight")?.value || 0;
     
     // 3. Tangkap C. Klasifikasi & Media
@@ -743,14 +745,22 @@ document.getElementById("saveMasterBtn").onclick = async function() {
     // Process Images Fast (Mock UI blob URLs instead of waiting for cloud)
     btn.textContent = "Menyusun Data..."; btn.disabled = true;
     let localImageUrls = [];
+    
+    // Check URL inputs first
+    const imgUrl = document.getElementById("regImageUrl")?.value.trim();
+    const vidUrl = document.getElementById("regVideoUrl")?.value.trim();
+    if(imgUrl) localImageUrls.push(imgUrl);
+    if(vidUrl) localImageUrls.push(vidUrl);
+
     const files = document.getElementById("regImages")?.files;
     if(files && files.length > 0) {
-        // limit to 20
         const len = Math.min(files.length, 20);
         for(let i=0; i<len; i++) {
             localImageUrls.push(URL.createObjectURL(files[i]));
         }
-    } else {
+    }
+    
+    if(localImageUrls.length === 0) {
         localImageUrls = ["https://via.placeholder.com/500?text=Barang+Baru"];
     }
 
@@ -769,7 +779,9 @@ document.getElementById("saveMasterBtn").onclick = async function() {
         model_no: model,
         erp_barcode: barcode,
         location_bin: loc,
-        dimensions: dim,
+        length_cm: len_cm,
+        width_cm: wid_cm,
+        height_cm: hei_cm,
         weight_kg: parseFloat(weight)
     };
 
