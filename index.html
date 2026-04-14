@@ -177,8 +177,8 @@
             <div class="menu-item inv-only" style="cursor:default; background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
                 Inventory Department
             </div>
-            <div class="menu-item inv-only" style="padding-left:35px; font-size:13px;" data-tab="inv_mapping" onclick="switchHub(['inventorySection'], 'Product Mapping', this)">
-                Product Mapping
+            <div class="menu-item inv-only" style="padding-left:35px; font-size:13px;" data-tab="inv_mapping" onclick="switchHub(['inventorySection'], 'Main Product', this)">
+                Main Product
             </div>
             <div class="menu-item inv-only" style="padding-left:35px; font-size:13px;" data-tab="inv_stocktake" onclick="switchHub(['stockTakeSection'], 'Stock Take Count', this)">
                 Stock Take Count
@@ -490,7 +490,6 @@
         <!-- ============================================== -->
         <div id="inventorySection" class="tab-section" style="display: none;">
             <div class="inventory-controls" style="display: flex; gap:10px; margin-bottom: 20px;">
-                <button onclick="toggleInvForm('inboundForm')" class="btn-primary">Truck Arrives (Inbound)</button>
                 <button onclick="toggleInvForm('newSkuForm')" class="btn-secondary">Register New SKU</button>
                 <button onclick="toggleInvForm('csvForm')" class="btn-dark">Excel/CSV Import</button>
             </div>
