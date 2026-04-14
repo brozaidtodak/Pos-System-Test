@@ -956,7 +956,7 @@ document.getElementById("exportExcelBtn").onclick = function() {
     XLSX.writeFile(workbook, `10CAMP_Inventory_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
     this.textContent = "📤 Export Products (.xlsx)";
 };
-\n
+
 document.getElementById("saveInboundBtn").onclick = async function() {
     const sku = document.getElementById("inboundSkuSelect").value;
     const qty = parseInt(document.getElementById("inboundQty").value);
