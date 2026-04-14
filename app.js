@@ -588,6 +588,11 @@ function renderStockTake() {
                         </div>
                     </div>
                     
+                    <div style="background:#e0f2fe; border:1px dashed #bae6fd; padding:10px; border-radius:6px; margin-bottom:10px; text-align:center;">
+                        <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;">📷 Tally Scan Fizikal (+1)</label>
+                        <input type="text" onkeyup="handleTallyScan(event, '${p.sku}', '${erpBarcode}')" class="login-input" style="width:100%; text-align:center; padding:6px; margin:0; border-color:#0ea5e9; font-size:12px;" placeholder="Tumpu di sini & scan barcode...">
+                    </div>
+
                     <input type="text" id="auditKomen-${p.sku}" class="login-input" style="margin:0; padding:8px; font-size:12px; margin-bottom:10px;" placeholder="Tulis catatan (Cth: 2 item rosak)...">
                     
                     <button onclick="submitAuditSingle('${p.sku}')" class="btn-primary" style="width:100%; margin:0; padding:10px;">SUBMIT KIRAAN ITEM</button>
@@ -643,6 +648,164 @@ window.submitAuditSingle = function(sku) {
     
     // Optional border color change to signify done
     fizDom.parentElement.parentElement.parentElement.style.background = "#F0FDF4";
+}
+
+window.handleTallyScan = function(e, correctSku, correctErp) {
+    if(e.key === 'Enter') {
+        let val = e.target.value.trim().toUpperCase();
+        e.target.value = ""; // Reset box for next scan
+        if(!val) return;
+        
+        if(val === correctSku.toUpperCase() || val === correctErp.toUpperCase()) {
+            let fizDom = document.getElementById("fizikalQty-"+correctSku);
+            let currentFiz = parseInt(fizDom.value) || 0;
+            fizDom.value = currentFiz + 1;
+            window.calculateVariance(correctSku);
+            
+            // Visual success feedback
+            fizDom.style.transition = "background-color 0.2s";
+            fizDom.style.backgroundColor = "#dcfce7";
+            setTimeout(() => fizDom.style.backgroundColor = "#fff", 300);
+        } else {
+            alert("Ralat: Barcode yang diimbas (" + val + ") TIDAK padan dengan produk ini!");
+        }
+    }
+}
+
+window.openBarcodeScannerModal = function() {
+    document.getElementById('barcodeScannerModal').style.display = 'flex';
+    document.getElementById('barcodeScanResult').style.display = 'none';
+    document.getElementById('btnSubmitBarcodeAudit').style.display = 'none';
+    const input = document.getElementById('barcodeScannerInput');
+    input.value = '';
+    setTimeout(() => input.focus(), 100);
+}
+
+window.handleMainAuditScan = function(e) {
+    if(e.key === 'Enter') {
+        const query = e.target.value.trim().toLowerCase();
+        e.target.value = ""; // Reset box for next scan
+        if(!query) return;
+        
+        const product = masterProducts.find(p => 
+            p.sku.toLowerCase() === query ||
+            (p.erp_barcode && p.erp_barcode.toLowerCase() === query) ||
+            p.name.toLowerCase() === query ||
+            (p.model_no && p.model_no.toLowerCase() === query)
+        );
+        
+        if(!product) {
+            alert("Ralat: Produk (" + query + ") tidak dijumpai dalam sistem!");
+            return;
+        }
+        
+        const myBatches = inventoryBatches.filter(b => b.sku === product.sku && b.qty_remaining > 0);
+        const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+        
+        document.getElementById('bcScanSku').textContent = product.sku;
+        document.getElementById('bcScanName').textContent = product.name;
+        document.getElementById('bcScanSysQty').textContent = totalStock;
+        document.getElementById('bcScanFizikalQty').value = "";
+        document.getElementById('bcScanVariance').textContent = "0";
+        document.getElementById('bcScanVariance').style.color = "var(--text-main)";
+        
+        document.getElementById('barcodeScannerModal').style.display = 'flex';
+        document.getElementById('barcodeScanResult').style.display = 'block';
+        document.getElementById('btnSubmitBarcodeAudit').style.display = 'block';
+        
+        // Let the DOM render the modal, then focus the physical quantity field
+        setTimeout(() => document.getElementById('bcScanFizikalQty').focus(), 100);
+    }
+}
+
+window.handleBarcodeScan = function(e) {
+    if(e.key === 'Enter') {
+        const query = e.target.value.trim().toLowerCase();
+        if(!query) return;
+        
+        const product = masterProducts.find(p => 
+            p.sku.toLowerCase() === query ||
+            (p.erp_barcode && p.erp_barcode.toLowerCase() === query) ||
+            p.name.toLowerCase() === query ||
+            (p.model_no && p.model_no.toLowerCase() === query)
+        );
+        
+        if(!product) {
+            alert("Produk tidak dijumpai dalam rekod!");
+            e.target.select();
+            return;
+        }
+        
+        const myBatches = inventoryBatches.filter(b => b.sku === product.sku && b.qty_remaining > 0);
+        const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+        
+        document.getElementById('bcScanSku').textContent = product.sku;
+        document.getElementById('bcScanName').textContent = product.name;
+        document.getElementById('bcScanSysQty').textContent = totalStock;
+        document.getElementById('bcScanFizikalQty').value = "";
+        document.getElementById('bcScanVariance').textContent = "0";
+        document.getElementById('bcScanVariance').style.color = "var(--text-main)";
+        
+        document.getElementById('barcodeScanResult').style.display = 'block';
+        document.getElementById('btnSubmitBarcodeAudit').style.display = 'block';
+        
+        document.getElementById('bcScanFizikalQty').focus();
+    }
+}
+
+window.calcBarcodeVariance = function() {
+    let sys = parseInt(document.getElementById("bcScanSysQty").textContent) || 0;
+    let fiz = parseInt(document.getElementById("bcScanFizikalQty").value);
+    let vDom = document.getElementById("bcScanVariance");
+    
+    if(isNaN(fiz)) {
+        vDom.textContent = "0";
+        vDom.style.color = "var(--text-main)";
+        return;
+    }
+    
+    let diff = fiz - sys;
+    if(diff > 0) {
+        vDom.textContent = "+" + diff;
+        vDom.style.color = "var(--success)";
+    } else if(diff < 0) {
+        vDom.textContent = diff;
+        vDom.style.color = "var(--danger)";
+    } else {
+        vDom.textContent = "Tepat (0)";
+        vDom.style.color = "var(--text-main)";
+    }
+}
+
+window.processBarcodeAudit = function() {
+    const sku = document.getElementById('bcScanSku').textContent;
+    const fizDom = document.getElementById("bcScanFizikalQty");
+    if(fizDom.value === "") {
+        alert("Sila masukkan nilai kiraan fizikal dahulu!");
+        return;
+    }
+    
+    let today = new Date();
+    auditTimestamps[sku] = today.toLocaleString('en-MY', { weekday:'short', day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
+    
+    alert(`Kiraan fizikal untuk ${sku} disahkan!`);
+    
+    if (document.getElementById("auditCardsContainer").innerHTML !== "") {
+        renderStockTake();
+        setTimeout(() => {
+            let stampWrap = document.getElementById("stampWrapper-"+sku);
+            if(stampWrap) {
+                const mainFizDom = document.getElementById("fizikalQty-"+sku);
+                if(mainFizDom) {
+                    mainFizDom.value = fizDom.value;
+                    window.calculateVariance(sku);
+                    mainFizDom.parentElement.parentElement.parentElement.style.background = "#F0FDF4";
+                }
+            }
+        }, 100);
+    }
+    
+    document.getElementById('barcodeScannerModal').style.display='none';
 }
 
 function renderPackaging() {

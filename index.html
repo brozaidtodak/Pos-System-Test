@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Enterprise Omnichannel POS</title>
+    <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=17">
     <!-- Supabase Core -->
@@ -81,6 +82,43 @@
             </div>
             
             <button onclick="document.getElementById('staffCustomerHistoryModal').style.display='none'" class="login-btn" style="margin-top:20px; background:#111;">Tutup</button>
+        </div>
+    </div>
+
+    <!-- 0.3 BARCODE SCANNER MODAL FOR AUDIT -->
+    <div id="barcodeScannerModal" class="login-overlay" style="display:none; z-index:3500; align-items:center; justify-content:center;">
+        <div class="login-box" style="max-width:450px; text-align:center; padding:30px;">
+            <button onclick="document.getElementById('barcodeScannerModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">&times;</button>
+            <h2 style="font-weight:800; font-size:22px; margin-bottom:10px;">Imbasan Barcode / QR</h2>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Gunakan pengimbas untuk scan kod produk (atau taip sku secara manual dan tekan Enter).</p>
+            
+            <input type="text" id="barcodeScannerInput" onkeyup="handleBarcodeScan(event)" class="login-input" placeholder="Tumpukan di sini dan mula scan..." style="text-align:center; font-size:18px; font-weight:bold; margin-bottom:20px; padding:15px; border-color:var(--primary);">
+            
+            <!-- Result and physical count input -->
+            <div id="barcodeScanResult" style="text-align:left; display:none; background:#FAFAFA; border:1px solid #eee; padding:15px; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <div>
+                        <strong id="bcScanSku" style="color:var(--primary); font-size:18px;">-</strong>
+                        <p id="bcScanName" style="font-size:14px; font-weight:bold; margin-bottom:0;">-</p>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #ccc; padding-top:10px;">
+                    <div style="text-align:center;">
+                        <p class="small-lbl" style="margin:0;">Stok Sistem</p>
+                        <span style="font-size:20px; font-weight:900;" id="bcScanSysQty">0</span>
+                    </div>
+                    <div style="text-align:center;">
+                        <p class="small-lbl" style="margin:0; color:var(--primary);">Kiraan Fizikal</p>
+                        <input type="number" id="bcScanFizikalQty" onkeyup="calcBarcodeVariance()" class="login-input" style="width:80px; text-align:center; margin:0; padding:8px; border-color:var(--primary);" placeholder="Qty">
+                    </div>
+                    <div style="text-align:center;">
+                        <p class="small-lbl" style="margin:0;">Selisih</p>
+                        <span style="font-size:16px; font-weight:bold;" id="bcScanVariance">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="processBarcodeAudit()" id="btnSubmitBarcodeAudit" class="login-btn" style="background:#10B981; display:none; margin-top:20px;">Sahkan Kiraan Fizikal</button>
         </div>
     </div>
     <!-- ============================================== -->
@@ -701,8 +739,17 @@
         <!-- ============================================== -->
         <div id="stockTakeSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;">📋 Semakan Audit Inventori Per-Item</h2>
-                <p style="font-size:13px; color:#888; margin-bottom:20px;">Kira dan sahkan kuantiti secara teliti. Tekan "Submit" bagi setiap item yang dikira.</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                    <h2 style="margin:0;">📋 Semakan Audit Inventori Per-Item</h2>
+                    <button onclick="openBarcodeScannerModal()" class="btn-primary" style="background:#10B981; border:none; margin:0; padding:10px 15px;"><span style="font-size:16px;">📷</span> Scan Barcode/QR</button>
+                </div>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Kira dan sahkan kuantiti secara teliti. Tekan "Submit" bagi setiap item yang dikira, atau gunakan pengimbas kod.</p>
+                
+                <div style="background:#f0f9ff; border:2px dashed #0284c7; padding:20px; border-radius:8px; text-align:center; margin-bottom:20px;">
+                    <h3 style="color:#0284c7; margin-bottom:10px; font-size:18px;">🔍 Tumpu Scanner Anda Di Sini</h3>
+                    <input type="text" id="mainAuditScanner" onkeyup="handleMainAuditScan(event)" class="login-input" style="font-size:20px; padding:15px; text-align:center; border-color:#0284c7; margin:0 auto; max-width:500px; font-weight:bold; letter-spacing:2px; box-shadow:0 0 10px rgba(2,132,199,0.2);" placeholder="Beep!">
+                    <p style="font-size:12px; color:#555; margin-top:10px;">(Pop-up kemaskini kuantiti fizikal akan muncul secara automatik)</p>
+                </div>
                 
                 <div style="display:flex; gap:10px; margin-bottom:20px;">
                     <div style="flex:1;">
@@ -1312,6 +1359,6 @@
     </div> <!-- End posAppLayout -->
 
     <!-- JS Core -->
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=29"></script>
 </body>
 </html>
