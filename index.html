@@ -607,10 +607,24 @@
                         <h4 style="color:#10B981; margin:0;">D. Pembina Variasi Pukal (Variant Builder)</h4>
                         <button onclick="window.addVariantRow()" class="btn-secondary" style="padding:5px 15px; font-size:12px; margin:0;">+ Tambah Row Pilihan</button>
                     </div>
-                    <p style="font-size:12px; color:#555; margin-bottom:15px;">SKU Anak akan dijana secara automatik. Sila isikan Nama Pilihan, Stok, dan Harga berasingan di bawah.</p>
+                    <p style="font-size:12px; color:#555; margin-bottom:10px;">Harga Utama dan Kuantiti Induk yang diisi di atas akan **diabaikan**. Sila isikan Harga dan Kuantiti berasingan bagi setiap variasi di bawah.</p>
                     
-                    <div id="variantListContainer" style="display:flex; flex-direction:column; gap:10px;">
-                        <!-- Dynamic rows injected here -->
+                    <div style="overflow-x:auto;">
+                        <table class="inventory-table" style="min-width:700px; margin:0;">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;">#</th>
+                                    <th>SKU Anak Variasi</th>
+                                    <th>Pilihan (Saiz/Warna)</th>
+                                    <th>Stok Awal</th>
+                                    <th>Harga (RM) <span style="font-weight:normal; font-size:10px;">(Pilihan)</span></th>
+                                    <th style="width:50px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variantTableBody">
+                                <!-- Dynamic rows injected here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -1270,6 +1284,6 @@
     </div> <!-- End posAppLayout -->
 
     <!-- JS Core -->
-    <script src="app.js?v=22"></script>
+    <script src="app.js?v=21"></script>
 </body>
 </html>
