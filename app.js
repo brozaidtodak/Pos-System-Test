@@ -2967,14 +2967,14 @@ window.setPremiseLocation = function() {
         localStorage.setItem("premise_lat", lat);
         localStorage.setItem("premise_lng", lng);
         alert(`Koordinat Kedai diset pada:\nLat: ${lat}\nLng: ${lng}`);
-        document.getElementById("txtPremiseDist").textContent = "100";
+        document.getElementById("txtPremiseDist").textContent = "400";
     }, err => alert("Gagal dpt GPS: " + err.message));
 }
 
 window.openClockModal = function() {
     let pLat = localStorage.getItem("premise_lat") || 2.9250;
     let pLng = localStorage.getItem("premise_lng") || 101.6570;
-    let radius = 100; // 100 meters
+    let radius = 400; // 400 meters
 
     document.getElementById("clockInOutModal").style.display = "flex";
     const statusTxt = document.getElementById("clockModalStatus");
@@ -3086,7 +3086,7 @@ window.submitAttendance = async function() {
 window.loadAdminAttendance = async function() {
     const tbody = document.getElementById("attendanceAdminTbody");
     const distT = document.getElementById("txtPremiseDist");
-    if(distT) distT.textContent = (localStorage.getItem("premise_lat") ? "100" : "X");
+    if(distT) distT.textContent = (localStorage.getItem("premise_lat") ? "400" : "400");
     
     if(!tbody || !db) return;
     
