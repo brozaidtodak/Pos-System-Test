@@ -344,7 +344,35 @@
                 <h2 style="margin-bottom:15px; color:var(--primary);">📅 Jadual Syif Bulanan Staf (Grid Format)</h2>
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Rujukan jadual waktu bekerja untuk semua kakitangan. Sila rujuk Aliff (HR Pentadbiran) untuk sebarang pindaan jadual.</p>
                 
-                
+                <!-- PUBLIC ROSTER PERMOHONAN FORM -->
+                <div style="background:#f0f9ff; border:1px solid #bae6fd; padding:15px; border-radius:8px; margin-bottom:20px;">
+                    <h3 style="color:#0369a1; margin-bottom:10px; font-size:14px;">📝 Borang Permohonan Tukar Syif / Cuti</h3>
+                    <p style="font-size:11px; color:#333; margin-bottom:10px;">Hantar permohonan ke peti kelulusan (Admin). Perubahan tidak rasmi selagi tidak di-Lulus oleh bos.</p>
+                    <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:140px;">
+                            <label class="small-lbl">Tarikh Permohonan</label>
+                            <input type="date" id="reqScheduleDate" class="login-input" style="margin:0;">
+                        </div>
+                        <div style="flex:1; min-width:180px;">
+                            <label class="small-lbl">Syif/Cuti Diminta</label>
+                            <select id="reqScheduleShift" class="login-input" style="margin:0;" onchange="toggleReqMcUpload(this.value)">
+                                <option value="B">Syif B (2:00 PM - 8:00 PM)</option>
+                                <option value="C">Syif C (11:00 AM - 8:00 PM)</option>
+                                <option value="OFF">Cuti Mingguan (OFF)</option>
+                                <option value="AL">Cuti Tahunan (AL)</option>
+                                <option value="MC">Cuti Sakit Sijil (MC)</option>
+                                <option value="EMERGENCY">Kecemasan (EL)</option>
+                            </select>
+                        </div>
+                        <div id="reqMcBox" style="flex:1; min-width:160px; display:none;">
+                            <label class="small-lbl">Lampiran Sijil MC</label>
+                            <input type="file" id="reqMcFile" class="login-input" style="margin:0; padding:10px;" accept="image/*,application/pdf">
+                        </div>
+                        <div style="flex:1; min-width:120px;">
+                            <button class="btn-primary" id="reqScheduleBtn" style="margin:0; width:100%; height:44px; background:#0ea5e9;">Hantar Permohonan</button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- KALENDAR NAVIGATOR (PUBLIC/STAFF) -->
                 <div style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
