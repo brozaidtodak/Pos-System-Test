@@ -529,6 +529,18 @@ function renderStockTake() {
                         <p style="font-size:11px; color:#888; margin-bottom:2px;">Model No: ${modelNo}</p>
                         <p style="font-size:11px; color:#888; margin-bottom:2px;">ERP Barcode: ${erpBarcode}</p>
                     </div>
+                    
+                    <!-- GLOBAL STAFF DIRECTORY -->
+                    <div class="table-responsive" style="border:1px solid var(--border-color); margin-top:20px;">
+                        <table class="data-table" style="font-size:12px; width:100%; text-align:center; border-collapse:collapse;">
+                            <thead style="background:#3b82f6; color:#fff;">
+                                <tr><th>CMP ID</th><th>Staf Asal</th><th>Nama Syarikat (Penuh)</th><th>Length of Service</th></tr>
+                            </thead>
+                            <tbody id="staffDirectoryTbody">
+                                <tr><td colspan="4">Loading Staff Directory...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Stock Location & Status (Middle) -->
@@ -2140,6 +2152,50 @@ function renderMgmtPlaceholders() {
     document.getElementById("memoStatusLabel").textContent = globalMemo.active ? "AKTIF" : "TIDAK AKTIF";
     document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#10B981" : "red";
     document.getElementById("memoInputText").value = globalMemo.text;
+    
+    // Global Staff Directory Rendering
+    renderGlobalStaffDirectory();
+}
+
+function renderGlobalStaffDirectory() {
+    const tbody = document.getElementById("staffDirectoryTbody");
+    if(!tbody) return;
+
+    let html = "";
+    authUsers.forEach(u => {
+        let los = "-";
+        if(u.join_date) {
+            const joinDate = new Date(u.join_date);
+            const now = new Date();
+            let years = now.getFullYear() - joinDate.getFullYear();
+            let months = now.getMonth() - joinDate.getMonth();
+            let days = now.getDate() - joinDate.getDate();
+
+            if (days < 0) {
+                months -= 1;
+                const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+                days += prevMonth.getDate();
+            }
+            if (months < 0) {
+                years -= 1;
+                months += 12;
+            }
+            los = `${years} Years ${months} Months ${days} Days`;
+        }
+        
+        let deptLabel = "";
+        if(u.dept) deptLabel = `<br><span style="font-size:10px; color:#888;">${u.dept}</span>`;
+
+        html += `<tr>
+            <td style="font-weight:bold; color:var(--primary);">${u.staff_id || "-"}</td>
+            <td>${u.name}</td>
+            <td style="font-weight:bold;">${u.full_name || "-"}${deptLabel}</td>
+            <td>${u.join_date || "-"}</td>
+            <td>${los}</td>
+        </tr>`;
+    });
+    
+    tbody.innerHTML = html;
 }
 
 window.switchMgmtTab = function(tabId, pillId) {
