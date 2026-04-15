@@ -2503,6 +2503,73 @@ window.renderStaffSchedule = function() {
     if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
 }
 
+window.executeAutoFillRoster = async function() {
+    if(staffProfiles.length === 0) return alert("Ralat: Tiada profil staf dijumpai dalam pangkalan data!");
+    
+    let monthName = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"][activeRosterMonth];
+    if(!confirm(`Amaran: Tindakan ini akan RESET keseluruhan jadual bulan ${monthName} ${activeRosterYear} kepada Default 10Camp (Rabu: Shift B, Lain: Shift C).\\n\\nAdakah anda pasti mahu teruskan?`)) return;
+
+    try {
+        const btn = event ? event.target : null;
+        if(btn) { btn.disabled = true; btn.textContent = "⏳ Memproses..."; }
+
+        // 1. Dapatkan nama semua staf
+        let allStaffs = staffProfiles.map(p => p.name);
+        
+        // 2. Padam semua jadual dari tahun/bulan aktif (elak bertindih)
+        // Kita loop dari Date 1 to hujung bulan.
+        const year = activeRosterYear;
+        const month = activeRosterMonth;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        let startD = `${year}-${(month+1).toString().padStart(2, '0')}-01`;
+        let endD = `${year}-${(month+1).toString().padStart(2, '0')}-${daysInMonth}`;
+        
+        // Padam rekod bulan aktif secara pukal menggunakan rentang masa (Range)
+        await db.from('roster_schedules').delete().gte('date', startD).lte('date', endD);
+
+        // 3. Jana Payload Pukal
+        let bulkPayload = [];
+        for(let s = 0; s < allStaffs.length; s++) {
+            let sname = allStaffs[s];
+            
+            for(let d = 1; d <= daysInMonth; d++) {
+                let loopDate = new Date(year, month, d);
+                // getDay() = 0 (Sunday), 1 (Mon), 2 (Tue), 3 (Wed)
+                let dayOfWeek = loopDate.getDay(); 
+                
+                let shiftCode = 'C';
+                if(dayOfWeek === 3) {
+                    shiftCode = 'B'; // Rabu Shift B
+                }
+                
+                let dayStr = d.toString().padStart(2, '0');
+                let monthStr = (month+1).toString().padStart(2, '0');
+                let dateStr = `${year}-${monthStr}-${dayStr}`;
+                
+                bulkPayload.push({
+                    staff_name: sname,
+                    date: dateStr,
+                    shift: shiftCode
+                });
+            }
+        }
+
+        // 4. Sumbat ke Supabase (Max 1000 limit per insert, so we chunk it if too big)
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < bulkPayload.length; i += CHUNK_SIZE) {
+            let chunk = bulkPayload.slice(i, i + CHUNK_SIZE);
+            await db.from('roster_schedules').insert(chunk);
+        }
+
+        alert(`Selesai! Jadual Default bulan ${monthName} telah diisi secara automatik untuk ${allStaffs.length} staf.`);
+        if(btn) Object.assign(btn, {disabled: false, textContent: "⚡ Auto-Isi (Default)"});
+        
+    } catch(err) {
+        alert("Ralat semasa menjalankan Auto-Isi: " + err.message);
+    }
+}
+
 window.deleteSchedulePrompt = async function(id) {
     if(!confirm("Buang jadual ini? (Jika ia adalah AL, baki TIDAK dipulangkan secara automatik dalam fungsi padam ini. Rujuk admin.)")) return;
     staffSchedules = staffSchedules.filter(s => s.id !== id);
