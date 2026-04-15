@@ -2563,6 +2563,14 @@ window.executeAutoFillRoster = async function() {
         }
 
         alert(`Selesai! Jadual Default bulan ${monthName} telah diisi secara automatik untuk ${allStaffs.length} staf.`);
+        
+        // Manual force sync to bypass Real-Time sluggishness on bulk insert
+        let { data: newRoster } = await db.from('roster_schedules').select('*');
+        if(newRoster) {
+             staffSchedules = newRoster;
+             if(typeof renderStaffSchedule === 'function') renderStaffSchedule();
+        }
+        
         if(btn) Object.assign(btn, {disabled: false, textContent: "⚡ Auto-Isi (Default)"});
         
     } catch(err) {
