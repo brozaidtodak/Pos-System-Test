@@ -568,12 +568,16 @@ function renderStockTake() {
                 </div>
 
                 <!-- Stock Location & Status (Middle) -->
-                <div style="flex:1; min-width:180px; padding-left:10px; border-left:1px dashed var(--border-color);">
+                <div style="flex:1; min-width:220px; padding-left:10px; border-left:1px dashed var(--border-color);">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <p class="small-lbl" style="margin:0;">Lokasi Stok</p>
-                        <button onclick="updateStockLocation('${p.sku}')" style="background:none; border:none; cursor:pointer; font-size:12px; color:var(--primary);">✏️ Ubah</button>
+                        <button onclick="openLocModal('${p.sku}')" style="background:none; border:none; cursor:pointer; font-size:12px; color:var(--primary);">✏️ Ubah</button>
                     </div>
-                    <p id="locText-${p.sku}" style="font-family:monospace; font-size:13px; font-weight:bold; background:#eee; padding:3px 6px; border-radius:4px; display:inline-block; margin-bottom:10px; border:1px solid #ddd;">${currentLoc}</p>
+                    <div id="locDisplay-${p.sku}" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;">📍 ${p.loc_level || 'G'}</span>
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">🗄️ ${p.loc_rack || '-'}</span>
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">⬆️ ${p.loc_tier || '-'}</span>
+                    </div>
                     
                     <p class="small-lbl" style="margin:0; margin-bottom:3px;">Status Stok</p>
                     <select id="statusSelect-${p.sku}" onchange="updateStockStatus('${p.sku}', this.value)" style="font-size:11px; padding:3px; border-radius:4px; border:1px solid #ccc; font-weight:bold; background-color:${currentStatusColor}; color:white; width:100%; max-width:160px; cursor:pointer;">
@@ -617,21 +621,54 @@ function renderStockTake() {
     container.innerHTML = html;
 }
 
-window.updateStockLocation = function(sku) {
+window.openLocModal = function(sku) {
     let p = masterProducts.find(x => x.sku === sku);
     if(!p) return;
-    let oldLoc = document.getElementById("locText-"+sku).textContent;
-    let newLoc = prompt("Sila masukkan lokasi rak baru untuk " + sku + ":", oldLoc);
-    if(newLoc !== null && newLoc.trim() !== "") {
-        p.location_bin = newLoc.trim(); // Update in memory
-        document.getElementById("locText-"+sku).textContent = newLoc.trim();
-        // Update cloud asynchronously
-        try { if(db) db.from('products_master').update({location_bin: newLoc.trim()}).eq('sku', sku).then(); } catch(e){}
+    document.getElementById('locModalSku').textContent = sku;
+    document.getElementById('locModalName').textContent = p.name;
+    document.getElementById('locModalSkuHidden').value = sku;
+    document.getElementById('locLevel').value = p.loc_level || '';
+    document.getElementById('locRack').value = p.loc_rack || '';
+    document.getElementById('locTier').value = p.loc_tier || '';
+    document.getElementById('locationUpdateModal').style.display = 'flex';
+}
+
+window.submitLocUpdate = function() {
+    let sku = document.getElementById('locModalSkuHidden').value;
+    let level = document.getElementById('locLevel').value.trim();
+    let rack = document.getElementById('locRack').value.trim();
+    let tier = document.getElementById('locTier').value.trim();
+    
+    if(!level && !rack && !tier) { alert('Sila isikan sekurang-kurangnya satu ruangan!'); return; }
+    
+    let p = masterProducts.find(x => x.sku === sku);
+    if(p) {
+        p.loc_level = level;
+        p.loc_rack = rack;
+        p.loc_tier = tier;
+        p.location_bin = [level, rack, tier].filter(Boolean).join(' / ');
         
-        let el = document.getElementById("locText-"+sku);
-        el.style.backgroundColor = "#dcfce7";
-        setTimeout(() => el.style.backgroundColor = "#eee", 500);
+        try { if(db) db.from('products_master').update({ loc_level: level, loc_rack: rack, loc_tier: tier, location_bin: p.location_bin }).eq('sku', sku).then(); } catch(e){}
     }
+    
+    // Update the display on the card immediately
+    let display = document.getElementById('locDisplay-'+sku);
+    if(display) {
+        display.innerHTML = `
+            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">📍 ${level || '-'}</span>
+            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">🗄️ ${rack || '-'}</span>
+            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">⬆️ ${tier || '-'}</span>
+        `;
+        setTimeout(() => {
+            display.innerHTML = `
+                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;">📍 ${level || '-'}</span>
+                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">🗄️ ${rack || '-'}</span>
+                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">⬆️ ${tier || '-'}</span>
+            `;
+        }, 800);
+    }
+    
+    document.getElementById('locationUpdateModal').style.display = 'none';
 }
 
 window.updateStockStatus = function(sku, val) {

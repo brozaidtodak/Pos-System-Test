@@ -121,6 +121,48 @@
             <button onclick="processBarcodeAudit()" id="btnSubmitBarcodeAudit" class="login-btn" style="background:#10B981; display:none; margin-top:20px;">Sahkan Kiraan Fizikal</button>
         </div>
     </div>
+
+    <!-- 0.4 LOCATION UPDATE MODAL -->
+    <div id="locationUpdateModal" class="login-overlay" style="display:none; z-index:3600; align-items:center; justify-content:center;">
+        <div class="login-box" style="max-width:420px; text-align:left; padding:30px;">
+            <button onclick="document.getElementById('locationUpdateModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">&times;</button>
+            <h2 style="font-weight:800; font-size:20px; margin-bottom:5px;">📍 Kemaskini Lokasi Stok</h2>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:5px;"><strong id="locModalSku" style="color:var(--primary);">-</strong></p>
+            <p id="locModalName" style="font-size:14px; font-weight:bold; margin-bottom:20px;">-</p>
+            <input type="hidden" id="locModalSkuHidden">
+            
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <div style="flex:1; background:#E0F2FE; padding:12px; border-radius:8px; border:1px solid #BAE6FD;">
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;">📍 Level</label>
+                    <select id="locLevel" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center;">
+                        <option value="">-- Pilih --</option>
+                        <option value="G">G (Ground)</option>
+                        <option value="1">Level 1</option>
+                        <option value="2">Level 2</option>
+                        <option value="3">Level 3</option>
+                        <option value="Mezzanine">Mezzanine</option>
+                        <option value="Basement">Basement</option>
+                    </select>
+                </div>
+                <div style="flex:1; background:#FEF3C7; padding:12px; border-radius:8px; border:1px solid #FDE68A;">
+                    <label style="font-size:11px; font-weight:bold; color:#92400E; display:block; margin-bottom:5px;">🗄️ No Rak</label>
+                    <input type="text" id="locRack" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center;" placeholder="Cth: A1">
+                </div>
+                <div style="flex:1; background:#E0E7FF; padding:12px; border-radius:8px; border:1px solid #C7D2FE;">
+                    <label style="font-size:11px; font-weight:bold; color:#3730A3; display:block; margin-bottom:5px;">⬆️ Tingkat Rak</label>
+                    <select id="locTier" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center;">
+                        <option value="">-- Pilih --</option>
+                        <option value="Atas">Atas</option>
+                        <option value="Tengah">Tengah</option>
+                        <option value="Bawah">Bawah</option>
+                        <option value="Lantai">Lantai</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button onclick="submitLocUpdate()" class="login-btn" style="background:#10B981; margin-top:10px;">Sahkan Lokasi Baru</button>
+        </div>
+    </div>
     <!-- ============================================== -->
     <!-- THE PUBLIC STOREFRONT (E-COMMERCE)           -->
     <!-- ============================================== -->
@@ -1359,6 +1401,6 @@
     </div> <!-- End posAppLayout -->
 
     <!-- JS Core -->
-    <script src="app.js?v=30"></script>
+    <script src="app.js?v=31"></script>
 </body>
 </html>
