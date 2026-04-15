@@ -231,6 +231,7 @@ async function initApp() {
         renderDashboard();
         if(typeof renderFinance === "function") renderFinance();
         autoClockOutUnclosed();
+        if(typeof renderPersonalCommission === "function") renderPersonalCommission();
     } catch(e) {
         alert("Server Error: " + e.message);
     }
@@ -1633,6 +1634,7 @@ window.handleCustomerLogin = async function() {
     
     document.getElementById("loginGate").style.display = "none";
     checkMyAttendanceStatus();
+    if(typeof renderPersonalCommission === "function") renderPersonalCommission();
     
     // Popup Greeting Staff
     if(globalMemo.active) {
@@ -3088,6 +3090,35 @@ window.loadAdminAttendance = async function() {
         `;
     });
     tbody.innerHTML = html;
+}
+
+window.renderPersonalCommission = function() {
+    const tbody = document.getElementById("myCommissionTbody");
+    const domSales = document.getElementById("myCommissionSalesTotal");
+    const domEst = document.getElementById("myCommissionEstTotal");
+
+    if(!tbody || !currentUser) return;
+    
+    let mySales = salesHistory.filter(s => s.staff_name === currentUser.name);
+    let totalSale = 0;
+    
+    let html = "";
+    if(mySales.length === 0) {
+        html = `<tr><td colspan="4" style="text-align:center;">Tiada rekod jualan peribadi untuk ditunjukkan.</td></tr>`;
+    } else {
+        mySales.forEach(s => {
+            let amt = parseFloat(s.total_amount || 0);
+            totalSale += amt;
+            let dateStr = new Date(s.created_at).toLocaleDateString('ms-MY', {day:'numeric', month:'short', year:'numeric'});
+            let ref = s.id ? ("INV-10C-" + s.id) : "-";
+            let comm = (amt * (moyySettings.commRate / 100)).toFixed(2);
+            html += `<tr><td>${dateStr}</td><td>${ref}</td><td style="color:#059669; font-weight:bold;">RM ${amt.toFixed(2)}</td><td>RM ${comm}</td></tr>`;
+        });
+    }
+    
+    tbody.innerHTML = html;
+    if(domSales) domSales.textContent = `RM ${totalSale.toFixed(2)}`;
+    if(domEst) domEst.textContent = `RM ${(totalSale * (moyySettings.commRate / 100)).toFixed(2)}`;
 }
 
 // Auto Clock Out Check Function

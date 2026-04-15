@@ -983,24 +983,21 @@
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
                     <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
                         <h4 style="color:var(--text-muted); font-size:12px;">Total Jualan Anda (Bulan Ini)</h4>
-                        <p style="font-size:24px; font-weight:bold; color:var(--primary);">RM 12,450.00</p>
+                        <p id="myCommissionSalesTotal" style="font-size:24px; font-weight:bold; color:var(--primary);">RM 0.00</p>
                     </div>
                     <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
                         <h4 style="color:var(--text-muted); font-size:12px;">Anggaran Komisen (5%)</h4>
-                        <p style="font-size:24px; font-weight:bold; color:var(--primary);">RM 622.50</p>
+                        <p id="myCommissionEstTotal" style="font-size:24px; font-weight:bold; color:var(--primary);">RM 0.00</p>
                     </div>
                 </div>
                 <div class="table-container">
                     <table class="data-table">
                         <thead><tr><th>Tarikh</th><th>ID Pesanan</th><th>Nilai Jualan (RM)</th><th>Komisen (RM)</th></tr></thead>
-                        <tbody>
-                            <tr><td>13 Apr 2026</td><td>INV-10C-1092</td><td>1,799.00</td><td>89.95</td></tr>
-                            <tr><td>12 Apr 2026</td><td>INV-10C-5582</td><td>459.00</td><td>22.95</td></tr>
-                            <tr><td>10 Apr 2026</td><td>INV-10C-3112</td><td>211.00</td><td>10.55</td></tr>
+                        <tbody id="myCommissionTbody">
+                            <tr><td colspan="4" style="text-align:center;">Tiada rekod jualan peribadi untuk ditunjukkan.</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <p style="text-align:center; color:#aaa; font-size:12px; margin-top:20px;">*Rekod komisen dummy untuk sesi prototyping.</p>
             </div>
         </div>
 
@@ -1469,6 +1466,6 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=32"></script>
+    <script src="app.js?v=33"></script>
 </body>
 </html>
