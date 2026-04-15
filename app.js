@@ -1392,6 +1392,8 @@ window.removeFromCart = function(sku) { cart = cart.filter(c => c.sku !== sku); 
 function renderCart() {
     const container = document.getElementById("cartItems");
     const label = document.getElementById("totalPrice");
+    const subLabel = document.getElementById("cartSubtotalVal");
+    const btnPay = document.getElementById("btnOpenPayment");
     if(!container) return; container.innerHTML = ""; let total = 0; let totalItems = 0;
     
     // safe update helper for mobile bar
@@ -1403,8 +1405,10 @@ function renderCart() {
     };
 
     if(cart.length === 0) { 
-        container.innerHTML = "<p>Cart Empty.</p>"; 
-        label.textContent = "0.00"; 
+        container.innerHTML = "<p class='empty-cart-message'>Tiada barang di-scan.</p>"; 
+        label.textContent = "0.00";
+        if(subLabel) subLabel.textContent = "0.00";
+        if(btnPay) btnPay.disabled = true;
         updateMobileBar(0, 0);
         return; 
     }
@@ -1414,20 +1418,54 @@ function renderCart() {
         totalItems += item.quantity;
         container.innerHTML += `
             <div class="cart-item">
-                <div><strong style="font-size:14px;">[${item.sku}] ${item.name}</strong><br><small>RM${item.price.toFixed(2)} x ${item.quantity}</small></div>
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <button onclick="decreaseQuantity('${item.sku}')">-</button><span>${item.quantity}</span>
-                    <button onclick="addToCart('${item.sku}')">+</button><button onclick="removeFromCart('${item.sku}')" style="color:red; background:none; border:none;">X</button>
+                <div style="flex:1;"><strong style="font-size:13px; color:#111;">[${item.sku}] ${item.name}</strong><br><small style="color:#666;">RM${item.price.toFixed(2)} x ${item.quantity}</small></div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
+                    <span style="font-weight:bold;">${item.quantity}</span>
+                    <button onclick="addToCart('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">+</button>
+                    <button onclick="removeFromCart('${item.sku}')" style="color:#EF4444; background:#fee2e2; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold; margin-left:5px;">X</button>
                 </div>
             </div>`;
     });
     label.textContent = total.toFixed(2);
+    if(subLabel) subLabel.textContent = total.toFixed(2);
+    if(btnPay) btnPay.disabled = false;
     updateMobileBar(total, totalItems);
 }
 
-document.getElementById("checkoutBtn").onclick = async function() {
+// Payment Modal Logics
+window.openPaymentModal = function() {
+    if(cart.length === 0) return;
+    let total = cart.reduce((sum, c) => sum + (c.price * c.quantity), 0);
+    document.getElementById('paymentTotalDisplay').textContent = total.toFixed(2);
+    document.getElementById('checkoutPaymentModal').style.display = 'flex';
+}
+
+window.setPaymentMethod = function(method, btnElement) {
+    document.getElementById('paymentMethod').value = method;
+    let btns = document.querySelectorAll('#checkoutPaymentModal .pay-btn');
+    btns.forEach(b => {
+        b.classList.remove('active');
+        b.style.border = "1px solid var(--border-color)";
+        b.style.background = "#FFF";
+        b.style.color = "var(--text-muted)";
+    });
+    btnElement.classList.add('active');
+    btnElement.style.border = "2px solid var(--primary)";
+    btnElement.style.background = "#FFF5eb";
+    btnElement.style.color = "var(--text-main)";
+}
+
+window.clearCart = function() {
+    cart = [];
+    renderCart();
+}
+
+window.processNewCheckout = async function() {
     if(cart.length === 0) return alert("Empty Cart!");
-    this.disabled = true; this.textContent = "Processing Omnichannel FIFO...";
+    const btn = document.getElementById("checkoutBtn");
+    btn.disabled = true; 
+    btn.textContent = "Processing Omnichannel FIFO...";
 
     try {
         let transactionsPayload = []; let totalVal = 0;
@@ -1435,6 +1473,7 @@ document.getElementById("checkoutBtn").onclick = async function() {
         const cst = document.getElementById("checkoutStatus").value;
         const pm = document.getElementById("paymentMethod").value;
         const custNameText = document.getElementById("customerName").value.trim() || 'Walk-In';
+        const custPhoneText = document.getElementById("customerPhone").value.trim();
 
         for (const item of cart) {
             totalVal += item.price * item.quantity;
@@ -1455,16 +1494,16 @@ document.getElementById("checkoutBtn").onclick = async function() {
         // Points & CRM System
         const earnedPoints = Math.floor(totalVal);
         if(custNameText !== 'Walk-In') {
-             const existing = customersData.find(c => c.name.toLowerCase() === custNameText.toLowerCase());
+             const existing = customersData.find(c => c.name.toLowerCase() === custNameText.toLowerCase() || (c.phone === custPhoneText && custPhoneText !== ''));
              if(!existing) {
-                 await db.from('customers').insert([{name: custNameText, points: earnedPoints}]);
+                 await db.from('customers').insert([{name: custNameText, phone: custPhoneText, points: earnedPoints}]);
              } else {
-                 await db.from('customers').update({points: (existing.points || 0) + earnedPoints}).eq('id', existing.id);
+                 await db.from('customers').update({points: (existing.points || 0) + earnedPoints, phone: custPhoneText || existing.phone}).eq('id', existing.id);
              }
         }
 
         await db.from('sales_history').insert([{
-            customer_name: custNameText, payment_method: pm, channel: cn, status: cst, total: totalVal, items: cart, staff_name: currentUser ? currentUser.name : 'Unknown'
+            customer_name: custNameText, customer_phone: custPhoneText, payment_method: pm, channel: cn, status: cst, total_amount: totalVal, items: cart, staff_name: currentUser ? currentUser.name : 'Unknown'
         }]);
 
         const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
@@ -1473,11 +1512,34 @@ document.getElementById("checkoutBtn").onclick = async function() {
 
         cart = []; 
         document.getElementById("customerName").value = "";
+        document.getElementById("customerPhone").value = "";
         document.getElementById("customerEmail").value = "";
-        await initApp(); renderCart();
+        document.getElementById('checkoutPaymentModal').style.display = 'none';
+        await initApp(); 
+        renderCart();
     } catch (e) { alert("Fatal Error: " + e.message); }
     
-    this.disabled = false; this.textContent = "Send Order to Queue";
+    if(btn) { btn.disabled = false; btn.textContent = "PENGESAHAN BAYARAN"; }
+}
+
+window.dispatchEmailReceipt = function() {
+    const emailStr = document.getElementById('customerEmail')?.value;
+    const btn = document.getElementById('sendEmailBtn');
+    
+    if(!emailStr) {
+        alert("Sila isikan alamat e-mel pelanggan terlebih dahulu!");
+        return;
+    }
+    
+    // Dummy EmailJS integration implementation for Phase 1
+    btn.innerHTML = "Menghantar...";
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = "✅ Berjaya Dihantar!";
+        btn.style.background = "var(--success)";
+        alert("E-Resit berjaya diviralkan ke: " + emailStr + "\\n(Nota Fasa 1: E-Mel dihantar menerusi mock-service. EmailJS sedia disambungkan!).");
+    }, 1500);
 }
 
 // ===================================

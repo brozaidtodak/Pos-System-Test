@@ -61,12 +61,56 @@
             <h2 style="font-weight:800; font-size:24px; margin-bottom:5px; text-align:center; letter-spacing:-1px;">10camp</h2>
             <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:20px;">Official E-Receipt</p>
             
-            <div id="receiptContent" style="font-size:13px; line-height:1.6; border-top:1px dashed #ccc; border-bottom:1px dashed #ccc; padding:15px 0; margin-bottom:20px; font-family:monospace;">
+            <div id="receiptContent" style="font-size:13px; line-height:1.6; border-top:1px dashed #ccc; border-bottom:1px dashed #ccc; padding:15px 0; margin-bottom:20px; font-family:monospace; background:#fafafa; border-radius:4px; padding:10px;">
                 <!-- Receipt details go here -->
             </div>
             
-            <button id="sendEmailBtn" class="login-btn" style="margin-bottom:10px;">Send via E-Mail</button>
-            <button onclick="closeReceipt()" class="login-btn" style="background:#FFF; color:var(--text-main); border:1px solid var(--border-color);">Close (Next Customer)</button>
+            <button id="sendEmailBtn" onclick="dispatchEmailReceipt()" class="login-btn" style="background:#2563EB; margin-bottom:10px; display:flex; justify-content:center; align-items:center; gap:8px;"><span>📩</span> Hantar Auto-Resit Ke Emel</button>
+            <button onclick="closeReceipt()" class="login-btn" style="background:#FFF; color:var(--text-main); border:1px solid var(--border-color);">Selesai (Pelanggan Seterusnya)</button>
+        </div>
+    </div>
+
+    <!-- 0.15 NEW PAYMENT MODAL -->
+    <div id="checkoutPaymentModal" class="login-overlay" style="display:none; z-index:3000;">
+        <div class="login-box" style="max-width:450px; text-align:left; padding:30px; animation: popIn 0.3s ease;">
+            <button onclick="document.getElementById('checkoutPaymentModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px;">&times;</button>
+            <h2 style="font-weight:800; font-size:22px; margin-bottom:5px;">Maklumat Bayaran</h2>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Jumlah Perlu Dibayar: <strong style="color:var(--primary); font-size:18px;">RM <span id="paymentTotalDisplay">0.00</span></strong></p>
+            
+            <div style="background:#FAFAFA; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:15px;">
+                <label class="small-lbl">1. Maklumat CRM & E-Resit</label>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="text" id="customerName" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="Nama Pelanggan">
+                    <input type="tel" id="customerPhone" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="No. Telefon (Pilihan)">
+                </div>
+                <input type="email" id="customerEmail" class="login-input" style="margin-bottom:5px; padding:12px; border-color:#93c5fd; background:#eff6ff;" placeholder="Alamat E-mel (Untuk Auto-Resit)">
+                <small style="color:#64748b; font-size:10px; display:block;">* Kami menggunakan sistem EmailJS untuk penghantaran serta-merta.</small>
+            </div>
+
+            <div style="background:#FAFAFA; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px;">
+                <label class="small-lbl">2. Saluran & Status</label>
+                <div style="display:flex; gap:10px;">
+                    <select id="checkoutChannel" class="login-input" style="margin-bottom:0; padding:10px; flex:1;">
+                        <option value="In-Store">In-Store (POS)</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Shopee">Shopee</option>
+                    </select>
+                    <select id="checkoutStatus" class="login-input" style="margin-bottom:0; padding:10px; flex:1;">
+                        <option value="Completed">Selesai (Bawa Balik)</option>
+                        <option value="To Fulfil">To Fulfil (Pos)</option>
+                    </select>
+                </div>
+            </div>
+
+            <label class="small-lbl" style="text-align:center; margin-bottom:10px;">3. Kaedah Bayaran Diterima</label>
+            <input type="hidden" id="paymentMethod" value="Cash">
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button type="button" onclick="window.setPaymentMethod('Cash', this)" class="pay-btn active" style="flex:1; padding:12px 5px; border:2px solid var(--primary); border-radius:8px; background:#FFF5eb; cursor:pointer; font-weight:bold; color:var(--text-main); font-size:13px; transition:0.2s;">💵 Tunai</button>
+                <button type="button" onclick="window.setPaymentMethod('QR Pay', this)" class="pay-btn" style="flex:1; padding:12px 5px; border:1px solid var(--border-color); border-radius:8px; background:#FFF; cursor:pointer; font-weight:bold; color:var(--text-muted); font-size:13px; transition:0.2s;">📱 QR Pay</button>
+                <button type="button" onclick="window.setPaymentMethod('Card', this)" class="pay-btn" style="flex:1; padding:12px 5px; border:1px solid var(--border-color); border-radius:8px; background:#FFF; cursor:pointer; font-weight:bold; color:var(--text-muted); font-size:13px; transition:0.2s;">💳 Kad/Bank</button>
+            </div>
+
+            <button id="checkoutBtn" onclick="window.processNewCheckout()" class="login-btn" style="background:#10B981; width:100%; padding:16px; font-size:15px; margin-top:5px; box-shadow:0 4px 15px rgba(16,185,129,0.3);">PENGESAHAN BAYARAN</button>
         </div>
     </div>
 
@@ -488,62 +532,44 @@
         <!-- ============================================== -->
         <div id="posSection" class="tab-section" style="display: none;">
             <div class="main-content">
-                <section class="products-section">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <input type="text" id="searchInput" placeholder="Scan or Search SKU / Name..." style="margin-bottom:0; flex:1; margin-right:10px;">
-                        <button onclick="togglePosLayoutMode()" class="btn-secondary" id="btnPosLayoutToggle" style="margin-bottom:0; flex-shrink:0;">📱 Mobile Mode</button>
-                    </div>
-                    <div id="productsList" class="products-grid"><i>Loading Cloud Data...</i></div>
-                </section>
-                <section class="cart-section" id="posCartDrawer">
-                    <div class="mobile-cart-header" style="display:none; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
-                        <h2 class="cart-title" style="margin-bottom:0; border:none; padding:0;">Order Cart</h2>
-                        <button onclick="toggleMobileCartSheet()" style="background:none; border:none; font-size:24px; font-weight:bold; color:var(--text-muted); cursor:pointer;">&times;</button>
-                    </div>
-                    <h2 class="cart-title desktop-cart-title">Order Cart</h2>
-                    <div id="cartItems" class="cart-items"><p class="empty-cart-message">Cart is empty</p></div>
-                    <div class="cart-total"><h3>Total: RM <span id="totalPrice">0.00</span></h3></div>
-                    <div class="checkout-form" style="background:var(--bg-color); padding:20px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-                        
-                        <label class="small-lbl">Customer / Phone (For CRM)</label>
-                        <input type="text" id="customerName" placeholder="Contoh: Ali / 0123456">
-                        
-                        <label class="small-lbl">Customer Email (E-Receipt)</label>
-                        <input type="email" id="customerEmail" placeholder="10camp@gmail.com (Opsional)">
-                        
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                            <div>
-                                <label class="small-lbl">Sales Channel</label>
-                                <select id="checkoutChannel" style="margin:0;">
-                                    <option value="In-Store">In-Store (POS)</option>
-                                    <option value="TikTok">TikTok Shop</option>
-                                    <option value="Shopee">Shopee</option>
-                                    <option value="Lazada">Lazada</option>
-                                    <option value="Website">Website HQ</option>
-                                    <option value="WhatsApp">WhatsApp</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="small-lbl">Payment Flow</label>
-                                <select id="paymentMethod" style="margin:0;">
-                                    <option value="Cash">Cash</option>
-                                    <option value="Card">Debit/Credit Card</option>
-                                    <option value="E-Wallet">QR Pay</option>
-                                    <option value="Online">FPX / Online</option>
-                                </select>
-                            </div>
+                <section class="cart-section" id="posCartDrawer" style="display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div class="mobile-cart-header" style="display:none; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
+                            <h2 class="cart-title" style="margin-bottom:0; border:none; padding:0;">Troli Jualan</h2>
+                            <button onclick="window.toggleMobileCartSheet()" style="background:none; border:none; font-size:24px; font-weight:bold; color:var(--text-muted); cursor:pointer;">&times;</button>
                         </div>
-
-                        <label class="small-lbl">Order Status</label>
-                        <select id="checkoutStatus">
-                            <option value="Completed">Completed (Barang diserah terus)</option>
-                            <option value="Unpaid">Unpaid (Add to Cart belum bayar)</option>
-                            <option value="Processing">Processing (Menunggu Balut)</option>
-                            <option value="To Fulfil">To Fulfil (Menunggu Kurier)</option>
-                        </select>
-
-                        <button id="checkoutBtn" class="checkout-btn" style="margin-top:10px;">Send Order to Queue</button>
+                        <h2 class="cart-title desktop-cart-title" style="font-size:20px; font-weight:800;">Troli Jualan</h2>
+                        <div id="cartItems" class="cart-items" style="max-height: 480px; overflow-y:auto; padding-right:10px; margin-bottom:15px;"><p class="empty-cart-message">Tiada barang di-scan.</p></div>
                     </div>
+                    
+                    <div style="background:#FAFAFA; padding:20px; border-radius:12px; border:1px solid #E2E2E2;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#666; font-size:14px; font-weight:500;">
+                            <span>Subtotal</span>
+                            <span>RM <span id="cartSubtotalVal">0.00</span></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:#666; font-size:14px; font-weight:500;">
+                            <span>Diskaun Sistem (0%)</span>
+                            <span>RM 0.00</span>
+                        </div>
+                        <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
+                        <div class="cart-total" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                            <h3 style="font-size:20px; font-weight:800; color:#111;">TOTAL</h3>
+                            <h3 style="font-size:26px; font-weight:800; color:var(--primary); margin:0;">RM <span id="totalPrice">0.00</span></h3>
+                        </div>
+                        <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:#10B981; font-size:16px; padding:18px; margin:0; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); transition:0.2s;" disabled>BAYAR SEKARANG</button>
+                        <button onclick="window.clearCart()" class="login-btn" style="background:#fff; color:#EF4444; border:1px solid #fee2e2; margin-top:10px; box-shadow:none; padding:12px; border-radius:12px;">Kosongkan Troli</button>
+                    </div>
+                </section>
+                
+                <section class="products-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; gap:10px;">
+                        <div style="position:relative; flex:1;">
+                            <span style="position:absolute; left:15px; top:14px; font-size:16px; opacity:0.5;">🔍</span>
+                            <input type="text" id="searchInput" onkeyup="window.renderPOS(this.value)" placeholder="Scan Barcode / Cari Nama..." style="margin:0; width:100%; border-radius:30px; padding:14px 20px 14px 45px; box-shadow:inset 0 1px 3px rgba(0,0,0,0.05); font-weight:500;">
+                        </div>
+                        <button onclick="window.togglePosLayoutMode()" class="btn-secondary" id="btnPosLayoutToggle" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 20px;">📱 Skrin Kecil</button>
+                    </div>
+                    <div id="productsList" class="products-grid" style="max-height:calc(100vh - 160px); overflow-y:auto; padding-right:15px;"><i>Loading Cloud Data...</i></div>
                 </section>
             </div>
             
