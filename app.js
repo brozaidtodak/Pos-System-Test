@@ -3071,16 +3071,19 @@ window.submitAttendance = async function() {
         .eq('staff_name', currentUser.name).eq('date', today);
         
         if(!error) { alert("Berjaya Clock-Out!"); }
+        else { alert("Gagal Clock-Out: " + (error.message || JSON.stringify(error))); }
     } else {
         // Must Clock In
         let { error } = await db.from('staff_attendance')
         .insert([{ staff_name: currentUser.name, date: today, clock_in_time: timeStr, clock_in_photo: b64 }]);
         
         if(!error) { alert("Berjaya Clock-In. Mulakan kerja anda!"); }
+        else { alert("Gagal Clock-In: " + (error.message || JSON.stringify(error))); }
     }
     
     closeClockModal();
     checkMyAttendanceStatus();
+    if(typeof loadAdminAttendance === 'function') loadAdminAttendance();
 }
 
 window.loadAdminAttendance = async function() {
