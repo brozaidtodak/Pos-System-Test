@@ -2972,14 +2972,9 @@ window.setPremiseLocation = function() {
 }
 
 window.openClockModal = function() {
-    let pLat = localStorage.getItem("premise_lat");
-    let pLng = localStorage.getItem("premise_lng");
+    let pLat = localStorage.getItem("premise_lat") || 2.9250;
+    let pLng = localStorage.getItem("premise_lng") || 101.6570;
     let radius = 100; // 100 meters
-    
-    if(!pLat || !pLng) {
-        alert("Suhu/Koordinat kedai belum diset oleh Admin. Sila minta Admin 'Kunci Lokasi Kedai' dahulu.");
-        return;
-    }
 
     document.getElementById("clockInOutModal").style.display = "flex";
     const statusTxt = document.getElementById("clockModalStatus");
