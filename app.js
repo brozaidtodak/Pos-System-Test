@@ -2547,7 +2547,10 @@ window.executeAutoFillRoster = async function() {
                 let monthStr = (month+1).toString().padStart(2, '0');
                 let dateStr = `${year}-${monthStr}-${dayStr}`;
                 
+                let randomId = Math.floor(Date.now() / 100) + Math.floor(Math.random() * 999999) + (s * 40) + d;
+                
                 bulkPayload.push({
+                    id: randomId,
                     staff_name: sname,
                     date: dateStr,
                     shift: shiftCode
