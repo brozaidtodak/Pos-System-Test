@@ -268,6 +268,7 @@ async function initApp() {
         renderPromotions();
         renderDashboard();
         if(typeof renderFinance === "function") renderFinance();
+        autoClockOutUnclosed();
     } catch(e) {
         alert("Server Error: " + e.message);
     }
@@ -1669,6 +1670,7 @@ window.handleCustomerLogin = async function() {
     currentUserRole = user.role;
     
     document.getElementById("loginGate").style.display = "none";
+    checkMyAttendanceStatus();
     
     // Popup Greeting Staff
     if(globalMemo.active) {
@@ -2155,6 +2157,7 @@ function renderMgmtPlaceholders() {
     
     if (isAliff || isSuperior || (!isZack && !isMoyy)) {
         renderStaffSchedule();
+        loadAdminAttendance();
     }
     
     // Warehouse functions
@@ -2906,4 +2909,239 @@ window.resolveIssue = function(id) {
     const issue = customerIssues.find(c => c.id === id);
     if(issue) issue.status = 'RESOLVED';
     renderCustomerIssues();
+}
+
+// ===================================
+// STAFF ATTENDANCE MODULE (CLOCK)
+// ===================================
+let clockStream = null;
+let currentAttendanceStatus = null; // null | IN | OUT
+
+// 1. Math Formula for Distance
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; 
+}
+
+// 2. Fetch or Mock DB
+async function checkMyAttendanceStatus() {
+    if(!currentUser) return;
+    document.getElementById("floatingClockBtn").style.display = "flex";
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    if(db) {
+        let { data, error } = await db.from('staff_attendance').select('*').eq('staff_name', currentUser.name).eq('date', today);
+        if(data && data.length > 0) {
+            let record = data[0];
+            if(record.clock_out_time) {
+                currentAttendanceStatus = "OUT";
+                document.getElementById("lblClockFace").textContent = "Anda Telah Clock-Out";
+                document.getElementById("floatingClockBtn").style.background = "linear-gradient(135deg, #6B7280, #4B5563)";
+                document.getElementById("floatingClockBtn").style.pointerEvents = "none";
+                document.getElementById("floatingClockBtn").style.animation = "none";
+            } else {
+                currentAttendanceStatus = "IN";
+                document.getElementById("lblClockFace").textContent = "Clock Out Sekarang";
+                document.getElementById("floatingClockBtn").style.background = "linear-gradient(135deg, #EF4444, #DC2626)";
+            }
+        } else {
+            currentAttendanceStatus = null;
+            document.getElementById("lblClockFace").textContent = "Clock In Sekarang";
+            document.getElementById("floatingClockBtn").style.background = "linear-gradient(135deg, #10B981, #059669)";
+        }
+    }
+}
+
+window.setPremiseLocation = function() {
+    if(!navigator.geolocation) return alert("Browser tak support GPS.");
+    navigator.geolocation.getCurrentPosition(pos => {
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+        localStorage.setItem("premise_lat", lat);
+        localStorage.setItem("premise_lng", lng);
+        alert(`Koordinat Kedai diset pada:\nLat: ${lat}\nLng: ${lng}`);
+        document.getElementById("txtPremiseDist").textContent = "100";
+    }, err => alert("Gagal dpt GPS: " + err.message));
+}
+
+window.openClockModal = function() {
+    let pLat = localStorage.getItem("premise_lat");
+    let pLng = localStorage.getItem("premise_lng");
+    let radius = 100; // 100 meters
+    
+    if(!pLat || !pLng) {
+        alert("Suhu/Koordinat kedai belum diset oleh Admin. Sila minta Admin 'Kunci Lokasi Kedai' dahulu.");
+        return;
+    }
+
+    document.getElementById("clockInOutModal").style.display = "flex";
+    const statusTxt = document.getElementById("clockModalStatus");
+    const btn = document.getElementById("btnSubmitAttendance");
+    const video = document.getElementById("clockVideoFeed");
+    const loadTxt = document.getElementById("cameraLoadingText");
+
+    statusTxt.textContent = "🔍 Mengesan koordinat GPS anda...";
+    statusTxt.style.color = "#0369a1";
+    statusTxt.style.background = "#e0f2fe";
+    btn.style.display = "none";
+    video.style.display = "none";
+    loadTxt.style.display = "block";
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        let cLat = pos.coords.latitude;
+        let cLng = pos.coords.longitude;
+        let dist = calculateDistance(pLat, pLng, cLat, cLng);
+
+        if(dist <= radius) {
+            statusTxt.textContent = `📍 Disahkan: Anda berada ${Math.round(dist)}m dari Premis. Mengaktifkan Kamera...`;
+            statusTxt.style.color = "#065f46";
+            statusTxt.style.background = "#d1fae5";
+            
+            // Invoke Camera
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+            .then(stream => {
+                clockStream = stream;
+                video.srcObject = stream;
+                video.style.display = "block";
+                loadTxt.style.display = "none";
+                btn.style.display = "block";
+                btn.disabled = false;
+            })
+            .catch(err => {
+                statusTxt.textContent = "❌ Kamera Gagal Diakses. Sila allow permission.";
+                statusTxt.style.color = "#991b1b";
+                statusTxt.style.background = "#fee2e2";
+                loadTxt.textContent = "Akses Ditolak";
+            });
+
+        } else {
+            statusTxt.textContent = `❌ Terkeluar Jarak! Anda sejauh ${Math.round(dist)}m (Maksima ${radius}m).`;
+            statusTxt.style.color = "#991b1b";
+            statusTxt.style.background = "#fee2e2";
+            loadTxt.textContent = "Kamera tidak diperlukan";
+        }
+
+    }, err => {
+        statusTxt.textContent = "❌ Gagal mengesan GPS anda. Pastikan Location dibenarkan.";
+        statusTxt.style.color = "#991b1b";
+        statusTxt.style.background = "#fee2e2";
+    }, { enableHighAccuracy: true });
+}
+
+window.closeClockModal = function() {
+    if(clockStream) {
+        clockStream.getTracks().forEach(t => t.stop());
+    }
+    document.getElementById("clockInOutModal").style.display = "none";
+}
+
+window.submitAttendance = async function() {
+    const video = document.getElementById("clockVideoFeed");
+    const canvas = document.getElementById("clockSnapshotCanvas");
+    const btn = document.getElementById("btnSubmitAttendance");
+    
+    btn.textContent = "⏳ Memproses Rekod...";
+    btn.disabled = true;
+
+    // Squeeze Image
+    canvas.width = 300;
+    canvas.height = 300;
+    let ctx = canvas.getContext("2d");
+    
+    // Crop center
+    let size = Math.min(video.videoWidth, video.videoHeight);
+    let sx = (video.videoWidth - size) / 2;
+    let sy = (video.videoHeight - size) / 2;
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, 300, 300);
+    
+    // Convert base64
+    let b64 = canvas.toDataURL("image/jpeg", 0.5); 
+    
+    let timeStr = new Date().toTimeString().split(' ')[0];
+    let today = new Date().toISOString().split('T')[0];
+
+    if(!db) { alert("Tiada akses DB."); closeClockModal(); return; }
+
+    if(currentAttendanceStatus === "IN") {
+        // Must Clock Out
+        let { error } = await db.from('staff_attendance')
+        .update({ clock_out_time: timeStr, clock_out_photo: b64 })
+        .eq('staff_name', currentUser.name).eq('date', today);
+        
+        if(!error) { alert("Berjaya Clock-Out!"); }
+    } else {
+        // Must Clock In
+        let { error } = await db.from('staff_attendance')
+        .insert([{ staff_name: currentUser.name, date: today, clock_in_time: timeStr, clock_in_photo: b64 }]);
+        
+        if(!error) { alert("Berjaya Clock-In. Mulakan kerja anda!"); }
+    }
+    
+    closeClockModal();
+    checkMyAttendanceStatus();
+}
+
+window.loadAdminAttendance = async function() {
+    const tbody = document.getElementById("attendanceAdminTbody");
+    const distT = document.getElementById("txtPremiseDist");
+    if(distT) distT.textContent = (localStorage.getItem("premise_lat") ? "100" : "X");
+    
+    if(!tbody || !db) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    let { data } = await db.from('staff_attendance').select('*').eq('date', today);
+    
+    if(!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px;">Belum ada staf clock in hari ini.</td></tr>';
+        return;
+    }
+    
+    let html = "";
+    data.forEach(r => {
+        let p1 = r.clock_in_photo ? `<img src="${r.clock_in_photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">` : "-";
+        let p2 = r.clock_out_photo ? `<img src="${r.clock_out_photo}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">` : "-";
+        
+        let warnAuto = r.is_auto_clockout ? `<br><small style="color:red;">(Auto 8PM)</small>` : "";
+        let cout = r.clock_out_time ? (r.clock_out_time + warnAuto) : "-";
+
+        html += `
+            <tr>
+                <td style="font-weight:bold;">${r.staff_name}</td>
+                <td>${r.date}</td>
+                <td style="color:#10B981;">${r.clock_in_time}</td>
+                <td>${p1}</td>
+                <td style="color:#EF4444;">${cout}</td>
+                <td>${p2}</td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+// Auto Clock Out Check Function
+async function autoClockOutUnclosed() {
+    if(!db) return;
+    const now = new Date();
+    const isPast8PM = now.getHours() >= 20;
+    
+    if(isPast8PM) {
+        const today = new Date().toISOString().split('T')[0];
+        // Fetch anybody who clocked in today but no out yet
+        let { data } = await db.from('staff_attendance').select('*').eq('date', today).is('clock_out_time', null);
+        if(data && data.length > 0) {
+            for(let p of data) {
+                 await db.from('staff_attendance').update({
+                     clock_out_time: "20:00:00",
+                     is_auto_clockout: true
+                 }).eq('id', p.id);
+            }
+        }
+    }
 }
