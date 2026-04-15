@@ -2122,31 +2122,31 @@ window.deleteFinance = async function(id) {
 // MANAGEMENT EXECUTIVE MODULES
 // ===================================
 function renderMgmtPlaceholders() {
-    const adminView = document.getElementById("adminMgmtView");
-    const warehouseView = document.getElementById("warehouseMgmtView");
-    const salesView = document.getElementById("salesMgmtView");
-    
-    // Hide all initially
-    if(adminView) adminView.style.display = "none";
-    if(warehouseView) warehouseView.style.display = "none";
-    if(salesView) salesView.style.display = "none";
-
     // 1. Logic for determining identity
     let isZack = currentUser && currentUser.name === 'Zack';
     let isMoyy = currentUser && currentUser.name === 'Farhan Moyy';
     let isSuperior = currentUser && currentUser.role === 'superior';
+    let isAliff = currentUser && currentUser.name === 'Aliff';
 
-    if (isSuperior) {
-        if(adminView) adminView.style.display = "block";
-        if(warehouseView) warehouseView.style.display = "block";
-        if(salesView) salesView.style.display = "block";
-    } else if (isZack) {
-        if(warehouseView) warehouseView.style.display = "block";
-    } else if (isMoyy) {
-        if(salesView) salesView.style.display = "block";
-    } else {
-        // Aliff or default Admin Mgmt 
-        if(adminView) adminView.style.display = "block";
+    // Show/Hide Pill buttons based on Access Roles
+    let pillRoster = document.getElementById("pillRoster");
+    let pillFinance = document.getElementById("pillFinance");
+    let pillSales = document.getElementById("pillSales");
+    let pillWarehouse = document.getElementById("pillWarehouse");
+    let pillSuperior = document.getElementById("pillSuperior");
+    
+    if(pillRoster) pillRoster.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
+    if(pillFinance) pillFinance.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
+    if(pillSales) pillSales.style.display = (isSuperior || isMoyy || (!isZack && !isMoyy)) ? "inline-block" : "none";
+    if(pillWarehouse) pillWarehouse.style.display = (isSuperior || isZack || (!isZack && !isMoyy)) ? "inline-block" : "none";
+    if(pillSuperior) pillSuperior.style.display = (isSuperior) ? "inline-block" : "none";
+
+    // Auto-switch to default Tab based on user identity logic
+    if(!window.currentMgmtTabHasInit) {
+        window.currentMgmtTabHasInit = true; // prevent auto-switch re-trigger on data reload
+        if(isSuperior || isAliff || (!isZack && !isMoyy)) switchMgmtTab('subtabRoster', 'pillRoster');
+        else if(isZack) switchMgmtTab('subtabWarehouse', 'pillWarehouse');
+        else if(isMoyy) switchMgmtTab('subtabSales, salesMgmtView', 'pillSales');
     }
 
     renderPettyCash();
@@ -2174,6 +2174,20 @@ function renderMgmtPlaceholders() {
     document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#10B981" : "red";
     document.getElementById("memoInputText").value = globalMemo.text;
 }
+
+window.switchMgmtTab = function(tabId, pillId) {
+    document.querySelectorAll('.mgmt-subtab').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.pill-btn').forEach(el => el.classList.remove('active'));
+    
+    let targets = tabId.split(','); 
+    targets.forEach(t => {
+        let el = document.getElementById(t.trim());
+        if(el) el.style.display = 'block';
+    });
+    
+    let pill = document.getElementById(pillId);
+    if(pill) pill.classList.add('active');
+};
 
 window.updateMoyySettings = function() {
     moyySettings.target = parseFloat(document.getElementById("moyyTargetInput").value) || 10000;
