@@ -2522,7 +2522,24 @@ window.renderStaffSchedule = function() {
                     code = 'PH';
                 } else {
                     const loopDate = new Date(year, month, d);
-                    code = loopDate.getDay() === 3 ? 'B' : 'C'; // 3 is Wednesday
+                    const dayOfWeek = loopDate.getDay();
+                    
+                    // Fixed Permanent Off Days
+                    const offDaysConfig = {
+                        "Aliff": 4,          // Khamis
+                        "Fahmi": 5,          // Jumaat
+                        "Tarmizi Kael": 6,   // Sabtu
+                        "Irfan": 0,          // Ahad
+                        "Ariff": 1,          // Isnin
+                        "Farhan Moyy": 2,    // Selasa
+                        "Zack": 3            // Rabu
+                    };
+
+                    if(offDaysConfig[staff.name] !== undefined && offDaysConfig[staff.name] === dayOfWeek) {
+                        code = 'OFF';
+                    } else {
+                        code = dayOfWeek === 3 ? 'B' : 'C'; // 3 is Wednesday default
+                    }
                 }
                 
                 let bg = rowBg, col = "#333", fw = "normal";
