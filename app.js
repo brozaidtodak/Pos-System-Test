@@ -2472,9 +2472,10 @@ window.renderStaffSchedule = function() {
                 let targetDate = `${year}-${monthStr}-${dayStr}`;
                 
                 let shiftData = staffSchedules.find(s => s.staff_name === staff.name && s.date === targetDate);
+                let onClickEmptyStr = isAdmin ? `onclick="openQuickShiftModal('${staff.name}', '${targetDate}', null)" style="cursor:pointer;" title="Isi"` : "";
                 
                 if(!shiftData) {
-                    rows += `<td style="border:1px solid #ddd; background:${rowBg}; color:#ccc; font-size:10px;">-</td>`;
+                    rows += `<td ${onClickEmptyStr} style="border:1px solid #ddd; background:${rowBg}; color:#ccc; font-size:10px;">-</td>`;
                 } else {
                     let code = shiftData.shift;
                     let bg = rowBg, col = "#333", fw = "normal";
@@ -2488,9 +2489,7 @@ window.renderStaffSchedule = function() {
                     else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
                     
                     let attachStr = code === 'MC' && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
-                    
-                    let onClickStr = isAdmin ? `onclick="deleteSchedulePrompt(${shiftData.id})" style="cursor:pointer;" title="Klik untuk PADAM"` : "";
-                    
+                    let onClickStr = isAdmin ? `onclick="openQuickShiftModal('${staff.name}', '${targetDate}', ${shiftData.id})" style="cursor:pointer;" title="Ubah"` : "";
                     rows += `<td ${onClickStr} style="border:1px solid #ccc; background:${bg}; color:${col}; font-weight:${fw}; font-size:11px;">${code}${attachStr}</td>`;
                 }
             }
@@ -2503,90 +2502,53 @@ window.renderStaffSchedule = function() {
     if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
 }
 
-window.executeAutoFillRoster = async function() {
-    if(staffProfiles.length === 0) return alert("Ralat: Tiada profil staf dijumpai dalam pangkalan data!");
+let quickShiftState = { staff: "", date: "", id: null };
+
+window.openQuickShiftModal = function(staffName, targetDate, existingId) {
+    quickShiftState.staff = staffName;
+    quickShiftState.date = targetDate;
+    quickShiftState.id = existingId || null;
     
-    let monthName = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"][activeRosterMonth];
-    if(!confirm(`Amaran: Tindakan ini akan RESET keseluruhan jadual bulan ${monthName} ${activeRosterYear} kepada Default 10Camp (Rabu: Shift B, Lain: Shift C).\\n\\nAdakah anda pasti mahu teruskan?`)) return;
+    document.getElementById("quickShiftLabel").textContent = `${staffName} (${targetDate})`;
+    document.getElementById("quickShiftModal").style.display = "flex";
+};
 
+window.saveQuickShift = async function(shiftCode) {
+    const { staff, date, id } = quickShiftState;
+    document.getElementById("quickShiftModal").style.display = "none";
+    
     try {
-        const btn = event ? event.target : null;
-        if(btn) { btn.disabled = true; btn.textContent = "⏳ Memproses..."; }
+        // Padam rekod sedia ada (Jika KOSONG, atau jika ada pertindihan)
+        if(id) {
+            staffSchedules = staffSchedules.filter(s => s.id !== id);
+            await db.from('roster_schedules').delete().eq('id', id);
+        } else {
+            // Sebagai perlindungan, padam mengikut nama dan tarikh
+            await db.from('roster_schedules').delete().eq('staff_name', staff).eq('date', date);
+            staffSchedules = staffSchedules.filter(s => !(s.staff_name === staff && s.date === date));
+        }
 
-        // 1. Dapatkan nama semua staf
-        let allStaffs = staffProfiles.map(p => p.name);
-        
-        // 2. Padam semua jadual dari tahun/bulan aktif (elak bertindih)
-        // Kita loop dari Date 1 to hujung bulan.
-        const year = activeRosterYear;
-        const month = activeRosterMonth;
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
-        let startD = `${year}-${(month+1).toString().padStart(2, '0')}-01`;
-        let endD = `${year}-${(month+1).toString().padStart(2, '0')}-${daysInMonth}`;
-        
-        // Padam rekod bulan aktif secara pukal menggunakan rentang masa (Range)
-        await db.from('roster_schedules').delete().gte('date', startD).lte('date', endD);
-
-        // 3. Jana Payload Pukal
-        let bulkPayload = [];
-        for(let s = 0; s < allStaffs.length; s++) {
-            let sname = allStaffs[s];
+        if(shiftCode !== 'KOSONG') {
+            let newId = Math.floor(Date.now() / 100) + Math.floor(Math.random() * 9999);
+            let payload = {
+                id: newId,
+                staff_name: staff,
+                date: date,
+                shift: shiftCode,
+                mc_name: ''
+            };
             
-            for(let d = 1; d <= daysInMonth; d++) {
-                let loopDate = new Date(year, month, d);
-                // getDay() = 0 (Sunday), 1 (Mon), 2 (Tue), 3 (Wed)
-                let dayOfWeek = loopDate.getDay(); 
-                
-                let shiftCode = 'C';
-                if(dayOfWeek === 3) {
-                    shiftCode = 'B'; // Rabu Shift B
-                }
-                
-                let dayStr = d.toString().padStart(2, '0');
-                let monthStr = (month+1).toString().padStart(2, '0');
-                let dateStr = `${year}-${monthStr}-${dayStr}`;
-                
-                let randomId = Math.floor(Date.now() / 100) + Math.floor(Math.random() * 999999) + (s * 40) + d;
-                
-                bulkPayload.push({
-                    id: randomId,
-                    staff_name: sname,
-                    date: dateStr,
-                    shift: shiftCode
-                });
-            }
+            await db.from('roster_schedules').insert([payload]);
+            staffSchedules.push(payload);
         }
 
-        // 4. Sumbat ke Supabase (Max 1000 limit per insert, so we chunk it if too big)
-        const CHUNK_SIZE = 500;
-        for (let i = 0; i < bulkPayload.length; i += CHUNK_SIZE) {
-            let chunk = bulkPayload.slice(i, i + CHUNK_SIZE);
-            await db.from('roster_schedules').insert(chunk);
-        }
-
-        alert(`Selesai! Jadual Default bulan ${monthName} telah diisi secara automatik untuk ${allStaffs.length} staf.`);
-        
-        // Manual force sync to bypass Real-Time sluggishness on bulk insert
-        let { data: newRoster } = await db.from('roster_schedules').select('*');
-        if(newRoster) {
-             staffSchedules = newRoster;
-             if(typeof renderStaffSchedule === 'function') renderStaffSchedule();
-        }
-        
-        if(btn) Object.assign(btn, {disabled: false, textContent: "⚡ Auto-Isi (Default)"});
+        renderStaffSchedule();
         
     } catch(err) {
-        alert("Ralat semasa menjalankan Auto-Isi: " + err.message);
+        alert("Ralat mengemaskini syif: " + err.message);
     }
-}
-
-window.deleteSchedulePrompt = async function(id) {
-    if(!confirm("Buang jadual ini? (Jika ia adalah AL, baki TIDAK dipulangkan secara automatik dalam fungsi padam ini. Rujuk admin.)")) return;
-    staffSchedules = staffSchedules.filter(s => s.id !== id);
-    await db.from('roster_schedules').delete().eq('id', id);
-    renderStaffSchedule();
 };
+
 
 window.renderPendingSchedules = function() {
     const tbody = document.getElementById("pendingRequestsTbody");
