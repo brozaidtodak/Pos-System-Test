@@ -1576,14 +1576,14 @@ function renderPromotions() {
 // ===================================
 
 const authUsers = [
-    { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director', email: 'zaid@10camp.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin' },
-    { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department', email: 'aliff@10camp.com', staff_id: 'CMP008', full_name: 'Muhammad Aliff Ashraf Bin Johar' },
-    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com', staff_id: 'CMP010', full_name: 'Mohamad Farhan Bin Wakiman' },
-    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department', email: 'zack@10camp.com', staff_id: 'CMP005', full_name: 'Muhammad Nur Zakwan Bin Md Mahalli' },
-    { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department', email: 'ariff@10camp.com', staff_id: 'CMP006', full_name: 'Muhammad Zaimuddin Ariff Bin Zainal Ariffin' },
-    { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim', email: 'irfan@10camp.com', staff_id: 'CMP003', full_name: 'Muhammad Irfansyah Bin Abd Fattah' },
-    { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory', email: 'tarmizi@10camp.com', staff_id: 'CMP011', full_name: 'Tarmizi bin Rusli' },
-    { name: 'Fahmi', role: 'inventory', pin: '7777', dept: 'Inventory Assistance', email: 'fahmi@10camp.com', staff_id: 'CMP009', full_name: 'Shahrul Fahmi Bin Ramlee' }
+    { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director', email: 'zaid@10camp.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
+    { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department', email: 'aliff@10camp.com', staff_id: 'CMP008', full_name: 'Muhammad Aliff Ashraf Bin Johar', join_date: '2024-07-01' },
+    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com', staff_id: 'CMP010', full_name: 'Mohamad Farhan Bin Wakiman', join_date: '2025-09-01' },
+    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department', email: 'zack@10camp.com', staff_id: 'CMP005', full_name: 'Muhammad Nur Zakwan Bin Md Mahalli', join_date: '2024-07-01' },
+    { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department', email: 'ariff@10camp.com', staff_id: 'CMP006', full_name: 'Muhammad Zaimuddin Ariff Bin Zainal Ariffin', join_date: '2024-07-01' },
+    { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim', email: 'irfan@10camp.com', staff_id: 'CMP003', full_name: 'Muhammad Irfansyah Bin Abd Fattah', join_date: '2024-07-01' },
+    { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory', email: 'tarmizi@10camp.com', staff_id: 'CMP011', full_name: 'Tarmizi bin Rusli', join_date: '2025-08-11' },
+    { name: 'Fahmi', role: 'inventory', pin: '7777', dept: 'Inventory Assistance', email: 'fahmi@10camp.com', staff_id: 'CMP009', full_name: 'Shahrul Fahmi Bin Ramlee', join_date: '2024-07-01' }
 ];
 
 
