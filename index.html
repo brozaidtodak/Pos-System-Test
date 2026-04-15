@@ -1126,47 +1126,12 @@
                         </div>
                     </div>
 
-                    <!-- Roster Assignment Form -->
-                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:flex-end; background:#FFF; border:1px solid var(--border-color); padding:10px; border-radius:6px; flex-wrap:wrap;">
-                        <div style="flex:1; min-width:150px;">
-                            <label class="small-lbl">Nama Pekerja</label>
-                            <select id="scheduleStaffName" class="login-input" style="margin:0;">
-                                <option value="Aliff">Aliff</option>
-                                <option value="Farhan Moyy">Farhan Moyy</option>
-                                <option value="Zack">Zack</option>
-                                <option value="Irfan">Irfan</option>
-                                <option value="Ariff">Ariff</option>
-                                <option value="Tarmizi">Tarmizi</option>
-                                <option value="Fahmi">Fahmi</option>
-                            </select>
-                        </div>
-                        <div style="flex:1; min-width:130px;">
-                            <label class="small-lbl">Tarikh Bertugas</label>
-                            <input type="date" id="scheduleDate" class="login-input" style="margin:0;">
-                        </div>
-                        <div style="flex:1; min-width:180px;">
-                            <label class="small-lbl">Ketentuan Syif / Cuti</label>
-                            <select id="scheduleShift" class="login-input" style="margin:0;" onchange="toggleMcUpload(this.value)">
-                                <option value="A">Shift A (11:00 am - 9:00 pm)</option>
-                                <option value="B">Shift B (2:00 pm - 8:00 pm)</option>
-                                <option value="C">Shift C (11:00 am - 8:00 pm)</option>
-                                <option value="OFF">OFF Day (Tiada Pemotongan AL)</option>
-                                <option value="AL">AL (Annual Leave: Potong Baki Cuti)</option>
-                                <option value="MC">MC (Sick Leave: Perlukan Sijil)</option>
-                                <option value="EL">EL (Emergency Leave)</option>
-                            </select>
-                        </div>
-                        <div id="mcAttachmentBox" style="flex:1; min-width:180px; display:none;">
-                            <label class="small-lbl">Sijil MC (Lampiran)</label>
-                            <input type="file" id="scheduleMcFile" class="login-input" style="margin:0; padding:10px;" accept="image/*,application/pdf">
-                        </div>
-                        <div style="flex:1; min-width:120px;">
-                            <button class="btn-primary" id="saveScheduleBtn" style="margin:0; width:100%; height:44px;">Set & Overwrite</button>
-                        </div>
-                    </div>
+
 
                     <!-- KALENDAR NAVIGATOR (ADMIN/MGMT) -->
                     <div style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                        <button id="btnEditRoster" class="btn-primary" onclick="window.toggleRosterEditMode()" style="margin:0; background:#6b7280; border-color:#6b7280; padding:8px 12px; font-size:12px; display:flex; gap:5px; align-items:center;">✏️ MULA EDIT</button>
+                        <button id="btnSubmitRoster" class="btn-primary" onclick="window.submitBulkRoster()" style="margin:0; background:#10b981; border-color:#10b981; padding:8px 12px; font-size:12px; display:none; gap:5px; align-items:center;">✅ SIMPAN PERUBAHAN</button>
                         <select id="adminRosterYear" class="login-input" style="margin:0; width:90px; padding:8px; font-weight:bold; background:#fafafa;" onchange="setRosterYear(this.value)">
                             <option value="2025">2025</option>
                             <option value="2026" selected>2026</option>

@@ -2485,8 +2485,8 @@ window.renderStaffSchedule = function() {
                 
                 let attachStr = code === 'MC' && shiftData && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
 
-                if(isAdmin) {
-                    let selStr = `<select onchange="saveQuickShiftInline('${staff.name}', '${targetDate}', ${shiftData ? shiftData.id : null}, this.value)" style="width:100%; height:100%; border:none; background:transparent; outline:none; text-align:center; font-size:11px; font-weight:${fw}; color:${col}; cursor:pointer; appearance:none; -webkit-appearance:none; padding:8px 2px;">`;
+                if(isAdmin && window.isRosterEditMode) {
+                    let selStr = `<select onchange="saveQuickShiftInline(this, '${staff.name}', '${targetDate}', ${shiftData ? shiftData.id : null}, this.value)" style="width:100%; height:100%; border:none; background:transparent; outline:none; text-align:center; font-size:11px; font-weight:${fw}; color:${col}; cursor:pointer; appearance:none; -webkit-appearance:none; padding:8px 2px;">`;
                     selStr += `<option value="KOSONG" ${!code ? 'selected' : ''}>-</option>`;
                     selStr += `<option value="A" ${code==='A' ? 'selected' : ''}>A</option>`;
                     selStr += `<option value="B" ${code==='B' ? 'selected' : ''}>B</option>`;
@@ -2499,9 +2499,9 @@ window.renderStaffSchedule = function() {
                     rows += `<td style="border:1px solid #aaa; background:${bg}; padding:0; min-width:35px;">${selStr}${attachStr}</td>`;
                 } else {
                     if(!code) {
-                        rows += `<td style="border:1px solid #ddd; background:${rowBg}; color:#ccc; font-size:10px;">-</td>`;
+                        rows += `<td style="border:1px solid #ddd; background:${rowBg}; color:#ccc; text-align:center; font-size:10px;">-</td>`;
                     } else {
-                        rows += `<td style="border:1px solid #ddd; background:${bg}; color:${col}; font-weight:${fw}; font-size:11px;">${code}${attachStr}</td>`;
+                        rows += `<td style="border:1px solid #ddd; background:${bg}; color:${col}; text-align:center; font-weight:${fw}; font-size:11px;">${code}${attachStr}</td>`;
                     }
                 }
             }
@@ -2514,34 +2514,97 @@ window.renderStaffSchedule = function() {
     if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
 }
 
-window.saveQuickShiftInline = async function(staff, date, id, shiftCode) {
+window.isRosterEditMode = false;
+
+window.toggleRosterEditMode = function() {
+    window.isRosterEditMode = !window.isRosterEditMode;
+    let btnEdit = document.getElementById("btnEditRoster");
+    let btnSubmit = document.getElementById("btnSubmitRoster");
+    
+    if(window.isRosterEditMode) {
+        if(btnEdit) { btnEdit.style.background = "#4f46e5"; btnEdit.style.borderColor = "#4f46e5"; btnEdit.innerHTML = "❌ KELUAR EDIT"; }
+        if(btnSubmit) btnSubmit.style.display = "flex";
+    } else {
+        if(btnEdit) { btnEdit.style.background = "#6b7280"; btnEdit.style.borderColor = "#6b7280"; btnEdit.innerHTML = "✏️ MULA EDIT"; }
+        if(btnSubmit) btnSubmit.style.display = "none";
+    }
+    renderStaffSchedule();
+};
+
+window.saveQuickShiftInline = function(el, staff, date, id, shiftCode) {
+    // Kemaskini Memori RAM sahaja (Silent Local Sync)
+    staffSchedules = staffSchedules.filter(s => !(s.staff_name === staff && s.date === date));
+    
+    if(shiftCode !== 'KOSONG') {
+        let newId = id || (Math.floor(Date.now() / 100) + Math.floor(Math.random() * 9999));
+        staffSchedules.push({
+            id: newId,
+            staff_name: staff,
+            date: date,
+            shift: shiftCode,
+            mc_name: ''
+        });
+    }
+
+    // Kemaskini visual kotak serta merta tanpa render seluruh jadual
+    let bg = "#FAFAFA", col = "#333", fw = "normal";
+    if(shiftCode === 'A') { bg = "#fde047"; fw = "bold"; }
+    else if(shiftCode === 'B') { bg = "#86efac"; fw = "bold"; }
+    else if(shiftCode === 'C') { bg = "#c4b5fd"; fw = "bold"; }
+    else if(shiftCode === 'OFF') { bg = "#FAFAFA"; col = "red"; fw = "bold"; }
+    else if(shiftCode === 'AL') { bg = "#3b82f6"; col = "white"; fw = "bold"; }
+    else if(shiftCode === 'MC') { bg = "#fbbf24"; fw = "bold"; }
+    else if(shiftCode === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
+    else { bg = "#FFF"; col = "#ccc"; }
+
+    let td = el.parentElement;
+    if(td) td.style.background = bg;
+    el.style.color = col;
+    el.style.fontWeight = fw;
+};
+
+window.submitBulkRoster = async function() {
+    if(!confirm("Sahkan simpankan keseluruhan tarikh ini ke pelayan Awan (Supabase)?\\n\\nTindakan ini akan menggantikan rekod sedia ada bagi bulan ini.")) return;
+    
+    let btnSubmit = document.getElementById("btnSubmitRoster");
+    if(btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = "⏳ MENYIMPAN..."; }
+
     try {
-        if(id) {
-            staffSchedules = staffSchedules.filter(s => s.id !== id);
-            await db.from('roster_schedules').delete().eq('id', id);
-        } else {
-            await db.from('roster_schedules').delete().eq('staff_name', staff).eq('date', date);
-            staffSchedules = staffSchedules.filter(s => !(s.staff_name === staff && s.date === date));
+        const year = activeRosterYear;
+        const month = activeRosterMonth;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let startD = `${year}-${(month+1).toString().padStart(2, '0')}-01`;
+        let endD = `${year}-${(month+1).toString().padStart(2, '0')}-${daysInMonth}`;
+        
+        // 1. Flush API for current month
+        await db.from('roster_schedules').delete().gte('date', startD).lte('date', endD);
+        
+        // 2. Filter local memory payload for current month
+        let payload = staffSchedules.filter(s => s.date.startsWith(`${year}-${(month+1).toString().padStart(2, '0')}`));
+        
+        // 3. Chunk Bulk Insert
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+            let chunk = payload.slice(i, i + CHUNK_SIZE);
+            await db.from('roster_schedules').insert(chunk);
         }
 
-        if(shiftCode !== 'KOSONG') {
-            let newId = Math.floor(Date.now() / 100) + Math.floor(Math.random() * 9999);
-            let payload = {
-                id: newId,
-                staff_name: staff,
-                date: date,
-                shift: shiftCode,
-                mc_name: ''
-            };
-            await db.from('roster_schedules').insert([payload]);
-            staffSchedules.push(payload);
+        alert("Berjaya! Jadual telah di-'Upload' secara rasmi.");
+        
+        window.toggleRosterEditMode(); // Exit edit mode
+        
+        // Force refresh API fallback
+        let { data: newRoster } = await db.from('roster_schedules').select('*');
+        if(newRoster) {
+             staffSchedules = newRoster;
+             renderStaffSchedule();
         }
-
-        renderStaffSchedule();
         
     } catch(err) {
-        alert("Ralat mengemaskini syif: " + err.message);
+        alert("Ralat Menyimpan Pukal: " + err.message);
     }
+    
+    if(btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = "✅ SIMPAN PERUBAHAN"; }
 };
 
 
