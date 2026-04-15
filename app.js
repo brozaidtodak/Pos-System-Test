@@ -2472,25 +2472,37 @@ window.renderStaffSchedule = function() {
                 let targetDate = `${year}-${monthStr}-${dayStr}`;
                 
                 let shiftData = staffSchedules.find(s => s.staff_name === staff.name && s.date === targetDate);
-                let onClickEmptyStr = isAdmin ? `onclick="openQuickShiftModal('${staff.name}', '${targetDate}', null)" style="cursor:pointer;" title="Isi"` : "";
+                let code = shiftData ? shiftData.shift : '';
                 
-                if(!shiftData) {
-                    rows += `<td ${onClickEmptyStr} style="border:1px solid #ddd; background:${rowBg}; color:#ccc; font-size:10px;">-</td>`;
+                let bg = rowBg, col = "#333", fw = "normal";
+                if(code === 'A') { bg = "#fde047"; fw = "bold"; }
+                else if(code === 'B') { bg = "#86efac"; fw = "bold"; }
+                else if(code === 'C') { bg = "#c4b5fd"; fw = "bold"; }
+                else if(code === 'OFF') { col = "red"; fw = "bold"; }
+                else if(code === 'AL') { bg = "#3b82f6"; col = "white"; fw = "bold"; }
+                else if(code === 'MC') { bg = "#fbbf24"; fw = "bold"; }
+                else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
+                
+                let attachStr = code === 'MC' && shiftData && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
+
+                if(isAdmin) {
+                    let selStr = `<select onchange="saveQuickShiftInline('${staff.name}', '${targetDate}', ${shiftData ? shiftData.id : null}, this.value)" style="width:100%; height:100%; border:none; background:transparent; outline:none; text-align:center; font-size:11px; font-weight:${fw}; color:${col}; cursor:pointer; appearance:none; -webkit-appearance:none; padding:8px 2px;">`;
+                    selStr += `<option value="KOSONG" ${!code ? 'selected' : ''}>-</option>`;
+                    selStr += `<option value="A" ${code==='A' ? 'selected' : ''}>A</option>`;
+                    selStr += `<option value="B" ${code==='B' ? 'selected' : ''}>B</option>`;
+                    selStr += `<option value="C" ${code==='C' ? 'selected' : ''}>C</option>`;
+                    selStr += `<option value="OFF" ${code==='OFF' ? 'selected' : ''}>OFF</option>`;
+                    selStr += `<option value="AL" ${code==='AL' ? 'selected' : ''}>AL</option>`;
+                    selStr += `<option value="MC" ${code==='MC' ? 'selected' : ''}>MC</option>`;
+                    selStr += `<option value="EL" ${code==='EL' ? 'selected' : ''}>EL</option>`;
+                    selStr += `</select>`;
+                    rows += `<td style="border:1px solid #aaa; background:${bg}; padding:0; min-width:35px;">${selStr}${attachStr}</td>`;
                 } else {
-                    let code = shiftData.shift;
-                    let bg = rowBg, col = "#333", fw = "normal";
-                    // Color Mapping
-                    if(code === 'A') { bg = "#fde047"; fw = "bold"; }
-                    else if(code === 'B') { bg = "#86efac"; fw = "bold"; }
-                    else if(code === 'C') { bg = "#c4b5fd"; fw = "bold"; }
-                    else if(code === 'OFF') { col = "red"; fw = "bold"; }
-                    else if(code === 'AL') { bg = "#3b82f6"; col = "white"; fw = "bold"; }
-                    else if(code === 'MC') { bg = "#fbbf24"; fw = "bold"; }
-                    else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
-                    
-                    let attachStr = code === 'MC' && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
-                    let onClickStr = isAdmin ? `onclick="openQuickShiftModal('${staff.name}', '${targetDate}', ${shiftData.id})" style="cursor:pointer;" title="Ubah"` : "";
-                    rows += `<td ${onClickStr} style="border:1px solid #ccc; background:${bg}; color:${col}; font-weight:${fw}; font-size:11px;">${code}${attachStr}</td>`;
+                    if(!code) {
+                        rows += `<td style="border:1px solid #ddd; background:${rowBg}; color:#ccc; font-size:10px;">-</td>`;
+                    } else {
+                        rows += `<td style="border:1px solid #ddd; background:${bg}; color:${col}; font-weight:${fw}; font-size:11px;">${code}${attachStr}</td>`;
+                    }
                 }
             }
             rows += `</tr>`;
@@ -2502,28 +2514,12 @@ window.renderStaffSchedule = function() {
     if(tbodyPublic) tbodyPublic.innerHTML = generateTbody(false);
 }
 
-let quickShiftState = { staff: "", date: "", id: null };
-
-window.openQuickShiftModal = function(staffName, targetDate, existingId) {
-    quickShiftState.staff = staffName;
-    quickShiftState.date = targetDate;
-    quickShiftState.id = existingId || null;
-    
-    document.getElementById("quickShiftLabel").textContent = `${staffName} (${targetDate})`;
-    document.getElementById("quickShiftModal").style.display = "flex";
-};
-
-window.saveQuickShift = async function(shiftCode) {
-    const { staff, date, id } = quickShiftState;
-    document.getElementById("quickShiftModal").style.display = "none";
-    
+window.saveQuickShiftInline = async function(staff, date, id, shiftCode) {
     try {
-        // Padam rekod sedia ada (Jika KOSONG, atau jika ada pertindihan)
         if(id) {
             staffSchedules = staffSchedules.filter(s => s.id !== id);
             await db.from('roster_schedules').delete().eq('id', id);
         } else {
-            // Sebagai perlindungan, padam mengikut nama dan tarikh
             await db.from('roster_schedules').delete().eq('staff_name', staff).eq('date', date);
             staffSchedules = staffSchedules.filter(s => !(s.staff_name === staff && s.date === date));
         }
@@ -2537,7 +2533,6 @@ window.saveQuickShift = async function(shiftCode) {
                 shift: shiftCode,
                 mc_name: ''
             };
-            
             await db.from('roster_schedules').insert([payload]);
             staffSchedules.push(payload);
         }
