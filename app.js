@@ -2525,6 +2525,7 @@ window.renderStaffSchedule = function() {
                 else if(code === 'AL') { bg = "#3b82f6"; col = "white"; fw = "bold"; }
                 else if(code === 'MC') { bg = "#fbbf24"; fw = "bold"; }
                 else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
+                else if(code === 'PH') { bg = "#f472b6"; col = "white"; fw = "bold"; }
                 
                 let attachStr = code === 'MC' && shiftData && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
 
@@ -2538,6 +2539,7 @@ window.renderStaffSchedule = function() {
                     selStr += `<option value="AL" ${code==='AL' ? 'selected' : ''}>AL</option>`;
                     selStr += `<option value="MC" ${code==='MC' ? 'selected' : ''}>MC</option>`;
                     selStr += `<option value="EL" ${code==='EL' ? 'selected' : ''}>EL</option>`;
+                    selStr += `<option value="PH" ${code==='PH' ? 'selected' : ''}>PH</option>`;
                     selStr += `</select>`;
                     rows += `<td style="border:1px solid #aaa; background:${bg}; padding:0; min-width:35px;">${selStr}${attachStr}</td>`;
                 } else {
