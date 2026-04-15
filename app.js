@@ -3094,7 +3094,12 @@ window.loadAdminAttendance = async function() {
     if(!tbody || !db) return;
     
     const today = new Date().toISOString().split('T')[0];
-    let { data } = await db.from('staff_attendance').select('*').eq('date', today);
+    let { data, error } = await db.from('staff_attendance').select('*').eq('date', today);
+    
+    if(error) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:10px; color:red;">RALAT PANGKALAN DATA: ${error.message}. Adakah jadual ini belum dicipta?</td></tr>`;
+        return;
+    }
     
     if(!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:10px;">Belum ada staf clock in hari ini.</td></tr>';
