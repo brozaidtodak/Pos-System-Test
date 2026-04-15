@@ -2144,16 +2144,15 @@ function renderMgmtPlaceholders() {
     // Auto-switch to default Tab based on user identity logic
     if(!window.currentMgmtTabHasInit) {
         window.currentMgmtTabHasInit = true; // prevent auto-switch re-trigger on data reload
-        if(isSuperior || isAliff || (!isZack && !isMoyy)) switchMgmtTab('subtabRoster', 'pillRoster');
-        else if(isZack) switchMgmtTab('subtabWarehouse', 'pillWarehouse');
-        else if(isMoyy) switchMgmtTab('subtabSales, salesMgmtView', 'pillSales');
+        if(isSuperior || isAliff || (!isZack && !isMoyy)) window.switchMgmtTab('subtabRoster', 'pillRoster');
+        else if(isZack) window.switchMgmtTab('subtabWarehouse', 'pillWarehouse');
+        else if(isMoyy) window.switchMgmtTab('subtabSales, salesMgmtView', 'pillSales');
     }
 
     renderPettyCash();
     renderMgmtStaffSales();
     renderCustomerIssues();
     
-    let isAliff = currentUser && currentUser.name === 'Aliff';
     if (isAliff || isSuperior || (!isZack && !isMoyy)) {
         renderStaffSchedule();
     }
