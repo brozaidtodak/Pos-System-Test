@@ -2509,7 +2509,13 @@ window.renderStaffSchedule = function() {
                 let targetDate = `${year}-${monthStr}-${dayStr}`;
                 
                 let shiftData = staffSchedules.find(s => s.staff_name === staff.name && s.date === targetDate);
-                let code = shiftData ? shiftData.shift : '';
+                let code = '';
+                if(shiftData) {
+                    code = shiftData.shift;
+                } else {
+                    const loopDate = new Date(year, month, d);
+                    code = loopDate.getDay() === 3 ? 'B' : 'C'; // 3 is Wednesday
+                }
                 
                 let bg = rowBg, col = "#333", fw = "normal";
                 if(code === 'A') { bg = "#fde047"; fw = "bold"; }
