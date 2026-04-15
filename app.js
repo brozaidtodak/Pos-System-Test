@@ -41,6 +41,12 @@ let globalMemo = { active: false, text: "" };
 let staffSchedules = [];
 let pendingSchedules = [];
 
+let publicHolidays = [
+    '2026-01-01', '2026-03-20', '2026-03-21', '2026-03-22', '2026-03-23',
+    '2026-05-01', '2026-05-27', '2026-06-01', '2026-06-17', '2026-08-31',
+    '2026-09-16', '2026-12-11'
+];
+
 let hrSettings = {
     wedBreak: "Tiada Rehat (Non-Stop)",
     friBreak: "1:00 PM - 3:00 PM (Solat)",
@@ -2512,6 +2518,8 @@ window.renderStaffSchedule = function() {
                 let code = '';
                 if(shiftData) {
                     code = shiftData.shift;
+                } else if(publicHolidays.includes(targetDate)) {
+                    code = 'PH';
                 } else {
                     const loopDate = new Date(year, month, d);
                     code = loopDate.getDay() === 3 ? 'B' : 'C'; // 3 is Wednesday
