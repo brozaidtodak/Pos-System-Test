@@ -2538,6 +2538,8 @@ window.renderStaffSchedule = function() {
 
                     if(offDaysConfig[staff.name] !== undefined && offDaysConfig[staff.name] === dayOfWeek) {
                         code = 'OFF';
+                    } else if(staff.name === 'Zack' && dayOfWeek === 4) {
+                        code = 'B';
                     } else {
                         code = dayOfWeek === 3 ? 'B' : 'C'; // 3 is Wednesday default
                     }
