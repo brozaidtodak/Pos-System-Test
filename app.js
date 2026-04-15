@@ -31,12 +31,7 @@ window.changePosPage = function(dir) {
     document.getElementById('productsList').parentElement.scrollTop = 0;
 }
 // Memory State
-let masterProducts = [
-    { "sku": "BD001", "name": "Tunnel tent (dummy)", "category": "Camping Tent", "price": 1799.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/tent?lock=1"] },
-    { "sku": "BD002", "name": "Hexagon tarp PU (dummy)", "category": "Flysheet / Tarp", "price": 227.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/camping?lock=2"] },
-    { "sku": "BD003", "name": "Hexagon tarp silver coated (dummy)", "category": "Flysheet", "price": 327.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/mountain?lock=3"] },
-    { "sku": "BD004", "name": "Large Hexagon tarp (dummy)", "category": "Flysheet", "price": 459.0, "is_published": true, "brand": "BLACKDOG", "images": ["https://loremflickr.com/500/500/outdoor?lock=4"] }
-];
+let masterProducts = [];
 
 let pettyCashLedger = [];
 let customerIssues = [];
@@ -80,44 +75,11 @@ let staffProfiles = [
     { name: "Fahmi", leave_balance: 8 }
 ];
 
-let inventoryBatches = [
-    { "id": 1, "sku": "BD001", "qty_remaining": 15, "inbound_date": "2025-01-01" },
-    { "id": 2, "sku": "BD002", "qty_remaining": 20, "inbound_date": "2025-01-01" },
-    { "id": 3, "sku": "BD003", "qty_remaining": 30, "inbound_date": "2025-01-01" },
-    { "id": 4, "sku": "BD004", "qty_remaining": 5, "inbound_date": "2025-01-01" },
-    { "id": 5, "sku": "BD005", "qty_remaining": 40, "inbound_date": "2025-01-01" },
-    { "id": 6, "sku": "BD006", "qty_remaining": 10, "inbound_date": "2025-01-01" },
-    { "id": 7, "sku": "BD007", "qty_remaining": 8, "inbound_date": "2025-01-01" },
-    { "id": 8, "sku": "BD008", "qty_remaining": 12, "inbound_date": "2025-01-01" },
-    { "id": 9, "sku": "BD009", "qty_remaining": 6, "inbound_date": "2025-01-01" },
-    { "id": 10, "sku": "BD010", "qty_remaining": 25, "inbound_date": "2025-01-01" },
-    { "id": 11, "sku": "BD011", "qty_remaining": 50, "inbound_date": "2025-01-01" },
-    { "id": 12, "sku": "BD012", "qty_remaining": 100, "inbound_date": "2025-01-01" },
-    { "id": 13, "sku": "BD013", "qty_remaining": 18, "inbound_date": "2025-01-01" },
-    { "id": 14, "sku": "BD014", "qty_remaining": 2, "inbound_date": "2025-01-01" },
-    { "id": 15, "sku": "BD015", "qty_remaining": 0, "inbound_date": "2025-01-01" },
-    { "id": 16, "sku": "BD019", "qty_remaining": 11, "inbound_date": "2025-01-01" },
-    { "id": 17, "sku": "BD020", "qty_remaining": 0, "inbound_date": "2025-01-01" },
-    { "id": 18, "sku": "BD021", "qty_remaining": 14, "inbound_date": "2025-01-01" },
-    { "id": 19, "sku": "BD039", "qty_remaining": 33, "inbound_date": "2025-01-01" },
-    { "id": 20, "sku": "BD047", "qty_remaining": 7, "inbound_date": "2025-01-01" }
-];
+let inventoryBatches = [];
 
-let salesHistory = [
-    { id: 101, created_at: new Date(Date.now() - 86400000*2).toISOString(), customer_name: 'Ahmad Faiz (dummy)', payment_method: 'Online Transfer', channel: 'Tiktok', status: 'Completed', staff_name: 'Ariff', total_amount: 1799.00, items: [{sku: 'BD001', name: 'Tunnel tent', quantity: 1, price: 1799.0}] },
-    { id: 102, created_at: new Date(Date.now() - 86400000*1).toISOString(), customer_name: 'Siti Sarah (dummy)', payment_method: 'Card', channel: 'In-Store', status: 'Completed', staff_name: 'Irfan', total_amount: 454.00, items: [{sku: 'BD002', name: 'Hexagon tarp PU', quantity: 2, price: 227.0}] },
-    { id: 103, created_at: new Date(Date.now() - 3600000*5).toISOString(), customer_name: 'Kevin (dummy)', payment_method: 'E-Wallet', channel: 'Shopee', status: 'To Fulfil', staff_name: 'Ariff', total_amount: 4325.00, items: [{sku: 'BD123', name: 'Blackdog Cabin Tent', quantity: 1, price: 4325.0}] },
-    { id: 104, created_at: new Date(Date.now() - 3600000*2).toISOString(), customer_name: 'Muthu (B2B)', payment_method: 'Invoice', channel: 'In-Store', status: 'Unpaid', staff_name: 'Irfan', total_amount: 8520.00, customer_phone: '012-99998888', items: [{sku: 'WHB', name: 'Bulk Camp Chairs', quantity: 20, price: 426.0}] },
-    { id: 105, created_at: new Date().toISOString(), customer_name: 'Rozita (dummy)', payment_method: 'Card', channel: 'Website', status: 'Processing', staff_name: 'Ariff', total_amount: 186.00, items: [{sku: 'BD006', name: 'Atmosphere Lamp', quantity: 2, price: 93.0}] }
-];
+let salesHistory = [];
 
-let customersData = [
-    { id: 1, name: 'Ahmad Faiz (dummy)', phone: '0123456789', points: 1799, is_member: true },
-    { id: 2, name: 'Siti Sarah (dummy)', phone: '0134567890', points: 640, is_member: true },
-    { id: 3, name: 'Kevin (dummy)', phone: '0145678901', points: 95, is_member: false },
-    { id: 4, name: 'Muthu (dummy)', phone: '0156789012', points: 211, is_member: false },
-    { id: 5, name: 'Farah (dummy)', phone: '0167890123', points: 0, is_member: false }
-];
+let customersData = [];
 
 let financeRecords = [];
 let financeChartInstance = null;
