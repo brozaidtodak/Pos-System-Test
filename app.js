@@ -2528,7 +2528,8 @@ window.renderStaffSchedule = function() {
                     const offDaysConfig = {
                         "Aliff": 4,          // Khamis
                         "Fahmi": 5,          // Jumaat
-                        "Tarmizi Kael": 6,   // Sabtu
+                        "Tarmizi": 6,        // Sabtu (Short Name UI)
+                        "Tarmizi Kael": 6,   // Sabtu (Auth Name UI)
                         "Irfan": 0,          // Ahad
                         "Ariff": 1,          // Isnin
                         "Farhan Moyy": 2,    // Selasa
