@@ -1576,15 +1576,16 @@ function renderPromotions() {
 // ===================================
 
 const authUsers = [
-    { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director' },
-    { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department' },
-    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department' },
-    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department' },
-    { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department' },
-    { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim' },
-    { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory' },
-    { name: 'Fahmi', role: 'inventory', pin: '7777', dept: 'Inventory Assistance' }
+    { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director', email: 'zaid@10camp.com' },
+    { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department', email: 'aliff@10camp.com' },
+    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com' },
+    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department', email: 'zack@10camp.com' },
+    { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department', email: 'ariff@10camp.com' },
+    { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim', email: 'irfan@10camp.com' },
+    { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory', email: 'tarmizi@10camp.com' },
+    { name: 'Fahmi', role: 'inventory', pin: '7777', dept: 'Inventory Assistance', email: 'fahmi@10camp.com' }
 ];
+
 
 let currentUser = null;
 let currentUserRole = null;
