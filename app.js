@@ -549,6 +549,10 @@ function renderStockTake() {
         
         let stampHtml = auditTimestamps[p.sku] ? `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold;">✅ Disemak pada: ${auditTimestamps[p.sku]}</p>` : "";
 
+        const currentLoc = p.location_bin || locText;
+        const currentStatus = p.stock_status || statusStok;
+        const currentStatusColor = currentStatus.includes("Fast") ? "var(--success)" : currentStatus.includes("Dead") ? "var(--danger)" : "#6B7280";
+
         html += `
             <div class="admin-card" style="padding:15px; border-left:5px solid var(--primary); margin-bottom:0px; background:#fff; display:flex; gap:15px; flex-wrap:wrap;">
                 
@@ -565,10 +569,18 @@ function renderStockTake() {
 
                 <!-- Stock Location & Status (Middle) -->
                 <div style="flex:1; min-width:180px; padding-left:10px; border-left:1px dashed var(--border-color);">
-                    <p class="small-lbl">Lokasi Stok</p>
-                    <p style="font-family:monospace; font-size:13px; font-weight:bold; background:#eee; padding:3px 6px; border-radius:4px; display:inline-block; margin-bottom:10px;">${locText}</p>
-                    <p class="small-lbl">Status Stok</p>
-                    <span style="font-size:11px; color:white; background:${statusColor}; padding:2px 8px; border-radius:12px; font-weight:bold;">${statusStok}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <p class="small-lbl" style="margin:0;">Lokasi Stok</p>
+                        <button onclick="updateStockLocation('${p.sku}')" style="background:none; border:none; cursor:pointer; font-size:12px; color:var(--primary);">✏️ Ubah</button>
+                    </div>
+                    <p id="locText-${p.sku}" style="font-family:monospace; font-size:13px; font-weight:bold; background:#eee; padding:3px 6px; border-radius:4px; display:inline-block; margin-bottom:10px; border:1px solid #ddd;">${currentLoc}</p>
+                    
+                    <p class="small-lbl" style="margin:0; margin-bottom:3px;">Status Stok</p>
+                    <select id="statusSelect-${p.sku}" onchange="updateStockStatus('${p.sku}', this.value)" style="font-size:11px; padding:3px; border-radius:4px; border:1px solid #ccc; font-weight:bold; background-color:${currentStatusColor}; color:white; width:100%; max-width:160px; cursor:pointer;">
+                        <option value="Fast-Moving (Laku)" style="background:white; color:black;" ${currentStatus.includes('Fast') ? 'selected' : ''}>Fast-Moving (Laku)</option>
+                        <option value="Dead Stock (Perlahan)" style="background:white; color:black;" ${currentStatus.includes('Dead') ? 'selected' : ''}>Dead Stock (Perlahan)</option>
+                        <option value="Normal / Baru" style="background:white; color:black;" ${(!currentStatus.includes('Fast') && !currentStatus.includes('Dead')) ? 'selected' : ''}>Normal / Baru</option>
+                    </select>
                 </div>
 
                 <!-- Audit Execution Panel (Right) -->
@@ -603,6 +615,41 @@ function renderStockTake() {
     });
     
     container.innerHTML = html;
+}
+
+window.updateStockLocation = function(sku) {
+    let p = masterProducts.find(x => x.sku === sku);
+    if(!p) return;
+    let oldLoc = document.getElementById("locText-"+sku).textContent;
+    let newLoc = prompt("Sila masukkan lokasi rak baru untuk " + sku + ":", oldLoc);
+    if(newLoc !== null && newLoc.trim() !== "") {
+        p.location_bin = newLoc.trim(); // Update in memory
+        document.getElementById("locText-"+sku).textContent = newLoc.trim();
+        // Update cloud asynchronously
+        try { if(db) db.from('products_master').update({location_bin: newLoc.trim()}).eq('sku', sku).then(); } catch(e){}
+        
+        let el = document.getElementById("locText-"+sku);
+        el.style.backgroundColor = "#dcfce7";
+        setTimeout(() => el.style.backgroundColor = "#eee", 500);
+    }
+}
+
+window.updateStockStatus = function(sku, val) {
+    let p = masterProducts.find(x => x.sku === sku);
+    if(p) {
+        p.stock_status = val; // Update memory
+        // Update cloud asynchronously
+        try { if(db) db.from('products_master').update({stock_status: val}).eq('sku', sku).then(); } catch(e){}
+    }
+    
+    let selectEl = document.getElementById("statusSelect-"+sku);
+    if(val.includes("Fast")) {
+        selectEl.style.backgroundColor = "var(--success)";
+    } else if(val.includes("Dead")) {
+        selectEl.style.backgroundColor = "var(--danger)";
+    } else {
+        selectEl.style.backgroundColor = "#6B7280";
+    }
 }
 
 window.calculateVariance = function(sku) {
