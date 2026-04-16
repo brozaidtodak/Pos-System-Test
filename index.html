@@ -1107,6 +1107,18 @@
             </div> <!-- End subtabFinance -->
 
             <div id="subtabSales" class="mgmt-subtab">
+                <!-- Graf Analisis Teras Jualan -->
+                <div class="admin-card" style="border-top:4px solid #3b82f6; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>📊 Graf Prestasi Jualan (7 Hari Terkini)</h3>
+                        <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph()" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#3b82f6; border-color:#3b82f6;">⟳ Segarkan Graf</button>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-bottom:15px; margin-top:5px;">Trend jualan harian dikira secara automatik berdasarkan keseluruhan rekod sejarah transaksi Omnichannel.</p>
+                    <div style="width:100%; height:250px; position:relative;">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                     <!-- 3. Sales Report Semua Staf -->
                     <div class="admin-card" style="border-top:4px solid var(--primary);">

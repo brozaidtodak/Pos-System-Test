@@ -2151,6 +2151,7 @@ function renderMgmtPlaceholders() {
     // Sales functions
     if (isMoyy || isSuperior) {
         renderSalesMgmtTarget();
+        if(typeof renderSalesGraph === 'function') renderSalesGraph();
     }
     
     // update memo switch
@@ -2954,6 +2955,82 @@ document.getElementById("saveMemoBtn")?.addEventListener('click', () => {
     alert("Status Memo dikemaskini.");
     renderMgmtPlaceholders();
 });
+
+// 2.A Render Sales Graph (7 Days)
+let adminSalesChartInstance = null;
+window.renderSalesGraph = function() {
+    const canvas = document.getElementById("salesChart");
+    if(!canvas) return;
+
+    // Build empty keys for last 7 days
+    let dailyTotals = {};
+    let dailyTx = {};
+    for(let i=6; i>=0; i--) {
+        let d = new Date();
+        d.setDate(d.getDate() - i);
+        let dateKey = d.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
+        dailyTotals[dateKey] = 0;
+        dailyTx[dateKey] = 0;
+    }
+
+    salesHistory.forEach(sale => {
+        let ts = sale.created_at || sale.date; 
+        if(!ts) return;
+        let sDate = new Date(ts);
+        let dateKey = sDate.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
+        
+        if(dailyTotals[dateKey] !== undefined) {
+            dailyTotals[dateKey] += parseFloat(sale.total_amount || sale.total || 0);
+            dailyTx[dateKey]++;
+        }
+    });
+
+    let labels = Object.keys(dailyTotals);
+    let dataPoints = Object.values(dailyTotals);
+    
+    // Destroy chart if already present
+    if(adminSalesChartInstance) {
+        adminSalesChartInstance.destroy();
+    }
+    
+    // Chart.js render mechanism
+    const ctx = canvas.getContext('2d');
+    adminSalesChartInstance = new window.Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Gross Sales (RM)',
+                data: dataPoints,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                borderWidth: 2,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#3b82f6',
+                pointRadius: 4,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) { return 'RM ' + c.raw.toFixed(2); },
+                        afterLabel: function(c) { return 'Resit Cetak: ' + dailyTx[c.label]; }
+                    }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+};
 
 // 3. Staff Leaderboard (Mgmt Only)
 function renderMgmtStaffSales() {
