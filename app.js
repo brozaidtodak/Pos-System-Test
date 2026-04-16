@@ -2956,54 +2956,147 @@ document.getElementById("saveMemoBtn")?.addEventListener('click', () => {
     renderMgmtPlaceholders();
 });
 
-// 2.A Render Sales Graph (7 Days)
+// 2.A Render Sales Graph (Time-Series Modes)
+window.currentGraphMode = '7days';
+
+window.changeGraphMode = function(mode) {
+    window.currentGraphMode = mode;
+    
+    // Toggle active state on buttons
+    ['btnGraph7', 'btnGraphMonth', 'btnGraphYear', 'btnGraphCustom'].forEach(id => {
+        let btn = document.getElementById(id);
+        if(!btn) return;
+        btn.style.backgroundColor = 'var(--bg-light)';
+        btn.style.color = 'var(--text-main)';
+        btn.style.borderColor = 'var(--border-color)';
+    });
+    
+    let activeBtnId = "";
+    if(mode === '7days') activeBtnId = "btnGraph7";
+    if(mode === 'thismonth') activeBtnId = "btnGraphMonth";
+    if(mode === 'thisyear') activeBtnId = "btnGraphYear";
+    if(mode === 'custom') activeBtnId = "btnGraphCustom";
+    
+    if(activeBtnId) {
+        let activeBtn = document.getElementById(activeBtnId);
+        if(activeBtn) {
+            activeBtn.style.backgroundColor = '#3b82f6';
+            activeBtn.style.color = '#fff';
+            activeBtn.style.borderColor = '#3b82f6';
+        }
+    }
+
+    const customBox = document.getElementById("graphCustomRangeBox");
+    if(mode === 'custom') {
+        if(customBox) customBox.style.display = 'flex';
+    } else {
+        if(customBox) customBox.style.display = 'none';
+        renderSalesGraph(mode);
+    }
+};
+
+window.applyCustomGraphRange = function() {
+    renderSalesGraph('custom');
+};
+
 let adminSalesChartInstance = null;
-window.renderSalesGraph = function() {
+window.renderSalesGraph = function(mode = window.currentGraphMode) {
     const canvas = document.getElementById("salesChart");
     if(!canvas) return;
 
-    // Build empty keys for last 7 days
     let dailyTotals = {};
     let dailyTx = {};
-    for(let i=6; i>=0; i--) {
-        let d = new Date();
-        d.setDate(d.getDate() - i);
-        let dateKey = d.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
-        dailyTotals[dateKey] = 0;
-        dailyTx[dateKey] = 0;
+    let now = new Date();
+    
+    let tStartKey = 0;
+    let tEndKey = 0;
+
+    if (mode === '7days') {
+        for(let i=6; i>=0; i--) {
+            let d = new Date();
+            d.setDate(d.getDate() - i);
+            let k = d.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
+            dailyTotals[k] = 0; dailyTx[k] = 0;
+        }
+    } else if (mode === 'thismonth') {
+        let daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        for(let i=1; i<=daysInMonth; i++) {
+            let d = new Date(now.getFullYear(), now.getMonth(), i);
+            let k = d.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
+            dailyTotals[k] = 0; dailyTx[k] = 0;
+        }
+    } else if (mode === 'thisyear') {
+        const monthNames = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
+        for(let m=0; m<12; m++) {
+            dailyTotals[monthNames[m]] = 0; dailyTx[monthNames[m]] = 0;
+        }
+    } else if (mode === 'custom') {
+        let s = document.getElementById("graphStartDate").value;
+        let e = document.getElementById("graphEndDate").value;
+        if(!s || !e) return alert("Sila masukkan kedua-dua tarikh Mula dan Akhir sebelum papar.");
+        let sDate = new Date(s); sDate.setHours(0,0,0,0);
+        let eDate = new Date(e); eDate.setHours(23,59,59,999);
+        if(sDate > eDate) return alert("Tarikh Mula tidak boleh mendahului Tarikh Akhir.");
+        
+        let loop = new Date(sDate);
+        // limit loop visual span to avoid killing memory (e.g. max 90 days visual)
+        let daysDiff = (eDate - sDate) / (1000 * 3600 * 24);
+        if(daysDiff > 100) return alert("Julat carian tidak boleh melebihi 100 hari untuk graf harian.");
+        
+        while(loop <= eDate) {
+            let k = loop.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
+            dailyTotals[k] = 0; dailyTx[k] = 0;
+            loop.setDate(loop.getDate() + 1);
+        }
+        tStartKey = sDate.getTime();
+        tEndKey = eDate.getTime();
     }
 
     salesHistory.forEach(sale => {
         let ts = sale.created_at || sale.date; 
         if(!ts) return;
         let sDate = new Date(ts);
-        let dateKey = sDate.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
         
-        if(dailyTotals[dateKey] !== undefined) {
-            dailyTotals[dateKey] += parseFloat(sale.total_amount || sale.total || 0);
-            dailyTx[dateKey]++;
+        // Logical Filters
+        if (mode === 'thisyear' && sDate.getFullYear() !== now.getFullYear()) return;
+        if (mode === 'thismonth' && (sDate.getMonth() !== now.getMonth() || sDate.getFullYear() !== now.getFullYear())) return;
+        if (mode === 'custom') {
+            if (sDate.getTime() < tStartKey || sDate.getTime() > tEndKey) return;
+        }
+
+        let key = "";
+        if(mode === 'thisyear') {
+            const monthNames = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
+            key = monthNames[sDate.getMonth()];
+        } else {
+            key = sDate.toLocaleDateString('ms-MY', { day:'2-digit', month:'short' });
+        }
+        
+        if(dailyTotals[key] !== undefined) {
+            dailyTotals[key] += parseFloat(sale.total_amount || sale.total || 0);
+            dailyTx[key]++;
+        } else if (mode === '7days') {
+            // Out of 7 days scope, safely ignore
         }
     });
 
     let labels = Object.keys(dailyTotals);
     let dataPoints = Object.values(dailyTotals);
     
-    // Destroy chart if already present
     if(adminSalesChartInstance) {
         adminSalesChartInstance.destroy();
     }
     
-    // Chart.js render mechanism
     const ctx = canvas.getContext('2d');
     adminSalesChartInstance = new window.Chart(ctx, {
-        type: 'line',
+        type: mode === 'thisyear' ? 'bar' : 'line',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Gross Sales (RM)',
                 data: dataPoints,
                 borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                backgroundColor: mode === 'thisyear' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(59, 130, 246, 0.2)',
                 borderWidth: 2,
                 pointBackgroundColor: '#fff',
                 pointBorderColor: '#3b82f6',

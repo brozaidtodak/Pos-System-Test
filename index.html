@@ -1110,10 +1110,26 @@
                 <!-- Graf Analisis Teras Jualan -->
                 <div class="admin-card" style="border-top:4px solid #3b82f6; margin-bottom:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>📊 Graf Prestasi Jualan (7 Hari Terkini)</h3>
-                        <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph()" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#3b82f6; border-color:#3b82f6;">⟳ Segarkan Graf</button>
+                        <h3>📊 Graf Prestasi Jualan</h3>
+                        <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph(window.currentGraphMode || '7days')" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#3b82f6; border-color:#3b82f6;">⟳ Segarkan Graf</button>
                     </div>
-                    <p style="font-size:12px; color:#888; margin-bottom:15px; margin-top:5px;">Trend jualan harian dikira secara automatik berdasarkan keseluruhan rekod sejarah transaksi Omnichannel.</p>
+                    
+                    <!-- Chart Filters -->
+                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:15px; margin-bottom:10px; font-size:11px;">
+                        <button onclick="changeGraphMode('7days')" id="btnGraph7" class="btn-secondary" style="margin:0; padding:4px 10px; color:#fff; background-color:#3b82f6; border-color:#3b82f6;">7 Hari</button>
+                        <button onclick="changeGraphMode('thismonth')" id="btnGraphMonth" class="btn-secondary" style="margin:0; padding:4px 10px;">Bulan Ini</button>
+                        <button onclick="changeGraphMode('thisyear')" id="btnGraphYear" class="btn-secondary" style="margin:0; padding:4px 10px;">Tahun Ini</button>
+                        <button onclick="changeGraphMode('custom')" id="btnGraphCustom" class="btn-secondary" style="margin:0; padding:4px 10px;">Custom</button>
+                    </div>
+                    
+                    <!-- Custom Range Selector (Hidden By Default) -->
+                    <div id="graphCustomRangeBox" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; background:#f0f9ff; padding:10px; border-radius:6px; margin-bottom:15px;">
+                        <input type="date" id="graphStartDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
+                        <span>-</span>
+                        <input type="date" id="graphEndDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
+                        <button onclick="applyCustomGraphRange()" class="btn-primary" style="font-size:11px; margin:0; padding:4px 10px;">Papar</button>
+                    </div>
+
                     <div style="width:100%; height:250px; position:relative;">
                         <canvas id="salesChart"></canvas>
                     </div>
