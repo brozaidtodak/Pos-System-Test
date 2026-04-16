@@ -1259,6 +1259,26 @@
                     </div>
                 </div>
 
+                <!-- HR AUDIT LOG -->
+                <div class="admin-card" style="border-top:4px solid #8b5cf6; margin-top:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="color:#4c1d95;">📜 Audit Log HR (Keputusan Jadual)</h3>
+                        <button onclick="if(typeof renderAuditLogs === 'function') renderAuditLogs()" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#8b5cf6; border-color:#8b5cf6;">Refresh Log</button>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-bottom:15px; margin-top:5px;">Senarai sejarah kelulusan (Approve) atau penolakan (Reject) permohonan staf.</p>
+                    
+                    <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid #ede9fe;">
+                        <table class="data-table" style="font-size:12px; width:100%; border-collapse:collapse; text-align:left;">
+                            <thead style="position:sticky; top:0; background:#ede9fe; color:#4c1d95; z-index:1;">
+                                <tr><th>Masa & Tarikh Tindakan</th><th>Admin Bertugas</th><th>Tindakan / Subjek</th><th>Cuti / Penerangan</th></tr>
+                            </thead>
+                            <tbody id="auditLogsTbody">
+                                <tr><td colspan="4" style="text-align:center; padding:10px;">Tiada log direkodkan atau sedang dimuatkan...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Custom Setting Modal for Aliff -->
                 <div id="hrSettingsModal" class="login-overlay" style="display:none; z-index:3500;">
                     <div class="login-box" style="text-align:left; max-width:400px;">

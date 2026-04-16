@@ -2161,6 +2161,9 @@ function renderMgmtPlaceholders() {
     
     // Global Staff Directory Rendering
     renderGlobalStaffDirectory();
+    
+    // HR Audit Logs Rendering
+    if(typeof renderAuditLogs === 'function') renderAuditLogs();
 }
 
 function renderGlobalStaffDirectory() {
@@ -2754,16 +2757,78 @@ window.approveRequest = async function(id) {
     pendingSchedules.splice(reqIndex, 1); // Remove from pending
     await db.from('pending_requests').delete().eq('id', id);
     
+    // 🔥 Inject Audit Log (Kelulusan)
+    try {
+        let adminName = currentUser ? currentUser.name : 'Sistem Automasi';
+        await db.from('audit_logs').insert([{
+            action_type: 'LULUS',
+            actor_name: adminName,
+            target_staff: req.staff_name,
+            details: `Meluluskan ${req.shift} pada ${req.date}`
+        }]);
+    } catch(e) {}
+    
     renderPendingSchedules();
     renderStaffSchedule();
+    if(typeof renderAuditLogs === 'function') renderAuditLogs();
     alert(`Permohonan ${req.staff_name} DILULUSKAN!`);
 };
 
 window.rejectRequest = async function(id) {
     if(!confirm("Tolak permohonan staf ini?")) return;
+    
+    let reqIndex = pendingSchedules.findIndex(r => r.id === id);
+    if(reqIndex !== -1) {
+        let req = pendingSchedules[reqIndex];
+        
+        // 🔥 Inject Audit Log (Penolakan)
+        try {
+            let adminName = currentUser ? currentUser.name : 'Sistem Automasi';
+            await db.from('audit_logs').insert([{
+                action_type: 'TOLAK',
+                actor_name: adminName,
+                target_staff: req.staff_name,
+                details: `Menolak permohonan ${req.shift} pada ${req.date}`
+            }]);
+        } catch(e) {}
+    }
+
     pendingSchedules = pendingSchedules.filter(r => r.id !== id);
     await db.from('pending_requests').delete().eq('id', id);
     renderPendingSchedules();
+    if(typeof renderAuditLogs === 'function') renderAuditLogs();
+};
+
+window.renderAuditLogs = async function() {
+    const tbody = document.getElementById("auditLogsTbody");
+    if(!tbody) return;
+    
+    try {
+        let { data: logs, error } = await db.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(20);
+        if(error || !logs || logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:10px;">Tiada rekod (atau jadual audit_logs belum wujud di Supabase).</td></tr>`;
+            return;
+        }
+
+        let html = "";
+        logs.forEach(log => {
+            let actDate = new Date(log.created_at).toLocaleString('ms-MY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+            let badge = log.action_type === 'LULUS' 
+                        ? `<span style="background:#10B981; color:white; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">LULUS</span>` 
+                        : `<span style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">TOLAK</span>`;
+            
+            html += `<tr>
+                <td style="font-size:11px; color:#555;">${actDate}</td>
+                <td style="font-weight:bold; color:#4c1d95;">${log.actor_name}</td>
+                <td>${badge} <span style="font-weight:bold;">${log.target_staff}</span></td>
+                <td style="font-size:11px;">${log.details}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+        
+    } catch(err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:10px; color:red;">Ralat mengambil data: ${err.message}</td></tr>`;
+    }
 };
 
 // Call renderPending in main switchHub
