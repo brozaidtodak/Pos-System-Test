@@ -291,6 +291,34 @@
             display: inline-block;
             min-width: 40px;
         }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #quoteModal, #quoteModal * {
+                visibility: visible;
+            }
+            #quoteModal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                background: transparent;
+            }
+            .quote-print-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
     </style>
     <div id="quoteModal" class="login-overlay" style="display:none; z-index:2000;">
         <!-- Formatting Toolbar -->
