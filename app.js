@@ -3647,7 +3647,8 @@ window.clearQuoteCart = function() {
 };
 
 window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
-    if (quoteCart.length === 0) return alert("Sila tambahkan barang ke dalam senarai Quotation dahulu.");
+    // Removed the block constraint so the template can be blank
+    // if (quoteCart.length === 0) return alert("Sila tambahkan barang ke dalam senarai Quotation dahulu.");
     
     // Inject logic for the 4 explicit buttons
     document.getElementById("quoteType").value = docType;
@@ -3712,21 +3713,44 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
     
     const tbody = document.getElementById("quoteItemsTableBody");
     tbody.innerHTML = "";
-    quoteCart.forEach(item => {
+    
+    let workingCart = [...quoteCart];
+    if(workingCart.length === 0) {
+        workingCart = [{
+            sku: "CUST-ITEM",
+            name: "[Sila Edit Nama Servis/Barang]",
+            price: 0.00,
+            qty: 1
+        }];
+    }
+
+    subtotal = 0;
+    workingCart.forEach((item, index) => {
         let line = item.price * item.qty;
+        subtotal += line;
         tbody.innerHTML += `
-            <tr>
+            <tr class="editable-row">
                 <td style="padding:10px; border-bottom:1px solid #eee;">
-                    <strong style="color:var(--text-main);">${item.name}</strong><br>
-                    <span style="font-size:11px; color:#888;">${item.sku}</span>
+                    <strong style="color:var(--text-main);" contenteditable="true" spellcheck="false" class="editable-field editable-name">${item.name}</strong><br>
+                    <span style="font-size:11px; color:#888;" contenteditable="true" spellcheck="false" class="editable-field">${item.sku}</span>
                 </td>
-                <td style="text-align:center; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">${item.qty}</td>
-                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">${item.price.toFixed(2)}</td>
-                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">${line.toFixed(2)}</td>
+                <td style="text-align:center; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">
+                    <span contenteditable="true" class="editable-field editable-qty" oninput="window.calculateEditableTotal()">${item.qty}</span>
+                </td>
+                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">
+                    <span contenteditable="true" class="editable-field editable-price" oninput="window.calculateEditableTotal()">${item.price.toFixed(2)}</span>
+                </td>
+                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">
+                    <span class="row-total">${line.toFixed(2)}</span>
+                </td>
             </tr>
         `;
     });
     
+    if (type === "Rental") grandTotal = subtotal + deposit;
+    else grandTotal = subtotal;
+
+    document.getElementById("quotePreviewGrandTotal").innerText = grandTotal.toFixed(2);
     document.getElementById("quoteSubtotal").innerText = "RM " + subtotal.toFixed(2);
     document.getElementById("quoteGrandTotal").innerText = "RM " + grandTotal.toFixed(2);
     document.getElementById("quoteTermsText").innerText = terms;
@@ -3862,3 +3886,38 @@ window.loadQuoteIntoCart = function(logId) {
 document.getElementById('quoteSearchInput')?.addEventListener('input', (e) => {
     renderQuotePOS(e.target.value);
 });
+
+window.calculateEditableTotal = function() {
+    let subtotal = 0;
+    const rows = document.querySelectorAll('#quoteItemsTableBody tr');
+    
+    rows.forEach(row => {
+        let qtyEl = row.querySelector('.editable-qty');
+        let priceEl = row.querySelector('.editable-price');
+        let rowTotalEl = row.querySelector('.row-total');
+        
+        if(qtyEl && priceEl && rowTotalEl) {
+            let q = parseFloat(qtyEl.innerText) || 0;
+            let p = parseFloat(priceEl.innerText) || 0;
+            let lineTotal = q * p;
+            subtotal += lineTotal;
+            rowTotalEl.innerText = lineTotal.toFixed(2);
+        }
+    });
+
+    let depositEl = document.getElementById("quotePreviewValDeposit");
+    let deposit = 0;
+    if(depositEl) {
+        deposit = parseFloat(depositEl.innerText) || 0;
+    }
+    
+    let grandTotal = subtotal + deposit;
+    let gtEl = document.getElementById("quotePreviewGrandTotal");
+    if(gtEl) gtEl.innerText = grandTotal.toFixed(2);
+    
+    // Also try to update the hidden ones if they exist
+    let subEl = document.getElementById("quoteSubtotal");
+    if(subEl) subEl.innerText = "RM " + subtotal.toFixed(2);
+    let gtEl2 = document.getElementById("quoteGrandTotal");
+    if(gtEl2) gtEl2.innerText = "RM " + grandTotal.toFixed(2);
+};
