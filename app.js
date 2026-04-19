@@ -3755,7 +3755,10 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
     document.getElementById("quoteSubtotal").innerText = "RM " + subtotal.toFixed(2);
     document.getElementById("quoteValSubtotal").innerText = subtotal.toFixed(2);
     document.getElementById("quoteGrandTotal").innerText = "RM " + grandTotal.toFixed(2);
-    document.getElementById("quoteTermsText").innerText = terms;
+    
+    // Fix: Match correct ID from index.html (quotePreviewTnc instead of quoteTermsText)
+    const tncNode = document.getElementById("quotePreviewTnc") || document.getElementById("quoteTermsText");
+    if(tncNode) tncNode.innerText = terms;
     
     // Save to Log History Array
     const logEntry = {
