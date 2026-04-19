@@ -169,6 +169,10 @@ async function initApp() {
         renderPublicStorefront();
         renderPOS();
 
+                try { renderQuotePOS(); } catch(e){}
+        let { data: quotes } = await db.from('quotations_log').select('*').order('created_at', {ascending: false});
+        if(quotes) quoteHistoryLogs = quotes;
+
         let { data: sales } = await db.from('sales_history').select('*').order('created_at', {ascending: false});
         if(sales) salesHistory = [...salesHistory, ...sales];
 
@@ -3469,3 +3473,392 @@ async function autoClockOutUnclosed() {
         }
     }
 }
+
+
+// ============================================
+// QUOTATIONS & RENTALS MODULE
+// ============================================
+let quoteCart = [];
+let quoteHistoryLogs = []; // Array of saved quotes
+let currentQuoteRef = null; // e.g. "QT-1001"
+let currentQuoteVersion = 1; // e.g. 1
+let nextQuoteIdNum = 1001;
+
+window.renderQuotePOS = function(searchTerm = "") {
+    const list = document.getElementById('quoteProductsList');
+    if (!list) return;
+    list.innerHTML = "";
+    
+    // Filter published products
+    let activeProducts = masterProducts.filter(p => String(p.is_published) === "true");
+    
+    if(searchTerm) {
+        let q = searchTerm.toLowerCase();
+        activeProducts = activeProducts.filter(p => 
+            p.name.toLowerCase().includes(q) || 
+            p.sku.toLowerCase().includes(q) || 
+            (p.brand && p.brand.toLowerCase().includes(q))
+        );
+    }
+    
+    activeProducts.slice(0, 50).forEach(product => {
+        const hasStock = true; // Use master inventory logic if needed in future
+        const stockStatusHtml = `<p class="product-stock" style="color:#10B981">Available</p>`;
+        
+        const card = document.createElement('div');
+        card.className = "product-card";
+        card.onclick = () => window.addToQuoteCart(product.sku);
+        
+        // Find main image
+        let imgUrl = (product.images && product.images.length > 0) ? product.images[0] : "https://via.placeholder.com/150?text=No+Photo";
+        
+        card.innerHTML = `
+            <img src="${imgUrl}" alt="${product.name}" class="product-img">
+            <h3 class="product-title">${product.name}</h3>
+            <p class="product-sku">${product.sku}</p>
+            ${stockStatusHtml}
+            <p class="product-price">RM ${parseFloat(product.price).toFixed(2)}</p>
+        `;
+        list.appendChild(card);
+    });
+};
+
+window.addToQuoteCart = function(sku) {
+    const product = masterProducts.find(p => p.sku === sku);
+    if (!product) return;
+
+    const existing = quoteCart.find(item => item.sku === sku);
+    if (existing) {
+        existing.qty += 1;
+    } else {
+        quoteCart.push({
+            sku: product.sku,
+            name: product.name,
+            price: parseFloat(product.price),
+            qty: 1
+        });
+    }
+    window.renderQuoteCart();
+};
+
+window.updateQuoteCartQty = function(sku, change) {
+    const item = quoteCart.find(i => i.sku === sku);
+    if (!item) return;
+    
+    item.qty += change;
+    if (item.qty <= 0) {
+        quoteCart = quoteCart.filter(i => i.sku !== sku);
+    }
+    window.renderQuoteCart();
+};
+
+window.updateQuoteCartPrice = function(sku, val) {
+    const item = quoteCart.find(i => i.sku === sku);
+    if (!item) return;
+    let np = parseFloat(val);
+    item.price = isNaN(np) ? 0 : np;
+    window.renderQuoteCart();
+};
+
+window.renderQuoteCart = function() {
+    const container = document.getElementById('quoteCartItems');
+    let total = 0;
+    container.innerHTML = "";
+
+    const emptyState = document.getElementById('quoteEmptyState');
+    if (emptyState) emptyState.style.display = quoteCart.length === 0 ? "block" : "none";
+
+    if (quoteCart.length === 0) {
+        container.innerHTML = ``;
+        document.getElementById('quoteTotalPrice').innerText = "0.00";
+        return;
+    }
+
+    quoteCart.forEach(item => {
+        let lineTotal = item.price * item.qty;
+        total += lineTotal;
+        const div = document.createElement('div');
+        div.className = "cart-item";
+        div.style.display = "flex";
+        div.style.flexDirection = "column";
+        div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; width:100%; margin-bottom:5px;">
+                <span style="font-weight:600; font-size:13px;">${item.name} <br><small style="color:#888;">${item.sku}</small></span>
+                <span style="font-weight:bold; color:var(--primary);">RM ${lineTotal.toFixed(2)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <div style="display:flex; align-items:center; gap:5px;">
+                    RM <input type="number" step="0.01" value="${item.price.toFixed(2)}" onchange="updateQuoteCartPrice('${item.sku}', this.value)" style="width:70px; padding:2px; text-align:center; border:1px solid #ccc;">
+                </div>
+                <div class="cart-qty-controls">
+                    <button class="qty-btn" onclick="updateQuoteCartQty('${item.sku}', -1)">-</button>
+                    <span>${item.qty}</span>
+                    <button class="qty-btn" onclick="updateQuoteCartQty('${item.sku}', 1)">+</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+
+    document.getElementById('quoteTotalPrice').innerText = total.toFixed(2);
+};
+
+window.toggleQuoteFields = function() {
+    const type = document.getElementById("quoteType").value;
+    const rentalDiv = document.getElementById("quoteRentalFields");
+    const termsEl = document.getElementById("quoteTerms");
+    
+    if (type === "Rental") {
+        rentalDiv.style.display = "block";
+        termsEl.value = "1. Penyewa bertanggungjawab menjaga kelengkapan dengan baik.\n2. Denda akan dikenakan jika barang rosak atau hilang mengikut kos ganti.\n3. Barang perlu dipulangkan sebelum 12 tengahari pada tarikh pulang.\n4. Deposit (Cagaran) akan dipulangkan dlm masa 3 hari bekerja slepas barang dipulangkan dengan kuantiti & kondisi yang sama disewa.";
+    } else {
+        rentalDiv.style.display = "none";
+        termsEl.value = "Harga sah untuk 7 hari. Bayaran penuh diperlukan sebelum penyerahan bermula.";
+    }
+};
+
+window.calculateRentalDays = function() {
+    const sStr = document.getElementById("quoteStartDate").value;
+    const eStr = document.getElementById("quoteEndDate").value;
+    const durEl = document.getElementById("quoteDuration");
+    
+    if (sStr && eStr) {
+        let d1 = new Date(sStr);
+        let d2 = new Date(eStr);
+        let timeDiff = d2.getTime() - d1.getTime();
+        let daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        if (daysDiff <= 0) daysDiff = 1; // at least 1 day minimum
+        durEl.value = daysDiff;
+    }
+};
+
+window.clearQuoteCart = function() {
+    quoteCart = [];
+    currentQuoteRef = null;
+    currentQuoteVersion = 1;
+    document.getElementById("quoteEditIndicator").style.display = "none";
+    document.getElementById("quoteType").value = "Sales";
+    document.getElementById("quoteCustDetail").value = "";
+    document.getElementById("quoteStartDate").value = "";
+    document.getElementById("quoteEndDate").value = "";
+    document.getElementById("quoteDeposit").value = "";
+    document.getElementById("quoteTerms").value = "";
+    window.renderQuoteCart();
+};
+
+window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
+    if (quoteCart.length === 0) return alert("Sila tambahkan barang ke dalam senarai Quotation dahulu.");
+    
+    // Inject logic for the 4 explicit buttons
+    document.getElementById("quoteType").value = docType;
+    if(docType === "Rental") {
+        document.getElementById("quoteTerms").value = "1. Penyewa bertanggungjawab menjaga kelengkapan dengan baik.\n2. Denda akan dikenakan jika hilang/rosak.\n3. Deposit cagaran akan dipulangkan dlm masa 3 hari bekerja slepas barang dipulangkan dengan kuantiti & kondisi asal.";
+    } else {
+        document.getElementById("quoteTerms").value = "Harga sah untuk 7 hari. Bayaran penuh diperlukan sebelum penyerahan bermula.";
+    }
+
+    const type = docType;
+    const custDetail = document.getElementById("quoteCustDetail").value || "Walk-In / Guest";
+    const terms = document.getElementById("quoteTerms").value;
+    
+    let subtotal = parseFloat(document.getElementById("quoteTotalPrice").innerText) || 0;
+    
+    // Logic for Quotation Saving and Versioning
+    let isNew = !currentQuoteRef;
+    if(isNew) {
+        currentQuoteRef = "QT-" + nextQuoteIdNum++;
+        currentQuoteVersion = 1;
+    } else {
+        currentQuoteVersion++;
+    }
+
+    let qId = currentQuoteRef + "-v" + currentQuoteVersion;
+    
+    document.getElementById("quoteTitleType").innerText = docTitle;
+    document.getElementById("quoteDateStr").innerText = "Date: " + new Date().toLocaleDateString('ms-MY') + "\nID: " + qId;
+    
+    let parts = custDetail.split("-");
+    document.getElementById("quoteCustName").innerText = parts[0] ? parts[0].trim() : "-";
+    document.getElementById("quoteCustContact").innerText = parts.length > 1 ? parts[1].trim() : "-";
+    
+    const rentalContainer = document.getElementById("quoteRentalDatesContainer");
+    let depositBlock = document.getElementById("quoteDepositRow");
+    
+    let grandTotal = subtotal;
+    let deposit = 0;
+    let rentalData = null;
+    
+    if (type === "Rental") {
+        const sStr = document.getElementById("quoteStartDate").value;
+        const eStr = document.getElementById("quoteEndDate").value;
+        const dur = parseInt(document.getElementById("quoteDuration").value) || 1;
+        deposit = parseFloat(document.getElementById("quoteDeposit").value) || 0;
+        
+        rentalContainer.innerHTML = `
+            <strong>Rental Period:</strong><br>
+            ${sStr ? new Date(sStr).toLocaleDateString('en-GB') : 'TBD'} to ${eStr ? new Date(eStr).toLocaleDateString('en-GB') : 'TBD'}<br>
+            Duration: ${dur} Day(s)
+        `;
+        
+        document.getElementById("quoteDepositAmount").innerText = "RM " + deposit.toFixed(2);
+        depositBlock.style.display = "flex";
+        
+        grandTotal = subtotal + deposit;
+        rentalData = { startDate: sStr, endDate: eStr, duration: dur, deposit: deposit };
+    } else {
+        rentalContainer.innerHTML = "";
+        depositBlock.style.display = "none";
+    }
+    
+    const tbody = document.getElementById("quoteItemsTableBody");
+    tbody.innerHTML = "";
+    quoteCart.forEach(item => {
+        let line = item.price * item.qty;
+        tbody.innerHTML += `
+            <tr>
+                <td style="padding:10px; border-bottom:1px solid #eee;">
+                    <strong style="color:var(--text-main);">${item.name}</strong><br>
+                    <span style="font-size:11px; color:#888;">${item.sku}</span>
+                </td>
+                <td style="text-align:center; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">${item.qty}</td>
+                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">${item.price.toFixed(2)}</td>
+                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">${line.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+    
+    document.getElementById("quoteSubtotal").innerText = "RM " + subtotal.toFixed(2);
+    document.getElementById("quoteGrandTotal").innerText = "RM " + grandTotal.toFixed(2);
+    document.getElementById("quoteTermsText").innerText = terms;
+    
+    // Save to Log History Array
+    const logEntry = {
+        id: qId,
+        ref: currentQuoteRef,
+        version: currentQuoteVersion,
+        type: type,
+        customer: custDetail,
+        terms: terms,
+        subtotal: subtotal,
+        grand_total: grandTotal,
+        rental_data: rentalData,
+        items: JSON.parse(JSON.stringify(quoteCart)),
+        superseded: false
+    };
+
+    // Mark previous instances of this ref as superseded in Cloud
+    try {
+        if(currentQuoteVersion > 1) {
+            await db.from('quotations_log')
+                .update({ superseded: true })
+                .eq('ref', currentQuoteRef)
+                .lt('version', currentQuoteVersion);
+                
+            // Update local state temporarily mapping
+            quoteHistoryLogs.forEach(log => {
+                if(log.ref === currentQuoteRef && log.version < currentQuoteVersion) {
+                    log.superseded = true;
+                }
+            });
+        }
+        
+        let { data, error } = await db.from('quotations_log').insert([logEntry]).select();
+        if(data && data.length > 0) {
+            // Convert to camelCase locally for UI consistency (Supabase uses snake_case based on our SQL script)
+            let sc = data[0];
+            quoteHistoryLogs.unshift({
+                id: sc.id,
+                ref: sc.ref,
+                version: sc.version,
+                type: sc.type,
+                customer: sc.customer,
+                terms: sc.terms,
+                subtotal: sc.subtotal,
+                grandTotal: sc.grand_total,
+                rentalData: sc.rental_data,
+                items: sc.items,
+                createdAt: sc.created_at,
+                superseded: sc.superseded
+            });
+        } else if (error) {
+            console.error("Supabase Save Quote Error:", error.message);
+            alert("Fail saving to Cloud: " + error.message);
+        }
+    } catch (e) {
+        console.error("Supabase Quotation Catch Error:", e.message);
+    }
+
+    // Update Editing Indicator UI
+    document.getElementById("quoteEditRefLabel").innerText = currentQuoteRef + " (v" + currentQuoteVersion + ")";
+    document.getElementById("quoteEditIndicator").style.display = "flex";
+
+    // Show Modal wrapper and lock body scroll
+    document.getElementById("quoteModal").style.display = "flex";
+};
+
+window.renderQuoteLogs = function() {
+    const tbody = document.getElementById("quoteLogsTableBody");
+    if (!tbody) return;
+    
+    if (quoteHistoryLogs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Tiada Sebut Harga. Sila buat satu.</td></tr>`;
+        document.getElementById("quoteLogsModal").style.display = "flex";
+        return;
+    }
+    
+    tbody.innerHTML = "";
+    quoteHistoryLogs.forEach(log => {
+        let isSuper = log.superseded ? `<span style="background:#EF4444; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Lama</span>` : `<span style="background:#10B981; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Latest</span>`;
+        let custPart = (log.customer || "").split("-")[0] || "Guest";
+        
+        tbody.innerHTML += `
+            <tr style="background:${log.superseded ? '#f9f9f9' : '#fff'}; color:${log.superseded ? '#888' : '#000'}">
+                <td><strong>${log.id}</strong><br><small style="color:#aaa;">${new Date(log.createdAt || log.created_at).toLocaleString('ms-MY')}</small></td>
+                <td>${custPart}</td>
+                <td>${log.type}</td>
+                <td>RM ${(log.subtotal || 0).toFixed(2)}</td>
+                <td>v${log.version} ${isSuper}</td>
+                <td>
+                    <button onclick="window.loadQuoteIntoCart('${log.id}')" class="btn-dark" style="padding:6px 10px; font-size:10px; margin:0;">Edit / Load</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    document.getElementById("quoteLogsModal").style.display = "flex";
+};
+
+window.loadQuoteIntoCart = function(logId) {
+    const log = quoteHistoryLogs.find(l => l.id === logId);
+    if(!log) return;
+    
+    if(!confirm(`Adakah anda pasti mahu edit ` + logId + `? Ini akan memadamkan troli sekarang.`)) return;
+    
+    // Set variables
+    currentQuoteRef = log.ref;
+    currentQuoteVersion = log.version;
+    
+    quoteCart = JSON.parse(JSON.stringify(log.items));
+    
+    // Fill UI
+    document.getElementById("quoteType").value = log.type;
+    document.getElementById("quoteCustDetail").value = log.customer;
+    document.getElementById("quoteTerms").value = log.terms;
+    
+    if(log.rentalData) {
+        document.getElementById("quoteStartDate").value = log.rentalData.startDate || log.rentalData.start_date || "";
+        document.getElementById("quoteEndDate").value = log.rentalData.endDate || log.rentalData.end_date || "";
+        document.getElementById("quoteDuration").value = log.rentalData.duration || 1;
+        document.getElementById("quoteDeposit").value = log.rentalData.deposit !== undefined ? log.rentalData.deposit.toFixed(2) : "";
+    }
+    
+    window.renderQuoteCart();
+    
+    document.getElementById("quoteEditRefLabel").innerText = currentQuoteRef + " (Loading v" + currentQuoteVersion + "...)";
+    document.getElementById("quoteEditIndicator").style.display = "flex";
+    document.getElementById("quoteLogsModal").style.display = "none";
+};
+
+document.getElementById('quoteSearchInput')?.addEventListener('input', (e) => {
+    renderQuotePOS(e.target.value);
+});
