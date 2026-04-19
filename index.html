@@ -6,7 +6,7 @@
     <title>Enterprise Omnichannel POS</title>
     <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=31">
+    <link rel="stylesheet" href="style.css?v=32">
     <!-- Supabase Core -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
@@ -293,59 +293,116 @@
         }
     </style>
     <div id="quoteModal" class="login-overlay" style="display:none; z-index:2000;">
-        <div class="login-box quote-print-container" style="width:90%; max-width:800px; text-align:left; padding:30px; background:#fff; max-height:90vh; overflow-y:auto; position:relative;">
+        <div class="login-box quote-print-container" style="width:90%; max-width:900px; text-align:left; padding:40px; background:#fff; max-height:90vh; overflow-y:auto; position:relative; font-family:'Inter', sans-serif;">
             <button class="no-print" onclick="document.getElementById('quoteModal').style.display='none'" style="position:absolute; top:15px; right:20px; border:none; background:none; font-size:24px; cursor:pointer; color:#888;">&times;</button>
             <button class="no-print btn-secondary" onclick="window.print()" style="position:absolute; top:15px; right:60px; font-size:12px; padding:5px 10px;">🖨️ Print PDF</button>
-            
-            <div style="text-align:center; margin-bottom:20px;">
-                <h1 style="font-weight:900; letter-spacing:-1px; margin:0;" id="quoteTitleType" contenteditable="true" spellcheck="false" class="editable-field">SALES QUOTATION</h1>
-                <p style="color:#555; font-size:12px;" contenteditable="true" spellcheck="false" class="editable-field">10Camp (UT0030589-H) <br> No. 1, Jalan Kemajuan, Cyberjaya</p>
-            </div>
-            
-            <div style="display:flex; justify-content:space-between; margin-bottom:20px; font-size:12px; border-bottom:1px solid #ccc; padding-bottom:15px;">
-                <div><strong contenteditable="true" class="editable-field">Kepada:</strong><br><span id="quoteCustNameStr" contenteditable="true" spellcheck="false" class="editable-field">Sila isi nama pelanggan</span></div>
-                <div style="text-align:right; white-space:pre-wrap;" id="quoteDateStr" contenteditable="true" spellcheck="false" class="editable-field">Date: 01/01/2026</div>
+
+            <!-- Top Orange Line -->
+            <div style="height: 4px; background-color: #E28833; width: 100%; margin-bottom: 30px;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 20px;">
+                <!-- Left Company Details -->
+                <div style="font-size: 10px; color: #555; line-height: 1.4;">
+                    <strong style="color: #E28833; font-size: 13px;">10 CAMP ENTERPRISE</strong><br>
+                    No. 9-G, Block H, Glomac Cyberjaya, Jalan GC 9<br>
+                    63000, Cyberjaya, Selangor<br>
+                    admin@10camp.com<br>
+                    +60 11-3310 9547
+                </div>
+                <!-- Right Logo -->
+                <div style="text-align:right;">
+                    <!-- Placeholder for the actual logo image. We'll use text styled similarly if no logo is available, but the user expects the Todak logo. -->
+                    <img src="https://i.ibb.co/L5Q41R0/Logo-10camp-todak-baru-1.png" alt="10Camp Logo" style="height:70px; object-fit:contain;">
+                </div>
             </div>
 
-            <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:12px;" id="editableQuoteTable">
+            <div style="margin-bottom:30px;">
+                <h1 style="color: #E28833; font-weight:900; margin:0; font-size: 32px;" id="quoteHeaderTitle" contenteditable="true" class="editable-field">Quote</h1>
+                <p style="color:#555; font-size:11px; margin:0; font-weight:600;" contenteditable="true" class="editable-field">Submitted on <span id="quoteHeaderSubmitDate">31/07/2025</span></p>
+            </div>
+
+            <!-- Meta Grid -->
+            <div style="display:grid; grid-template-columns: 2fr 1.5fr 1fr; gap:20px; font-size:11px; color:#333; margin-bottom:30px; font-weight:600;">
+                <div>
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:3px;">Quote for</span>
+                    <span id="quoteValCustName" contenteditable="true" class="editable-field" style="color:#555; font-weight:normal;">Sila Isi Maklumat Pelanggan</span>
+                </div>
+                <div>
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:3px;">Payable to</span>
+                    <span contenteditable="true" class="editable-field" style="color:#555; font-weight:normal;">10 Camp Enterprise</span><br><br>
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:3px;">Project</span>
+                    <span id="quoteValProjectName" contenteditable="true" class="editable-field" style="color:#555; font-weight:normal;">Nama Keterangan Projek</span>
+                </div>
+                <div>
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:3px;">Quote #</span>
+                    <span id="quoteValQuoteId" contenteditable="true" class="editable-field" style="color:#555; font-weight:normal;">-</span><br><br>
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:3px;">Date</span>
+                    <span id="quoteValCurrentDate" contenteditable="true" class="editable-field" style="color:#555; font-weight:normal;">-</span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom: 20px;">
                 <thead>
-                    <tr style="border-bottom:2px solid #000; text-align:left;">
-                        <th style="padding:8px 5px;" contenteditable="true" class="editable-field">Item</th>
-                        <th style="padding:8px 5px; text-align:center;" contenteditable="true" class="editable-field">Qty</th>
-                        <th style="padding:8px 5px; text-align:right;" contenteditable="true" class="editable-field">Unit (RM)</th>
-                        <th style="padding:8px 5px; text-align:right;" contenteditable="true" class="editable-field">Total (RM)</th>
+                    <tr style="background-color: #000; color: #E28833; font-weight:800;">
+                        <th style="padding:10px 10px; text-align:left; border:none;" contenteditable="true" class="editable-field">Description</th>
+                        <th style="padding:10px 10px; text-align:center; border:none;" contenteditable="true" class="editable-field">Qty</th>
+                        <th style="padding:10px 10px; text-align:right; border:none;" contenteditable="true" class="editable-field">Unit price (RM)</th>
+                        <th style="padding:10px 10px; text-align:right; border:none;" contenteditable="true" class="editable-field">Total price (RM)</th>
                     </tr>
                 </thead>
                 <tbody id="quoteItemsTableBody">
-                    <!-- Items -->
+                    <!-- Dynamic Rows -->
                 </tbody>
             </table>
 
-            <div id="quoteRentalDetailsBlock" style="display:none; margin-bottom:20px; padding:10px; border:1px dashed #ccc; font-size:11px; background:#fafafa;">
-                <strong contenteditable="true" class="editable-field">Maklumat Sewaan:</strong><br>
-                Tarikh Mula: <span id="quotePreviewValStart" contenteditable="true" class="editable-field"></span> <br>
-                Tarikh Pulang: <span id="quotePreviewValEnd" contenteditable="true" class="editable-field"></span> <br>
-                Tempoh: <span id="quotePreviewValDuration" contenteditable="true" class="editable-field"></span> Hari <br>
-                Deposit Cagaran: RM <span id="quotePreviewValDeposit" contenteditable="true" class="editable-field" oninput="calculateEditableTotal()"></span>
-            </div>
+            <!-- Footer Summary and Notes -->
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#555; padding-top:10px;">
+                <!-- Left Notes -->
+                <div style="width:50%;">
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:5px;">Notes:</span>
+                    <div id="quotePreviewTnc" contenteditable="true" class="editable-field" style="line-height:1.4; margin-bottom:15px; white-space:pre-wrap;">Terms and conditions text here.</div>
+                    
+                    <span style="color:#000; font-weight:800; display:block; margin-bottom:5px;">Payment Details:</span>
+                    <div contenteditable="true" class="editable-field" style="line-height:1.4;">
+                        Bank: Maybank<br>
+                        Account Number: 568603082318<br>
+                        Account Name: 10 Camp Enterprise
+                    </div>
+                </div>
+                
+                <!-- Right Totals -->
+                <div style="width:40%; display:flex; flex-direction:column; gap:10px; align-items:flex-end; font-weight:800;">
+                    <div style="display:flex; width:200px; justify-content:space-between; color:#E28833;">
+                        <span contenteditable="true" class="editable-field">Subtotal</span>
+                        <span>RM <span id="quoteValSubtotal" contenteditable="true" class="editable-field" oninput="calculateEditableTotal()">0.00</span></span>
+                    </div>
+                    
+                    <!-- Rental Deposit Row -->
+                    <div id="quoteDepositRowUI" style="display:none; width:200px; justify-content:space-between; color:#E28833;">
+                        <span contenteditable="true" class="editable-field">Deposit</span>
+                        <span>RM <span id="quotePreviewValDeposit" contenteditable="true" class="editable-field" oninput="calculateEditableTotal()">0.00</span></span>
+                    </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:12px; margin-top:20px;">
-                <div style="width:55%;">
-                    <strong contenteditable="true" class="editable-field">Terma & Syarat:</strong>
-                    <p id="quotePreviewTnc" style="white-space:pre-wrap; margin-top:5px; color:#555;" contenteditable="true" spellcheck="false" class="editable-field"></p>
-                </div>
-                <div style="width:40%; text-align:right; font-size:16px;">
-                    <strong contenteditable="true" class="editable-field">Grand Total:</strong>
-                    <br>
-                    <span style="font-size:24px; font-weight:900; color:var(--primary);">RM <span id="quotePreviewGrandTotal" contenteditable="true" spellcheck="false" class="editable-field">0.00</span></span>
-                    <button class="no-print" onclick="window.calculateEditableTotal()" style="display:block; margin-top:10px; margin-left:auto; font-size:10px; padding:5px; cursor:pointer;">Update Total ↑</button>
+                    <div style="display:flex; width:200px; justify-content:space-between; color:#E28833;">
+                        <span contenteditable="true" class="editable-field">Discount</span>
+                        <span>RM <span id="quoteValDiscount" contenteditable="true" class="editable-field" oninput="calculateEditableTotal()">0.00</span></span>
+                    </div>
+                    <div style="display:flex; width:200px; justify-content:space-between; color:#000;">
+                        <span contenteditable="true" class="editable-field">Total</span>
+                        <span>RM <span id="quotePreviewGrandTotal" contenteditable="true" class="editable-field">0.00</span></span>
+                    </div>
+                    
+                    <button class="no-print" onclick="window.calculateEditableTotal()" style="padding:4px 8px; font-size:10px; background:#f0f0f0; border:1px solid #ccc; cursor:pointer;">Update Calcs ↑</button>
+                    
+                    <!-- Include hidden original inputs for backend save compatibility -->
+                    <span id="quoteSubtotal" style="display:none;"></span>
+                    <span id="quoteGrandTotal" style="display:none;"></span>
                 </div>
             </div>
-            
-            <div style="margin-top:40px; text-align:center; font-size:10px; color:#888;" contenteditable="true" class="editable-field">Dokumen ini dijana oleh komputer. Tandatangan tidak diperlukan.</div>
         </div>
     </div>
-
+    
     <!-- 0.3 QUOTATION LOGS ARCHIVE MODAL -->
     <div id="quoteLogsModal" class="login-overlay no-print" style="display:none; z-index:2500;">
         <div class="login-box" style="width:90%; max-width:800px; text-align:left; padding:30px; background:#fff; max-height:80vh; overflow-y:auto;">

@@ -3659,6 +3659,7 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
     }
 
     const type = docType;
+    document.getElementById("quoteValProjectName").innerText = "Sila taip acara/projek";
     const custDetail = document.getElementById("quoteCustDetail").value || "Walk-In / Guest";
     const terms = document.getElementById("quoteTerms").value;
     
@@ -3675,15 +3676,16 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
 
     let qId = currentQuoteRef + "-v" + currentQuoteVersion;
     
-    document.getElementById("quoteTitleType").innerText = docTitle;
-    document.getElementById("quoteDateStr").innerText = "Date: " + new Date().toLocaleDateString('ms-MY') + "\nID: " + qId;
+    document.getElementById("quoteHeaderTitle").innerText = docTitle;
+    document.getElementById("quoteHeaderSubmitDate").innerText = new Date().toLocaleDateString('en-GB');
+    document.getElementById("quoteValCurrentDate").innerText = new Date().toLocaleDateString('en-GB');
+    document.getElementById("quoteValQuoteId").innerText = qId;
     
     let parts = custDetail.split("-");
-    document.getElementById("quoteCustName").innerText = parts[0] ? parts[0].trim() : "-";
-    document.getElementById("quoteCustContact").innerText = parts.length > 1 ? parts[1].trim() : "-";
+    document.getElementById("quoteValCustName").innerText = custDetail;
     
-    const rentalContainer = document.getElementById("quoteRentalDatesContainer");
-    let depositBlock = document.getElementById("quoteDepositRow");
+    // Rental UI now just uses the deposit row
+    let depositBlock = document.getElementById("quoteDepositRowUI");
     
     let grandTotal = subtotal;
     let deposit = 0;
@@ -3695,19 +3697,16 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
         const dur = parseInt(document.getElementById("quoteDuration").value) || 1;
         deposit = parseFloat(document.getElementById("quoteDeposit").value) || 0;
         
-        rentalContainer.innerHTML = `
-            <strong>Rental Period:</strong><br>
-            ${sStr ? new Date(sStr).toLocaleDateString('en-GB') : 'TBD'} to ${eStr ? new Date(eStr).toLocaleDateString('en-GB') : 'TBD'}<br>
-            Duration: ${dur} Day(s)
-        `;
+        // Rental meta added to project name
+        document.getElementById("quoteValProjectName").innerText = `Rental: ${sStr||"TBD"} - ${eStr||"TBD"} (${dur} Hari)`;
         
-        document.getElementById("quoteDepositAmount").innerText = "RM " + deposit.toFixed(2);
+        document.getElementById("quotePreviewValDeposit").innerText = deposit.toFixed(2);
         depositBlock.style.display = "flex";
         
         grandTotal = subtotal + deposit;
         rentalData = { startDate: sStr, endDate: eStr, duration: dur, deposit: deposit };
     } else {
-        rentalContainer.innerHTML = "";
+        // no rental container anymore
         depositBlock.style.display = "none";
     }
     
@@ -3725,26 +3724,28 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
     }
 
     subtotal = 0;
+    let rowCount = 0;
     workingCart.forEach((item, index) => {
         let line = item.price * item.qty;
         subtotal += line;
+        let bg = rowCount % 2 === 0 ? "#F8F8F8" : "#FFFFFF";
         tbody.innerHTML += `
-            <tr class="editable-row">
-                <td style="padding:10px; border-bottom:1px solid #eee;">
-                    <strong style="color:var(--text-main);" contenteditable="true" spellcheck="false" class="editable-field editable-name">${item.name}</strong><br>
-                    <span style="font-size:11px; color:#888;" contenteditable="true" spellcheck="false" class="editable-field">${item.sku}</span>
+            <tr class="editable-row" style="background-color: ${bg}; border-bottom:1px solid #f1f1f1;">
+                <td style="padding:8px 10px; color:#555;">
+                    <div style="font-style:italic; font-weight:bold; color:#000;" contenteditable="true" spellcheck="false" class="editable-field editable-name">${item.name}</div>
                 </td>
-                <td style="text-align:center; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">
+                <td style="text-align:center; padding:8px 10px; color:#555;">
                     <span contenteditable="true" class="editable-field editable-qty" oninput="window.calculateEditableTotal()">${item.qty}</span>
                 </td>
-                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">
-                    <span contenteditable="true" class="editable-field editable-price" oninput="window.calculateEditableTotal()">${item.price.toFixed(2)}</span>
+                <td style="text-align:right; padding:8px 10px; color:#555;">
+                    <span contenteditable="true" class="editable-field editable-price" oninput="window.calculateEditableTotal()">RM ${item.price.toFixed(2)}</span>
                 </td>
-                <td style="text-align:right; padding:10px; border-bottom:1px solid #eee; color:var(--text-main);">
-                    <span class="row-total">${line.toFixed(2)}</span>
+                <td style="text-align:right; padding:8px 10px; color:#555; font-weight:bold;">
+                    RM <span class="row-total">${line.toFixed(2)}</span>
                 </td>
             </tr>
         `;
+        rowCount++;
     });
     
     if (type === "Rental") grandTotal = subtotal + deposit;
@@ -3752,6 +3753,7 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
 
     document.getElementById("quotePreviewGrandTotal").innerText = grandTotal.toFixed(2);
     document.getElementById("quoteSubtotal").innerText = "RM " + subtotal.toFixed(2);
+    document.getElementById("quoteValSubtotal").innerText = subtotal.toFixed(2);
     document.getElementById("quoteGrandTotal").innerText = "RM " + grandTotal.toFixed(2);
     document.getElementById("quoteTermsText").innerText = terms;
     
@@ -3887,6 +3889,7 @@ document.getElementById('quoteSearchInput')?.addEventListener('input', (e) => {
     renderQuotePOS(e.target.value);
 });
 
+
 window.calculateEditableTotal = function() {
     let subtotal = 0;
     const rows = document.querySelectorAll('#quoteItemsTableBody tr');
@@ -3897,8 +3900,8 @@ window.calculateEditableTotal = function() {
         let rowTotalEl = row.querySelector('.row-total');
         
         if(qtyEl && priceEl && rowTotalEl) {
-            let q = parseFloat(qtyEl.innerText) || 0;
-            let p = parseFloat(priceEl.innerText) || 0;
+            let q = parseFloat(qtyEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
+            let p = parseFloat(priceEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
             let lineTotal = q * p;
             subtotal += lineTotal;
             rowTotalEl.innerText = lineTotal.toFixed(2);
@@ -3907,17 +3910,22 @@ window.calculateEditableTotal = function() {
 
     let depositEl = document.getElementById("quotePreviewValDeposit");
     let deposit = 0;
-    if(depositEl) {
-        deposit = parseFloat(depositEl.innerText) || 0;
-    }
+    if(depositEl) deposit = parseFloat(depositEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
     
-    let grandTotal = subtotal + deposit;
+    let discountEl = document.getElementById("quoteValDiscount");
+    let discount = 0;
+    if(discountEl) discount = parseFloat(discountEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
+    
+    let grandTotal = subtotal + deposit - discount;
     let gtEl = document.getElementById("quotePreviewGrandTotal");
     if(gtEl) gtEl.innerText = grandTotal.toFixed(2);
     
-    // Also try to update the hidden ones if they exist
+    let subEl2 = document.getElementById("quoteValSubtotal");
+    if(subEl2) subEl2.innerText = subtotal.toFixed(2);
+    
+    // Hidden inputs update
     let subEl = document.getElementById("quoteSubtotal");
-    if(subEl) subEl.innerText = "RM " + subtotal.toFixed(2);
+    if(subEl) subEl.innerText = subtotal.toFixed(2);
     let gtEl2 = document.getElementById("quoteGrandTotal");
-    if(gtEl2) gtEl2.innerText = "RM " + grandTotal.toFixed(2);
+    if(gtEl2) gtEl2.innerText = grandTotal.toFixed(2);
 };
