@@ -3646,16 +3646,18 @@ window.clearQuoteCart = function() {
     window.renderQuoteCart();
 };
 
-window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
+window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewOnly = false) {
     // Removed the block constraint so the template can be blank
     // if (quoteCart.length === 0) return alert("Sila tambahkan barang ke dalam senarai Quotation dahulu.");
     
-    // Inject logic for the 4 explicit buttons
+    // Only inject default terms if the box is completely empty (prevent overwriting loaded logs)
     document.getElementById("quoteType").value = docType;
-    if(docType === "Rental") {
-        document.getElementById("quoteTerms").value = "1. Penyewa bertanggungjawab menjaga kelengkapan dengan baik.\n2. Denda akan dikenakan jika hilang/rosak.\n3. Deposit cagaran akan dipulangkan dlm masa 3 hari bekerja slepas barang dipulangkan dengan kuantiti & kondisi asal.";
-    } else {
-        document.getElementById("quoteTerms").value = "Harga sah untuk 7 hari. Bayaran penuh diperlukan sebelum penyerahan bermula.";
+    if (!document.getElementById("quoteTerms").value.trim()) {
+        if(docType === "Rental") {
+            document.getElementById("quoteTerms").value = "1. Penyewa bertanggungjawab menjaga kelengkapan dengan baik.\n2. Denda akan dikenakan jika hilang/rosak.\n3. Deposit cagaran akan dipulangkan dlm masa 3 hari bekerja slepas barang dipulangkan dengan kuantiti & kondisi asal.";
+        } else {
+            document.getElementById("quoteTerms").value = "Harga sah untuk 7 hari. Bayaran penuh diperlukan sebelum penyerahan bermula.";
+        }
     }
 
     const type = docType;
@@ -3666,12 +3668,14 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
     let subtotal = parseFloat(document.getElementById("quoteTotalPrice").innerText) || 0;
     
     // Logic for Quotation Saving and Versioning
-    let isNew = !currentQuoteRef;
-    if(isNew) {
-        currentQuoteRef = "QT-" + nextQuoteIdNum++;
-        currentQuoteVersion = 1;
-    } else {
-        currentQuoteVersion++;
+    if (!isViewOnly) {
+        let isNew = !currentQuoteRef;
+        if(isNew) {
+            currentQuoteRef = "QT-" + nextQuoteIdNum++;
+            currentQuoteVersion = 1;
+        } else {
+            currentQuoteVersion++;
+        }
     }
 
     let qId = currentQuoteRef + "-v" + currentQuoteVersion;
@@ -3776,52 +3780,53 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle) {
     };
 
     // Mark previous instances of this ref as superseded in Cloud
-    try {
-        if(currentQuoteVersion > 1) {
-            await db.from('quotations_log')
-                .update({ superseded: true })
-                .eq('ref', currentQuoteRef)
-                .lt('version', currentQuoteVersion);
-                
-            // Update local state temporarily mapping
-            quoteHistoryLogs.forEach(log => {
-                if(log.ref === currentQuoteRef && log.version < currentQuoteVersion) {
-                    log.superseded = true;
-                }
-            });
+    if (!isViewOnly) {
+        try {
+            if(currentQuoteVersion > 1) {
+                await db.from('quotations_log')
+                    .update({ superseded: true })
+                    .eq('ref', currentQuoteRef)
+                    .lt('version', currentQuoteVersion);
+                    
+                // Update local state temporarily mapping
+                quoteHistoryLogs.forEach(log => {
+                    if(log.ref === currentQuoteRef && log.version < currentQuoteVersion) {
+                        log.superseded = true;
+                    }
+                });
+            }
+            
+            let { data, error } = await db.from('quotations_log').insert([logEntry]).select();
+            if(data && data.length > 0) {
+                // Convert to camelCase locally for UI consistency (Supabase uses snake_case based on our SQL script)
+                let sc = data[0];
+                quoteHistoryLogs.unshift({
+                    id: sc.id,
+                    ref: sc.ref,
+                    version: sc.version,
+                    type: sc.type,
+                    customer: sc.customer,
+                    terms: sc.terms,
+                    subtotal: sc.subtotal,
+                    grandTotal: sc.grand_total,
+                    rentalData: sc.rental_data,
+                    items: sc.items,
+                    createdAt: sc.created_at,
+                    superseded: sc.superseded
+                });
+            } else if (error) {
+                console.error("Supabase Save Quote Error:", error.message);
+                alert("Fail saving to Cloud: " + error.message);
+            }
+        } catch(e) {
+            console.error("Save Quote Exception:", e);
         }
-        
-        let { data, error } = await db.from('quotations_log').insert([logEntry]).select();
-        if(data && data.length > 0) {
-            // Convert to camelCase locally for UI consistency (Supabase uses snake_case based on our SQL script)
-            let sc = data[0];
-            quoteHistoryLogs.unshift({
-                id: sc.id,
-                ref: sc.ref,
-                version: sc.version,
-                type: sc.type,
-                customer: sc.customer,
-                terms: sc.terms,
-                subtotal: sc.subtotal,
-                grandTotal: sc.grand_total,
-                rentalData: sc.rental_data,
-                items: sc.items,
-                createdAt: sc.created_at,
-                superseded: sc.superseded
-            });
-        } else if (error) {
-            console.error("Supabase Save Quote Error:", error.message);
-            alert("Fail saving to Cloud: " + error.message);
-        }
-    } catch (e) {
-        console.error("Supabase Quotation Catch Error:", e.message);
     }
 
     // Update Editing Indicator UI
     document.getElementById("quoteEditRefLabel").innerText = currentQuoteRef + " (v" + currentQuoteVersion + ")";
     document.getElementById("quoteEditIndicator").style.display = "flex";
 
-    // Show Modal wrapper and lock body scroll
     document.getElementById("quoteModal").style.display = "flex";
 };
 
@@ -3886,6 +3891,10 @@ window.loadQuoteIntoCart = function(logId) {
     document.getElementById("quoteEditRefLabel").innerText = currentQuoteRef + " (Loading v" + currentQuoteVersion + "...)";
     document.getElementById("quoteEditIndicator").style.display = "flex";
     document.getElementById("quoteLogsModal").style.display = "none";
+    
+    // Auto-open PDF Preview in View-Only state to satisfy user UX
+    let dTitle = log.type === 'Rental' ? 'RENTAL QUO.' : 'QUOTATION';
+    window.saveAndPreviewQuotationParams(log.type, dTitle, true);
 };
 
 document.getElementById('quoteSearchInput')?.addEventListener('input', (e) => {
