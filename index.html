@@ -293,6 +293,18 @@
         }
     </style>
     <div id="quoteModal" class="login-overlay" style="display:none; z-index:2000;">
+        <!-- Formatting Toolbar -->
+        <div class="no-print" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); background:#fff; padding:8px 15px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.2); display:flex; gap:10px; align-items:center; z-index:2005; border:1px solid #ddd;">
+            <span style="font-size:11px; font-weight:bold; color:#555;">Text Format:</span>
+            <button onclick="document.execCommand('bold', false, null)" style="background:#eee; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-weight:bold; cursor:pointer; color:#000;" title="Bold">B</button>
+            <button onclick="document.execCommand('italic', false, null)" style="background:#eee; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-style:italic; cursor:pointer; color:#000;" title="Italic">I</button>
+            <button onclick="document.execCommand('underline', false, null)" style="background:#eee; border:1px solid #ccc; border-radius:4px; padding:4px 8px; text-decoration:underline; cursor:pointer; color:#000;" title="Underline">U</button>
+            <div style="width:1px; height:15px; background:#ccc; margin:0 5px;"></div>
+            <button onclick="document.execCommand('fontSize', false, '3')" style="background:#eee; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer; color:#000;" title="Normal">A-</button>
+            <button onclick="document.execCommand('fontSize', false, '5')" style="background:#eee; border:1px solid #ccc; border-radius:4px; padding:4px 8px; font-size:14px; font-weight:bold; cursor:pointer; color:#000;" title="Besar">A+</button>
+            <div style="width:1px; height:15px; background:#ccc; margin:0 5px;"></div>
+            <span style="font-size:10px; color:#888;">Highlight dan klik ikon</span>
+        </div>
         <div class="login-box quote-print-container" style="width:90%; max-width:900px; text-align:left; padding:40px; background:#fff; max-height:90vh; overflow-y:auto; position:relative; font-family:'Inter', sans-serif;">
             <button class="no-print" onclick="document.getElementById('quoteModal').style.display='none'" style="position:absolute; top:15px; right:20px; border:none; background:none; font-size:24px; cursor:pointer; color:#888;">&times;</button>
             <button class="no-print btn-secondary" onclick="window.print()" style="position:absolute; top:15px; right:60px; font-size:12px; padding:5px 10px;">🖨️ Print PDF</button>
@@ -355,6 +367,9 @@
                     <!-- Dynamic Rows -->
                 </tbody>
             </table>
+
+            <!-- Add Row Button (Hidden on Print) -->
+            <button class="no-print btn-secondary" onclick="window.addNewQuoteRow()" style="margin-top:-10px; margin-bottom:20px; font-size:10px; padding:4px 8px; background:#f3f4f6; color:#333; border:1px solid #ccc; border-radius:4px;">+ Tambah Baris Item</button>
 
             <!-- Footer Summary and Notes -->
             <div style="display:flex; justify-content:space-between; font-size:10px; color:#555; padding-top:10px;">

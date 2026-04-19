@@ -3893,6 +3893,35 @@ document.getElementById('quoteSearchInput')?.addEventListener('input', (e) => {
 });
 
 
+window.addNewQuoteRow = function() {
+    const tbody = document.getElementById("quoteItemsTableBody");
+    if(!tbody) return;
+    
+    let rowsCount = document.querySelectorAll('#quoteItemsTableBody tr').length;
+    let bg = rowsCount % 2 === 0 ? "#F8F8F8" : "#FFFFFF";
+    
+    let newTr = document.createElement("tr");
+    newTr.className = "editable-row";
+    newTr.style.cssText = `background-color: ${bg}; border-bottom:1px solid #f1f1f1;`;
+    
+    newTr.innerHTML = `
+        <td style="padding:8px 10px; color:#555;">
+            <div style="font-style:italic; font-weight:bold; color:#000;" contenteditable="true" spellcheck="false" class="editable-field editable-name">[Nama Item Baru]</div>
+        </td>
+        <td style="text-align:center; padding:8px 10px; color:#555;">
+            <span contenteditable="true" class="editable-field editable-qty" oninput="window.calculateEditableTotal()">1</span>
+        </td>
+        <td style="text-align:right; padding:8px 10px; color:#555;">
+            <span contenteditable="true" class="editable-field editable-price" oninput="window.calculateEditableTotal()">RM 0.00</span>
+        </td>
+        <td style="text-align:right; padding:8px 10px; color:#555; font-weight:bold;">
+            RM <span class="row-total">0.00</span>
+        </td>
+    `;
+    
+    tbody.appendChild(newTr);
+};
+
 window.calculateEditableTotal = function() {
     let subtotal = 0;
     const rows = document.querySelectorAll('#quoteItemsTableBody tr');
