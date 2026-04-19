@@ -3680,9 +3680,13 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
 
     let qId = currentQuoteRef + "-v" + currentQuoteVersion;
     
+    let genDateInput = document.getElementById("quoteGeneratedDate") ? document.getElementById("quoteGeneratedDate").value : "";
+    let selectedDate = genDateInput ? new Date(genDateInput) : new Date();
+    let displayDate = selectedDate.toLocaleDateString('en-GB');
+
     document.getElementById("quoteHeaderTitle").innerText = docTitle;
-    document.getElementById("quoteHeaderSubmitDate").innerText = new Date().toLocaleDateString('en-GB');
-    document.getElementById("quoteValCurrentDate").innerText = new Date().toLocaleDateString('en-GB');
+    document.getElementById("quoteHeaderSubmitDate").innerText = displayDate;
+    document.getElementById("quoteValCurrentDate").innerText = displayDate;
     document.getElementById("quoteValQuoteId").innerText = qId;
     
     let parts = custDetail.split("-");
@@ -3778,6 +3782,7 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
         items: JSON.parse(JSON.stringify(quoteCart)),
         superseded: false
     };
+    if(genDateInput) logEntry.created_at = selectedDate.toISOString();
 
     // Mark previous instances of this ref as superseded in Cloud
     if (!isViewOnly) {
@@ -3830,30 +3835,67 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
     document.getElementById("quoteModal").style.display = "flex";
 };
 
+window.deleteQuoteLog = async function(logId) {
+    if(!confirm('Adakah anda pasti mahu memadam Quotation/Invoice ini secara kekal?')) return;
+    try {
+        if(db) await db.from('quotations_log').delete().eq('id', logId);
+        quoteHistoryLogs = quoteHistoryLogs.filter(l => l.id !== logId);
+        window.renderQuoteLogs();
+        alert('Rekod berjaya dipadam.');
+    } catch(e) {
+        alert('Gagal memadam rekod: ' + e.message);
+    }
+};
+
 window.renderQuoteLogs = function() {
     const tbody = document.getElementById("quoteLogsTableBody");
     if (!tbody) return;
     
     if (quoteHistoryLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px;">Tiada Sebut Harga. Sila buat satu.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">Tiada Sebut Harga. Sila buat satu.</td></tr>`;
         document.getElementById("quoteLogsModal").style.display = "flex";
         return;
     }
     
+    let searchInput = document.getElementById("quoteLogSearch");
+    let filterVal = searchInput ? searchInput.value.toLowerCase() : "";
+    let yearInput = document.getElementById("quoteLogYearFilter");
+    let yearFilter = yearInput ? yearInput.value : "All";
+
     tbody.innerHTML = "";
-    quoteHistoryLogs.forEach(log => {
+    let filteredLogs = [...quoteHistoryLogs];
+    if(filterVal) {
+        filteredLogs = filteredLogs.filter(l => (l.id && l.id.toLowerCase().includes(filterVal)) || (l.customer && l.customer.toLowerCase().includes(filterVal)));
+    }
+    if(yearFilter !== "All") {
+        filteredLogs = filteredLogs.filter(l => {
+            let d = new Date(l.createdAt || l.created_at);
+            return d.getFullYear().toString() === yearFilter;
+        });
+    }
+
+    if(filteredLogs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px;">Tiada rekod jumpa.</td></tr>`;
+    }
+
+    filteredLogs.forEach(log => {
         let isSuper = log.superseded ? `<span style="background:#EF4444; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Lama</span>` : `<span style="background:#10B981; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Latest</span>`;
         let custPart = (log.customer || "").split("-")[0] || "Guest";
+        let dateObj = new Date(log.createdAt || log.created_at);
+        let logYear = isNaN(dateObj) ? "-" : dateObj.getFullYear();
+        let displayStr = isNaN(dateObj) ? "Tiada Tarikh" : dateObj.toLocaleString('ms-MY');
         
         tbody.innerHTML += `
             <tr style="background:${log.superseded ? '#f9f9f9' : '#fff'}; color:${log.superseded ? '#888' : '#000'}">
-                <td><strong>${log.id}</strong><br><small style="color:#aaa;">${new Date(log.createdAt || log.created_at).toLocaleString('ms-MY')}</small></td>
+                <td><strong>${log.id}</strong><br><small style="color:#aaa;">${displayStr}</small></td>
+                <td><strong>${logYear}</strong></td>
                 <td>${custPart}</td>
                 <td>${log.type}</td>
                 <td>RM ${(log.subtotal || 0).toFixed(2)}</td>
                 <td>v${log.version} ${isSuper}</td>
                 <td>
-                    <button onclick="window.loadQuoteIntoCart('${log.id}')" class="btn-dark" style="padding:6px 10px; font-size:10px; margin:0;">Edit / Load</button>
+                    <button onclick="window.loadQuoteIntoCart('${log.id}')" class="btn-dark" style="padding:6px 10px; font-size:10px; margin:0; margin-right:5px;">Edit / Load</button>
+                    <button onclick="window.deleteQuoteLog('${log.id}')" class="btn-primary" style="background:#EF4444; padding:6px 10px; font-size:10px; margin:0;">Delete</button>
                 </td>
             </tr>
         `;
@@ -3878,6 +3920,20 @@ window.loadQuoteIntoCart = function(logId) {
     document.getElementById("quoteType").value = log.type;
     document.getElementById("quoteCustDetail").value = log.customer;
     document.getElementById("quoteTerms").value = log.terms;
+    
+    if (log.createdAt || log.created_at) {
+        let d = new Date(log.createdAt || log.created_at);
+        if (!isNaN(d)) {
+            let yyyy = d.getFullYear();
+            let mm = String(d.getMonth() + 1).padStart(2, '0');
+            let dd = String(d.getDate()).padStart(2, '0');
+            let qDateEl = document.getElementById("quoteGeneratedDate");
+            if(qDateEl) qDateEl.value = `${yyyy}-${mm}-${dd}`;
+        }
+    } else {
+        let qDateEl = document.getElementById("quoteGeneratedDate");
+        if(qDateEl) qDateEl.value = "";
+    }
     
     if(log.rentalData) {
         document.getElementById("quoteStartDate").value = log.rentalData.startDate || log.rentalData.start_date || "";
