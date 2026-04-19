@@ -3900,7 +3900,45 @@ window.loadQuoteIntoCart = function(logId) {
 document.getElementById('quoteSearchInput')?.addEventListener('input', (e) => {
     renderQuotePOS(e.target.value);
 });
-
+window.syncQuoteModalToCloud = async function() {
+    window.calculateEditableTotal();
+    
+    if(!confirm("Anda pasti mahu merakam rekod ini dan menjadikannya versi rasmi baharu (v+)?")) return;
+    
+    // 1. Kutip kesemua HTML dari tag dalam modal supaya susunan bold/font tersimpan
+    let updatedCart = [];
+    document.querySelectorAll('#quoteItemsTableBody tr').forEach(row => {
+        let nameEl = row.querySelector('.editable-name');
+        let qtyEl = row.querySelector('.editable-qty');
+        let priceEl = row.querySelector('.editable-price');
+        if(nameEl && qtyEl && priceEl) {
+            updatedCart.push({
+                sku: "CUST-ITEM",
+                name: nameEl.innerHTML,
+                qty: parseFloat(qtyEl.innerText.replace(/[^0-9.-]+/g,"")) || 1,
+                price: parseFloat(priceEl.innerText.replace(/[^0-9.-]+/g,"")) || 0
+            });
+        }
+    });
+    
+    if(updatedCart.length === 0) return alert("Sila isikan sekurang-kurangnya 1 item.");
+    
+    quoteCart = updatedCart;
+    window.renderQuoteCart();
+    
+    // 2. Petik tajuk supaya kekal cantik
+    let custVal = document.getElementById("quoteValCustName").innerText;
+    let titleVal = document.getElementById("quoteHeaderTitle").innerText;
+    let tncVal = document.getElementById("quotePreviewTnc").innerHTML;
+    
+    document.getElementById("quoteCustDetail").value = custVal;
+    document.getElementById("quoteTerms").value = tncVal;
+    
+    // 3. Tolak ke Supabase sbg versi baharu
+    await window.saveAndPreviewQuotationParams(document.getElementById("quoteType").value, titleVal, false);
+    
+    alert("Kerja Berjaya! Versi telah disimpan dengan sempurna. Sila tekan Print PDF.");
+};
 
 window.addNewQuoteRow = function() {
     const tbody = document.getElementById("quoteItemsTableBody");
