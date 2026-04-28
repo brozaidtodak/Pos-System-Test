@@ -2123,14 +2123,12 @@ function renderMgmtPlaceholders() {
     let pillSales = document.getElementById("pillSales");
     let pillWarehouse = document.getElementById("pillWarehouse");
     let pillSuperior = document.getElementById("pillSuperior");
-    let pillProdReg = document.getElementById("pillProdReg");
     
     if(pillRoster) pillRoster.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillFinance) pillFinance.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillSales) pillSales.style.display = (isSuperior || isMoyy || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillWarehouse) pillWarehouse.style.display = (isSuperior || isZack || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillSuperior) pillSuperior.style.display = (isSuperior) ? "inline-block" : "none";
-    if(pillProdReg) pillProdReg.style.display = (isSuperior || isZack || (!isZack && !isMoyy)) ? "inline-block" : "none";
 
     // Auto-switch to default Tab based on user identity logic
     if(!window.currentMgmtTabHasInit) {
