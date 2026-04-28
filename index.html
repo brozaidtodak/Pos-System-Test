@@ -207,6 +207,39 @@
             <button onclick="submitLocUpdate()" class="login-btn" style="background:#10B981; margin-top:10px;">Sahkan Lokasi Baru</button>
         </div>
     </div>
+
+            <!-- WAREHOUSE DATABASE VIEW -->
+            <div id="subtabDatabase" class="mgmt-subtab" style="display:none; margin-top:30px;">
+                <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);">🗄️ Database Produk</h3>
+                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
+                    <h3 style="margin-bottom:15px;">✏️ Kemaskini Profil Produk (Edit)</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pilih SKU dari senarai Gudang untuk mengubah suai maklumat teras produk.</p>
+                    
+                    <label class="small-lbl">Cari SKU Produk</label>
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
+                        <datalist id="editSkuList"></datalist>
+                        <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
+                    </div>
+                    <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;">
+                        <h4 style="margin-bottom:10px; color:var(--primary);">Pangkalan Data Produk (Gudang)</h4>
+                        <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Tindakan</th></tr>
+                                </thead>
+                                <tbody id="mgmtInventoryTableBody">
+                                    <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+
+            </div>
+
     <!-- ============================================== -->
     <!-- THE PUBLIC STOREFRONT (E-COMMERCE)           -->
     <!-- ============================================== -->
@@ -1136,6 +1169,7 @@
                <button id="pillFinance" class="pill-btn" onclick="window.switchMgmtTab('subtabFinance', 'pillFinance')">💵 Kewangan</button>
                <button id="pillSales" class="pill-btn" onclick="window.switchMgmtTab('subtabSales, salesMgmtView', 'pillSales')">🏆 Prestasi Jualan</button>
                <button id="pillWarehouse" class="pill-btn" onclick="window.switchMgmtTab('subtabWarehouse', 'pillWarehouse')">📦 Gudang Pusat</button>
+               <button id="pillDatabase" class="pill-btn" onclick="window.switchMgmtTab('subtabDatabase', 'pillDatabase')">🗄️ Database</button>
             </div>
             
             <div id="subtabFinance" class="mgmt-subtab">
@@ -1477,33 +1511,7 @@
 
 
                 <!-- Product Edit Mode -->
-                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;">✏️ Kemaskini Profil Produk (Edit)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pilih SKU dari senarai Gudang untuk mengubah suai maklumat teras produk.</p>
-                    
-                    <label class="small-lbl">Cari SKU Produk</label>
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
-                        <datalist id="editSkuList"></datalist>
-                        <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
-                    </div>
-                    <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;">
-                        <h4 style="margin-bottom:10px; color:var(--primary);">Pangkalan Data Produk (Gudang)</h4>
-                        <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Tindakan</th></tr>
-                                </thead>
-                                <tbody id="mgmtInventoryTableBody">
-                                    <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div>
-
-<!-- FORM 2: CSV IMPORTER -->
+                <!-- FORM 2: CSV IMPORTER -->
             <div id="csvForm" class="admin-card" style="border-top:2px dashed #ccc; margin-top:30px; padding-top:20px;">
                 <h3>Bulk System Importer (CSV)</h3>
                 <select id="csvImportType" class="login-input" style="margin-bottom:15px;">
