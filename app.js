@@ -4365,10 +4365,106 @@ window.renderMgmtInventory = function() {
                     <strong>Sell: RM${parseFloat(p.price).toFixed(2)}</strong>
                 </td>
                 <td>
+                    <button class="btn-success" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap; background:#F59E0B;" onclick="window.openPricingCalc('${p.sku}')">🧮 Harga</button>
+                </td>
+                <td>
                     <button class="btn-primary" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap;" onclick="window.openPdpModal('${p.sku}')">✏️ Edit Details</button>
                 </td>
             </tr>
         `;
     });
     tbody.innerHTML = htmlBuf;
+};
+
+// ===================================
+// PRICING CALCULATOR LOGIC
+// ===================================
+
+window.openPricingCalc = function(sku) {
+    const p = masterProducts.find(x => x.sku === sku);
+    if(!p) return;
+
+    document.getElementById('calcSku').value = sku;
+    document.getElementById('calcSkuTitle').innerText = `SKU: ${sku} | ${p.name}`;
+    
+    // Parse existing Metafields for calculator memory
+    let m = {};
+    try {
+        if(p.metafields) m = typeof p.metafields === 'string' ? JSON.parse(p.metafields) : p.metafields;
+    } catch(e) {}
+
+    document.getElementById('calcBaseCost').value = p.cost_price || 0;
+    document.getElementById('calcShipping').value = parseFloat(m['_calc_shipping']) || 0;
+    document.getElementById('calcLabor').value = parseFloat(m['_calc_labor']) || 0;
+    document.getElementById('calcMarginPct').value = parseFloat(m['_calc_margin_pct']) || 20; // default 20%
+    document.getElementById('calcCommPct').value = parseFloat(m['_calc_comm_pct']) || 5; // default 5%
+
+    window.calcPricing();
+    document.getElementById('pricingCalcModal').style.display = 'flex';
+};
+
+window.calcPricing = function() {
+    let base = parseFloat(document.getElementById('calcBaseCost').value) || 0;
+    let ship = parseFloat(document.getElementById('calcShipping').value) || 0;
+    let labor = parseFloat(document.getElementById('calcLabor').value) || 0;
+    let marginPct = parseFloat(document.getElementById('calcMarginPct').value) || 0;
+    let commPct = parseFloat(document.getElementById('calcCommPct').value) || 0;
+
+    let totalCost = base + ship + labor;
+    document.getElementById('calcTotalCost').value = totalCost.toFixed(2);
+
+    let profit = totalCost * (marginPct / 100);
+    let grossPrice = totalCost + profit;
+    
+    // finalPrice = grossPrice / (1 - commPct)
+    let finalPrice = 0;
+    if(commPct >= 100) finalPrice = grossPrice; // avoid division by zero/negative
+    else finalPrice = grossPrice / (1 - (commPct / 100));
+
+    let commAmount = finalPrice * (commPct / 100);
+
+    document.getElementById('calcProfitAmount').innerText = profit.toFixed(2);
+    document.getElementById('calcCommAmount').innerText = commAmount.toFixed(2);
+    document.getElementById('calcFinalPrice').innerText = finalPrice.toFixed(2);
+};
+
+window.applyCalculatedPrice = async function() {
+    const sku = document.getElementById('calcSku').value;
+    const p = masterProducts.find(x => x.sku === sku);
+    if(!p) return;
+
+    let finalPrice = parseFloat(document.getElementById('calcFinalPrice').innerText);
+    let baseCost = parseFloat(document.getElementById('calcBaseCost').value) || 0;
+    let ship = parseFloat(document.getElementById('calcShipping').value) || 0;
+    let labor = parseFloat(document.getElementById('calcLabor').value) || 0;
+    let marginPct = parseFloat(document.getElementById('calcMarginPct').value) || 0;
+    let commPct = parseFloat(document.getElementById('calcCommPct').value) || 0;
+
+    let m = {};
+    try {
+        if(p.metafields) m = typeof p.metafields === 'string' ? JSON.parse(p.metafields) : p.metafields;
+    } catch(e) {}
+
+    // Save calculation config to metafields
+    m['_calc_shipping'] = ship;
+    m['_calc_labor'] = labor;
+    m['_calc_margin_pct'] = marginPct;
+    m['_calc_comm_pct'] = commPct;
+
+    const payload = {
+        cost_price: baseCost,
+        price: finalPrice,
+        metafields: JSON.stringify(m)
+    };
+
+    try {
+        const { error } = await db.from('products_master').update(payload).eq('sku', sku);
+        if(error) throw error;
+        
+        alert("Harga Jualan & Data Kalkulator berjaya disimpan!");
+        document.getElementById('pricingCalcModal').style.display = 'none';
+        await window.initApp(); // reload everything to update UI
+    } catch(e) {
+        alert("Ralat semasa menyimpan: " + e.message);
+    }
 };

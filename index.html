@@ -54,6 +54,50 @@
         </div>
     </div>
 
+    
+<!-- PRICING CALCULATOR MODAL -->
+<div id="pricingCalcModal" class="login-overlay" style="display:none; z-index:99999;">
+    <div class="login-box" style="max-width:500px; text-align:left; padding:30px; border-top:6px solid #10B981;">
+        <button onclick="document.getElementById('pricingCalcModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+        <h2 style="font-weight:800; font-size:20px; margin-bottom:5px;">🧮 Kalkulator Harga</h2>
+        <p style="font-size:12px; color:#666; margin-bottom:20px;" id="calcSkuTitle">SKU: ---</p>
+
+        <input type="hidden" id="calcSku">
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div><label class="small-lbl">Kos Awal (RM)</label><input type="number" id="calcBaseCost" class="login-input" step="0.01" oninput="window.calcPricing()"></div>
+            <div><label class="small-lbl">+ Kos Shipping (RM)</label><input type="number" id="calcShipping" class="login-input" step="0.01" oninput="window.calcPricing()"></div>
+            <div><label class="small-lbl">+ Upah Buruh (RM)</label><input type="number" id="calcLabor" class="login-input" step="0.01" oninput="window.calcPricing()"></div>
+            <div></div>
+            <div style="grid-column: 1 / -1; border-top:1px dashed #ccc; padding-top:10px;">
+                <label class="small-lbl" style="color:#2563EB;">= Modal Keseluruhan (RM)</label>
+                <input type="number" id="calcTotalCost" class="login-input" readonly style="background:#EFF6FF; font-weight:bold; color:#1E3A8A;">
+            </div>
+            
+            <div><label class="small-lbl">Margin Untung (%)</label><input type="number" id="calcMarginPct" class="login-input" oninput="window.calcPricing()"></div>
+            <div><label class="small-lbl">Komisen Staf (%)</label><input type="number" id="calcCommPct" class="login-input" oninput="window.calcPricing()"></div>
+        </div>
+
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; padding:15px; border-radius:8px; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:13px; color:#166534;">
+                <span>Untung Bersih Syarikat:</span>
+                <span style="font-weight:bold;">RM <span id="calcProfitAmount">0.00</span></span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:13px; color:#166534;">
+                <span>Bahagian Komisen Staf:</span>
+                <span style="font-weight:bold;">RM <span id="calcCommAmount">0.00</span></span>
+            </div>
+            <hr style="border:0; border-top:1px solid #BBF7D0; margin:10px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; color:#14532D;">
+                <span style="font-weight:bold; font-size:16px;">Harga Jualan Sasaran:</span>
+                <span style="font-weight:900; font-size:24px;">RM <span id="calcFinalPrice">0.00</span></span>
+            </div>
+        </div>
+
+        <button onclick="window.applyCalculatedPrice()" class="btn-success" style="width:100%; padding:15px; font-size:16px;">Sahkan & Simpan Data</button>
+    </div>
+</div>
+
     <!-- 0.1 E-RECEIPT POPUP -->
     <div id="receiptModal" class="login-overlay" style="display:none; z-index:3000;">
         <div class="login-box" style="max-width:400px; text-align:left; padding:30px;">
@@ -226,7 +270,7 @@
                         <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
                             <table class="data-table" style="font-size:12px;">
                                 <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Tindakan</th></tr>
+                                    <tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Kalkulator</th><th>Tindakan</th></tr>
                                 </thead>
                                 <tbody id="mgmtInventoryTableBody">
                                     <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
