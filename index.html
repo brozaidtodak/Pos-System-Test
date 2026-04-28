@@ -1334,7 +1334,6 @@
                <button id="pillFinance" class="pill-btn" onclick="window.switchMgmtTab('subtabFinance', 'pillFinance')">💵 Kewangan</button>
                <button id="pillSales" class="pill-btn" onclick="window.switchMgmtTab('subtabSales, salesMgmtView', 'pillSales')">🏆 Prestasi Jualan</button>
                <button id="pillWarehouse" class="pill-btn" onclick="window.switchMgmtTab('subtabWarehouse', 'pillWarehouse')">📦 Gudang Pusat</button>
-               <button id="pillSuperior" class="pill-btn" onclick="window.switchMgmtTab('subtabSuperior', 'pillSuperior')">⚙️ Sistem</button>
             </div>
             
             <div id="subtabFinance" class="mgmt-subtab">
@@ -1699,6 +1698,20 @@
                         <button class="btn-primary" style="width:100%; margin-top:15px; opacity:0.6;">+ Add Core Vendor</button>
                     </div>
                 </div>
+
+                <!-- Master System Management (Moved to Gudang Pusat) -->
+                <div class="admin-card" style="border-top:4px solid var(--primary); margin-top:20px; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>⚙️ Master System Management</h3>
+                        <span style="font-size:10px; background:#8B5CF6; color:white; padding:3px 8px; border-radius:12px;">Superior Access Only</span>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-top:10px; margin-bottom:15px;">Akses sulit pengarah untuk token pangkalan data (Supabase), sandaran keseluruhan, dan pelepasan (override) keselamatan hub lain.</p>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-primary" style="flex:1; opacity:0.6; cursor:not-allowed;">Manage DB Keys</button>
+                        <button class="btn-primary" style="flex:1; background:#EF4444; opacity:0.6; cursor:not-allowed;">Wipe Global History</button>
+                    </div>
+                </div>
+
             </div>
 
             <!-- SALES MANAGEMENT VIEW (Moyy, Superior) -->
@@ -1769,22 +1782,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-
-            <!-- Superior Only: System Management -->
-            <div id="subtabSuperior" class="mgmt-subtab" style="margin-top:20px;">
-                <div class="admin-card" style="border-top:4px solid var(--primary);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>⚙️ Master System Management</h3>
-                        <span style="font-size:10px; background:#8B5CF6; color:white; padding:3px 8px; border-radius:12px;">Superior Access Only</span>
-                    </div>
-                    <p style="font-size:12px; color:#888; margin-top:10px; margin-bottom:15px;">Akses sulit pengarah untuk token pangkalan data (Supabase), sandaran keseluruhan, dan pelepasan (override) keselamatan hub lain.</p>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-primary" style="flex:1; opacity:0.6; cursor:not-allowed;">Manage DB Keys</button>
-                        <button class="btn-primary" style="flex:1; background:#EF4444; opacity:0.6; cursor:not-allowed;">Wipe Global History</button>
                     </div>
                 </div>
             </div>
