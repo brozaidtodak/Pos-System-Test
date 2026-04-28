@@ -1483,22 +1483,9 @@
                     
                     <label class="small-lbl">Cari SKU Produk</label>
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.loadProductForEdit(this.value)">
+                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
                         <datalist id="editSkuList"></datalist>
-                        <button class="btn-secondary" onclick="window.loadProductForEdit(document.getElementById('editSkuSearch').value)">Load Data</button>
-                    </div>
-
-                    <div id="editProductFields" style="display:none; grid-template-columns: 1fr 1fr; gap:15px; border-top:1px dashed #ccc; padding-top:15px;">
-                        <div><label class="small-lbl">Nama Produk</label><input type="text" id="epName" class="login-input"></div>
-                        <div><label class="small-lbl">Kategori Utama</label><input type="text" id="epCategory" class="login-input"></div>
-                        <div><label class="small-lbl">Harga Jualan (RM)</label><input type="number" id="epPrice" class="login-input" step="0.01"></div>
-                        <div><label class="small-lbl">Harga Kos (RM)</label><input type="number" id="epCost" class="login-input" step="0.01"></div>
-                        <div><label class="small-lbl">Rak (Rack)</label><input type="text" id="epRack" class="login-input" placeholder="Cth: A, B, C"></div>
-                        <div><label class="small-lbl">Tingkat (Tier)</label><input type="text" id="epTier" class="login-input" placeholder="Cth: 1, 2, 3"></div>
-                        <div><label class="small-lbl">Kotak (Bin)</label><input type="text" id="epBin" class="login-input" placeholder="Cth: 14"></div>
-
-                        <div style="grid-column: 1 / -1;"><label class="small-lbl">URL Gambar Berangkai (Comma Separated)</label><input type="text" id="epImages" class="login-input" placeholder="https://..., https://..."></div>
-                        <button class="btn-primary" style="grid-column: 1 / -1; margin-top:10px;" onclick="window.saveProductEdit()">Simpan Perubahan Gudang</button>
+                        <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
                     </div>
                 </div>
 
