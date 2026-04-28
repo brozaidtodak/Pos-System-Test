@@ -229,6 +229,7 @@ async function initApp() {
         }
 
         renderWMS();
+        if(typeof populateEditSkuList === 'function') populateEditSkuList();
         renderHistory();
         renderCustomers();
         renderPromotions();
@@ -3905,4 +3906,56 @@ window.saveProductRegistration = function() {
     document.getElementById("prUnitPurchased").value = "";
     document.getElementById("prShippingCost").value = "";
     document.getElementById("prShippingPerUnit").value = "";
+};
+
+window.populateEditSkuList = function() {
+    const list = document.getElementById('editSkuList');
+    if(!list) return;
+    list.innerHTML = masterProducts.map(p => `<option value="${p.sku}">${p.name}</option>`).join('');
+};
+
+window.loadProductForEdit = function(sku) {
+    if(!sku) return;
+    const prod = masterProducts.find(p => p.sku === sku);
+    if(!prod) return alert("SKU tidak dijumpai di Gudang Pusat.");
+    
+    document.getElementById('epName').value = prod.name || '';
+    document.getElementById('epCategory').value = prod.category || '';
+    document.getElementById('epPrice').value = prod.price || 0;
+    document.getElementById('epCost').value = prod.cost_price || 0;
+    document.getElementById('epImages').value = (prod.images || []).join(', ');
+    
+    document.getElementById('editProductFields').style.display = 'grid';
+};
+
+window.saveProductEdit = async function() {
+    const sku = document.getElementById('editSkuSearch').value;
+    if(!sku) return;
+    
+    const name = document.getElementById('epName').value;
+    const category = document.getElementById('epCategory').value;
+    const price = parseFloat(document.getElementById('epPrice').value) || 0;
+    const cost = parseFloat(document.getElementById('epCost').value) || 0;
+    const imagesRaw = document.getElementById('epImages').value;
+    const images = imagesRaw ? imagesRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    
+    const updatePayload = {
+        name: name,
+        category: category,
+        price: price,
+        cost_price: cost,
+        images: images
+    };
+    
+    try {
+        let { error } = await db.from('products_master').update(updatePayload).eq('sku', sku);
+        if(error) throw error;
+        
+        alert(`Berjaya kemas kini profil SKU: ${sku}`);
+        await window.initApp(); // reload masterProducts
+        document.getElementById('editProductFields').style.display = 'none';
+        document.getElementById('editSkuSearch').value = '';
+    } catch(e) {
+        alert("Ralat mengemaskini produk: " + e.message);
+    }
 };
