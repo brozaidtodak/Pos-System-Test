@@ -1417,14 +1417,7 @@
 
             
 
-            <!-- FORM 3: INBOUND -->
-            <div id="inboundForm" class="admin-card" style="display:none; border-color:var(--primary);">
-                <h3 style="color:var(--primary);">Inbound Logistics</h3>
-                <label>Select SKU to Receive:</label>
-                <select id="inboundSkuSelect"></select>
-                <input type="number" id="inboundQty" placeholder="Quantity Received" required min="1">
-                <button id="saveInboundBtn" class="btn-success" style="background:#8B5CF6; border-color:var(--primary);">Log Inbound Batch</button>
-            </div>
+            
 
             
 
@@ -1500,6 +1493,10 @@
                         <div><label class="small-lbl">Kategori Utama</label><input type="text" id="epCategory" class="login-input"></div>
                         <div><label class="small-lbl">Harga Jualan (RM)</label><input type="number" id="epPrice" class="login-input" step="0.01"></div>
                         <div><label class="small-lbl">Harga Kos (RM)</label><input type="number" id="epCost" class="login-input" step="0.01"></div>
+                        <div><label class="small-lbl">Rak (Rack)</label><input type="text" id="epRack" class="login-input" placeholder="Cth: A, B, C"></div>
+                        <div><label class="small-lbl">Tingkat (Tier)</label><input type="text" id="epTier" class="login-input" placeholder="Cth: 1, 2, 3"></div>
+                        <div><label class="small-lbl">Kotak (Bin)</label><input type="text" id="epBin" class="login-input" placeholder="Cth: 14"></div>
+
                         <div style="grid-column: 1 / -1;"><label class="small-lbl">URL Gambar Berangkai (Comma Separated)</label><input type="text" id="epImages" class="login-input" placeholder="https://..., https://..."></div>
                         <button class="btn-primary" style="grid-column: 1 / -1; margin-top:10px;" onclick="window.saveProductEdit()">Simpan Perubahan Gudang</button>
                     </div>
@@ -1526,6 +1523,69 @@
 
                 </div>
                 
+                
+                <!-- STOCK MOVEMENTS (INBOUND & OUTBOUND) -->
+                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
+                    <h3 style="margin-bottom:15px;">📦 Pergerakan Inventori (Inbound & Outbound)</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Merekod secara rasmi setiap unit fizikal yang masuk (dari pembekal) atau keluar (kegunaan stor/rosak).</p>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <!-- Inbound Section -->
+                        <div style="background:#f0fdf4; padding:15px; border-radius:8px; border:1px solid #bbf7d0;">
+                            <h4 style="color:#166534; margin-bottom:10px;">🟢 Terima Stok Baru (Inbound)</h4>
+                            <label class="small-lbl">Cari SKU Produk</label>
+                            <input type="text" id="inboundSkuSearch" class="login-input" placeholder="Taip SKU..." list="movementSkuList">
+                            <label class="small-lbl">Kuantiti Diterima</label>
+                            <input type="number" id="inboundQty" class="login-input" placeholder="0" min="1">
+                            <label class="small-lbl">Rujukan PO / Nota (Pilihan)</label>
+                            <input type="text" id="inboundRef" class="login-input" placeholder="PO-10023">
+                            <button class="btn-success" style="width:100%; margin-top:10px;" onclick="window.processInbound()">Terima & Tambah Stok</button>
+                        </div>
+                        
+                        <!-- Outbound Section -->
+                        <div style="background:#fef2f2; padding:15px; border-radius:8px; border:1px solid #fecaca;">
+                            <h4 style="color:#991b1b; margin-bottom:10px;">🔴 Keluarkan Stok (Outbound)</h4>
+                            <label class="small-lbl">Cari SKU Produk</label>
+                            <input type="text" id="outboundSkuSearch" class="login-input" placeholder="Taip SKU..." list="movementSkuList">
+                            <label class="small-lbl">Kuantiti Dikeluarkan</label>
+                            <input type="number" id="outboundQty" class="login-input" placeholder="0" min="1">
+                            <label class="small-lbl">Sebab / Catatan</label>
+                            <select id="outboundReason" class="login-input">
+                                <option value="Transfer ke Cawangan">Transfer ke Cawangan Lain</option>
+                                <option value="Kerosakan / Pecah">Kerosakan / Pecah (Write-off)</option>
+                                <option value="Kegunaan Marketing">Kegunaan Marketing / Shooting</option>
+                                <option value="Lain-lain">Lain-lain (Sila catat)</option>
+                            </select>
+                            <input type="text" id="outboundNote" class="login-input" placeholder="Catatan tambahan (pilihan)..." style="margin-top:-10px;">
+                            <button class="btn-primary" style="background:#EF4444; border:none; width:100%; margin-top:10px;" onclick="window.processOutbound()">Tolak Stok Fizikal</button>
+                        </div>
+                    </div>
+                    <datalist id="movementSkuList"></datalist>
+                </div>
+
+                
+                <!-- STOCK AUDIT MODULE -->
+                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
+                    <h3 style="margin-bottom:15px;">🔍 Audit Stok Berkala (Cycle Count)</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Imbas SKU atau taip untuk membandingkan kuantiti sistem vs kuantiti fizikal.</p>
+                    
+                    <div style="display:flex; gap:10px; align-items:flex-end;">
+                        <div style="flex:1;">
+                            <label class="small-lbl">SKU Produk</label>
+                            <input type="text" id="auditSku" class="login-input" placeholder="Taip SKU..." list="movementSkuList" onchange="window.loadAuditProduct()">
+                        </div>
+                        <div style="width:120px;">
+                            <label class="small-lbl">Kuantiti Sistem</label>
+                            <input type="number" id="auditSysQty" class="login-input" readonly style="background:#eee;">
+                        </div>
+                        <div style="width:120px;">
+                            <label class="small-lbl">Kuantiti Fizikal</label>
+                            <input type="number" id="auditPhysQty" class="login-input" placeholder="0">
+                        </div>
+                        <button class="btn-primary" style="height:42px; margin-bottom:15px;" onclick="window.submitStockAudit()">Semak & Hantar</button>
+                    </div>
+                </div>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                     <!-- Discrepancy Log -->
                     <div class="admin-card" style="border-top:4px solid var(--primary);">

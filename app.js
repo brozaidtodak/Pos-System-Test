@@ -230,11 +230,13 @@ async function initApp() {
 
         renderWMS();
         if(typeof populateEditSkuList === 'function') populateEditSkuList();
+        if(typeof populateMovementSkuList === 'function') populateMovementSkuList();
         renderHistory();
         renderCustomers();
         renderPromotions();
         renderDashboard();
         if(typeof renderFinance === "function") renderFinance();
+        if(typeof renderWhAudit === 'function') renderWhAudit();
         autoClockOutUnclosed();
         if(typeof renderPersonalCommission === "function") renderPersonalCommission();
     } catch(e) {
@@ -440,7 +442,7 @@ function renderWMS() {
                     ${sBadge}
                 </td>
                 <td>
-                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span><br>
+                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span> ${p.location_bin ? `<span style="background:#fef08a; color:#854d0e; padding:3px 6px; border-radius:4px; font-size:10px;">📌 Loc: ${p.location_bin}</span>` : ''}<br>
                     <strong>${p.name}</strong><br>
                     <small style="color:#888;">Jenama: <strong>${p.brand || 'N/A'}</strong></small>
                 </td>
@@ -3925,6 +3927,14 @@ window.loadProductForEdit = function(sku) {
     document.getElementById('epCost').value = prod.cost_price || 0;
     document.getElementById('epImages').value = (prod.images || []).join(', ');
     
+    // Parse location_bin assuming format "RACK-TIER-BIN" or just text
+    let loc = prod.location_bin || '';
+    let locParts = loc.split('-');
+    document.getElementById('epRack').value = locParts[0] || '';
+    document.getElementById('epTier').value = locParts[1] || '';
+    document.getElementById('epBin').value = locParts[2] || '';
+
+    
     document.getElementById('editProductFields').style.display = 'grid';
 };
 
@@ -3939,12 +3949,19 @@ window.saveProductEdit = async function() {
     const imagesRaw = document.getElementById('epImages').value;
     const images = imagesRaw ? imagesRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
     
+    const rack = document.getElementById('epRack').value.trim();
+    const tier = document.getElementById('epTier').value.trim();
+    const bin = document.getElementById('epBin').value.trim();
+    const locationStr = [rack, tier, bin].filter(Boolean).join('-');
+
+    
     const updatePayload = {
         name: name,
         category: category,
         price: price,
         cost_price: cost,
-        images: images
+        images: images,
+        location_bin: locationStr
     };
     
     try {
@@ -3957,5 +3974,212 @@ window.saveProductEdit = async function() {
         document.getElementById('editSkuSearch').value = '';
     } catch(e) {
         alert("Ralat mengemaskini produk: " + e.message);
+    }
+};
+
+window.populateMovementSkuList = function() {
+    const list = document.getElementById('movementSkuList');
+    if(!list) return;
+    list.innerHTML = masterProducts.map(p => `<option value="${p.sku}">${p.name}</option>`).join('');
+};
+
+window.processInbound = async function() {
+    const sku = document.getElementById('inboundSkuSearch').value.trim();
+    const qty = parseInt(document.getElementById('inboundQty').value) || 0;
+    const ref = document.getElementById('inboundRef').value.trim();
+    
+    if(!sku || qty <= 0) return alert("Sila isikan SKU dan kuantiti sah untuk Inbound.");
+    
+    const prod = masterProducts.find(p => p.sku === sku);
+    if(!prod) return alert("SKU tidak wujud di dalam sistem utama.");
+    
+    try {
+        const batchPayload = {
+            sku: sku,
+            qty_received: qty,
+            qty_remaining: qty,
+            inbound_date: new Date().toISOString().split('T')[0]
+        };
+        
+        let { error } = await db.from('inventory_batches').insert([batchPayload]);
+        if(error) throw error;
+        
+        // Let realtime handle UI update, or reload
+        alert(`Berjaya merekod Inbound sebanyak ${qty} unit untuk ${sku}.`);
+        document.getElementById('inboundSkuSearch').value = '';
+        document.getElementById('inboundQty').value = '';
+        document.getElementById('inboundRef').value = '';
+        
+        await window.initApp(); // reload data
+    } catch(e) {
+        alert("Ralat Inbound: " + e.message);
+    }
+};
+
+window.processOutbound = async function() {
+    const sku = document.getElementById('outboundSkuSearch').value.trim();
+    const qty = parseInt(document.getElementById('outboundQty').value) || 0;
+    const reason = document.getElementById('outboundReason').value;
+    const note = document.getElementById('outboundNote').value.trim();
+    
+    if(!sku || qty <= 0) return alert("Sila isikan SKU dan kuantiti sah untuk Outbound.");
+    
+    // Simple logic: we need to deduct from the oldest inventory batches
+    let remainingToDeduct = qty;
+    let relevantBatches = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
+    
+    let totalStock = relevantBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+    if(totalStock < qty) {
+        return alert(`Kuantiti dalam sistem tidak mencukupi. Baki sistem: ${totalStock}`);
+    }
+    
+    try {
+        for(let batch of relevantBatches) {
+            if(remainingToDeduct <= 0) break;
+            let deductAmount = Math.min(batch.qty_remaining, remainingToDeduct);
+            
+            let { error } = await db.from('inventory_batches').update({ qty_remaining: batch.qty_remaining - deductAmount }).eq('id', batch.id);
+            if(error) throw error;
+            
+            remainingToDeduct -= deductAmount;
+        }
+        
+        alert(`Berjaya memotong ${qty} unit stok untuk ${sku}. Sebab: ${reason}`);
+        document.getElementById('outboundSkuSearch').value = '';
+        document.getElementById('outboundQty').value = '';
+        document.getElementById('outboundNote').value = '';
+        
+        await window.initApp(); // reload data
+    } catch(e) {
+        alert("Ralat Outbound: " + e.message);
+    }
+};
+
+window.loadAuditProduct = function() {
+    const sku = document.getElementById('auditSku').value.trim();
+    if(!sku) return;
+    
+    const prod = masterProducts.find(p => p.sku === sku);
+    if(!prod) return; // Silent return if not found, wait for full typing
+    
+    const myBatches = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0);
+    const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+    
+    document.getElementById('auditSysQty').value = totalStock;
+    document.getElementById('auditPhysQty').focus();
+};
+
+window.submitStockAudit = async function() {
+    const sku = document.getElementById('auditSku').value.trim();
+    const sysQty = parseInt(document.getElementById('auditSysQty').value) || 0;
+    const physQtyStr = document.getElementById('auditPhysQty').value;
+    
+    if(!sku || physQtyStr === '') return alert("Sila isikan SKU dan Kuantiti Fizikal.");
+    const physQty = parseInt(physQtyStr);
+    
+    if(sysQty === physQty) {
+        alert(`Tiada perbezaan stok untuk ${sku}. Selesai audit.`);
+        document.getElementById('auditSku').value = '';
+        document.getElementById('auditSysQty').value = '';
+        document.getElementById('auditPhysQty').value = '';
+        return;
+    }
+    
+    const diff = physQty - sysQty;
+    const diffText = diff > 0 ? `+${diff} (Berlebihan)` : `${diff} (Hilang/Rosak)`;
+    
+    const confirmAudit = confirm(`Perbezaan dikesan: ${diffText}\nKuantiti Sistem: ${sysQty}\nKuantiti Fizikal: ${physQty}\n\nAdakah anda pasti mahu hantar laporan Discrepancy ini?`);
+    if(!confirmAudit) return;
+    
+    try {
+        const payload = {
+            request_type: 'Discrepancy',
+            status: 'Pending',
+            metadata: {
+                sku: sku,
+                system_qty: sysQty,
+                physical_qty: physQty,
+                difference: diff,
+                reported_by: currentUser ? currentUser.name : 'Unknown'
+            }
+        };
+        let { error } = await db.from('pending_requests').insert([payload]);
+        if(error) throw error;
+        
+        alert(`Laporan Discrepancy ${sku} berjaya dihantar untuk kelulusan.`);
+        document.getElementById('auditSku').value = '';
+        document.getElementById('auditSysQty').value = '';
+        document.getElementById('auditPhysQty').value = '';
+        // Wait for realtime UI update
+    } catch(e) {
+        alert("Ralat menghantar laporan audit: " + e.message);
+    }
+};
+
+window.renderWhAudit = function() {
+    const tbody = document.getElementById("whAuditTbody");
+    if(!tbody) return;
+    
+    const audits = pendingSchedules.filter(r => r.request_type === 'Discrepancy' && r.status === 'Pending');
+    if(audits.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#888;">Tiada laporan Discrepancy yang menunggu kelulusan.</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = audits.map(a => {
+        let meta = a.metadata || {};
+        let diffColor = meta.difference > 0 ? '#10B981' : '#EF4444';
+        return `
+            <tr>
+                <td><strong>${meta.sku || 'N/A'}</strong><br><span style="color:${diffColor}; font-weight:bold;">${meta.difference > 0 ? '+'+meta.difference : meta.difference} unit</span></td>
+                <td>${meta.reported_by || 'Staf'}</td>
+                <td>
+                    <button class="btn-success" style="padding:4px 8px; font-size:10px; margin-bottom:4px;" onclick="window.approveDiscrepancy('${a.id}', '${meta.sku}', ${meta.difference})">Lulus</button><br>
+                    <button class="btn-primary" style="background:#EF4444; border:none; padding:4px 8px; font-size:10px;" onclick="window.rejectRequest('${a.id}')">Tolak</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.approveDiscrepancy = async function(reqId, sku, difference) {
+    if(!confirm(`Luluskan pelarasan stok ${difference > 0 ? '+'+difference : difference} unit untuk ${sku}?`)) return;
+    
+    try {
+        // Find batch to adjust
+        if(difference > 0) {
+            // Surplus, create a new inbound batch
+            await db.from('inventory_batches').insert([{
+                sku: sku, qty_received: difference, qty_remaining: difference, inbound_date: new Date().toISOString().split('T')[0]
+            }]);
+        } else {
+            // Shortage, deduct from oldest batch (similar to outbound)
+            let qtyToDeduct = Math.abs(difference);
+            let relevantBatches = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
+            
+            for(let batch of relevantBatches) {
+                if(qtyToDeduct <= 0) break;
+                let deductAmount = Math.min(batch.qty_remaining, qtyToDeduct);
+                await db.from('inventory_batches').update({ qty_remaining: batch.qty_remaining - deductAmount }).eq('id', batch.id);
+                qtyToDeduct -= deductAmount;
+            }
+        }
+        
+        await db.from('pending_requests').update({status: 'Approved'}).eq('id', reqId);
+        alert(`Discrepancy diluluskan. Baki stok ${sku} telah diselaraskan.`);
+        await window.initApp();
+    } catch(e) {
+        alert("Ralat menyelaraskan stok: " + e.message);
+    }
+};
+
+window.rejectRequest = async function(reqId) {
+    if(!confirm('Tolak permintaan ini secara rasmi?')) return;
+    try {
+        await db.from('pending_requests').update({status: 'Rejected'}).eq('id', reqId);
+        alert('Permintaan ditolak.');
+        await window.initApp();
+    } catch(e) {
+        alert("Ralat menolak permintaan: " + e.message);
     }
 };
