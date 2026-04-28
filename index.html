@@ -828,7 +828,7 @@
             <h2 class="section-title" style="margin-top:30px;">Current Stock Balance (FIFO)</h2>
             <div class="table-responsive">
                 <table class="inventory-table">
-                    <thead><tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Action</th></tr></thead>
+                    <thead><tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th></tr></thead>
                     <tbody id="inventoryTableBody"></tbody>
                 </table>
             </div>
@@ -1487,6 +1487,20 @@
                         <datalist id="editSkuList"></datalist>
                         <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
                     </div>
+                    <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;">
+                        <h4 style="margin-bottom:10px; color:var(--primary);">Pangkalan Data Produk (Gudang)</h4>
+                        <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Tindakan</th></tr>
+                                </thead>
+                                <tbody id="mgmtInventoryTableBody">
+                                    <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                 </div>
 
 <!-- FORM 2: CSV IMPORTER -->

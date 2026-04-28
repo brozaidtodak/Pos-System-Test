@@ -237,6 +237,7 @@ async function initApp() {
         renderDashboard();
         if(typeof renderFinance === "function") renderFinance();
         if(typeof renderWhAudit === 'function') renderWhAudit();
+        if(typeof renderMgmtInventory === 'function') renderMgmtInventory();
         autoClockOutUnclosed();
         if(typeof renderPersonalCommission === "function") renderPersonalCommission();
     } catch(e) {
@@ -465,9 +466,6 @@ function renderWMS() {
                 <td>
                     <small>Cost: RM${parseFloat(p.cost_price||0).toFixed(2)}</small><br>
                     <strong>Sell: RM${parseFloat(p.price).toFixed(2)}</strong>
-                </td>
-                <td>
-                    <button class="btn-secondary" style="padding:4px 8px; font-size:12px; cursor:pointer;" onclick="window.openPdpModal('${p.sku}')">✏️ Edit Details</button>
                 </td>
             </tr>
         `;
@@ -4303,4 +4301,60 @@ window.savePdpData = async function() {
     } catch(e) {
         alert("Error saving product: " + e.message);
     }
+};
+
+window.renderMgmtInventory = function() {
+    const tbody = document.getElementById("mgmtInventoryTableBody");
+    if(!tbody) return;
+    tbody.innerHTML = "";
+
+    let htmlBuf = "";
+
+    masterProducts.forEach(p => {
+        const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
+        const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+        
+        let thumb = "https://placehold.co/100x100?text=Img";
+        let imgs = p.images || []; if(imgs.length > 0) thumb = imgs[0];
+
+        let sBadge = p.is_published ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
+
+        htmlBuf += `
+            <tr>
+                <td>
+                    <img src="${thumb}" style="width:45px; height:45px; object-fit:cover; border-radius:6px; background:#eee;"><br>
+                    ${sBadge}
+                </td>
+                <td>
+                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span> ${p.location_bin ? `<span style="background:#fef08a; color:#854d0e; padding:3px 6px; border-radius:4px; font-size:10px;">📌 Loc: ${p.location_bin}</span>` : ''}<br>
+                    <strong>${p.name}</strong><br>
+                    <small style="color:#888;">Jenama: <strong>${p.brand || 'N/A'}</strong></small>
+                </td>
+                <td>
+                    <div style="font-size:12px; color:#555;">
+                        Model: ${p.model_no || '-'}<br>
+                        Variant: ${p.variant_size || '-'} / ${p.variant_color || '-'}<br>
+                        Dimensi: ${p.dimensions || '-'} (${p.weight_kg ? p.weight_kg+'Kg' : '-'})
+                    </div>
+                </td>
+                <td style="font-weight:bold; color:${totalStock <= 0 ? 'red' : 'green'};">
+                    ${totalStock} ${p.unit||'Pcs'}<br>
+                    <small style="font-weight:normal; color:#888;">${myBatches.length} batch(es)</small>
+                </td>
+                <td>
+                    <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
+                        📍 ${p.location_bin || "Tiada Maklumat Rak"}
+                    </div>
+                </td>
+                <td>
+                    <small>Cost: RM${parseFloat(p.cost_price||0).toFixed(2)}</small><br>
+                    <strong>Sell: RM${parseFloat(p.price).toFixed(2)}</strong>
+                </td>
+                <td>
+                    <button class="btn-primary" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap;" onclick="window.openPdpModal('${p.sku}')">✏️ Edit Details</button>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = htmlBuf;
 };
