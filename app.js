@@ -1097,19 +1097,6 @@ document.getElementById("exportExcelBtn").onclick = function() {
     this.textContent = "📤 Export Products (.xlsx)";
 };
 
-document.getElementById("saveInboundBtn").onclick = async function() {
-    const sku = document.getElementById("inboundSkuSelect").value;
-    const qty = parseInt(document.getElementById("inboundQty").value);
-    if(!sku || isNaN(qty) || qty<=0) return alert("Pilih SKU & Kuantiti Valid!");
-    
-    const { data: newB, error: err1 } = await db.from('inventory_batches').insert([{
-        sku: sku, batch_year: new Date().getFullYear(), qty_received: qty, qty_remaining: qty
-    }]).select();
-
-    if(err1) return alert(err1.message);
-    await db.from('inventory_transactions').insert([{ sku: sku, batch_id: newB[0].id, transaction_type: 'INBOUND', qty_change: qty }]);
-    alert("Inbound Registered."); document.getElementById("inboundQty").value = ""; await initApp();
-}
 
 
 // ===================================
