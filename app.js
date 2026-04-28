@@ -4319,6 +4319,17 @@ window.renderMgmtInventory = function() {
 
         let sBadge = p.is_published ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
 
+        let metaHtml = "";
+        try {
+            if (p.metafields) {
+                let m = typeof p.metafields === 'string' ? JSON.parse(p.metafields) : p.metafields;
+                for (let k in m) {
+                    metaHtml += `<span style="display:inline-block; background:#e5e7eb; color:#374151; padding:2px 6px; border-radius:4px; font-size:10px; margin:2px 2px 0 0;"><b>${k}:</b> ${m[k]}</span>`;
+                }
+            }
+        } catch(e) {}
+        if (!metaHtml) metaHtml = `<span style="color:#aaa; font-style:italic; font-size:11px;">Tiada data</span>`;
+
         htmlBuf += `
             <tr>
                 <td>
@@ -4336,6 +4347,9 @@ window.renderMgmtInventory = function() {
                         Variant: ${p.variant_size || '-'} / ${p.variant_color || '-'}<br>
                         Dimensi: ${p.dimensions || '-'} (${p.weight_kg ? p.weight_kg+'Kg' : '-'})
                     </div>
+                </td>
+                <td>
+                    ${metaHtml}
                 </td>
                 <td style="font-weight:bold; color:${totalStock <= 0 ? 'red' : 'green'};">
                     ${totalStock} ${p.unit||'Pcs'}<br>
