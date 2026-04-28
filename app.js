@@ -2815,7 +2815,7 @@ window.applyCustomGraphRange = function() {
 
 let adminSalesChartInstance = null;
 window.renderSalesGraph = function(mode = window.currentGraphMode) {
-    const canvas = document.getElementById("salesChart");
+    const canvas = document.getElementById("adminSalesChart");
     if(!canvas) return;
 
     let dailyTotals = {};
@@ -3320,7 +3320,7 @@ window.renderQuotePOS = function(searchTerm = "") {
         card.onclick = () => window.addToQuoteCart(product.sku);
         
         // Find main image
-        let imgUrl = (product.images && product.images.length > 0) ? product.images[0] : "https://via.placeholder.com/150?text=No+Photo";
+        let imgUrl = (product.images && product.images.length > 0) ? product.images[0] : "https://placehold.co/150x150?text=No+Photo";
         
         card.innerHTML = `
             <img src="${imgUrl}" alt="${product.name}" class="product-img">
