@@ -2123,12 +2123,14 @@ function renderMgmtPlaceholders() {
     let pillSales = document.getElementById("pillSales");
     let pillWarehouse = document.getElementById("pillWarehouse");
     let pillSuperior = document.getElementById("pillSuperior");
+    let pillProdReg = document.getElementById("pillProdReg");
     
     if(pillRoster) pillRoster.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillFinance) pillFinance.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillSales) pillSales.style.display = (isSuperior || isMoyy || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillWarehouse) pillWarehouse.style.display = (isSuperior || isZack || (!isZack && !isMoyy)) ? "inline-block" : "none";
     if(pillSuperior) pillSuperior.style.display = (isSuperior) ? "inline-block" : "none";
+    if(pillProdReg) pillProdReg.style.display = (isSuperior || isZack || (!isZack && !isMoyy)) ? "inline-block" : "none";
 
     // Auto-switch to default Tab based on user identity logic
     if(!window.currentMgmtTabHasInit) {
@@ -4063,4 +4065,42 @@ window.calculateEditableTotal = function() {
     if(subEl) subEl.innerText = subtotal.toFixed(2);
     let gtEl2 = document.getElementById("quoteGrandTotal");
     if(gtEl2) gtEl2.innerText = grandTotal.toFixed(2);
+};
+// ===================================
+// PRODUCT REGISTRATION MODE
+// ===================================
+window.calcShippingPerUnit = function() {
+    let units = parseFloat(document.getElementById("prUnitPurchased").value) || 0;
+    let cost = parseFloat(document.getElementById("prShippingCost").value) || 0;
+    let perUnit = units > 0 ? (cost / units) : 0;
+    document.getElementById("prShippingPerUnit").value = perUnit.toFixed(2);
+};
+
+window.saveProductRegistration = function() {
+    let shipmentNo = document.getElementById("prShipmentNo").value;
+    let shipmentDate = document.getElementById("prShipmentDate").value;
+    let sku = document.getElementById("prSku").value;
+    let desc = document.getElementById("prDesc").value;
+    let priceRmb = document.getElementById("prPriceRmb").value;
+    let units = document.getElementById("prUnitPurchased").value;
+    let shippingCost = document.getElementById("prShippingCost").value;
+    let shippingPerUnit = document.getElementById("prShippingPerUnit").value;
+    
+    if(!shipmentNo || !shipmentDate || !sku || !desc || !priceRmb || !units || !shippingCost) {
+        alert("Sila lengkapkan semua maklumat pendaftaran produk.");
+        return;
+    }
+    
+    console.log("Registered Product: ", { shipmentNo, shipmentDate, sku, desc, priceRmb, units, shippingCost, shippingPerUnit });
+    alert("Produk Berjaya Didaftarkan!");
+    
+    // Clear fields
+    document.getElementById("prShipmentNo").value = "";
+    document.getElementById("prShipmentDate").value = "";
+    document.getElementById("prSku").value = "";
+    document.getElementById("prDesc").value = "";
+    document.getElementById("prPriceRmb").value = "";
+    document.getElementById("prUnitPurchased").value = "";
+    document.getElementById("prShippingCost").value = "";
+    document.getElementById("prShippingPerUnit").value = "";
 };

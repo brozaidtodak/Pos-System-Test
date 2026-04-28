@@ -1335,6 +1335,7 @@
                <button id="pillSales" class="pill-btn" onclick="window.switchMgmtTab('subtabSales, salesMgmtView', 'pillSales')">🏆 Prestasi Jualan</button>
                <button id="pillWarehouse" class="pill-btn" onclick="window.switchMgmtTab('subtabWarehouse', 'pillWarehouse')">📦 Gudang Pusat</button>
                <button id="pillSuperior" class="pill-btn" onclick="window.switchMgmtTab('subtabSuperior', 'pillSuperior')">⚙️ Sistem</button>
+               <button id="pillProdReg" class="pill-btn" onclick="window.switchMgmtTab('subtabProdReg', 'pillProdReg')">📝 Product Registration Mode</button>
             </div>
             
             <div id="subtabFinance" class="mgmt-subtab">
@@ -1767,6 +1768,25 @@
                         <button class="btn-primary" style="flex:1; opacity:0.6; cursor:not-allowed;">Manage DB Keys</button>
                         <button class="btn-primary" style="flex:1; background:#EF4444; opacity:0.6; cursor:not-allowed;">Wipe Global History</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Product Registration Mode -->
+            <div id="subtabProdReg" class="mgmt-subtab" style="margin-top:20px;">
+                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px;">
+                    <h3 style="margin-bottom:15px;">📦 Product Registration Mode</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pendaftaran unit produk dan kos logistik.</p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div><label class="small-lbl">No of Shipment</label><input type="text" id="prShipmentNo" class="login-input" placeholder="e.g. SHP-001"></div>
+                        <div><label class="small-lbl">Date of shipment</label><input type="date" id="prShipmentDate" class="login-input"></div>
+                        <div><label class="small-lbl">Product SKU</label><input type="text" id="prSku" class="login-input" placeholder="e.g. SKU-123"></div>
+                        <div><label class="small-lbl">Description</label><input type="text" id="prDesc" class="login-input" placeholder="e.g. Kerusi Healing"></div>
+                        <div><label class="small-lbl">Product Price (RMB)</label><input type="number" id="prPriceRmb" class="login-input" step="0.01" placeholder="0.00"></div>
+                        <div><label class="small-lbl">No Unit Purchased</label><input type="number" id="prUnitPurchased" class="login-input" oninput="window.calcShippingPerUnit()"></div>
+                        <div><label class="small-lbl">Shipping Cost (RM)</label><input type="number" id="prShippingCost" class="login-input" step="0.01" oninput="window.calcShippingPerUnit()"></div>
+                        <div><label class="small-lbl">Shipping Per Unit (RM)</label><input type="number" id="prShippingPerUnit" class="login-input" step="0.01" readonly style="background:#eee;"></div>
+                    </div>
+                    <button class="btn-primary" style="margin-top:20px; width:100%;" onclick="window.saveProductRegistration()">Daftar Produk</button>
                 </div>
             </div>
 
