@@ -135,15 +135,7 @@ function switchHub(sectionIds, title, btnElement) {
 }
 window.switchHub = switchHub;
 
-window.toggleInvForm = function(formId) {
-    const f1 = document.getElementById("newSkuForm");
-    const f2 = document.getElementById("inboundForm");
-    const f3 = document.getElementById("csvForm");
-    if(formId === 'newSkuForm') { f1.style.display = 'block'; f2.style.display = 'none'; f3.style.display = 'none';}
-    if(formId === 'inboundForm') { f2.style.display = 'block'; f1.style.display = 'none'; f3.style.display = 'none';}
-    if(formId === 'csvForm') { f3.style.display = 'block'; f1.style.display = 'none'; f2.style.display = 'none';}
-    if(!formId) { f1.style.display = 'none'; f2.style.display = 'none'; f3.style.display = 'none'; }
-}
+
 
 window.togglePosLayoutMode = function() {
     const isMobile = document.body.classList.toggle('pos-mobile-mode');
@@ -217,22 +209,24 @@ async function initApp() {
         localStorage.removeItem('saved_pendingSchedules');
 
         // Supabase Real-time Roster Broadcaster
-        db.channel('roster-sync-channel')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_schedules' }, async (payload) => {
-              let { data } = await db.from('roster_schedules').select('*');
-              if(data) {
-                  staffSchedules = data;
-                  if(typeof renderStaffSchedule === 'function') renderStaffSchedule();
-              }
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_requests' }, async (payload) => {
-              let { data } = await db.from('pending_requests').select('*');
-              if(data) {
-                  pendingSchedules = data;
-                  if(typeof renderPendingSchedules === 'function') renderPendingSchedules();
-              }
-          })
-          .subscribe();
+        if(!window.rosterSyncChannel) {
+            window.rosterSyncChannel = db.channel('roster-sync-channel')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_schedules' }, async (payload) => {
+                  let { data } = await db.from('roster_schedules').select('*');
+                  if(data) {
+                      staffSchedules = data;
+                      if(typeof renderStaffSchedule === 'function') renderStaffSchedule();
+                  }
+              })
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_requests' }, async (payload) => {
+                  let { data } = await db.from('pending_requests').select('*');
+                  if(data) {
+                      pendingSchedules = data;
+                      if(typeof renderPendingSchedules === 'function') renderPendingSchedules();
+                  }
+              })
+              .subscribe();
+        }
 
         renderWMS();
         renderHistory();
@@ -962,7 +956,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
                     if(error) throw error;
                 }
                 alert(`Migrasi ${salesPayload.length} Rekod Jualan Berjaya!`);
-                await initApp(); toggleInvForm('');
+                await initApp();
             } catch(e) { alert("Error: " + e.message); } finally { btn.disabled = false; btn.textContent = "📥 Process Robot Upload"; }
             return;
         }
@@ -1031,7 +1025,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
 
             alert(`Migrasi Berjaya! dipindahkan sebanyak: ${payload.length} produk & ${inventoryPayload.length} susunan stok.`); 
             await initApp(); 
-            toggleInvForm('');
+            
         } catch(e) {
             alert("Migration Error: " + e.message);
         } finally {
