@@ -3817,24 +3817,15 @@ window.calculateEditableTotal = function() {
 // ===================================
 // PRODUCT REGISTRATION MODE
 // ===================================
-window.calcShippingPerUnit = function() {
-    let units = parseFloat(document.getElementById("prUnitPurchased").value) || 0;
-    let cost = parseFloat(document.getElementById("prShippingCost").value) || 0;
-    let perUnit = units > 0 ? (cost / units) : 0;
-    document.getElementById("prShippingPerUnit").value = perUnit.toFixed(2);
-};
-
 window.saveProductRegistration = async function() {
     let shipmentNo = document.getElementById("prShipmentNo").value.trim();
     let shipmentDate = document.getElementById("prShipmentDate").value;
     let sku = document.getElementById("prSku").value.trim().toUpperCase();
-    let desc = document.getElementById("prDesc").value.trim();
     let priceRmb = document.getElementById("prPriceRmb").value;
     let units = document.getElementById("prUnitPurchased").value;
     let shippingCost = document.getElementById("prShippingCost").value;
-    let shippingPerUnit = document.getElementById("prShippingPerUnit").value;
     
-    if(!shipmentNo || !shipmentDate || !sku || !desc || !priceRmb || !units || !shippingCost) {
+    if(!shipmentNo || !shipmentDate || !sku || !priceRmb || !units || !shippingCost) {
         alert("Sila lengkapkan semua maklumat pendaftaran produk.");
         return;
     }
@@ -3861,7 +3852,7 @@ window.saveProductRegistration = async function() {
     }
 
     // Combine extra data into the reason text for tracking
-    let trackingInfo = `PO: ${shipmentNo} | RMB: ${priceRmb} | Ship: RM${shippingCost} | Desc: ${desc}`;
+    let trackingInfo = `PO: ${shipmentNo} | RMB: ${priceRmb} | Ship: RM${shippingCost}`;
 
     // Insert Transaction Audit Trail
     const txnPayload = {
@@ -3889,11 +3880,9 @@ window.saveProductRegistration = async function() {
     document.getElementById("prShipmentNo").value = "";
     document.getElementById("prShipmentDate").value = "";
     document.getElementById("prSku").value = "";
-    document.getElementById("prDesc").value = "";
     document.getElementById("prPriceRmb").value = "";
     document.getElementById("prUnitPurchased").value = "";
     document.getElementById("prShippingCost").value = "";
-    document.getElementById("prShippingPerUnit").value = "";
     
     // Refresh relevant UI if they are open
     if(typeof renderLowStockAlert === "function") renderLowStockAlert();

@@ -1506,11 +1506,9 @@
                         <div><label class="small-lbl">No of Shipment</label><input type="text" id="prShipmentNo" class="login-input" placeholder="e.g. SHP-001"></div>
                         <div><label class="small-lbl">Date of shipment</label><input type="date" id="prShipmentDate" class="login-input"></div>
                         <div><label class="small-lbl">Product SKU</label><input type="text" id="prSku" class="login-input" placeholder="e.g. SKU-123"></div>
-                        <div><label class="small-lbl">Description</label><input type="text" id="prDesc" class="login-input" placeholder="e.g. Kerusi Healing"></div>
                         <div><label class="small-lbl">Product Price (RMB)</label><input type="number" id="prPriceRmb" class="login-input" step="0.01" placeholder="0.00"></div>
-                        <div><label class="small-lbl">No Unit Purchased</label><input type="number" id="prUnitPurchased" class="login-input" oninput="window.calcShippingPerUnit()"></div>
-                        <div><label class="small-lbl">Shipping Cost (RM)</label><input type="number" id="prShippingCost" class="login-input" step="0.01" oninput="window.calcShippingPerUnit()"></div>
-                        <div><label class="small-lbl">Shipping Per Unit (RM)</label><input type="number" id="prShippingPerUnit" class="login-input" step="0.01" readonly style="background:#eee;"></div>
+                        <div><label class="small-lbl">No Unit Purchased</label><input type="number" id="prUnitPurchased" class="login-input"></div>
+                        <div><label class="small-lbl">Shipping Cost (RM)</label><input type="number" id="prShippingCost" class="login-input" step="0.01"></div>
                     </div>
                     <button class="btn-primary" style="margin-top:20px; width:100%;" onclick="window.saveProductRegistration()">Daftar Produk ke Gudang</button>
 
@@ -2064,7 +2062,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=51"></script>
+    <script src="app.js?v=52"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
