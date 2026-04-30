@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<!DOCTYPE html><html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Enterprise Omnichannel POS</title>
     <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=32">
     <!-- Supabase Core -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +34,7 @@
     <!-- 0.0 CUSTOMER LOGIN OVERLAY -->
     <div id="customerLoginGate" class="login-overlay" style="display:none;">
         <div class="login-box">
-            <button onclick="document.getElementById('customerLoginGate').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px; margin-right:-10px;">&times;</button>
+            <button onclick="document.getElementById('customerLoginGate').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px; margin-right:-10px;">×</button>
             <h2 style="margin-bottom:5px; font-weight:800; font-size:24px; letter-spacing:-1px;">Customer VIP</h2>
             <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Log masuk menggunakan No. Telefon anda</p>
             
@@ -51,7 +49,7 @@
 <!-- PRICING CALCULATOR MODAL -->
 <div id="pricingCalcModal" class="login-overlay" style="display:none; z-index:99999;">
     <div class="login-box" style="max-width:500px; text-align:left; padding:30px; border-top:6px solid #10B981;">
-        <button onclick="document.getElementById('pricingCalcModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+        <button onclick="document.getElementById('pricingCalcModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
         <h2 style="font-weight:800; font-size:20px; margin-bottom:5px;"> Kalkulator Harga</h2>
         <p style="font-size:12px; color:#666; margin-bottom:20px;" id="calcSkuTitle">SKU: ---</p>
 
@@ -64,7 +62,7 @@
             <div></div>
             <div style="grid-column: 1 / -1; border-top:1px dashed #ccc; padding-top:10px;">
                 <label class="small-lbl" style="color:#2563EB;">= Modal Keseluruhan (RM)</label>
-                <input type="number" id="calcTotalCost" class="login-input" readonly style="background:#EFF6FF; font-weight:bold; color:#1E3A8A;">
+                <input type="number" id="calcTotalCost" class="login-input" readonly="" style="background:#EFF6FF; font-weight:bold; color:#1E3A8A;">
             </div>
             
             <div><label class="small-lbl">Margin Untung (%)</label><input type="number" id="calcMarginPct" class="login-input" oninput="window.calcPricing()"></div>
@@ -87,14 +85,14 @@
             </div>
         </div>
 
-        <button onclick="window.applyCalculatedPrice()" class="btn-success" style="width:100%; padding:15px; font-size:16px;">Sahkan & Simpan Data</button>
+        <button onclick="window.applyCalculatedPrice()" class="btn-success" style="width:100%; padding:15px; font-size:16px;">Sahkan &amp; Simpan Data</button>
     </div>
 </div>
 
     <!-- 0.1 E-RECEIPT POPUP -->
     <div id="receiptModal" class="login-overlay" style="display:none; z-index:3000;">
         <div class="login-box" style="max-width:400px; text-align:left; padding:30px;">
-            <button onclick="closeReceipt()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+            <button onclick="closeReceipt()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
             <h2 style="font-weight:800; font-size:24px; margin-bottom:5px; text-align:center; letter-spacing:-1px;">10camp</h2>
             <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:20px;">Official E-Receipt</p>
             
@@ -110,12 +108,12 @@
     <!-- 0.15 NEW PAYMENT MODAL -->
     <div id="checkoutPaymentModal" class="login-overlay" style="display:none; z-index:3000;">
         <div class="login-box" style="max-width:450px; text-align:left; padding:30px; animation: popIn 0.3s ease;">
-            <button onclick="document.getElementById('checkoutPaymentModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px;">&times;</button>
+            <button onclick="document.getElementById('checkoutPaymentModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px;">×</button>
             <h2 style="font-weight:800; font-size:22px; margin-bottom:5px;">Maklumat Bayaran</h2>
             <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Jumlah Perlu Dibayar: <strong style="color:var(--primary); font-size:18px;">RM <span id="paymentTotalDisplay">0.00</span></strong></p>
             
             <div style="background:#FAFAFA; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:15px;">
-                <label class="small-lbl">1. Maklumat CRM & E-Resit</label>
+                <label class="small-lbl">1. Maklumat CRM &amp; E-Resit</label>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <input type="text" id="customerName" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="Nama Pelanggan">
                     <input type="tel" id="customerPhone" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="No. Telefon (Pilihan)">
@@ -125,7 +123,7 @@
             </div>
 
             <div style="background:#FAFAFA; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px;">
-                <label class="small-lbl">2. Saluran & Status</label>
+                <label class="small-lbl">2. Saluran &amp; Status</label>
                 <div style="display:flex; gap:10px;">
                     <select id="checkoutChannel" class="login-input" style="margin-bottom:0; padding:10px; flex:1;">
                         <option value="In-Store">In-Store (POS)</option>
@@ -154,7 +152,7 @@
     <!-- 0.2 CUSTOMER HISTORY MODAL (STAFF ONLY) -->
     <div id="staffCustomerHistoryModal" class="login-overlay" style="display:none; z-index:3000;">
         <div class="login-box" style="max-width:600px; width:95%; text-align:left; padding:30px;">
-            <button onclick="document.getElementById('staffCustomerHistoryModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px;">&times;</button>
+            <button onclick="document.getElementById('staffCustomerHistoryModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px;">×</button>
             <h2 style="font-weight:800; font-size:20px; margin-bottom:5px;">Rekod Pembelian</h2>
             <p id="staffHistoryCustName" style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Pelanggan: -</p>
             
@@ -169,7 +167,7 @@
     <!-- 0.3 BARCODE SCANNER MODAL FOR AUDIT -->
     <div id="barcodeScannerModal" class="login-overlay" style="display:none; z-index:3500; align-items:center; justify-content:center;">
         <div class="login-box" style="max-width:450px; text-align:center; padding:30px;">
-            <button onclick="document.getElementById('barcodeScannerModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">&times;</button>
+            <button onclick="document.getElementById('barcodeScannerModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">×</button>
             <h2 style="font-weight:800; font-size:22px; margin-bottom:10px;">Imbasan Barcode / QR</h2>
             <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Gunakan pengimbas untuk scan kod produk (atau taip sku secara manual dan tekan Enter).</p>
             
@@ -206,7 +204,7 @@
     <!-- 0.4 LOCATION UPDATE MODAL -->
     <div id="locationUpdateModal" class="login-overlay" style="display:none; z-index:3600; align-items:center; justify-content:center;">
         <div class="login-box" style="max-width:420px; text-align:left; padding:30px;">
-            <button onclick="document.getElementById('locationUpdateModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">&times;</button>
+            <button onclick="document.getElementById('locationUpdateModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">×</button>
             <h2 style="font-weight:800; font-size:20px; margin-bottom:5px;"> Kemaskini Lokasi Stok</h2>
             <p style="font-size:13px; color:var(--text-muted); margin-bottom:5px;"><strong id="locModalSku" style="color:var(--primary);">-</strong></p>
             <p id="locModalName" style="font-size:14px; font-weight:bold; margin-bottom:20px;">-</p>
@@ -240,41 +238,7 @@
     </div>
 
             <!-- WAREHOUSE DATABASE VIEW -->
-            <div id="subtabDatabase" class="mgmt-subtab" style="display:none; margin-top:30px;">
-                <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);">️ Database Produk</h3>
-                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;">️ Kemaskini Profil Produk (Edit)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pilih SKU dari senarai Gudang untuk mengubah suai maklumat teras produk.</p>
-                    
-                    <label class="small-lbl">Cari SKU Produk</label>
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
-                        <datalist id="editSkuList"></datalist>
-                        <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
-                    </div>
-                    <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;">
-                        <h4 style="margin-bottom:10px; color:var(--primary);">Pangkalan Data Produk (Gudang)</h4>
-                        <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Kalkulator</th><th>Tindakan</th></tr>
-                                </thead>
-                                <tbody id="mgmtInventoryTableBody">
-                                    <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DANGER ZONE -->
-                <div class="admin-card" style="border-top:4px solid var(--danger); padding:20px; background:#FEF2F2;">
-                    <h3 style="color:var(--danger); margin-bottom:10px;"><i data-lucide="alert-triangle" style="vertical-align:middle; width:20px;"></i> DANGER ZONE (PADAM DATA)</h3>
-                    <p style="font-size:12px; color:#991B1B; margin-bottom:15px;">Fungsi ini akan memadam <b>KESEMUA</b> data produk dan stok sedia ada di dalam sistem (Termasuk <i>Master Product</i> dan <i>Inventory Batches</i>). Gunakan fungsi ini untuk membersihkan sistem sebelum memasukkan produk yang sebenar.</p>
-                    <button class="btn-danger" style="background:var(--danger); font-weight:bold; width:auto; padding:10px 20px;" onclick="window.wipeAllProductsData()">Padam Semua Data Produk</button>
-                </div>
-
-            </div>
+            
 
     <!-- ============================================== -->
     <!-- THE PUBLIC STOREFRONT (E-COMMERCE)           -->
@@ -294,7 +258,7 @@
         <!-- Hero -->
         <div style="background:#111; color:#fff; text-align:center; padding:80px 20px;">
             <h1 style="font-size:42px; margin-bottom:15px; font-weight:900; letter-spacing:-1px;">Explore The Outdoors.</h1>
-            <p style="color:#aaa; font-size:16px; margin:0 auto;">Premium camping & outdoor gear supplied directly for your next adventure.</p>
+            <p style="color:#aaa; font-size:16px; margin:0 auto;">Premium camping &amp; outdoor gear supplied directly for your next adventure.</p>
         </div>
 
         <!-- Public Products -->
@@ -310,7 +274,7 @@
         <div style="background:#fff; height:100vh; width:100%; max-width:400px; padding:30px; display:flex; flex-direction:column; overflow-y:auto; box-shadow:-5px 0 25px rgba(0,0,0,0.1); animation: slideInRight 0.3s ease;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="font-weight:900; letter-spacing:-1px; margin:0;">Shopping Cart</h2>
-                <button onclick="togglePublicCart()" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+                <button onclick="togglePublicCart()" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
             </div>
             
             <div id="publicCartItems" style="flex:1; border-top:1px solid #eee; padding-top:15px; overflow-y:auto;">
@@ -403,7 +367,7 @@
             <span style="font-size:10px; color:#888;">Highlight dan klik ikon</span>
         </div>
         <div class="login-box quote-print-container" style="width:90%; max-width:900px; text-align:left; padding:40px; background:#fff; max-height:90vh; overflow-y:auto; position:relative; font-family:'Inter', sans-serif;">
-            <button class="no-print" onclick="document.getElementById('quoteModal').style.display='none'" style="position:absolute; top:15px; right:20px; border:none; background:none; font-size:24px; cursor:pointer; color:#888;">&times;</button>
+            <button class="no-print" onclick="document.getElementById('quoteModal').style.display='none'" style="position:absolute; top:15px; right:20px; border:none; background:none; font-size:24px; cursor:pointer; color:#888;">×</button>
             <button class="no-print btn-secondary" onclick="window.print()" style="position:absolute; top:15px; right:60px; font-size:12px; padding:5px 10px;">️ Print PDF</button>
             <button class="no-print btn-primary" onclick="window.syncQuoteModalToCloud()" style="position:absolute; top:15px; right:155px; font-size:12px; padding:5px 10px; background:#10B981; border:none;"> Simpan Ke Awan</button>
 
@@ -520,8 +484,8 @@
     <div id="quoteLogsModal" class="login-overlay no-print" style="display:none; z-index:2500;">
         <div class="login-box" style="width:90%; max-width:800px; text-align:left; padding:30px; background:#fff; max-height:80vh; overflow-y:auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-weight:900; letter-spacing:-1px; margin:0;">Quotation & Rental Logs</h2>
-                <button onclick="document.getElementById('quoteLogsModal').style.display='none'" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+                <h2 style="font-weight:900; letter-spacing:-1px; margin:0;">Quotation &amp; Rental Logs</h2>
+                <button onclick="document.getElementById('quoteLogsModal').style.display='none'" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
             </div>
             <div style="display:flex; gap:10px; margin-bottom:15px;">
                 <input type="text" id="quoteLogSearch" placeholder="Cari Ref No atau Nama..." class="login-input" style="flex:1; margin:0;" onkeyup="window.renderQuoteLogs()">
@@ -535,7 +499,7 @@
             <table class="inventory-table" style="font-size:12px;">
                 <thead>
                     <tr>
-                        <th>Ref & Versi</th>
+                        <th>Ref &amp; Versi</th>
                         <th>Tahun</th>
                         <th>Kategori</th>
                         <th>Pelanggan</th>
@@ -556,9 +520,9 @@
         <div class="login-box" style="width:90%; max-width:700px; text-align:left; padding:30px; background:#fff; max-height:80vh; overflow-y:auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h2 style="font-weight:900; letter-spacing:-1px; margin:0;">Select Items to Quote</h2>
-                <button onclick="document.getElementById('quoteSearchModal').style.display='none'" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">&times;</button>
+                <button onclick="document.getElementById('quoteSearchModal').style.display='none'" style="border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
             </div>
-            <input type="text" id="quoteSearchInput" placeholder="Scan or Search SKU / Nama Produk..." autofocus style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px; font-size:14px; background:#fafafa; outline:none;" onkeyup="renderQuotePOS(this.value)">
+            <input type="text" id="quoteSearchInput" placeholder="Scan or Search SKU / Nama Produk..." autofocus="" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px; font-size:14px; background:#fafafa; outline:none;" onkeyup="renderQuotePOS(this.value)">
             <div id="quoteProductsList" class="products-grid" style="grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));">
                 <i>Sila cari produk di atas...</i>
             </div>
@@ -574,7 +538,7 @@
             <span class="store-name" id="sessionUsername">EasyPOS PRO</span>
             <div>
                 <button onclick="handleLogout()" style="font-size:10px; background:var(--bg-color); border:1px solid var(--border-color); color:var(--text-main); font-weight:bold; padding:4px 8px; border-radius:4px; cursor:pointer; margin-right:10px;">Log Out</button>
-                <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button>
+                <button class="close-sidebar-btn" onclick="toggleSidebar()">×</button>
             </div>
         </div>
         <div class="menu-list">
@@ -588,12 +552,19 @@
             <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_cashier" onclick="switchHub(['posSection', 'ordersSection', 'customersSection', 'promotionsSection'], 'Cashier Mode', this)">
                 <i data-lucide="shopping-cart" style="width:16px; height:16px;"></i> Cashier Mode
             </div>
-            <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_commission" onclick="switchHub(['commissionSection'], 'Personal Sales & Commission', this)">
+            <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_commission" onclick="switchHub(['commissionSection'], 'Personal Sales &amp; Commission', this)">
                 <i data-lucide="calculator" style="width:16px; height:16px;"></i> Commission Tracker
             </div>
-            <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_invoice" onclick="switchHub(['invoiceSection'], 'Invoice & Quotation', this)">
+            <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_invoice" onclick="switchHub(['invoiceSection'], 'Invoice &amp; Quotation', this)">
                 <i data-lucide="file-text" style="width:16px; height:16px;"></i> Create Invoice/Quotation
             </div>
+            <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_crm" onclick="switchHub(['customersSection'], 'Customer Database (CRM)', this)">
+                <i data-lucide="users" style="width:16px; height:16px;"></i> Customer Database (CRM)
+            </div>
+            <div class="menu-item sales-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_analytics" onclick="switchHub(['salesAnalyticsSection', 'salesMgmtSection'], 'Prestasi Jualan', this)">
+                <i data-lucide="bar-chart" style="width:16px; height:16px;"></i> Prestasi Jualan
+            </div>
+
             <!-- END SALES DEPT -->
             <!-- INVENTORY DEPARTMENT HUB & SUB-MENUS -->
             <div class="menu-item inv-only" style="cursor:default; background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
@@ -617,16 +588,29 @@
             <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_valuation" onclick="switchHub(['valuationSection'], 'Stock Valuation', this); if(typeof renderValuationSection === 'function') renderValuationSection();">
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> Stock Valuation (Aset)
             </div>
+            <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_registration" onclick="switchHub(['warehouseConfigSection'], 'Daftar &amp; Edit Gudang', this)">
+                <i data-lucide="package-plus" style="width:16px; height:16px;"></i> Daftar &amp; Edit Produk
+            </div>
+            <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Database Produk', this)">
+                <i data-lucide="database" style="width:16px; height:16px;"></i> Database Produk (Wipe Data)
+            </div>
+
 
             <!-- END INVENTORY DEPT -->
-            <div class="menu-item mgmt-only" data-tab="management_mode" onclick="switchHub(['mgmtPlaceholders'], 'Management Mode', this)" style="display:flex; align-items:center; gap:8px;">
-                <i data-lucide="settings" style="width:18px; height:18px;"></i> Management Mode
-            </div>
-            <div class="menu-item" data-tab="roster_mode" onclick="switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', this)" style="display:flex; align-items:center; gap:8px;">
-                <i data-lucide="calendar-clock" style="width:18px; height:18px;"></i> Jadual Operasi 10 CAMP
-            </div>
+            
+            
 
-            <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
+            
+            <div class="menu-item" style="cursor:default; background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
+                HR &amp; Admin Dept
+            </div>
+            <div class="menu-item" data-tab="admin_roster" onclick="switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="calendar-clock" style="width:16px; height:16px;"></i> Jadual Operasi 10 CAMP
+            </div>
+            <div class="menu-item" data-tab="admin_finance" onclick="switchHub(['financeSection'], 'Kewangan &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="wallet" style="width:16px; height:16px;"></i> Kewangan &amp; Memo
+            </div>
+    <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
             <a href="https://www.10camp.com/" target="_blank" style="text-decoration:none;">
                 <div class="menu-item" style="color:var(--primary); font-weight:bold; opacity:0.8; display:flex; align-items:center; gap:8px;">
                     <i data-lucide="globe" style="width:18px; height:18px;"></i> Visit Website 
@@ -687,7 +671,7 @@
                 <div style="background:#fff; border:1px solid #ddd; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                     <select id="publicRosterYear" class="login-input" style="margin:0; width:90px; padding:6px; font-weight:bold; background:#fafafa;" onchange="setRosterYear(this.value)">
                         <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
+                        <option value="2026" selected="">2026</option>
                         <option value="2027">2027</option>
                     </select>
                     <div id="publicMonthBtns" style="display:flex; flex-wrap:wrap; gap:5px; flex:1;">
@@ -785,13 +769,13 @@
             <!-- 3. INVENTORY DEPARTMENT        -->
             <!-- ============================== -->
             <div style="margin-bottom:30px;">
-                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #10B981; display:inline-block; padding-bottom:5px;"> Warehouse & Inventory Dept.</h2>
+                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #10B981; display:inline-block; padding-bottom:5px;"> Warehouse &amp; Inventory Dept.</h2>
                 <div style="display:flex; flex-wrap:wrap; gap:20px;">
                     <div style="flex:1; min-width:260px;" class="admin-card">
                         <div style="padding:15px; border-bottom:1px solid #eee;"><h3 style="color:var(--text-main); font-size:14px;">Stock Health Alerts</h3></div>
                         <div style="padding:15px;">
                             <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Out of Stock (OOS)</span><strong id="badgeOos" style="color:var(--primary); font-size:16px;">0</strong></div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Low Stock (<5)</span><strong id="badgeLow" style="color:var(--primary); font-size:16px;">0</strong></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Low Stock (&lt;5)</span><strong id="badgeLow" style="color:var(--primary); font-size:16px;">0</strong></div>
                             <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span>Draft (Not Published)</span><strong id="badgeDraft" style="color:var(--primary); font-size:16px;">0</strong></div>
                             <hr style="border:0; border-top:1px dashed #eee; margin:10px 0;">
                             <div style="display:flex; justify-content:space-between;"><span>Active Products</span><strong id="badgeActive" style="color:var(--primary); font-size:16px;">0</strong></div>
@@ -814,7 +798,7 @@
             <!-- 4. LOGISTIC DEPARTMENT         -->
             <!-- ============================== -->
             <div>
-                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #F59E0B; display:inline-block; padding-bottom:5px;"> Logistic & Fulfillment Dept.</h2>
+                <h2 style="font-size:18px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #F59E0B; display:inline-block; padding-bottom:5px;"> Logistic &amp; Fulfillment Dept.</h2>
                 <div class="admin-card" style="padding:20px; border:1px solid #F59E0B; background:#FFFBEB;">
                     <h3 style="color:var(--text-main); margin-bottom:15px; font-size:14px;">To-Do Operations (Queue)</h3>
                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
@@ -845,7 +829,7 @@
                     <div>
                         <div class="mobile-cart-header" style="display:none; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid var(--primary); padding-bottom:10px;">
                             <h2 class="cart-title" style="margin-bottom:0; border:none; padding:0;">Troli Jualan</h2>
-                            <button onclick="window.toggleMobileCartSheet()" style="background:none; border:none; font-size:24px; font-weight:bold; color:var(--text-muted); cursor:pointer;">&times;</button>
+                            <button onclick="window.toggleMobileCartSheet()" style="background:none; border:none; font-size:24px; font-weight:bold; color:var(--text-muted); cursor:pointer;">×</button>
                         </div>
                         <h2 class="cart-title desktop-cart-title" style="font-size:20px; font-weight:800;">Troli Jualan</h2>
                         <div id="cartItems" class="cart-items" style="max-height: 480px; overflow-y:auto; padding-right:10px; margin-bottom:15px;"><p class="empty-cart-message">Tiada barang di-scan.</p></div>
@@ -865,7 +849,7 @@
                             <h3 style="font-size:20px; font-weight:800; color:#111;">TOTAL</h3>
                             <h3 style="font-size:26px; font-weight:800; color:var(--primary); margin:0;">RM <span id="totalPrice">0.00</span></h3>
                         </div>
-                        <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:#10B981; font-size:16px; padding:18px; margin:0; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); transition:0.2s;" disabled>BAYAR SEKARANG</button>
+                        <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:#10B981; font-size:16px; padding:18px; margin:0; border-radius:12px; box-shadow:0 4px 15px rgba(16,185,129,0.3); transition:0.2s;" disabled="">BAYAR SEKARANG</button>
                         <button onclick="window.clearCart()" class="login-btn" style="background:#fff; color:#EF4444; border:1px solid #fee2e2; margin-top:10px; box-shadow:none; padding:12px; border-radius:12px;">Kosongkan Troli</button>
                     </div>
                 </section>
@@ -907,7 +891,7 @@
             <h2 class="section-title" style="margin-top:30px;">Current Stock Balance (FIFO)</h2>
             <div class="table-responsive">
                 <table class="inventory-table">
-                    <thead><tr><th>SKU Profile</th><th>Informasi Fizikal & Logistik</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th></tr></thead>
+                    <thead><tr><th>SKU Profile</th><th>Informasi Fizikal &amp; Logistik</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th></tr></thead>
                     <tbody id="inventoryTableBody"></tbody>
                 </table>
             </div>
@@ -1006,7 +990,7 @@
 
             <!-- Active PO List -->
             <div class="admin-card" style="padding:20px; border-top:4px solid #F59E0B;">
-                <h2 style="margin-bottom:15px;"><i data-lucide="list-todo" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Senarai PO Aktif & Sejarah</h2>
+                <h2 style="margin-bottom:15px;"><i data-lucide="list-todo" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Senarai PO Aktif &amp; Sejarah</h2>
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Tekan "Terima Stok (Receive)" apabila bekalan tiba di gudang. Sistem akan auto-inbound stok ke dalam lejar.</p>
 
                 <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
@@ -1058,7 +1042,7 @@
         <!-- ============================================== -->
         <div id="barcodeSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px; border-top:4px solid var(--primary); margin-bottom:20px;">
-                <h2 style="margin-bottom:15px;"><i data-lucide="printer" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Barcode & Label Generator</h2>
+                <h2 style="margin-bottom:15px;"><i data-lucide="printer" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Barcode &amp; Label Generator</h2>
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Cetak sticker label produk untuk ditampal pada kotak atau rak. Boleh dibaca oleh *barcode scanner* sewaktu proses Cashier atau Inbound.</p>
                 
                 <div style="display:flex; gap:10px; margin-bottom:20px; align-items:flex-end;">
@@ -1086,7 +1070,7 @@
         <!-- ============================================== -->
         <div id="valuationSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px; border-top:4px solid #10B981; margin-bottom:20px;">
-                <h2 style="margin-bottom:15px;"><i data-lucide="wallet" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Stock Valuation & Asset Dashboard</h2>
+                <h2 style="margin-bottom:15px;"><i data-lucide="wallet" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Stock Valuation &amp; Asset Dashboard</h2>
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Pemantauan jumlah keseluruhan modal dan nilai aset yang berada di dalam gudang secara masa sebenar (*real-time*).</p>
                 
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:25px;">
@@ -1149,7 +1133,7 @@
         <!-- ============================================== -->
         <div id="promotionsSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;"> Promotion & Voucher Manager</h2>
+                <h2 style="margin-bottom:15px;"> Promotion &amp; Voucher Manager</h2>
                 <p style="font-size:13px; color:#888; margin-bottom:20px;">Urus kod diskaun dan promosi aktif.</p>
                 <div class="table-responsive">
                     <table class="inventory-table">
@@ -1195,7 +1179,7 @@
             <div class="dash-grid" style="grid-template-columns: 2fr 1fr; margin-top:20px;">
                 <!-- Chart -->
                 <div class="admin-card">
-                    <h3>P&L Trend (Monthly)</h3>
+                    <h3>P&amp;L Trend (Monthly)</h3>
                     <canvas id="financeChart" style="width:100%; height:300px;"></canvas>
                 </div>
                 
@@ -1255,7 +1239,7 @@
         <!-- ============================================== -->
         <div id="commissionSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;"> Personal Sales & Commission Tracker</h2>
+                <h2 style="margin-bottom:15px;"> Personal Sales &amp; Commission Tracker</h2>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
                     <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
                         <h4 style="color:var(--text-muted); font-size:12px;">Total Jualan Anda (Bulan Ini)</h4>
@@ -1327,7 +1311,7 @@
                     </div>
                     <div>
                         <label class="small-lbl" style="font-size:10px; color:#888;">TEMPOH SEWA (HARI) - AUTO</label>
-                        <input type="number" id="quoteDuration" value="1" disabled style="width:100%; padding:12px; border:1px solid #eee; border-radius:8px; outline:none; font-size:13px; background:#fafafa; color:#888; margin:0;">
+                        <input type="number" id="quoteDuration" value="1" disabled="" style="width:100%; padding:12px; border:1px solid #eee; border-radius:8px; outline:none; font-size:13px; background:#fafafa; color:#888; margin:0;">
                     </div>
                 </div>
 
@@ -1364,150 +1348,161 @@
         <!-- ============================================== -->
         <!-- SECTION: MANAGEMENT PLACEHOLDERS               -->
         <!-- ============================================== -->
-        <div id="mgmtPlaceholders" class="tab-section" style="display: none; padding-bottom:50px;">
-            <h2 style="font-size:22px; color:var(--text-main); margin-bottom:15px; border-bottom:2px solid #8B5CF6; display:inline-block; padding-bottom:5px; margin-top:10px;"> Pengurusan Eksekutif</h2>
-            
-            <style>
-                .pill-btn { border: 1px solid var(--border-color); background: #FFF; color: #555; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.3s; }
-                .pill-btn:hover { background: #f3f4f6; }
-                .pill-btn.active { background: var(--primary); color: #FFF; border-color: var(--primary); }
-                .mgmt-subtab { display: none; margin-top: 10px; animation: fadeIn 0.3s ease-in-out; }
-            </style>
-
-            <div id="mgmtPillNav" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
-               <button id="pillRoster" class="pill-btn active" onclick="window.switchMgmtTab('subtabRoster', 'pillRoster')">️ HR & Jadual</button>
-               <button id="pillFinance" class="pill-btn" onclick="window.switchMgmtTab('subtabFinance', 'pillFinance')"> Kewangan</button>
-               <button id="pillSales" class="pill-btn" onclick="window.switchMgmtTab('subtabSales, salesMgmtView', 'pillSales')"> Prestasi Jualan</button>
-               <button id="pillWarehouse" class="pill-btn" onclick="window.switchMgmtTab('subtabWarehouse', 'pillWarehouse')"> Gudang Pusat</button>
-               <button id="pillDatabase" class="pill-btn" onclick="window.switchMgmtTab('subtabDatabase', 'pillDatabase')">️ Database</button>
-            </div>
-            
-            <div id="subtabFinance" class="mgmt-subtab">
+        <div id="salesMgmtSection" class="tab-section" style="display: none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="font-size:18px; color:var(--primary);"> Penyeliaan Jualan &amp; BD (Moyy Farhan)</h3>
+                    <!-- Moyy Target Oversetter Form -->
+                    <div style="display:flex; gap:10px; background:#fff; padding:10px; border-radius:8px; border:1px solid var(--primary); align-items:flex-end;">
+                        <div>
+                            <label class="small-lbl">Sasaran Bulanan (RM)</label>
+                            <input type="number" id="moyyTargetInput" class="login-input" style="margin:0; width:120px;" value="10000">
+                        </div>
+                        <div>
+                            <label class="small-lbl">Kadar Komisen (%)</label>
+                            <input type="number" id="moyyCommInput" class="login-input" style="margin:0; width:100px;" value="5">
+                        </div>
+                        <button class="btn-primary" onclick="updateMoyySettings()" style="margin:0; height:44px;">Set Parameter</button>
+                    </div>
+                </div>
+                
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                    <!-- 1. Petty Cash Module -->
+                    <!-- Sales Target Tracker -->
                     <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <h3> Petty Cash (Buku Tunai)</h3>
-                            <button class="btn-success" style="padding:5px 10px; font-size:12px;" onclick="downloadPettyCSV()"> CSV</button>
-                        </div>
-                        
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 2fr auto; gap:10px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #ddd;">
-                            <select id="pcType" class="login-input" style="margin:0;"><option value="IN">Inflow (+)</option><option value="OUT">Outflow (-)</option></select>
-                            <input type="number" id="pcAmount" class="login-input" style="margin:0;" placeholder="RM" min="0">
-                            <input type="text" id="pcNotes" class="login-input" style="margin:0;" placeholder="Nota / ID Resit...">
-                            <button class="btn-primary" style="margin:0; padding:10px;" id="savePettyBtn">Rekod</button>
-                        </div>
-                        
-                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
+                        <h3> Sales Target &amp; Commission Tracker</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;" id="moyyTargetSubtitle">Pantauan prestasi jualan Ariff &amp; Irfan berbanding target bulanan (RM 10,000).</p>
+                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
                             <table class="data-table" style="font-size:12px;">
                                 <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>Tarikh</th><th>Jenis</th><th>Nota</th><th>Amaun</th><th>Baki</th></tr>
+                                    <tr><th>Nama Staf</th><th>Jualan Kasar (RM)</th><th>Est. Komisen</th></tr>
                                 </thead>
-                                <tbody id="pettyTbody">
-                                    <tr><td colspan="5" style="text-align:center;">Tiada rekod.</td></tr>
+                                <tbody id="salesMgmtTargetTbody">
+                                    <tr><td><strong>Ariff</strong></td><td id="tgtAriffSales">0.00</td><td id="tgtAriffComm">0.00</td></tr>
+                                    <tr><td><strong>Irfan</strong></td><td id="tgtIrfanSales">0.00</td><td id="tgtIrfanComm">0.00</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
-                    <!-- 2. Memo Module -->
-                    <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3> Sistem Memo Dalaman</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pengumuman pop-up kepada semua staf ketika log masuk.</p>
-                        <textarea id="memoInputText" class="login-input" rows="3" placeholder="Contoh: Esok promosi 50%. Sila bersedia..."></textarea>
-                        
-                        <div style="display:flex; align-items:center; justify-content:space-between; background:#FFFBEB; border:1px solid #FCD34D; padding:10px; border-radius:6px; margin-bottom:15px;">
-                            <div>
-                                <strong style="color:var(--primary);">Status Memo Global:</strong>
-                                <span id="memoStatusLabel" style="margin-left:5px; font-weight:bold; color:red;">TIDAK AKTIF</span>
-                            </div>
-                            <label class="switch" style="position:relative; display:inline-block; width:50px; height:24px;">
-                                <input type="checkbox" id="memoToggle" style="opacity:0; width:0; height:0;">
-                                <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:24px;"></span>
-                            </label>
-                        </div>
-                        <button class="btn-success" id="saveMemoBtn" style="width:100%;">Set & Beritahu Semua</button>
-                    </div>
-                </div>
-            </div> <!-- End subtabFinance -->
-
-            <div id="subtabSales" class="mgmt-subtab">
-                <!-- Graf Analisis Teras Jualan -->
-                <div class="admin-card" style="border-top:4px solid #3b82f6; margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3> Graf Prestasi Jualan</h3>
-                        <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph(window.currentGraphMode || '7days')" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#3b82f6; border-color:#3b82f6;">⟳ Segarkan Graf</button>
-                    </div>
                     
-                    <!-- Chart Filters -->
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:15px; margin-bottom:10px; font-size:11px;">
-                        <button onclick="changeGraphMode('7days')" id="btnGraph7" class="btn-secondary" style="margin:0; padding:4px 10px; color:#fff; background-color:#3b82f6; border-color:#3b82f6;">7 Hari</button>
-                        <button onclick="changeGraphMode('thismonth')" id="btnGraphMonth" class="btn-secondary" style="margin:0; padding:4px 10px;">Bulan Ini</button>
-                        <button onclick="changeGraphMode('thisyear')" id="btnGraphYear" class="btn-secondary" style="margin:0; padding:4px 10px;">Tahun Ini</button>
-                        <button onclick="changeGraphMode('custom')" id="btnGraphCustom" class="btn-secondary" style="margin:0; padding:4px 10px;">Custom</button>
-                    </div>
-                    
-                    <!-- Custom Range Selector (Hidden By Default) -->
-                    <div id="graphCustomRangeBox" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; background:#f0f9ff; padding:10px; border-radius:6px; margin-bottom:15px;">
-                        <input type="date" id="graphStartDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
-                        <span>-</span>
-                        <input type="date" id="graphEndDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
-                        <button onclick="applyCustomGraphRange()" class="btn-primary" style="font-size:11px; margin:0; padding:4px 10px;">Papar</button>
-                    </div>
-
-                    <div style="width:100%; height:250px; position:relative;">
-                        <canvas id="adminSalesChart"></canvas>
-                    </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                    <!-- 3. Sales Report Semua Staf -->
-                    <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3 style="margin-bottom:15px;"> Executive Staff Sales Report</h3>
-                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="inventory-table">
-                                <thead style="position:sticky; top:0;">
-                                    <tr><th>Rank</th><th>Nama Staf</th><th>Total Transaksi</th><th>Gross Sales (RM)</th></tr>
+                    <!-- Omnichannel Distribution Board -->
+                    <div class="admin-card" style="border-top:4px solid #10B981;">
+                        <h3> Penganalisis Cabang Medium (Omnichannel)</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Taburan jualan terkumpul mengikut platform fizikal dan maya.</p>
+                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#ecfdf5; color:#065f46;">
+                                    <tr><th>Medium (Saluran)</th><th>Jumlah Transaksi</th><th>Jumlah Pendapatan (RM)</th><th>% Sumbangan</th></tr>
                                 </thead>
-                                <tbody id="mgmtStaffSalesTbody">
-                                    <tr><td colspan="4" style="text-align:center;">Loading performance...</td></tr>
+                                <tbody id="salesChannelTbody">
+                                    <tr><td colspan="4" style="text-align:center;">Tiada data jualan omnichannel.</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
-                    <!-- 4. Customer CRM Issues -->
-                    <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3> Customer Log Issues</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pemantauan pertikaian, masalah atau tiket pelanggan.</p>
-                        
-                        <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <input type="text" id="issueCustName" class="login-input" style="flex:1; margin:0;" placeholder="Akaun/Inv...">
-                            <input type="text" id="issueDesc" class="login-input" style="flex:2; margin:0;" placeholder="Aduan...">
-                            <button class="btn-primary" id="saveIssueBtn" style="margin:0;">+ Tiket</button>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
+                    <!-- Pending Invoice Follow-Ups (Full Width) -->
+                    <div class="admin-card" style="border-top:4px solid #EF4444;">
+                        <h3> Senarai Hutang / Invois Tergantung (Follow-Up Target)</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pelanggan yang memegang status *Unpaid* atau *To Fulfil*. Tarik telinga staf terbabit untuk kutip baki!</p>
+                        <div class="table-responsive" style="max-height:300px; overflow-y:auto; border:1px solid #fca5a5;">
+                            <table class="data-table" style="font-size:12px; text-align:center;">
+                                <thead style="position:sticky; top:0; background:#fef2f2; color:#b91c1c;">
+                                    <tr><th>Ref (#ID)</th><th>Pelanggan</th><th>No. Telefon</th><th>Nilai Hutang (RM)</th><th>Staf Urus</th><th>Tindakan (WhatsApp)</th></tr>
+                                </thead>
+                                <tbody id="salesMgmtPendingTbody">
+                                    <tr><td colspan="6" style="text-align:center; padding:10px;">Hebat! Semua pelanggan telah membayar penuh.</td></tr>
+                                </tbody>
+                            </table>
                         </div>
-
-                        <div class="table-responsive" style="max-height:190px; overflow-y:auto; border:1px solid var(--border-color);">
+                    </div>
+                </div>
+            </div><div id="databaseSection" class="tab-section" style="display: none;">
+                <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);">️ Database Produk</h3>
+                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
+                    <h3 style="margin-bottom:15px;">️ Kemaskini Profil Produk (Edit)</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pilih SKU dari senarai Gudang untuk mengubah suai maklumat teras produk.</p>
+                    
+                    <label class="small-lbl">Cari SKU Produk</label>
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
+                        <datalist id="editSkuList"></datalist>
+                        <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
+                    </div>
+                    <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;">
+                        <h4 style="margin-bottom:10px; color:var(--primary);">Pangkalan Data Produk (Gudang)</h4>
+                        <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
                             <table class="data-table" style="font-size:12px;">
                                 <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>Pelanggan</th><th>Isu / Aduan</th><th>Status</th></tr>
+                                    <tr><th>SKU Profile</th><th>Informasi Fizikal &amp; Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Kalkulator</th><th>Tindakan</th></tr>
                                 </thead>
-                                <tbody id="issueTbody">
+                                <tbody id="mgmtInventoryTableBody">
+                                    <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- (Sales Management View akan dipindahkan ke bahagian sales di bawah) -->
+                <!-- DANGER ZONE -->
+                <div class="admin-card" style="border-top:4px solid var(--danger); padding:20px; background:#FEF2F2;">
+                    <h3 style="color:var(--danger); margin-bottom:10px;"><i data-lucide="alert-triangle" style="vertical-align:middle; width:20px;"></i> DANGER ZONE (PADAM DATA)</h3>
+                    <p style="font-size:12px; color:#991B1B; margin-bottom:15px;">Fungsi ini akan memadam <b>KESEMUA</b> data produk dan stok sedia ada di dalam sistem (Termasuk <i>Master Product</i> dan <i>Inventory Batches</i>). Gunakan fungsi ini untuk membersihkan sistem sebelum memasukkan produk yang sebenar.</p>
+                    <button class="btn-danger" style="background:var(--danger); font-weight:bold; width:auto; padding:10px 20px;" onclick="window.wipeAllProductsData()">Padam Semua Data Produk</button>
+                </div>
 
-            </div> <!-- End subtabSales -->
+            </div><div id="warehouseConfigSection" class="tab-section" style="display: none;">
+                <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);"> Penyeliaan Gudang Pusat</h3>
 
-            <div id="subtabRoster" class="mgmt-subtab active-subtab">
+
+
+            
+
+            
+
+            
+
+
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <!-- Low Stock Alert -->
+                    <div class="admin-card" style="border-top:4px solid var(--primary);">
+                        <h3>️ Amaran Stok Rendah (Reorder)</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Item kritikal di bawah 10 unit.</p>
+                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>SKU</th><th>Nama Produk</th><th>Baki Tally</th></tr>
+                                </thead>
+                                <tbody id="whLowStockTbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Pekerja -->
+                    <div class="admin-card" style="border-top:4px solid var(--primary);">
+                        <h3>‍️ KPI Operasi Inventori</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Jejak kelajuan tugasan Tarmizi &amp; Fahmi.</p>
+                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Nama Staf</th><th>Packs Fulfilled</th><th>Stok Diaudit</th></tr>
+                                </thead>
+                                <tbody id="whKpiTbody">
+                                    <tr><td><strong>Tarmizi Kael</strong></td><td id="kpiTarmiziPack">0</td><td id="kpiTarmiziAudit">0</td></tr>
+                                    <tr><td><strong>Fahmi</strong></td><td id="kpiFahmiPack">0</td><td id="kpiFahmiAudit">0</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                </div><div id="rosterSection" class="tab-section" style="display: none;">
                 <!-- 5. Staff Schedule / Rostering & HR -->
                 <div class="admin-card" style="border-top:4px solid var(--primary); margin-top:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>️ Pengurusan Cuti & Jadual Roster (HR)</h3>
+                        <h3>️ Pengurusan Cuti &amp; Jadual Roster (HR)</h3>
                         <button onclick="document.getElementById('hrSettingsModal').style.display='flex'" class="btn-secondary" style="font-size:10px; padding:4px 8px; margin:0;">️ Tetapan Masa</button>
                     </div>
                     <p style="font-size:12px; color:#888; margin-bottom:15px; margin-top:5px;">Penyelarasan syif operasi (11pg-8mlm / 2ptg-8mlm), Cuti Berbayar, dan MC berserta Sijil Sokongan.</p>
@@ -1535,7 +1530,7 @@
                         <button id="btnSubmitRoster" class="btn-primary" onclick="window.submitBulkRoster()" style="margin:0; background:#10b981; border-color:#10b981; padding:8px 12px; font-size:12px; display:none; gap:5px; align-items:center;"> SIMPAN PERUBAHAN</button>
                         <select id="adminRosterYear" class="login-input" style="margin:0; width:90px; padding:8px; font-weight:bold; background:#fafafa;" onchange="setRosterYear(this.value)">
                             <option value="2025">2025</option>
-                            <option value="2026" selected>2026</option>
+                            <option value="2026" selected="">2026</option>
                             <option value="2027">2027</option>
                         </select>
                         <div id="adminMonthBtns" style="display:flex; flex-wrap:wrap; gap:5px; flex:1;">
@@ -1623,7 +1618,7 @@
                     <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid #ede9fe;">
                         <table class="data-table" style="font-size:12px; width:100%; border-collapse:collapse; text-align:left;">
                             <thead style="position:sticky; top:0; background:#ede9fe; color:#4c1d95; z-index:1;">
-                                <tr><th>Masa & Tarikh Tindakan</th><th>Admin Bertugas</th><th>Tindakan / Subjek</th><th>Cuti / Penerangan</th></tr>
+                                <tr><th>Masa &amp; Tarikh Tindakan</th><th>Admin Bertugas</th><th>Tindakan / Subjek</th><th>Cuti / Penerangan</th></tr>
                             </thead>
                             <tbody id="auditLogsTbody">
                                 <tr><td colspan="4" style="text-align:center; padding:10px;">Tiada log direkodkan atau sedang dimuatkan...</td></tr>
@@ -1635,7 +1630,7 @@
                 <!-- Custom Setting Modal for Aliff -->
                 <div id="hrSettingsModal" class="login-overlay" style="display:none; z-index:3500;">
                     <div class="login-box" style="text-align:left; max-width:400px;">
-                        <button onclick="document.getElementById('hrSettingsModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+                        <button onclick="document.getElementById('hrSettingsModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer;">×</button>
                         <h3 style="margin-bottom:15px; color:var(--primary);">️ Tetapan Roster (Override)</h3>
                         <p style="font-size:12px; color:#888; margin-bottom:15px;">Tetapkan waku rehat rasmi mingguan.</p>
                         
@@ -1651,308 +1646,127 @@
                         <button onclick="saveHrSettings()" class="btn-primary" style="width:100%;">Terapkan Tetapan</button>
                     </div>
                 </div>
-            </div> <!-- End subtabRoster -->
-            
-            <!-- WAREHOUSE MANAGEMENT VIEW (Zack, Superior) -->
-            <div id="subtabWarehouse" class="mgmt-subtab" style="margin-top:30px;">
-                <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);"> Penyeliaan Gudang Pusat</h3>
-
-
-
-            
-
-            
-
-            
-
-
-                
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                    <!-- Low Stock Alert -->
-                    <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3>️ Amaran Stok Rendah (Reorder)</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Item kritikal di bawah 10 unit.</p>
-                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>SKU</th><th>Nama Produk</th><th>Baki Tally</th></tr>
-                                </thead>
-                                <tbody id="whLowStockTbody">
-                                </tbody>
-                            </table>
-                        </div>
+            </div><div id="salesAnalyticsSection" class="tab-section" style="display: none;">
+                <!-- Graf Analisis Teras Jualan -->
+                <div class="admin-card" style="border-top:4px solid #3b82f6; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3> Graf Prestasi Jualan</h3>
+                        <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph(window.currentGraphMode || '7days')" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#3b82f6; border-color:#3b82f6;">⟳ Segarkan Graf</button>
                     </div>
                     
-                    <!-- KPI Pekerja -->
-                    <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3>‍️ KPI Operasi Inventori</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Jejak kelajuan tugasan Tarmizi & Fahmi.</p>
-                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>Nama Staf</th><th>Packs Fulfilled</th><th>Stok Diaudit</th></tr>
-                                </thead>
-                                <tbody id="whKpiTbody">
-                                    <tr><td><strong>Tarmizi Kael</strong></td><td id="kpiTarmiziPack">0</td><td id="kpiTarmiziAudit">0</td></tr>
-                                    <tr><td><strong>Fahmi</strong></td><td id="kpiFahmiPack">0</td><td id="kpiFahmiAudit">0</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <!-- Chart Filters -->
+                    <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:15px; margin-bottom:10px; font-size:11px;">
+                        <button onclick="changeGraphMode('7days')" id="btnGraph7" class="btn-secondary" style="margin:0; padding:4px 10px; color:#fff; background-color:#3b82f6; border-color:#3b82f6;">7 Hari</button>
+                        <button onclick="changeGraphMode('thismonth')" id="btnGraphMonth" class="btn-secondary" style="margin:0; padding:4px 10px;">Bulan Ini</button>
+                        <button onclick="changeGraphMode('thisyear')" id="btnGraphYear" class="btn-secondary" style="margin:0; padding:4px 10px;">Tahun Ini</button>
+                        <button onclick="changeGraphMode('custom')" id="btnGraphCustom" class="btn-secondary" style="margin:0; padding:4px 10px;">Custom</button>
                     </div>
-                </div>
-                
-                </div>
-                
-                <!-- Product Registration Mode (Moved to Gudang Pusat) -->
-                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-top:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;"> Product Registration Mode</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pendaftaran unit produk dan kos logistik (Termasuk rekod Shipment baru).</p>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div><label class="small-lbl">No of Shipment</label><input type="text" id="prShipmentNo" class="login-input" placeholder="e.g. SHP-001"></div>
-                        <div><label class="small-lbl">Date of shipment</label><input type="date" id="prShipmentDate" class="login-input"></div>
-                        <div><label class="small-lbl">Product SKU</label><input type="text" id="prSku" class="login-input" placeholder="e.g. SKU-123"></div>
-                        <div><label class="small-lbl">Description</label><input type="text" id="prDesc" class="login-input" placeholder="e.g. Kerusi Healing"></div>
-                        <div><label class="small-lbl">Product Price (RMB)</label><input type="number" id="prPriceRmb" class="login-input" step="0.01" placeholder="0.00"></div>
-                        <div><label class="small-lbl">No Unit Purchased</label><input type="number" id="prUnitPurchased" class="login-input" oninput="window.calcShippingPerUnit()"></div>
-                        <div><label class="small-lbl">Shipping Cost (RM)</label><input type="number" id="prShippingCost" class="login-input" step="0.01" oninput="window.calcShippingPerUnit()"></div>
-                        <div><label class="small-lbl">Shipping Per Unit (RM)</label><input type="number" id="prShippingPerUnit" class="login-input" step="0.01" readonly style="background:#eee;"></div>
-                    </div>
-                    <button class="btn-primary" style="margin-top:20px; width:100%;" onclick="window.saveProductRegistration()">Daftar Produk ke Gudang</button>
-
-
-                <!-- Product Edit Mode -->
-                <!-- FORM 2: CSV IMPORTER -->
-            <div id="csvForm" class="admin-card" style="border-top:2px dashed #ccc; margin-top:30px; padding-top:20px;">
-                <h3>Bulk System Importer (CSV)</h3>
-                <select id="csvImportType" class="login-input" style="margin-bottom:15px;">
-                    <option value="products">Migrate Products & Inventory</option>
-                    <option value="sales">Migrate Sales/Order History</option>
-                </select>
-                <div style="border:2px dashed #ccc; padding:20px; text-align:center; border-radius:10px;">
-                    <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls" style="margin-bottom:0;">
-                </div>
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button id="startCsvBtn" class="btn-success" style="background:#111827; flex:1;"> Process Robot Upload</button>
-                    <button id="exportExcelBtn" class="btn-success" style="background:#10B981; flex:1;"> Export Products (.xlsx)</button>
-                </div>
-                <div id="csvResultLog"></div>
-            </div>
-
-            
-
-                </div>
-                
-                
-                <!-- STOCK MOVEMENTS (INBOUND & OUTBOUND) -->
-                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;"> Pergerakan Inventori (Inbound & Outbound)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Merekod secara rasmi setiap unit fizikal yang masuk (dari pembekal) atau keluar (kegunaan stor/rosak).</p>
                     
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                        <!-- Inbound Section -->
-                        <div style="background:#f0fdf4; padding:15px; border-radius:8px; border:1px solid #bbf7d0;">
-                            <h4 style="color:#166534; margin-bottom:10px;"> Terima Stok Baru (Inbound)</h4>
-                            <label class="small-lbl">Cari SKU Produk</label>
-                            <input type="text" id="inboundSkuSearch" class="login-input" placeholder="Taip SKU..." list="movementSkuList">
-                            <label class="small-lbl">Kuantiti Diterima</label>
-                            <input type="number" id="inboundQty" class="login-input" placeholder="0" min="1">
-                            <label class="small-lbl">Rujukan PO / Nota (Pilihan)</label>
-                            <input type="text" id="inboundRef" class="login-input" placeholder="PO-10023">
-                            <button class="btn-success" style="width:100%; margin-top:10px;" onclick="window.processInbound()">Terima & Tambah Stok</button>
-                        </div>
-                        
-                        <!-- Outbound Section -->
-                        <div style="background:#fef2f2; padding:15px; border-radius:8px; border:1px solid #fecaca;">
-                            <h4 style="color:#991b1b; margin-bottom:10px;"> Keluarkan Stok (Outbound)</h4>
-                            <label class="small-lbl">Cari SKU Produk</label>
-                            <input type="text" id="outboundSkuSearch" class="login-input" placeholder="Taip SKU..." list="movementSkuList">
-                            <label class="small-lbl">Kuantiti Dikeluarkan</label>
-                            <input type="number" id="outboundQty" class="login-input" placeholder="0" min="1">
-                            <label class="small-lbl">Sebab / Catatan</label>
-                            <select id="outboundReason" class="login-input">
-                                <option value="Transfer ke Cawangan">Transfer ke Cawangan Lain</option>
-                                <option value="Kerosakan / Pecah">Kerosakan / Pecah (Write-off)</option>
-                                <option value="Kegunaan Marketing">Kegunaan Marketing / Shooting</option>
-                                <option value="Lain-lain">Lain-lain (Sila catat)</option>
-                            </select>
-                            <input type="text" id="outboundNote" class="login-input" placeholder="Catatan tambahan (pilihan)..." style="margin-top:-10px;">
-                            <button class="btn-primary" style="background:#EF4444; border:none; width:100%; margin-top:10px;" onclick="window.processOutbound()">Tolak Stok Fizikal</button>
-                        </div>
+                    <!-- Custom Range Selector (Hidden By Default) -->
+                    <div id="graphCustomRangeBox" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; background:#f0f9ff; padding:10px; border-radius:6px; margin-bottom:15px;">
+                        <input type="date" id="graphStartDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
+                        <span>-</span>
+                        <input type="date" id="graphEndDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
+                        <button onclick="applyCustomGraphRange()" class="btn-primary" style="font-size:11px; margin:0; padding:4px 10px;">Papar</button>
                     </div>
-                    <datalist id="movementSkuList"></datalist>
-                </div>
 
-                <!-- STOCK MOVEMENT LEDGER (NEW) -->
-                <div class="admin-card" style="border-top:4px solid #6366F1; padding:20px; margin-bottom:20px; animation:fadeIn 0.5s;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3 style="margin:0;"> Lejar Pergerakan Stok (Movement History)</h3>
-                        <button class="btn-success" style="font-size:10px; padding:5px 10px; margin:0; background:#4F46E5; border-color:#4F46E5;" onclick="window.downloadLedgerCsv()"> Eksport CSV</button>
-                    </div>
-                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Log terperinci bagi setiap pergerakan inventori (Inbound, Outbound, Stock Take).</p>
-                    
-                    <div class="table-responsive" style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;">
-                        <table class="data-table" style="font-size:12px;">
-                            <thead style="position:sticky; top:0; background:#EEF2FF; color:#4338CA;">
-                                <tr>
-                                    <th>Tarikh & Masa</th>
-                                    <th>Staf Bertugas</th>
-                                    <th>Jenis Transaksi</th>
-                                    <th>SKU / Item</th>
-                                    <th>Kuantiti (+/-)</th>
-                                    <th>Rujukan / Catatan</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventoryLedgerTbody">
-                                <tr><td colspan="6" style="text-align:center;">Tiada log direkodkan atau sedang dimuatkan...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                
-                <!-- STOCK AUDIT MODULE -->
-                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;"> Audit Stok Berkala (Cycle Count)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Imbas SKU atau taip untuk membandingkan kuantiti sistem vs kuantiti fizikal.</p>
-                    
-                    <div style="display:flex; gap:10px; align-items:flex-end;">
-                        <div style="flex:1;">
-                            <label class="small-lbl">SKU Produk</label>
-                            <input type="text" id="auditSku" class="login-input" placeholder="Taip SKU..." list="movementSkuList" onchange="window.loadAuditProduct()">
-                        </div>
-                        <div style="width:120px;">
-                            <label class="small-lbl">Kuantiti Sistem</label>
-                            <input type="number" id="auditSysQty" class="login-input" readonly style="background:#eee;">
-                        </div>
-                        <div style="width:120px;">
-                            <label class="small-lbl">Kuantiti Fizikal</label>
-                            <input type="number" id="auditPhysQty" class="login-input" placeholder="0">
-                        </div>
-                        <button class="btn-primary" style="height:42px; margin-bottom:15px;" onclick="window.submitStockAudit()">Semak & Hantar</button>
+                    <div style="width:100%; height:250px; position:relative;">
+                        <canvas id="adminSalesChart"></canvas>
                     </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                    <!-- Discrepancy Log -->
+                    <!-- 3. Sales Report Semua Staf -->
                     <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3> Discrepancy & Write-Off Log</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Laporan stok hilang/rosak menunggu kelulusan anda.</p>
-                        <div class="table-responsive" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>SKU / Kes</th><th>Dilapor Oleh</th><th>Tindakan</th></tr>
+                        <h3 style="margin-bottom:15px;"> Executive Staff Sales Report</h3>
+                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="inventory-table">
+                                <thead style="position:sticky; top:0;">
+                                    <tr><th>Rank</th><th>Nama Staf</th><th>Total Transaksi</th><th>Gross Sales (RM)</th></tr>
                                 </thead>
-                                <tbody id="whAuditTbody">
+                                <tbody id="mgmtStaffSalesTbody">
+                                    <tr><td colspan="4" style="text-align:center;">Loading performance...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    
-                    <!-- Supplier Manager -->
+
+                    <!-- 4. Customer CRM Issues -->
                     <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3> Master Supplier Database</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Urus Rangkaian Pembekal & Pukal.</p>
-                        <ul style="list-style:none; padding:0; flex:1;">
-                            <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-                                <strong>BLACKDOG Official (CN)</strong> <span>Aktif</span>
-                            </li>
-                            <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-                                <strong>10Camp HQ (MY)</strong> <span>Aktif</span>
-                            </li>
-                            <li style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; color:#888;">
-                                <em>Custom Supplier</em> <span>-</span>
-                            </li>
-                        </ul>
-                        <button class="btn-primary" style="width:100%; margin-top:15px; opacity:0.6;">+ Add Core Vendor</button>
+                        <h3> Customer Log Issues</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pemantauan pertikaian, masalah atau tiket pelanggan.</p>
+                        
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <input type="text" id="issueCustName" class="login-input" style="flex:1; margin:0;" placeholder="Akaun/Inv...">
+                            <input type="text" id="issueDesc" class="login-input" style="flex:2; margin:0;" placeholder="Aduan...">
+                            <button class="btn-primary" id="saveIssueBtn" style="margin:0;">+ Tiket</button>
+                        </div>
+
+                        <div class="table-responsive" style="max-height:190px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Pelanggan</th><th>Isu / Aduan</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="issueTbody">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Master System Management (Moved to Gudang Pusat) -->
-                <div class="admin-card" style="border-top:4px solid var(--primary); margin-top:20px; margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>️ Master System Management</h3>
-                        <span style="font-size:10px; background:#8B5CF6; color:white; padding:3px 8px; border-radius:12px;">Superior Access Only</span>
+                <!-- (Sales Management View akan dipindahkan ke bahagian sales di bawah) -->
+
+            </div><div id="financeSection" class="tab-section" style="display: none;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <!-- 1. Petty Cash Module -->
+                    <div class="admin-card" style="border-top:4px solid var(--primary);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h3> Petty Cash (Buku Tunai)</h3>
+                            <button class="btn-success" style="padding:5px 10px; font-size:12px;" onclick="downloadPettyCSV()"> CSV</button>
+                        </div>
+                        
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 2fr auto; gap:10px; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:6px; border:1px solid #ddd;">
+                            <select id="pcType" class="login-input" style="margin:0;"><option value="IN">Inflow (+)</option><option value="OUT">Outflow (-)</option></select>
+                            <input type="number" id="pcAmount" class="login-input" style="margin:0;" placeholder="RM" min="0">
+                            <input type="text" id="pcNotes" class="login-input" style="margin:0;" placeholder="Nota / ID Resit...">
+                            <button class="btn-primary" style="margin:0; padding:10px;" id="savePettyBtn">Rekod</button>
+                        </div>
+                        
+                        <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--border-color);">
+                            <table class="data-table" style="font-size:12px;">
+                                <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                    <tr><th>Tarikh</th><th>Jenis</th><th>Nota</th><th>Amaun</th><th>Baki</th></tr>
+                                </thead>
+                                <tbody id="pettyTbody">
+                                    <tr><td colspan="5" style="text-align:center;">Tiada rekod.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <p style="font-size:12px; color:#888; margin-top:10px; margin-bottom:15px;">Akses sulit pengarah untuk token pangkalan data (Supabase), sandaran keseluruhan, dan pelepasan (override) keselamatan hub lain.</p>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-primary" style="flex:1; opacity:0.6; cursor:not-allowed;">Manage DB Keys</button>
-                        <button class="btn-primary" style="flex:1; background:#EF4444; opacity:0.6; cursor:not-allowed;">Wipe Global History</button>
+
+                    <!-- 2. Memo Module -->
+                    <div class="admin-card" style="border-top:4px solid var(--primary);">
+                        <h3> Sistem Memo Dalaman</h3>
+                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pengumuman pop-up kepada semua staf ketika log masuk.</p>
+                        <textarea id="memoInputText" class="login-input" rows="3" placeholder="Contoh: Esok promosi 50%. Sila bersedia..."></textarea>
+                        
+                        <div style="display:flex; align-items:center; justify-content:space-between; background:#FFFBEB; border:1px solid #FCD34D; padding:10px; border-radius:6px; margin-bottom:15px;">
+                            <div>
+                                <strong style="color:var(--primary);">Status Memo Global:</strong>
+                                <span id="memoStatusLabel" style="margin-left:5px; font-weight:bold; color:red;">TIDAK AKTIF</span>
+                            </div>
+                            <label class="switch" style="position:relative; display:inline-block; width:50px; height:24px;">
+                                <input type="checkbox" id="memoToggle" style="opacity:0; width:0; height:0;">
+                                <span class="slider round" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:24px;"></span>
+                            </label>
+                        </div>
+                        <button class="btn-success" id="saveMemoBtn" style="width:100%;">Set &amp; Beritahu Semua</button>
                     </div>
                 </div>
-
             </div>
 
             <!-- SALES MANAGEMENT VIEW (Moyy, Superior) -->
-            <div id="salesMgmtView" class="mgmt-subtab" style="margin-top:20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h3 style="font-size:18px; color:var(--primary);"> Penyeliaan Jualan & BD (Moyy Farhan)</h3>
-                    <!-- Moyy Target Oversetter Form -->
-                    <div style="display:flex; gap:10px; background:#fff; padding:10px; border-radius:8px; border:1px solid var(--primary); align-items:flex-end;">
-                        <div>
-                            <label class="small-lbl">Sasaran Bulanan (RM)</label>
-                            <input type="number" id="moyyTargetInput" class="login-input" style="margin:0; width:120px;" value="10000">
-                        </div>
-                        <div>
-                            <label class="small-lbl">Kadar Komisen (%)</label>
-                            <input type="number" id="moyyCommInput" class="login-input" style="margin:0; width:100px;" value="5">
-                        </div>
-                        <button class="btn-primary" onclick="updateMoyySettings()" style="margin:0; height:44px;">Set Parameter</button>
-                    </div>
-                </div>
-                
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                    <!-- Sales Target Tracker -->
-                    <div class="admin-card" style="border-top:4px solid var(--primary);">
-                        <h3> Sales Target & Commission Tracker</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;" id="moyyTargetSubtitle">Pantauan prestasi jualan Ariff & Irfan berbanding target bulanan (RM 10,000).</p>
-                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>Nama Staf</th><th>Jualan Kasar (RM)</th><th>Est. Komisen</th></tr>
-                                </thead>
-                                <tbody id="salesMgmtTargetTbody">
-                                    <tr><td><strong>Ariff</strong></td><td id="tgtAriffSales">0.00</td><td id="tgtAriffComm">0.00</td></tr>
-                                    <tr><td><strong>Irfan</strong></td><td id="tgtIrfanSales">0.00</td><td id="tgtIrfanComm">0.00</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- Omnichannel Distribution Board -->
-                    <div class="admin-card" style="border-top:4px solid #10B981;">
-                        <h3> Penganalisis Cabang Medium (Omnichannel)</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Taburan jualan terkumpul mengikut platform fizikal dan maya.</p>
-                        <div class="table-responsive" style="max-height:220px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#ecfdf5; color:#065f46;">
-                                    <tr><th>Medium (Saluran)</th><th>Jumlah Transaksi</th><th>Jumlah Pendapatan (RM)</th><th>% Sumbangan</th></tr>
-                                </thead>
-                                <tbody id="salesChannelTbody">
-                                    <tr><td colspan="4" style="text-align:center;">Tiada data jualan omnichannel.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
-                    <!-- Pending Invoice Follow-Ups (Full Width) -->
-                    <div class="admin-card" style="border-top:4px solid #EF4444;">
-                        <h3> Senarai Hutang / Invois Tergantung (Follow-Up Target)</h3>
-                        <p style="font-size:12px; color:#888; margin-bottom:15px;">Pelanggan yang memegang status *Unpaid* atau *To Fulfil*. Tarik telinga staf terbabit untuk kutip baki!</p>
-                        <div class="table-responsive" style="max-height:300px; overflow-y:auto; border:1px solid #fca5a5;">
-                            <table class="data-table" style="font-size:12px; text-align:center;">
-                                <thead style="position:sticky; top:0; background:#fef2f2; color:#b91c1c;">
-                                    <tr><th>Ref (#ID)</th><th>Pelanggan</th><th>No. Telefon</th><th>Nilai Hutang (RM)</th><th>Staf Urus</th><th>Tindakan (WhatsApp)</th></tr>
-                                </thead>
-                                <tbody id="salesMgmtPendingTbody">
-                                    <tr><td colspan="6" style="text-align:center; padding:10px;">Hebat! Semua pelanggan telah membayar penuh.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
 
             </div>
 
@@ -1963,9 +1777,9 @@
             </style>
         </div>
 
-    </div> 
+     
 
-    </div> <!-- End posAppLayout -->
+     <!-- End posAppLayout -->
 
     <!-- FLOATING CLOCK IN BUTTON (HIDDEN DEFAULT) -->
     <button id="floatingClockBtn" onclick="openClockModal()" style="display:none; position:fixed; bottom:20px; left:20px; background:linear-gradient(135deg, #10B981, #059669); color:#fff; border:none; padding:15px 25px; border-radius:50px; font-weight:bold; font-size:16px; box-shadow:0 10px 20px rgba(16,185,129,0.3); z-index:3000; cursor:pointer; align-items:center; gap:8px; transition:0.3s; animation: pulseGlow 2s infinite;">
@@ -1979,23 +1793,23 @@
     <!-- CLOCK IN / CLOCK OUT MODAL WITH CAMERA -->
     <div id="clockInOutModal" class="login-overlay" style="display:none; z-index:4000;">
         <div class="login-box" style="width:90%; max-width:400px; text-align:center;">
-            <button onclick="closeClockModal()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:#888;">&times;</button>
+            <button onclick="closeClockModal()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:#888;">×</button>
             <h2 id="clockModalTitle" style="color:var(--primary); font-weight:800; margin-bottom:5px;">Pengesahan Kehadiran</h2>
             <p id="clockModalStatus" style="font-size:12px; color:#555; background:#f3f4f6; padding:8px; border-radius:8px; margin-bottom:15px;"> Mengesan koordinat GPS anda...</p>
             
             <div id="cameraPreviewBox" style="width:100%; height:250px; background:#000; border-radius:12px; overflow:hidden; position:relative; margin-bottom:15px; display:flex; align-items:center; justify-content:center;">
-                <video id="clockVideoFeed" autoplay playsinline style="width:100%; height:100%; object-fit:cover; display:none;"></video>
+                <video id="clockVideoFeed" autoplay="" playsinline="" style="width:100%; height:100%; object-fit:cover; display:none;"></video>
                 <p id="cameraLoadingText" style="color:#fff; font-size:12px;">Menghidupkan Kamera...</p>
             </div>
             <canvas id="clockSnapshotCanvas" style="display:none;"></canvas>
 
-            <button id="btnSubmitAttendance" onclick="submitAttendance()" class="btn-success" style="width:100%; height:50px; font-size:16px; display:none;" disabled>
-                 Ambil Gambar & Sahkan
+            <button id="btnSubmitAttendance" onclick="submitAttendance()" class="btn-success" style="width:100%; height:50px; font-size:16px; display:none;" disabled="">
+                 Ambil Gambar &amp; Sahkan
             </button>
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=46"></script>
+    <script src="app.js?v=47"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
@@ -2090,5 +1904,6 @@
             lucide.createIcons();
         });
     </script>
-</body>
-</html>
+
+
+</body></html>

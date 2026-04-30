@@ -1897,25 +1897,7 @@ function renderMgmtPlaceholders() {
     let isSuperior = currentUser && currentUser.role === 'superior';
     let isAliff = currentUser && currentUser.name === 'Aliff';
 
-    // Show/Hide Pill buttons based on Access Roles
-    let pillRoster = document.getElementById("pillRoster");
-    let pillFinance = document.getElementById("pillFinance");
-    let pillSales = document.getElementById("pillSales");
-    let pillWarehouse = document.getElementById("pillWarehouse");
-    
-    if(pillRoster) pillRoster.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
-    if(pillFinance) pillFinance.style.display = (isSuperior || isAliff || (!isZack && !isMoyy)) ? "inline-block" : "none";
-    if(pillSales) pillSales.style.display = (isSuperior || isMoyy || (!isZack && !isMoyy)) ? "inline-block" : "none";
-    if(pillWarehouse) pillWarehouse.style.display = (isSuperior || isZack || (!isZack && !isMoyy)) ? "inline-block" : "none";
-
-    // Auto-switch to default Tab based on user identity logic
-    if(!window.currentMgmtTabHasInit) {
-        window.currentMgmtTabHasInit = true; // prevent auto-switch re-trigger on data reload
-        if(isSuperior || isAliff || (!isZack && !isMoyy)) window.switchMgmtTab('subtabRoster', 'pillRoster');
-        else if(isZack) window.switchMgmtTab('subtabWarehouse', 'pillWarehouse');
-        else if(isMoyy) window.switchMgmtTab('subtabSales, salesMgmtView', 'pillSales');
-    }
-
+    // Management pills are removed, flattened to sidebar.
     renderPettyCash();
     renderMgmtStaffSales();
     renderCustomerIssues();
@@ -1991,17 +1973,7 @@ function renderGlobalStaffDirectory() {
 }
 
 window.switchMgmtTab = function(tabId, pillId) {
-    document.querySelectorAll('.mgmt-subtab').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.pill-btn').forEach(el => el.classList.remove('active'));
-    
-    let targets = tabId.split(','); 
-    targets.forEach(t => {
-        let el = document.getElementById(t.trim());
-        if(el) el.style.display = 'block';
-    });
-    
-    let pill = document.getElementById(pillId);
-    if(pill) pill.classList.add('active');
+    // Deprecated. Routed via switchHub now.
 };
 
 window.updateMoyySettings = function() {
