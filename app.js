@@ -3817,6 +3817,54 @@ window.calculateEditableTotal = function() {
 // ===================================
 // PRODUCT REGISTRATION MODE
 // ===================================
+window.saveMasterProduct = async function() {
+    let name = document.getElementById("mpName").value.trim();
+    let sku = document.getElementById("mpSku").value.trim().toUpperCase();
+    let category = document.getElementById("mpCategory").value.trim();
+    let price = document.getElementById("mpPrice").value;
+
+    if(!name || !sku || !category || !price) {
+        alert("Sila lengkapkan semua maklumat Master Product.");
+        return;
+    }
+
+    // Check if SKU already exists
+    let existing = masterProducts.find(p => p.sku === sku);
+    if(existing) {
+        alert("SKU ini sudah wujud dalam Master Product! Sila gunakan fungsi Edit atau terus ke Masukkan Stok.");
+        return;
+    }
+
+    const payload = {
+        sku: sku,
+        name: name,
+        category: category,
+        price: parseFloat(price),
+        cost_price: 0,
+        stock_status: 'in_stock',
+        is_published: true
+    };
+
+    let { data: newProd, error } = await db.from('products_master').insert([payload]).select();
+
+    if(error) {
+        console.error("Master Product Insert Error:", error);
+        alert("Ralat mencipta Master Product. Sila cuba lagi.");
+        return;
+    }
+
+    if(newProd && newProd.length > 0) {
+        masterProducts.push(newProd[0]);
+    }
+
+    alert(`Profil Produk '${name}' (${sku}) Berjaya Dicipta! Anda kini boleh memasukkan stok (Purchase Order).`);
+
+    // Clear fields
+    document.getElementById("mpName").value = "";
+    document.getElementById("mpSku").value = "";
+    document.getElementById("mpCategory").value = "";
+    document.getElementById("mpPrice").value = "";
+};
 window.saveProductRegistration = async function() {
     let shipmentNo = document.getElementById("prShipmentNo").value.trim();
     let shipmentDate = document.getElementById("prShipmentDate").value;
