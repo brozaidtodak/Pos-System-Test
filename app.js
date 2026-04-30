@@ -254,6 +254,7 @@ async function initApp() {
         if(typeof renderWhAudit === 'function') renderWhAudit();
         if(typeof renderInventoryLedger === 'function') renderInventoryLedger();
         if(typeof renderPoSection === 'function') renderPoSection();
+        if(typeof renderValuationSection === 'function') renderValuationSection();
         if(typeof renderMgmtInventory === 'function') renderMgmtInventory();
         autoClockOutUnclosed();
         if(typeof renderPersonalCommission === "function") renderPersonalCommission();
@@ -4869,3 +4870,69 @@ window.printBarcodes = function() {
     window.print();
 };
 // End Barcode Generator Logic
+
+// Start Stock Valuation Logic
+window.renderValuationSection = function() {
+    let totalCostAsset = 0;
+    let totalRetailAsset = 0;
+    let assetsData = [];
+
+    masterProducts.forEach(p => {
+        // Calculate stock
+        const stockBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
+        const stockQty = stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+
+        if(stockQty > 0) {
+            const cost = parseFloat(p.cost_price) || 0;
+            const retail = parseFloat(p.price) || 0;
+            
+            const totalCost = cost * stockQty;
+            const totalRetail = retail * stockQty;
+
+            totalCostAsset += totalCost;
+            totalRetailAsset += totalRetail;
+
+            assetsData.push({
+                sku: p.sku,
+                name: p.name,
+                stock: stockQty,
+                cost: cost,
+                totalCost: totalCost
+            });
+        }
+    });
+
+    const projectedProfit = totalRetailAsset - totalCostAsset;
+
+    document.getElementById("valTotalCost").innerText = `RM ${totalCostAsset.toFixed(2)}`;
+    document.getElementById("valTotalRetail").innerText = `RM ${totalRetailAsset.toFixed(2)}`;
+    document.getElementById("valTotalProfit").innerText = `RM ${projectedProfit.toFixed(2)}`;
+
+    // Sort descending by totalCost to find Top 10 High Value Assets
+    assetsData.sort((a, b) => b.totalCost - a.totalCost);
+    const top10 = assetsData.slice(0, 10);
+
+    const tbody = document.getElementById("valuationTableBody");
+    if(!tbody) return;
+
+    if(top10.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Tiada aset bernilai ditemui.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    top10.forEach((item, index) => {
+        html += `
+            <tr>
+                <td><b>${index + 1}</b></td>
+                <td><span class="sku-badge">${item.sku}</span></td>
+                <td>${item.name}</td>
+                <td><span style="font-weight:bold; color:var(--primary);">${item.stock}</span></td>
+                <td>RM ${item.cost.toFixed(2)}</td>
+                <td><b style="color:#991B1B;">RM ${item.totalCost.toFixed(2)}</b></td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+};
+// End Stock Valuation Logic
