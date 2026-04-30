@@ -4791,5 +4791,81 @@ window.renderPickingListUI = function(isSorted = false) {
     });
     
     html += '</div>';
-    container.innerHTML = html;
 };
+
+// Start Barcode Generator Logic
+window.generateBarcodes = function() {
+    const sku = document.getElementById("barcodeSkuInput").value.trim().toUpperCase();
+    const qty = parseInt(document.getElementById("barcodeQtyInput").value) || 1;
+    const printArea = document.getElementById("printLabelArea");
+    
+    if(!sku) return alert("Sila masukkan SKU produk.");
+    if(qty < 1) return alert("Kuantiti tidak sah.");
+    
+    const p = masterProducts.find(x => x.sku === sku);
+    const productName = p ? p.name : "Produk Am";
+    const price = p && p.price ? `RM ${p.price.toFixed(2)}` : "";
+    
+    printArea.innerHTML = ""; // Clear area
+    
+    for(let i=0; i<qty; i++) {
+        // Create wrapper for thermal roll standard (1 label per row)
+        const wrapper = document.createElement("div");
+        wrapper.className = "barcode-label-wrapper";
+        wrapper.style.cssText = "padding:10px; border:1px solid #ccc; width:240px; text-align:center; background:#fff; font-family:sans-serif;";
+        
+        // Header (Store Name)
+        const header = document.createElement("div");
+        header.style.cssText = "font-weight:900; font-size:14px; margin-bottom:2px;";
+        header.innerText = "10CAMP STORE";
+        wrapper.appendChild(header);
+        
+        // Product Name (Truncated if long)
+        const title = document.createElement("div");
+        title.style.cssText = "font-size:10px; font-weight:bold; margin-bottom:5px; line-height:1.2; height:24px; overflow:hidden;";
+        title.innerText = productName.length > 35 ? productName.substring(0, 32) + '...' : productName;
+        wrapper.appendChild(title);
+        
+        // Barcode SVG Element
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        wrapper.appendChild(svg);
+        
+        // Price Tag
+        if(price) {
+            const priceTag = document.createElement("div");
+            priceTag.style.cssText = "font-weight:bold; font-size:14px; margin-top:3px;";
+            priceTag.innerText = price;
+            wrapper.appendChild(priceTag);
+        }
+        
+        printArea.appendChild(wrapper);
+        
+        // Generate Barcode Graphic
+        try {
+            if(typeof JsBarcode === 'undefined') {
+                throw new Error("JsBarcode library belum dimuatkan.");
+            }
+            JsBarcode(svg, sku, {
+                format: "CODE128",
+                width: 1.8,
+                height: 40,
+                displayValue: true,
+                fontSize: 12,
+                margin: 5
+            });
+        } catch(e) {
+            console.error("Barcode generation failed:", e);
+            printArea.innerHTML = `<p style="color:red; text-align:center;">Ralat: Sila pastikan ada capaian internet untuk memuat turun skrip Barcode.</p>`;
+            break;
+        }
+    }
+};
+
+window.printBarcodes = function() {
+    const printArea = document.getElementById("printLabelArea");
+    if(printArea.innerHTML.includes("Prebiu label") || printArea.innerHTML === "") {
+        return alert("Sila jana kod bar dahulu sebelum mencetak.");
+    }
+    window.print();
+};
+// End Barcode Generator Logic
