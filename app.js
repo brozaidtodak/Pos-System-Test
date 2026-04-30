@@ -538,17 +538,7 @@ function renderStockTake() {
                         <p style="font-size:11px; color:#888; margin-bottom:2px;">ERP Barcode: ${erpBarcode}</p>
                     </div>
                     
-                    <!-- GLOBAL STAFF DIRECTORY -->
-                    <div class="table-responsive" style="border:1px solid var(--border-color); margin-top:20px;">
-                        <table class="data-table" style="font-size:12px; width:100%; text-align:center; border-collapse:collapse;">
-                            <thead style="background:#3b82f6; color:#fff;">
-                                <tr><th>CMP ID</th><th>Staf Asal</th><th>Nama Syarikat (Penuh)</th><th>Length of Service</th></tr>
-                            </thead>
-                            <tbody id="staffDirectoryTbody">
-                                <tr><td colspan="4">Loading Staff Directory...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+
                 </div>
 
                 <!-- Stock Location & Status (Middle) -->
