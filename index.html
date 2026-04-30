@@ -210,32 +210,26 @@
             <p id="locModalName" style="font-size:14px; font-weight:bold; margin-bottom:20px;">-</p>
             <input type="hidden" id="locModalSkuHidden">
             
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <div style="flex:1; background:#E0F2FE; padding:12px; border-radius:8px; border:1px solid #BAE6FD;">
-                    <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;"> Level</label>
-                    <select id="locLevel" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center;">
-                        <option value="">-- Pilih --</option>
-                        <option value="G">G (Ground)</option>
-                        <option value="1">Level 1</option>
-                        <option value="2">Level 2</option>
-                        <option value="3">Level 3</option>
-                        <option value="Mezzanine">Mezzanine</option>
-                        <option value="Basement">Basement</option>
-                    </select>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                <div style="background:#E0F2FE; padding:12px; border-radius:8px; border:1px solid #BAE6FD;">
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;">Zon (Zone)</label>
+                    <input type="text" id="locZone" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: ZON A">
                 </div>
-                <div style="flex:1; background:#FEF3C7; padding:12px; border-radius:8px; border:1px solid #FDE68A;">
-                    <label style="font-size:11px; font-weight:bold; color:#92400E; display:block; margin-bottom:5px;">️ No Rak</label>
-                    <input type="text" id="locRack" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center;" placeholder="Cth: A1">
+                <div style="background:#FEF3C7; padding:12px; border-radius:8px; border:1px solid #FDE68A;">
+                    <label style="font-size:11px; font-weight:bold; color:#92400E; display:block; margin-bottom:5px;">Lorong (Aisle)</label>
+                    <input type="text" id="locAisle" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: L01">
                 </div>
-                <div style="flex:1; background:#E0E7FF; padding:12px; border-radius:8px; border:1px solid #C7D2FE;">
-                    <label style="font-size:11px; font-weight:bold; color:#3730A3; display:block; margin-bottom:5px;">️ Tingkat Rak</label>
-                    <select id="locTier" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center;">
-                        <option value="">-- Pilih --</option>
-                        <option value="Atas">Atas</option>
-                        <option value="Tengah">Tengah</option>
-                        <option value="Bawah">Bawah</option>
-                        <option value="Lantai">Lantai</option>
-                    </select>
+                <div style="background:#E0E7FF; padding:12px; border-radius:8px; border:1px solid #C7D2FE;">
+                    <label style="font-size:11px; font-weight:bold; color:#3730A3; display:block; margin-bottom:5px;">Rak (Rack)</label>
+                    <input type="text" id="locRack" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: R01">
+                </div>
+                <div style="background:#FCE7F3; padding:12px; border-radius:8px; border:1px solid #FBCFE8;">
+                    <label style="font-size:11px; font-weight:bold; color:#9D174D; display:block; margin-bottom:5px;">Tingkat (Tier)</label>
+                    <input type="text" id="locTier" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: T1">
+                </div>
+                <div style="background:#ECFCCB; padding:12px; border-radius:8px; border:1px solid #D9F99D; grid-column: span 2;">
+                    <label style="font-size:11px; font-weight:bold; color:#3F6212; display:block; margin-bottom:5px;">Kotak / Tong (Bin)</label>
+                    <input type="text" id="locBin" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: B05">
                 </div>
             </div>
             
@@ -606,6 +600,9 @@
             </div>
             <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders (PO)', this)">
                 <i data-lucide="truck" style="width:16px; height:16px;"></i> Purchase Orders (PO)
+            </div>
+            <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_picking" onclick="switchHub(['pickingSection'], 'Smart Picking List', this)">
+                <i data-lucide="route" style="width:16px; height:16px;"></i> Smart Picking List
             </div>
 
             <!-- END INVENTORY DEPT -->
@@ -1015,6 +1012,30 @@
                             <tr><td colspan="6" style="text-align:center;">Loading PO records...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SECTION: SMART PICKING LIST                    -->
+        <!-- ============================================== -->
+        <div id="pickingSection" class="tab-section" style="display: none;">
+            <div class="admin-card" style="padding:20px; border-top:4px solid var(--primary); margin-bottom:20px;">
+                <h2 style="margin-bottom:15px;"><i data-lucide="route" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Smart Picking List (Laluan Kutipan Pintar)</h2>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Masukkan senarai SKU barang yang anda ingin ambil dari stor. Sistem akan menyusun senarai ini mengikut laluan berjalan kaki terpendek (Zone ➔ Aisle ➔ Rack ➔ Tier ➔ Bin).</p>
+                
+                <div style="display:flex; gap:10px; margin-bottom:20px; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label class="small-lbl">Scan / Taip SKU</label>
+                        <input type="text" id="pickingSkuSearch" class="login-input" placeholder="Taip SKU..." list="movementSkuList" style="margin:0;">
+                    </div>
+                    <button class="btn-primary" style="height:42px; padding:0 20px;" onclick="window.addPickingItem()">Tambah Item</button>
+                    <button class="btn-success" style="height:42px; padding:0 20px;" onclick="window.generatePickingPath()">Jana Laluan Pintar (Generate Path)</button>
+                    <button class="btn-danger" style="height:42px; padding:0 20px;" onclick="window.clearPickingList()">Clear</button>
+                </div>
+
+                <div id="pickingListContainer" style="background:#f9fafb; padding:15px; border-radius:8px; border:1px solid #e5e7eb; min-height:100px;">
+                    <p style="color:#999; text-align:center; margin-top:20px;">Senarai item kutipan kosong.</p>
                 </div>
             </div>
         </div>
@@ -1886,7 +1907,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=42"></script>
+    <script src="app.js?v=43"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

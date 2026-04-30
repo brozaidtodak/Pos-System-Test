@@ -565,9 +565,7 @@ function renderStockTake() {
                         <button onclick="openLocModal('${p.sku}')" style="background:none; border:none; cursor:pointer; font-size:12px; color:var(--primary);">️ Ubah</button>
                     </div>
                     <div id="locDisplay-${p.sku}" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;"> ${p.loc_level || 'G'}</span>
-                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">️ ${p.loc_rack || '-'}</span>
-                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">️ ${p.loc_tier || '-'}</span>
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;">${p.location_bin || p.loc_level || 'Belum Ditetapkan'}</span>
                     </div>
                     
                     <p class="small-lbl" style="margin:0; margin-bottom:3px;">Status Stok</p>
@@ -618,49 +616,54 @@ window.openLocModal = function(sku) {
     document.getElementById('locModalSku').textContent = sku;
     document.getElementById('locModalName').textContent = p.name;
     document.getElementById('locModalSkuHidden').value = sku;
-    document.getElementById('locLevel').value = p.loc_level || '';
-    document.getElementById('locRack').value = p.loc_rack || '';
-    document.getElementById('locTier').value = p.loc_tier || '';
+    
+    let parts = (p.location_bin || "").split('-');
+    if(parts.length >= 2) {
+        document.getElementById('locZone').value = parts[0] || '';
+        document.getElementById('locAisle').value = parts[1] || '';
+        document.getElementById('locRack').value = parts[2] || '';
+        document.getElementById('locTier').value = parts[3] || '';
+        document.getElementById('locBin').value = parts[4] || '';
+    } else {
+        document.getElementById('locZone').value = p.loc_level || '';
+        document.getElementById('locAisle').value = '';
+        document.getElementById('locRack').value = p.loc_rack || '';
+        document.getElementById('locTier').value = p.loc_tier || '';
+        document.getElementById('locBin').value = '';
+    }
     document.getElementById('locationUpdateModal').style.display = 'flex';
 }
 
 window.submitLocUpdate = function() {
     let sku = document.getElementById('locModalSkuHidden').value;
-    let level = document.getElementById('locLevel').value.trim();
-    let rack = document.getElementById('locRack').value.trim();
-    let tier = document.getElementById('locTier').value.trim();
+    let zone = document.getElementById('locZone').value.trim().toUpperCase();
+    let aisle = document.getElementById('locAisle').value.trim().toUpperCase();
+    let rack = document.getElementById('locRack').value.trim().toUpperCase();
+    let tier = document.getElementById('locTier').value.trim().toUpperCase();
+    let bin = document.getElementById('locBin').value.trim().toUpperCase();
     
-    if(!level && !rack && !tier) { alert('Sila isikan sekurang-kurangnya satu ruangan!'); return; }
+    if(!zone && !aisle && !rack && !tier && !bin) { alert('Sila isikan sekurang-kurangnya satu ruangan!'); return; }
+    
+    let fullLoc = [zone, aisle, rack, tier, bin].filter(Boolean).join('-');
     
     let p = masterProducts.find(x => x.sku === sku);
     if(p) {
-        p.loc_level = level;
-        p.loc_rack = rack;
-        p.loc_tier = tier;
-        p.location_bin = [level, rack, tier].filter(Boolean).join(' / ');
+        p.location_bin = fullLoc;
+        p.loc_level = zone;
+        p.loc_rack = aisle;
+        p.loc_tier = rack;
         
-        try { if(db) db.from('products_master').update({ loc_level: level, loc_rack: rack, loc_tier: tier, location_bin: p.location_bin }).eq('sku', sku).then(); } catch(e){}
+        try { if(db) db.from('products_master').update({ location_bin: fullLoc, loc_level: zone, loc_rack: aisle, loc_tier: rack }).eq('sku', sku).then(); } catch(e){}
     }
     
-    // Update the display on the card immediately
     let display = document.getElementById('locDisplay-'+sku);
     if(display) {
-        display.innerHTML = `
-            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;"> ${level || '-'}</span>
-            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">️ ${rack || '-'}</span>
-            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">️ ${tier || '-'}</span>
-        `;
-        setTimeout(() => {
-            display.innerHTML = `
-                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;"> ${level || '-'}</span>
-                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">️ ${rack || '-'}</span>
-                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">️ ${tier || '-'}</span>
-            `;
-        }, 800);
+        display.innerHTML = `<span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">${fullLoc}</span>`;
     }
     
     document.getElementById('locationUpdateModal').style.display = 'none';
 }
+
 
 window.updateStockStatus = function(sku, val) {
     let p = masterProducts.find(x => x.sku === sku);
@@ -4713,3 +4716,80 @@ window.receivePO = async function(poNo) {
     }
 };
 // End PO Logic
+
+// Start Smart Picking List Module Logic
+let pickingListItems = [];
+
+window.addPickingItem = function() {
+    const sku = document.getElementById("pickingSkuSearch").value.trim().toUpperCase();
+    if(!sku) return;
+    
+    const p = masterProducts.find(x => x.sku === sku);
+    if(!p) return alert("SKU tidak wujud.");
+    
+    // Check if already in list
+    if(pickingListItems.find(x => x.sku === sku)) {
+        return alert("SKU ini sudah ada dalam senarai kutipan.");
+    }
+    
+    const loc = p.location_bin || p.loc_level || 'ZZZZZ-NO-LOCATION'; // Items without location go to bottom
+    pickingListItems.push({ sku: p.sku, name: p.name, location: loc });
+    
+    document.getElementById("pickingSkuSearch").value = "";
+    renderPickingListUI();
+};
+
+window.generatePickingPath = function() {
+    if(pickingListItems.length === 0) return alert("Sila tambah barang dahulu.");
+    
+    // Sort alphanumerically by location string to generate the shortest path
+    pickingListItems.sort((a, b) => {
+        if(a.location > b.location) return 1;
+        if(a.location < b.location) return -1;
+        return 0;
+    });
+    
+    renderPickingListUI(true);
+};
+
+window.clearPickingList = function() {
+    pickingListItems = [];
+    renderPickingListUI();
+};
+
+window.renderPickingListUI = function(isSorted = false) {
+    const container = document.getElementById("pickingListContainer");
+    if(!container) return;
+    
+    if(pickingListItems.length === 0) {
+        container.innerHTML = '<p style="color:#999; text-align:center; margin-top:20px;">Senarai item kutipan kosong.</p>';
+        return;
+    }
+    
+    let html = isSorted ? `<h3 style="color:#10B981; margin-bottom:15px; font-size:16px;">▶ Laluan Kutipan Dijana</h3>` : `<h3 style="color:#6B7280; margin-bottom:15px; font-size:14px;">Senarai Draf (Belum Disusun)</h3>`;
+    
+    html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+    
+    pickingListItems.forEach((item, idx) => {
+        let stepNum = isSorted ? `<div style="background:#10B981; color:white; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">${idx+1}</div>` : '';
+        let locBadge = item.location.includes('ZZZZZ') ? `<span style="color:#EF4444; font-weight:bold;">Tiada Lokasi Ditetapkan</span>` : `<span style="background:#E0E7FF; color:#3730A3; padding:4px 8px; border-radius:4px; font-weight:bold; font-family:monospace;">${item.location}</span>`;
+        
+        html += `
+            <div style="background:white; border:1px solid #D1D5DB; border-radius:8px; padding:15px; display:flex; align-items:center; gap:15px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                ${stepNum}
+                <div style="flex:1;">
+                    <p style="margin:0; font-weight:bold; font-size:14px;">${item.sku}</p>
+                    <p style="margin:0; font-size:12px; color:#666;">${item.name}</p>
+                </div>
+                <div style="text-align:right;">
+                    <p style="margin:0; font-size:10px; color:#888; margin-bottom:4px;">Lokasi</p>
+                    ${locBadge}
+                </div>
+                ${!isSorted ? `<button class="btn-danger" style="padding:4px 8px; font-size:12px; margin:0;" onclick="pickingListItems.splice(${idx}, 1); renderPickingListUI();">X</button>` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+};
