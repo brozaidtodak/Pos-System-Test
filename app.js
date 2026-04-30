@@ -129,7 +129,7 @@ function switchHub(sectionIds, title, btnElement) {
         renderPOS(term);
     }
     if(sectionIds.includes('stockTakeSection')) renderAuditCards();
-    if(sectionIds.includes('packagingSection')) renderPackaging();
+
     if(sectionIds.includes('mgmtPlaceholders')) renderMgmtPlaceholders();
     if(sectionIds.includes('rosterSection')) renderStaffSchedule();
 }
@@ -866,33 +866,7 @@ window.processBarcodeAudit = function() {
     document.getElementById('barcodeScannerModal').style.display='none';
 }
 
-function renderPackaging() {
-    const container = document.getElementById("packagingCardsContainer");
-    if(!container) return;
-    
-    // Filter dummy or real orders that need packing (e.g., status pending/processing)
-    const toPack = salesHistory.filter(s => s.status && s.status.toLowerCase() !== 'completed' && s.status !== 'Refunded');
-    
-    if(toPack.length === 0) {
-        container.innerHTML = '<p style="color:#888;">Hebat! Tiada pesanan yang tertunggak untuk dibungkus hari ini.</p>';
-        return;
-    }
-    
-    container.innerHTML = toPack.map(s => `
-        <div class="dash-card" style="border-left:5px solid #F37021;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <strong>Order: ${s.id || '#INV_XXX'}</strong>
-                <span style="font-size:12px; color:#F37021; font-weight:bold;">To Pack</span>
-            </div>
-            <p style="font-size:13px; margin-bottom:5px;"><strong>Customer:</strong> ${s.customer_name}</p>
-            <p style="font-size:13px; color:#888; margin-bottom:10px;"><strong>Channel:</strong> ${s.channel}</p>
-            <div style="background:#f9f9f9; padding:8px; border-radius:4px; font-size:12px; margin-bottom:15px; border:1px solid #eee;">
-                ${(s.items || []).map(i => `• ${i.quantity}x ${i.name}`).join('<br>')}
-            </div>
-            <button class="btn-primary" style="width:100%; font-size:12px;" onclick="alert('Consignment Note sedang dijana untuk ${s.customer_name}!')">Print AWB & Selesai</button>
-        </div>
-    `).join('');
-}
+
 
 
 
