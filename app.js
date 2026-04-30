@@ -3842,17 +3842,13 @@ window.saveProductRegistration = async function() {
     // Parse values
     let qtyReceived = parseInt(units);
     
+    // Only send columns that are proven to exist in inventory_batches
     const batchPayload = {
         sku: sku,
         batch_year: new Date(shipmentDate).getFullYear() || new Date().getFullYear(),
         inbound_date: shipmentDate,
         qty_received: qtyReceived,
-        qty_remaining: qtyReceived,
-        shipment_no: shipmentNo,
-        cost_rmb: parseFloat(priceRmb),
-        shipping_cost_total: parseFloat(shippingCost),
-        shipping_per_unit: parseFloat(shippingPerUnit),
-        po_desc: desc
+        qty_remaining: qtyReceived
     };
     
     // Insert to Supabase (inventory_batches)
@@ -3860,16 +3856,19 @@ window.saveProductRegistration = async function() {
     
     if(batchErr) {
         console.error("Batch Insert Error:", batchErr);
-        alert("Ralat menyimpan Batch. Sila pastikan kolum (shipment_no, cost_rmb dll) wujud di Supabase.");
+        alert("Ralat menyimpan Batch. Pastikan SKU wujud di Master Product.");
         return;
     }
+
+    // Combine extra data into the reason text for tracking
+    let trackingInfo = `PO: ${shipmentNo} | RMB: ${priceRmb} | Ship: RM${shippingCost} | Desc: ${desc}`;
 
     // Insert Transaction Audit Trail
     const txnPayload = {
         sku: sku,
         transaction_type: 'PO_IN',
         qty: qtyReceived,
-        reason: shipmentNo + " - " + desc,
+        reason: trackingInfo,
         staff_name: currentUser ? currentUser.name : 'System',
         created_at: new Date().toISOString()
     };
