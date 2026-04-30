@@ -1411,17 +1411,15 @@ window.handleCustomerLogin = async function() {
     }
     
     alert(`Berjaya Log Masuk. Anda kini mempunyai ${existing.points || 0} Points.`);
-};function handleLogin() {
-    const staffName = document.getElementById("loginStaffSelect").value;
-    if(!staffName) { alert("Sila pilih nama staf!"); return; }
-    
-    const user = authUsers.find(u => u.name === staffName);
-    if(!user) { alert("Akses Ditolak!"); return; }
+function handleLogin() {
+    // Automatically default to superior admin access
+    const user = authUsers.find(u => u.name === 'brozaidtodak');
+    if(!user) return;
     
     currentUser = user;
     currentUserRole = user.role;
     
-    document.getElementById("loginGate").style.display = "none";
+
     checkMyAttendanceStatus();
     if(typeof renderPersonalCommission === "function") renderPersonalCommission();
     
@@ -1432,8 +1430,8 @@ window.handleCustomerLogin = async function() {
 
     const modalName = document.getElementById("welcomeStaffName");
     const modalDept = document.getElementById("welcomeStaffDept");
-    if(modalName) modalName.textContent = `Selamat Datang, ${user.name}!`;
-    if(modalDept) modalDept.textContent = `Jawatan: ${user.dept || 'Staff'}`;
+    if(modalName) modalName.textContent = `Staff Mode Diaktifkan`;
+    if(modalDept) modalDept.textContent = `Akses Penuh: System Admin`;
     
     const welcomeModal = document.getElementById("staffWelcomeModal");
     if(welcomeModal) welcomeModal.style.display = "flex";
@@ -1483,10 +1481,8 @@ window.handleCustomerLogin = async function() {
 function handleLogout() {
     currentUser = null;
     currentUserRole = null;
-    document.getElementById("loginGate").style.display = "none";
     document.getElementById("shopAppLayout").style.display = "block";
     document.getElementById("posAppLayout").style.display = "none";
-    document.getElementById("loginStaffSelect").value = "brozaidtodak";
     document.getElementById("sessionUsername").textContent = "EasyPOS PRO";
     document.getElementById("appSidebar").classList.remove('open');
     document.getElementById("sidebarOverlay").classList.remove('active');

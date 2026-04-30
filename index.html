@@ -16,27 +16,7 @@
 </head>
 <body>
 
-    <!-- 0. LOGIN OVERLAY -->
-    <div id="loginGate" class="login-overlay" style="display:none;">
-        <div class="login-box">
-            <h2 style="margin-bottom:5px; font-weight:800; font-size:24px; letter-spacing:-1px;">10camp</h2>
-            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Pilih profil staf untuk memulakan sesi.</p>
-            
-            <label class="small-lbl" style="text-align:left;">Nama Staf</label>
-            <select id="loginStaffSelect" class="login-input" style="text-align:center; font-size:16px; font-weight:bold;">
-                <option value="brozaidtodak">brozaidtodak (Managing Director)</option>
-                <option value="Aliff">Aliff (Admin)</option>
-                <option value="Farhan Moyy">Farhan Moyy (BD)</option>
-                <option value="Zack">Zack (System Manager)</option>
-                <option value="Ariff">Ariff (Sales)</option>
-                <option value="Irfan">Irfan (Marketing)</option>
-                <option value="Tarmizi Kael">Tarmizi Kael (Inventory)</option>
-                <option value="Fahmi">Fahmi (Inventory)</option>
-            </select>
 
-            <button onclick="handleLogin()" class="login-btn">Log Masuk</button>
-        </div>
-    </div>
 
     <!-- 0.01 STAFF WELCOME POPUP -->
     <div id="staffWelcomeModal" class="login-overlay" style="display:none; z-index:3500; animation: fadeIn 0.3s;">
@@ -304,7 +284,7 @@
             <div style="display:flex; gap:15px; align-items:center;">
                 <button id="btnCustomerPortal" onclick="document.getElementById('customerLoginGate').style.display='flex'" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 12px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; color:var(--primary);">VIP Login</button>
                 <button id="btnPublicCartCount" onclick="togglePublicCart()" style="background:none; border:none; font-weight:bold; cursor:pointer; font-size:15px;">Cart (0)</button>
-                <button onclick="document.getElementById('loginGate').style.display='flex'" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:12px; font-weight:bold; cursor:pointer;">Staff Login</button>
+                <button onclick="handleLogin()" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:12px; font-weight:bold; cursor:pointer;">Staff Mode</button>
             </div>
         </header>
 
@@ -1825,7 +1805,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=37"></script>
+    <script src="app.js?v=38"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
