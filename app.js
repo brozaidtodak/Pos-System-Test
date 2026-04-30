@@ -1407,11 +1407,11 @@ window.handleCustomerLogin = async function() {
     
     alert(`Berjaya Log Masuk. Anda kini mempunyai ${existing.points || 0} Points.`);
 };function handleLogin() {
-    const pin = document.getElementById("loginPin").value;
-    if(!pin) { alert("Sila masukkan PIN!"); return; }
+    const staffName = document.getElementById("loginStaffSelect").value;
+    if(!staffName) { alert("Sila pilih nama staf!"); return; }
     
-    const user = authUsers.find(u => u.pin === pin);
-    if(!user) { alert("Akses Ditolak: PIN Salah atau Tidak Wujud!"); return; }
+    const user = authUsers.find(u => u.name === staffName);
+    if(!user) { alert("Akses Ditolak!"); return; }
     
     currentUser = user;
     currentUserRole = user.role;
@@ -1481,7 +1481,7 @@ function handleLogout() {
     document.getElementById("loginGate").style.display = "none";
     document.getElementById("shopAppLayout").style.display = "block";
     document.getElementById("posAppLayout").style.display = "none";
-    document.getElementById("loginPin").value = "";
+    document.getElementById("loginStaffSelect").value = "brozaidtodak";
     document.getElementById("sessionUsername").textContent = "EasyPOS PRO";
     document.getElementById("appSidebar").classList.remove('open');
     document.getElementById("sidebarOverlay").classList.remove('active');

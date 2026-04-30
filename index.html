@@ -20,12 +20,21 @@
     <div id="loginGate" class="login-overlay" style="display:none;">
         <div class="login-box">
             <h2 style="margin-bottom:5px; font-weight:800; font-size:24px; letter-spacing:-1px;">10camp</h2>
-            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Enter your unique Security PIN to proceed.</p>
+            <p style="color:var(--text-muted); margin-bottom:25px; font-size:13px;">Pilih profil staf untuk memulakan sesi.</p>
             
-            <label class="small-lbl" style="text-align:left;">Employee PIN</label>
-            <input type="password" id="loginPin" class="login-input" placeholder="****" style="text-align:center; font-size:24px; letter-spacing:10px; font-weight:bold;">
+            <label class="small-lbl" style="text-align:left;">Nama Staf</label>
+            <select id="loginStaffSelect" class="login-input" style="text-align:center; font-size:16px; font-weight:bold;">
+                <option value="brozaidtodak">brozaidtodak (Managing Director)</option>
+                <option value="Aliff">Aliff (Admin)</option>
+                <option value="Farhan Moyy">Farhan Moyy (BD)</option>
+                <option value="Zack">Zack (System Manager)</option>
+                <option value="Ariff">Ariff (Sales)</option>
+                <option value="Irfan">Irfan (Marketing)</option>
+                <option value="Tarmizi Kael">Tarmizi Kael (Inventory)</option>
+                <option value="Fahmi">Fahmi (Inventory)</option>
+            </select>
 
-            <button onclick="handleLogin()" class="login-btn">Secure Login</button>
+            <button onclick="handleLogin()" class="login-btn">Log Masuk</button>
         </div>
     </div>
 
@@ -1789,7 +1798,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=35"></script>
+    <script src="app.js?v=36"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
