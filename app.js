@@ -85,6 +85,8 @@ let inventoryBatches = [];
 
 let salesHistory = [];
 let inventoryTransactions = [];
+let purchaseOrders = [];
+let poDraftItems = [];
 
 let customersData = [];
 
@@ -160,6 +162,15 @@ async function initApp() {
 
         let { data: txns } = await db.from('inventory_transactions').select('*').order('created_at', {ascending: false});
         if(txns) inventoryTransactions = txns;
+
+        try {
+            let { data: pos } = await db.from('purchase_orders').select('*').order('created_at', {ascending: false});
+            if(pos) purchaseOrders = pos;
+        } catch(e) {
+            console.log("No purchase_orders table yet, using memory/localStorage fallback.");
+            let localPo = localStorage.getItem('local_purchase_orders');
+            if(localPo) purchaseOrders = JSON.parse(localPo);
+        }
 
         // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
         renderPublicStorefront();
@@ -242,6 +253,7 @@ async function initApp() {
         if(typeof renderFinance === "function") renderFinance();
         if(typeof renderWhAudit === 'function') renderWhAudit();
         if(typeof renderInventoryLedger === 'function') renderInventoryLedger();
+        if(typeof renderPoSection === 'function') renderPoSection();
         if(typeof renderMgmtInventory === 'function') renderMgmtInventory();
         autoClockOutUnclosed();
         if(typeof renderPersonalCommission === "function") renderPersonalCommission();
@@ -4520,3 +4532,184 @@ window.downloadLedgerCsv = function() {
     document.body.removeChild(link);
 };
 // End Ledger UI Logic
+
+// Start Purchase Order (PO) Module Logic
+window.addPoItemLine = function() {
+    const sku = document.getElementById("poSkuSearch").value.trim();
+    const qty = parseInt(document.getElementById("poQtyInput").value);
+    const cost = parseFloat(document.getElementById("poCostInput").value);
+    
+    if(!sku || isNaN(qty) || qty <= 0 || isNaN(cost) || cost < 0) {
+        return alert("Sila masukkan SKU, Kuantiti, dan Kos yang sah.");
+    }
+    
+    const prod = masterProducts.find(p => p.sku === sku);
+    if(!prod) {
+        return alert("SKU tidak wujud di dalam sistem utama.");
+    }
+    
+    poDraftItems.push({ sku, qty, cost, total: qty * cost });
+    document.getElementById("poSkuSearch").value = "";
+    document.getElementById("poQtyInput").value = "";
+    document.getElementById("poCostInput").value = "";
+    
+    renderPoDraftTable();
+};
+
+window.renderPoDraftTable = function() {
+    const tbody = document.getElementById("poDraftTbody");
+    const totalCostEl = document.getElementById("poTotalCost");
+    
+    if(poDraftItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">Belum ada barang dimasukkan.</td></tr>';
+        totalCostEl.textContent = "RM 0.00";
+        return;
+    }
+    
+    let html = "";
+    let grandTotal = 0;
+    
+    poDraftItems.forEach((item, index) => {
+        grandTotal += item.total;
+        html += `
+            <tr>
+                <td style="font-weight:bold;">${item.sku}</td>
+                <td>${item.qty}</td>
+                <td>RM ${item.cost.toFixed(2)}</td>
+                <td style="font-weight:bold;">RM ${item.total.toFixed(2)}</td>
+                <td><button class="btn-danger" style="padding:2px 8px; font-size:10px;" onclick="removePoDraftItem(${index})">X</button></td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    totalCostEl.textContent = `RM ${grandTotal.toFixed(2)}`;
+};
+
+window.removePoDraftItem = function(index) {
+    poDraftItems.splice(index, 1);
+    renderPoDraftTable();
+};
+
+window.submitPurchaseOrder = async function() {
+    const poNo = document.getElementById("poNumber").value.trim() || `PO-${Date.now()}`;
+    const supplier = document.getElementById("poSupplier").value.trim();
+    const eta = document.getElementById("poEtaDate").value;
+    
+    if(!supplier || !eta) return alert("Sila masukkan Nama Pembekal dan Tarikh ETA.");
+    if(poDraftItems.length === 0) return alert("Tiada barang dalam draf PO.");
+    
+    const newPO = {
+        po_number: poNo,
+        supplier: supplier,
+        eta_date: eta,
+        status: 'Pending',
+        items: JSON.stringify(poDraftItems),
+        created_at: new Date().toISOString()
+    };
+    
+    try {
+        let { error } = await db.from('purchase_orders').insert([newPO]);
+        if(error) throw error;
+    } catch(e) {
+        console.log("Saving PO locally as fallback.");
+        purchaseOrders.push(newPO);
+        localStorage.setItem('local_purchase_orders', JSON.stringify(purchaseOrders));
+    }
+    
+    alert(`Purchase Order ${poNo} berjaya dicipta!`);
+    
+    // Reset Form
+    poDraftItems = [];
+    document.getElementById("poNumber").value = "";
+    document.getElementById("poSupplier").value = "";
+    document.getElementById("poEtaDate").value = "";
+    renderPoDraftTable();
+    
+    await window.initApp();
+};
+
+window.renderPoSection = function() {
+    const tbody = document.getElementById("poListTbody");
+    if(!tbody) return;
+    
+    if(!purchaseOrders || purchaseOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Tiada Purchase Order dijumpai.</td></tr>';
+        return;
+    }
+    
+    const html = purchaseOrders.map(po => {
+        let items = [];
+        try { items = typeof po.items === 'string' ? JSON.parse(po.items) : po.items; } catch(e){}
+        
+        let skus = items.map(i => `${i.sku} (${i.qty})`).join(', ');
+        if(skus.length > 50) skus = skus.substring(0, 50) + '...';
+        
+        let statusBadge = po.status === 'Completed' 
+            ? '<span style="background:#D1FAE5; color:#065F46; padding:2px 6px; border-radius:4px; font-weight:bold;">Completed</span>' 
+            : '<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-weight:bold;">Pending</span>';
+            
+        let actionBtn = po.status === 'Pending' 
+            ? `<button class="btn-success" style="font-size:10px; padding:4px 8px; margin:0;" onclick="receivePO('${po.po_number}')">Terima Stok (Receive)</button>` 
+            : '-';
+            
+        return `
+            <tr>
+                <td style="font-weight:bold;">${po.po_number}</td>
+                <td>${po.supplier}</td>
+                <td>${po.eta_date}</td>
+                <td>${statusBadge}</td>
+                <td style="font-size:11px;">${skus}</td>
+                <td>${actionBtn}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    tbody.innerHTML = html;
+};
+
+window.receivePO = async function(poNo) {
+    if(!confirm(`Adakah anda pasti stok fizikal untuk ${poNo} telah tiba di gudang dan sedia untuk di-Inbound?`)) return;
+    
+    const po = purchaseOrders.find(p => p.po_number === poNo);
+    if(!po) return;
+    
+    let items = [];
+    try { items = typeof po.items === 'string' ? JSON.parse(po.items) : po.items; } catch(e){}
+    
+    try {
+        for(let item of items) {
+            // Add to batches
+            await db.from('inventory_batches').insert([{
+                sku: item.sku,
+                qty_received: item.qty,
+                qty_remaining: item.qty,
+                inbound_date: new Date().toISOString().split('T')[0]
+            }]);
+            
+            // Add to transactions ledger
+            await db.from('inventory_transactions').insert([{
+                sku: item.sku,
+                transaction_type: 'IN',
+                qty: item.qty,
+                reason: `PO Received: ${poNo} from ${po.supplier}`,
+                staff_name: currentUser ? currentUser.name : 'System',
+                created_at: new Date().toISOString()
+            }]);
+        }
+        
+        // Update PO Status
+        try {
+            await db.from('purchase_orders').update({status: 'Completed'}).eq('po_number', poNo);
+        } catch(e) {
+            po.status = 'Completed';
+            localStorage.setItem('local_purchase_orders', JSON.stringify(purchaseOrders));
+        }
+        
+        alert(`Semua item dari ${poNo} berjaya di-Inbound!`);
+        await window.initApp();
+    } catch(e) {
+        alert("Ralat semasa Inbound PO: " + e.message);
+    }
+};
+// End PO Logic

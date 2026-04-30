@@ -604,6 +604,9 @@
             <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_stocktake" onclick="switchHub(['stockTakeSection'], 'Stock Take Count', this)">
                 <i data-lucide="clipboard-check" style="width:16px; height:16px;"></i> Stock Take Count
             </div>
+            <div class="menu-item inv-only" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders (PO)', this)">
+                <i data-lucide="truck" style="width:16px; height:16px;"></i> Purchase Orders (PO)
+            </div>
 
             <!-- END INVENTORY DEPT -->
             <div class="menu-item mgmt-only" data-tab="management_mode" onclick="switchHub(['mgmtPlaceholders'], 'Management Mode', this)" style="display:flex; align-items:center; gap:8px;">
@@ -938,7 +941,83 @@
             </div>
         </div>
 
+        <!-- ============================================== -->
+        <!-- SECTION: PURCHASE ORDERS (PO)                  -->
+        <!-- ============================================== -->
+        <div id="poSection" class="tab-section" style="display: none;">
+            <!-- Create PO Form -->
+            <div class="admin-card" style="padding:20px; border-top:4px solid var(--primary); margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h2 style="margin:0;"><i data-lucide="file-plus" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Cipta Purchase Order (PO) Baru</h2>
+                </div>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Sistem tempahan rasmi untuk bekalan stok. Masukkan butiran pembekal dan senarai barang yang ingin dipesan.</p>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div><label class="small-lbl">No. PO (Auto/Custom)</label><input type="text" id="poNumber" class="login-input" placeholder="e.g. PO-2026-001"></div>
+                    <div><label class="small-lbl">Nama Pembekal (Supplier)</label><input type="text" id="poSupplier" class="login-input" placeholder="e.g. Blackdog HQ"></div>
+                    <div><label class="small-lbl">Tarikh Jangkaan Tiba (ETA)</label><input type="date" id="poEtaDate" class="login-input"></div>
+                </div>
 
+                <div style="background:#f9fafb; padding:15px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:20px;">
+                    <h3 style="font-size:14px; margin-bottom:10px; color:#374151;">Senarai Barang Ditempah</h3>
+                    <div style="display:flex; gap:10px; align-items:flex-end; margin-bottom:15px;">
+                        <div style="flex:2;">
+                            <label class="small-lbl">Cari SKU Produk</label>
+                            <input type="text" id="poSkuSearch" class="login-input" placeholder="Taip SKU..." list="movementSkuList" style="margin:0;">
+                        </div>
+                        <div style="flex:1;">
+                            <label class="small-lbl">Kuantiti (Unit)</label>
+                            <input type="number" id="poQtyInput" class="login-input" placeholder="0" min="1" style="margin:0;">
+                        </div>
+                        <div style="flex:1;">
+                            <label class="small-lbl">Anggaran Kos/Unit (RM)</label>
+                            <input type="number" id="poCostInput" class="login-input" placeholder="0.00" step="0.01" style="margin:0;">
+                        </div>
+                        <button class="btn-primary" style="height:42px; padding:0 20px;" onclick="window.addPoItemLine()">Tambah</button>
+                    </div>
+
+                    <div class="table-responsive" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-color);">
+                        <table class="data-table" style="font-size:12px;">
+                            <thead style="position:sticky; top:0; background:#FAFAFA;">
+                                <tr><th>SKU</th><th>Kuantiti</th><th>Kos/Unit (RM)</th><th>Jumlah Kos (RM)</th><th>Tindakan</th></tr>
+                            </thead>
+                            <tbody id="poDraftTbody">
+                                <tr id="emptyPoRow"><td colspan="5" style="text-align:center; color:#999;">Belum ada barang dimasukkan.</td></tr>
+                            </tbody>
+                            <tfoot style="font-weight:bold; background:#eee;">
+                                <tr><td colspan="3" style="text-align:right;">Total Keseluruhan PO:</td><td id="poTotalCost">RM 0.00</td><td></td></tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <button class="btn-success" style="width:100%; font-size:16px; padding:12px;" onclick="window.submitPurchaseOrder()">Hantar Tempahan PO Rasmi</button>
+            </div>
+
+            <!-- Active PO List -->
+            <div class="admin-card" style="padding:20px; border-top:4px solid #F59E0B;">
+                <h2 style="margin-bottom:15px;"><i data-lucide="list-todo" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Senarai PO Aktif & Sejarah</h2>
+                <p style="font-size:13px; color:#888; margin-bottom:20px;">Tekan "Terima Stok (Receive)" apabila bekalan tiba di gudang. Sistem akan auto-inbound stok ke dalam lejar.</p>
+
+                <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
+                    <table class="data-table" style="font-size:12px;">
+                        <thead style="position:sticky; top:0; background:#FAFAFA;">
+                            <tr>
+                                <th>No. PO</th>
+                                <th>Pembekal</th>
+                                <th>ETA Tiba</th>
+                                <th>Status</th>
+                                <th>Senarai SKU</th>
+                                <th>Tindakan (Goods Received)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="poListTbody">
+                            <tr><td colspan="6" style="text-align:center;">Loading PO records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         <!-- ============================================== -->
         <!-- SECTION: CUSTOMERS CRM                         -->
@@ -1807,7 +1886,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=41"></script>
+    <script src="app.js?v=42"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
