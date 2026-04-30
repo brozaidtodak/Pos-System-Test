@@ -448,7 +448,7 @@ function renderWMS() {
                     ${sBadge}
                 </td>
                 <td>
-                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span> ${p.location_bin ? `<span style="background:#fef08a; color:#854d0e; padding:3px 6px; border-radius:4px; font-size:10px;">📌 Loc: ${p.location_bin}</span>` : ''}<br>
+                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span> ${p.location_bin ? `<span style="background:#fef08a; color:#854d0e; padding:3px 6px; border-radius:4px; font-size:10px;"> Loc: ${p.location_bin}</span>` : ''}<br>
                     <strong>${p.name}</strong><br>
                     <small style="color:#888;">Jenama: <strong>${p.brand || 'N/A'}</strong></small>
                 </td>
@@ -465,7 +465,7 @@ function renderWMS() {
                 </td>
                 <td>
                     <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
-                        📍 ${p.location_bin || "Tiada Maklumat Rak"}
+                         ${p.location_bin || "Tiada Maklumat Rak"}
                     </div>
                 </td>
                 <td>
@@ -524,7 +524,7 @@ function renderStockTake() {
         const statusColor = totalStock > 10 ? "var(--success)" : "var(--danger)";
         const imgUrl = (p.images && p.images[0]) ? p.images[0] : "https://via.placeholder.com/150?text=No+Image";
         
-        let stampHtml = auditTimestamps[p.sku] ? `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold;">✅ Disemak pada: ${auditTimestamps[p.sku]}</p>` : "";
+        let stampHtml = auditTimestamps[p.sku] ? `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold;"> Disemak pada: ${auditTimestamps[p.sku]}</p>` : "";
 
         const currentLoc = p.location_bin || locText;
         const currentStatus = p.stock_status || statusStok;
@@ -550,12 +550,12 @@ function renderStockTake() {
                 <div style="flex:1; min-width:220px; padding-left:10px; border-left:1px dashed var(--border-color);">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <p class="small-lbl" style="margin:0;">Lokasi Stok</p>
-                        <button onclick="openLocModal('${p.sku}')" style="background:none; border:none; cursor:pointer; font-size:12px; color:var(--primary);">✏️ Ubah</button>
+                        <button onclick="openLocModal('${p.sku}')" style="background:none; border:none; cursor:pointer; font-size:12px; color:var(--primary);">️ Ubah</button>
                     </div>
                     <div id="locDisplay-${p.sku}" style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;">📍 ${p.loc_level || 'G'}</span>
-                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">🗄️ ${p.loc_rack || '-'}</span>
-                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">⬆️ ${p.loc_tier || '-'}</span>
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;"> ${p.loc_level || 'G'}</span>
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">️ ${p.loc_rack || '-'}</span>
+                        <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">️ ${p.loc_tier || '-'}</span>
                     </div>
                     
                     <p class="small-lbl" style="margin:0; margin-bottom:3px;">Status Stok</p>
@@ -584,7 +584,7 @@ function renderStockTake() {
                     </div>
                     
                     <div style="background:#e0f2fe; border:1px dashed #bae6fd; padding:10px; border-radius:6px; margin-bottom:10px; text-align:center;">
-                        <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;">📷 Tally Scan Fizikal (+1)</label>
+                        <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;"> Tally Scan Fizikal (+1)</label>
                         <input type="text" onkeyup="handleTallyScan(event, '${p.sku}', '${erpBarcode}')" class="login-input" style="width:100%; text-align:center; padding:6px; margin:0; border-color:#0ea5e9; font-size:12px;" placeholder="Tumpu di sini & scan barcode...">
                     </div>
 
@@ -634,15 +634,15 @@ window.submitLocUpdate = function() {
     let display = document.getElementById('locDisplay-'+sku);
     if(display) {
         display.innerHTML = `
-            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">📍 ${level || '-'}</span>
-            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">🗄️ ${rack || '-'}</span>
-            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">⬆️ ${tier || '-'}</span>
+            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;"> ${level || '-'}</span>
+            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">️ ${rack || '-'}</span>
+            <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#dcfce7; padding:3px 8px; border-radius:4px; border:1px solid #86efac; animation:fadeIn 0.3s;">️ ${tier || '-'}</span>
         `;
         setTimeout(() => {
             display.innerHTML = `
-                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;">📍 ${level || '-'}</span>
-                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">🗄️ ${rack || '-'}</span>
-                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">⬆️ ${tier || '-'}</span>
+                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0F2FE; padding:3px 8px; border-radius:4px; border:1px solid #BAE6FD;"> ${level || '-'}</span>
+                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#FEF3C7; padding:3px 8px; border-radius:4px; border:1px solid #FDE68A;">️ ${rack || '-'}</span>
+                <span style="font-family:monospace; font-size:11px; font-weight:bold; background:#E0E7FF; padding:3px 8px; border-radius:4px; border:1px solid #C7D2FE;">️ ${tier || '-'}</span>
             `;
         }, 800);
     }
@@ -706,7 +706,7 @@ window.submitAuditSingle = function(sku) {
     // Refresh that component
     let stampWrap = document.getElementById("stampWrapper-"+sku);
     if(stampWrap) {
-        stampWrap.innerHTML = `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold; animation: fadeIn 0.5s;">✅ Disemak pada: ${auditTimestamps[sku]}</p>`;
+        stampWrap.innerHTML = `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold; animation: fadeIn 0.5s;"> Disemak pada: ${auditTimestamps[sku]}</p>`;
     }
     
     // Optional border color change to signify done
@@ -917,7 +917,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
             
             if(salesPayload.length === 0) {
                 alert("Format CSV/Excel Sales Tidak Sah / Kosong.");
-                btn.disabled = false; btn.textContent = "📥 Process Robot Upload";
+                btn.disabled = false; btn.textContent = " Process Robot Upload";
                 return;
             }
             try {
@@ -930,7 +930,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
                 }
                 alert(`Migrasi ${salesPayload.length} Rekod Jualan Berjaya!`);
                 await initApp();
-            } catch(e) { alert("Error: " + e.message); } finally { btn.disabled = false; btn.textContent = "📥 Process Robot Upload"; }
+            } catch(e) { alert("Error: " + e.message); } finally { btn.disabled = false; btn.textContent = " Process Robot Upload"; }
             return;
         }
 
@@ -973,7 +973,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
 
         if(payload.length === 0) {
             alert("Format Dokumen Tidak Dikenalpasti / Tiada SKU.");
-            btn.disabled = false; btn.textContent = "📥 Process Robot Upload";
+            btn.disabled = false; btn.textContent = " Process Robot Upload";
             return;
         }
         
@@ -1002,7 +1002,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
         } catch(e) {
             alert("Migration Error: " + e.message);
         } finally {
-            btn.disabled = false; btn.textContent = "📥 Process Robot Upload";
+            btn.disabled = false; btn.textContent = " Process Robot Upload";
         }
     };
 
@@ -1025,7 +1025,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
             if (jsonData.length === 0) {
                 alert("Fail bersheet kosong!");
                 document.getElementById("startCsvBtn").disabled = false;
-                document.getElementById("startCsvBtn").textContent = "📥 Process Robot Upload";
+                document.getElementById("startCsvBtn").textContent = " Process Robot Upload";
                 return;
             }
             const headers = Object.keys(jsonData[0]);
@@ -1034,7 +1034,7 @@ document.getElementById("startCsvBtn").onclick = async function() {
         reader.readAsArrayBuffer(file);
     } else {
         alert("Sila muat naik format fail yang sah (.csv atau .xlsx / .xls)!");
-        this.disabled = false; this.textContent = "📥 Process Robot Upload";
+        this.disabled = false; this.textContent = " Process Robot Upload";
     }
 };
 
@@ -1064,7 +1064,7 @@ document.getElementById("exportExcelBtn").onclick = function() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory Data");
     
     XLSX.writeFile(workbook, `10CAMP_Inventory_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
-    this.textContent = "📤 Export Products (.xlsx)";
+    this.textContent = " Export Products (.xlsx)";
 };
 
 
@@ -1288,7 +1288,7 @@ window.dispatchEmailReceipt = function() {
     btn.disabled = true;
     
     setTimeout(() => {
-        btn.innerHTML = "✅ Berjaya Dihantar!";
+        btn.innerHTML = " Berjaya Dihantar!";
         btn.style.background = "var(--success)";
         alert("E-Resit berjaya diviralkan ke: " + emailStr + "\\n(Nota Fasa 1: E-Mel dihantar menerusi mock-service. EmailJS sedia disambungkan!).");
     }, 1500);
@@ -1333,7 +1333,7 @@ function renderCustomers() {
             <td><strong>${c.name}</strong></td>
             <td>${c.phone || '-'}</td>
             <td style="color:#F59E0B; font-weight:bold;">${c.points || 0} pts</td>
-            <td>${c.is_member ? '<span style="color:#10B981; font-weight:bold;">VIP ✓</span>' : '<span style="color:#aaa;">Non-Member</span>'}</td>
+            <td>${c.is_member ? '<span style="color:#10B981; font-weight:bold;">VIP </span>' : '<span style="color:#aaa;">Non-Member</span>'}</td>
             <td><button onclick="viewCustomerHistory('${c.name}')" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Lihat Rekod</button></td>
         </tr>`;
     });
@@ -1353,7 +1353,7 @@ function renderPromotions() {
                 <td><strong>${p.code}</strong></td>
                 <td>${p.discount_type}</td>
                 <td style="font-weight:bold;">${p.discount_type === 'percent' ? p.discount_value + '%' : 'RM' + parseFloat(p.discount_value).toFixed(2)}</td>
-                <td>${p.active ? '<span style="color:#10B981; font-weight:bold;">Active ✓</span>' : '<span style="color:#EF4444;">Inactive</span>'}</td>
+                <td>${p.active ? '<span style="color:#10B981; font-weight:bold;">Active </span>' : '<span style="color:#EF4444;">Inactive</span>'}</td>
             </tr>`;
         });
     });
@@ -1427,7 +1427,7 @@ function handleLogin() {
     
     // Popup Greeting Staff
     if(globalMemo.active) {
-        alert("📢 PENGUMUMAN DARI PENGURUSAN:\n\n" + globalMemo.text);
+        alert(" PENGUMUMAN DARI PENGURUSAN:\n\n" + globalMemo.text);
     }
 
     const modalName = document.getElementById("welcomeStaffName");
@@ -1442,7 +1442,7 @@ function handleLogin() {
     document.getElementById("posAppLayout").style.display = "block";
     
     // Crown indicator for top tiers
-    let displayCrown = ['superior', 'mgmt', 'inventory'].includes(user.role) ? ' 👑' : '';
+    let displayCrown = ['superior', 'mgmt', 'inventory'].includes(user.role) ? ' ' : '';
     document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + displayCrown;
     
     const salesMenus = document.querySelectorAll(".sales-only");
@@ -1535,7 +1535,7 @@ function renderPublicStorefront() {
                     <span class="cat-badge">${p.category||'Uncat'}</span>
                     <h3 style="margin-top:10px; font-size:16px; height:40px; overflow:hidden; font-weight:700;">${p.name}</h3>
                     <p class="price" style="font-size:18px; font-weight:900;">RM ${parseFloat(p.price).toFixed(2)}</p>
-                    <button onclick="addToPublicCart('${p.sku}')" style="width:100%; border-radius:50px; background:#111; color:white; padding:12px; border:none; margin-top:10px; cursor:pointer; font-weight:bold; font-size:13px;" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Sold Out' : 'Add to Cart 🛒'}</button>
+                    <button onclick="addToPublicCart('${p.sku}')" style="width:100%; border-radius:50px; background:#111; color:white; padding:12px; border:none; margin-top:10px; cursor:pointer; font-weight:bold; font-size:13px;" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Sold Out' : 'Add to Cart '}</button>
                 </div>
             </div>
         `;
@@ -1543,9 +1543,9 @@ function renderPublicStorefront() {
     
     htmlBuf2 += `
         <div style="width:100%; display:flex; justify-content:center; align-items:center; gap:20px; margin-top:30px; grid-column: 1 / -1; font-family:Inter;">
-            <button onclick="changePublicPage(-1)" ${publicCurrentPage <= 1 ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} style="padding:10px 20px; background:#f0f0f0; border:none; border-radius:5px; font-weight:bold;">◀ Back</button>
+            <button onclick="changePublicPage(-1)" ${publicCurrentPage <= 1 ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} style="padding:10px 20px; background:#f0f0f0; border:none; border-radius:5px; font-weight:bold;"> Back</button>
             <span style="font-size:15px; color:#444;">Page <b>${publicCurrentPage}</b> / ${totalPages}</span>
-            <button onclick="changePublicPage(1)" ${publicCurrentPage >= totalPages ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} style="padding:10px 20px; background:#111; color:white; border:none; border-radius:5px; font-weight:bold;">Next ▶</button>
+            <button onclick="changePublicPage(1)" ${publicCurrentPage >= totalPages ? 'disabled style="opacity:0.5"' : 'style="cursor:pointer"'} style="padding:10px 20px; background:#111; color:white; border:none; border-radius:5px; font-weight:bold;">Next </button>
         </div>
     `;
     list.innerHTML = htmlBuf2;
@@ -1766,7 +1766,7 @@ function renderFinance() {
                 <td><span class="cat-badge" style="background:#EF4444; color:#fff;">${f.category}</span></td>
                 <td>${f.description}</td>
                 <td style="color:#EF4444;">-RM ${parseFloat(f.amount).toFixed(2)}</td>
-                <td><button onclick="deleteFinance(${f.id})" style="background:none; border:none; color:red; cursor:pointer;" title="Delete Record">🚮</button></td>
+                <td><button onclick="deleteFinance(${f.id})" style="background:none; border:none; color:red; cursor:pointer;" title="Delete Record"></button></td>
             </tr>
         `;
     });
@@ -1817,9 +1817,9 @@ function renderFinance() {
         data: {
             labels: labels,
             datasets: [
-                { label: 'Revenue 📈', data: revData, backgroundColor: 'rgba(34, 197, 94, 0.5)', borderColor: '#22C55E', borderWidth: 1 },
-                { label: 'Expenses 📉', data: expData, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#EF4444', borderWidth: 1 },
-                { label: 'Net Profit 💰', data: netData, type: 'line', borderColor: '#8B5CF6', backgroundColor: '#8B5CF6', tension: 0.3 }
+                { label: 'Revenue ', data: revData, backgroundColor: 'rgba(34, 197, 94, 0.5)', borderColor: '#22C55E', borderWidth: 1 },
+                { label: 'Expenses ', data: expData, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#EF4444', borderWidth: 1 },
+                { label: 'Net Profit ', data: netData, type: 'line', borderColor: '#8B5CF6', backgroundColor: '#8B5CF6', tension: 0.3 }
             ]
         },
         options: { responsive: true, maintainAspectRatio: false }
@@ -2060,7 +2060,7 @@ function renderSalesMgmtTarget() {
     if(tbodyPending) {
         let pendingRecords = salesHistory.filter(s => s.status === 'Unpaid' || s.status === 'To Fulfil');
         if(pendingRecords.length === 0) {
-            tbodyPending.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#10B981; font-weight:bold;">✨ Hebat! Tiada sebarang hutang atau invois tergantung.</td></tr>`;
+            tbodyPending.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#10B981; font-weight:bold;"> Hebat! Tiada sebarang hutang atau invois tergantung.</td></tr>`;
         } else {
             let phtml = "";
             pendingRecords.forEach(p => {
@@ -2325,7 +2325,7 @@ window.renderStaffSchedule = function() {
                 else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
                 else if(code === 'PH') { bg = "#f472b6"; col = "white"; fw = "bold"; }
                 
-                let attachStr = code === 'MC' && shiftData && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}">📎</span>` : "";
+                let attachStr = code === 'MC' && shiftData && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}"></span>` : "";
 
                 if(isAdmin && window.isRosterEditMode) {
                     let selStr = `<select onchange="saveQuickShiftInline(this, '${staff.name}', '${targetDate}', ${shiftData ? shiftData.id : null}, this.value)" style="width:100%; height:100%; border:none; background:transparent; outline:none; text-align:center; font-size:11px; font-weight:${fw}; color:${col}; cursor:pointer; appearance:none; -webkit-appearance:none; padding:8px 2px;">`;
@@ -2365,10 +2365,10 @@ window.toggleRosterEditMode = function() {
     let btnSubmit = document.getElementById("btnSubmitRoster");
     
     if(window.isRosterEditMode) {
-        if(btnEdit) { btnEdit.style.background = "#4f46e5"; btnEdit.style.borderColor = "#4f46e5"; btnEdit.innerHTML = "❌ KELUAR EDIT"; }
+        if(btnEdit) { btnEdit.style.background = "#4f46e5"; btnEdit.style.borderColor = "#4f46e5"; btnEdit.innerHTML = " KELUAR EDIT"; }
         if(btnSubmit) btnSubmit.style.display = "flex";
     } else {
-        if(btnEdit) { btnEdit.style.background = "#6b7280"; btnEdit.style.borderColor = "#6b7280"; btnEdit.innerHTML = "✏️ MULA EDIT"; }
+        if(btnEdit) { btnEdit.style.background = "#6b7280"; btnEdit.style.borderColor = "#6b7280"; btnEdit.innerHTML = "️ MULA EDIT"; }
         if(btnSubmit) btnSubmit.style.display = "none";
     }
     renderStaffSchedule();
@@ -2410,7 +2410,7 @@ window.submitBulkRoster = async function() {
     if(!confirm("Sahkan simpankan keseluruhan tarikh ini ke pelayan Awan (Supabase)?\\n\\nTindakan ini akan menggantikan rekod sedia ada bagi bulan ini.")) return;
     
     let btnSubmit = document.getElementById("btnSubmitRoster");
-    if(btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = "⏳ MENYIMPAN..."; }
+    if(btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = " MENYIMPAN..."; }
 
     try {
         const year = activeRosterYear;
@@ -2447,7 +2447,7 @@ window.submitBulkRoster = async function() {
         alert("Ralat Menyimpan Pukal: " + err.message);
     }
     
-    if(btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = "✅ SIMPAN PERUBAHAN"; }
+    if(btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = " SIMPAN PERUBAHAN"; }
 };
 
 
@@ -2468,7 +2468,7 @@ window.renderPendingSchedules = function() {
         else if(req.shift === 'MC') { badgeBg = "#fbbf24"; }
         else if(req.shift === 'EL') { badgeBg = "#ef4444"; col="white"; }
 
-        let attachStr = req.shift === 'MC' ? `📎 ${req.mc_name}` : "-";
+        let attachStr = req.shift === 'MC' ? ` ${req.mc_name}` : "-";
 
         html += `
             <tr style="border-bottom:1px solid #fee2e2;">
@@ -2524,7 +2524,7 @@ window.approveRequest = async function(id) {
     pendingSchedules.splice(reqIndex, 1); // Remove from pending
     await db.from('pending_requests').delete().eq('id', id);
     
-    // 🔥 Inject Audit Log (Kelulusan)
+    //  Inject Audit Log (Kelulusan)
     try {
         let adminName = currentUser ? currentUser.name : 'Sistem Automasi';
         await db.from('audit_logs').insert([{
@@ -2548,7 +2548,7 @@ window.rejectRequest = async function(id) {
     if(reqIndex !== -1) {
         let req = pendingSchedules[reqIndex];
         
-        // 🔥 Inject Audit Log (Penolakan)
+        //  Inject Audit Log (Penolakan)
         try {
             let adminName = currentUser ? currentUser.name : 'Sistem Automasi';
             await db.from('audit_logs').insert([{
@@ -2957,7 +2957,7 @@ function renderCustomerIssues() {
             <td>
                 ${c.status === 'OPEN' 
                     ? `<button class="btn-success" style="padding:2px 8px; font-size:10px; background:var(--secondary);" onclick="resolveIssue(${c.id})">Mark Resolved</button>` 
-                    : `<span style="color:#10B981; font-weight:bold;">TUTUP ✓</span>`}
+                    : `<span style="color:#10B981; font-weight:bold;">TUTUP </span>`}
             </td>
         </tr>
     `).join('');
@@ -3040,7 +3040,7 @@ window.openClockModal = function() {
     const video = document.getElementById("clockVideoFeed");
     const loadTxt = document.getElementById("cameraLoadingText");
 
-    statusTxt.textContent = "🔍 Mengesan koordinat GPS anda...";
+    statusTxt.textContent = " Mengesan koordinat GPS anda...";
     statusTxt.style.color = "#0369a1";
     statusTxt.style.background = "#e0f2fe";
     btn.style.display = "none";
@@ -3053,7 +3053,7 @@ window.openClockModal = function() {
         let dist = calculateDistance(pLat, pLng, cLat, cLng);
 
         if(dist <= radius) {
-            statusTxt.textContent = `📍 Disahkan: Anda berada ${Math.round(dist)}m dari Premis. Mengaktifkan Kamera...`;
+            statusTxt.textContent = ` Disahkan: Anda berada ${Math.round(dist)}m dari Premis. Mengaktifkan Kamera...`;
             statusTxt.style.color = "#065f46";
             statusTxt.style.background = "#d1fae5";
             
@@ -3068,21 +3068,21 @@ window.openClockModal = function() {
                 btn.disabled = false;
             })
             .catch(err => {
-                statusTxt.textContent = "❌ Kamera Gagal Diakses. Sila allow permission.";
+                statusTxt.textContent = " Kamera Gagal Diakses. Sila allow permission.";
                 statusTxt.style.color = "#991b1b";
                 statusTxt.style.background = "#fee2e2";
                 loadTxt.textContent = "Akses Ditolak";
             });
 
         } else {
-            statusTxt.textContent = `❌ Terkeluar Jarak! Anda sejauh ${Math.round(dist)}m (Maksima ${radius}m).`;
+            statusTxt.textContent = ` Terkeluar Jarak! Anda sejauh ${Math.round(dist)}m (Maksima ${radius}m).`;
             statusTxt.style.color = "#991b1b";
             statusTxt.style.background = "#fee2e2";
             loadTxt.textContent = "Kamera tidak diperlukan";
         }
 
     }, err => {
-        statusTxt.textContent = "❌ Gagal mengesan GPS anda. Pastikan Location dibenarkan.";
+        statusTxt.textContent = " Gagal mengesan GPS anda. Pastikan Location dibenarkan.";
         statusTxt.style.color = "#991b1b";
         statusTxt.style.background = "#fee2e2";
     }, { enableHighAccuracy: true });
@@ -3100,7 +3100,7 @@ window.submitAttendance = async function() {
     const canvas = document.getElementById("clockSnapshotCanvas");
     const btn = document.getElementById("btnSubmitAttendance");
     
-    btn.textContent = "⏳ Memproses Rekod...";
+    btn.textContent = " Memproses Rekod...";
     btn.disabled = true;
 
     // Squeeze Image
@@ -4215,7 +4215,7 @@ window.renderPdpMediaGallery = function(urls) {
         container.innerHTML += `
             <div style="position:relative; width:80px; height:80px; border-radius:8px; border:1px solid #e1e3e5; overflow:hidden; flex-shrink:0;">
                 <img src="${url}" style="width:100%; height:100%; object-fit:cover;">
-                <button onclick="window.removePdpMedia(${idx})" style="position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; color:red;">✕</button>
+                <button onclick="window.removePdpMedia(${idx})" style="position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; color:red;"></button>
             </div>
         `;
     });
@@ -4248,7 +4248,7 @@ window.renderMetafields = function() {
             <div style="display:flex; gap:10px; align-items:center;">
                 <input type="text" class="login-input" value="${key}" disabled style="flex:1; background:#f9fafb; margin:0;">
                 <input type="text" class="login-input" value="${currentPdpMetafields[key]}" onchange="window.updateMetafield('${key}', this.value)" style="flex:2; margin:0;">
-                <button onclick="window.removeMetafield('${key}')" style="background:none; border:none; color:#d82c0d; cursor:pointer; padding:5px;">🗑️</button>
+                <button onclick="window.removeMetafield('${key}')" style="background:none; border:none; color:#d82c0d; cursor:pointer; padding:5px;">️</button>
             </div>
         `;
     }
@@ -4332,7 +4332,7 @@ window.renderMgmtInventory = function() {
                     ${sBadge}
                 </td>
                 <td>
-                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span> ${p.location_bin ? `<span style="background:#fef08a; color:#854d0e; padding:3px 6px; border-radius:4px; font-size:10px;">📌 Loc: ${p.location_bin}</span>` : ''}<br>
+                    <span class="sku-badge">${p.sku}</span> <span class="cat-badge">${p.category||'Uncategorized'}</span> ${p.location_bin ? `<span style="background:#fef08a; color:#854d0e; padding:3px 6px; border-radius:4px; font-size:10px;"> Loc: ${p.location_bin}</span>` : ''}<br>
                     <strong>${p.name}</strong><br>
                     <small style="color:#888;">Jenama: <strong>${p.brand || 'N/A'}</strong></small>
                 </td>
@@ -4352,7 +4352,7 @@ window.renderMgmtInventory = function() {
                 </td>
                 <td>
                     <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
-                        📍 ${p.location_bin || "Tiada Maklumat Rak"}
+                         ${p.location_bin || "Tiada Maklumat Rak"}
                     </div>
                 </td>
                 <td>
@@ -4360,10 +4360,10 @@ window.renderMgmtInventory = function() {
                     <strong>Sell: RM${parseFloat(p.price).toFixed(2)}</strong>
                 </td>
                 <td>
-                    <button class="btn-success" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap; background:#F59E0B;" onclick="window.openPricingCalc('${p.sku}')">🧮 Harga</button>
+                    <button class="btn-success" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap; background:#F59E0B;" onclick="window.openPricingCalc('${p.sku}')"> Harga</button>
                 </td>
                 <td>
-                    <button class="btn-primary" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap;" onclick="window.openPdpModal('${p.sku}')">✏️ Edit Details</button>
+                    <button class="btn-primary" style="padding:4px 8px; font-size:12px; cursor:pointer; width:100%; white-space:nowrap;" onclick="window.openPdpModal('${p.sku}')">️ Edit Details</button>
                 </td>
             </tr>
         `;
