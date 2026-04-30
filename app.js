@@ -84,6 +84,7 @@ let staffProfiles = [
 let inventoryBatches = [];
 
 let salesHistory = [];
+let inventoryTransactions = [];
 
 let customersData = [];
 
@@ -156,6 +157,9 @@ async function initApp() {
 
         let { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date', {ascending: true});
         if(batches) inventoryBatches = batches;
+
+        let { data: txns } = await db.from('inventory_transactions').select('*').order('created_at', {ascending: false});
+        if(txns) inventoryTransactions = txns;
 
         // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
         renderPublicStorefront();
@@ -237,6 +241,7 @@ async function initApp() {
         renderDashboard();
         if(typeof renderFinance === "function") renderFinance();
         if(typeof renderWhAudit === 'function') renderWhAudit();
+        if(typeof renderInventoryLedger === 'function') renderInventoryLedger();
         if(typeof renderMgmtInventory === 'function') renderMgmtInventory();
         autoClockOutUnclosed();
         if(typeof renderPersonalCommission === "function") renderPersonalCommission();
@@ -3956,6 +3961,15 @@ window.processInbound = async function() {
         let { error } = await db.from('inventory_batches').insert([batchPayload]);
         if(error) throw error;
         
+        await db.from('inventory_transactions').insert([{
+            sku: sku,
+            transaction_type: 'IN',
+            qty: qty,
+            reason: ref || 'Manual Inbound',
+            staff_name: currentUser ? currentUser.name : 'System',
+            created_at: new Date().toISOString()
+        }]);
+        
         // Let realtime handle UI update, or reload
         alert(`Berjaya merekod Inbound sebanyak ${qty} unit untuk ${sku}.`);
         document.getElementById('inboundSkuSearch').value = '';
@@ -3995,6 +4009,15 @@ window.processOutbound = async function() {
             
             remainingToDeduct -= deductAmount;
         }
+        
+        await db.from('inventory_transactions').insert([{
+            sku: sku,
+            transaction_type: 'OUT',
+            qty: qty,
+            reason: reason + (note ? ' - ' + note : ''),
+            staff_name: currentUser ? currentUser.name : 'System',
+            created_at: new Date().toISOString()
+        }]);
         
         alert(`Berjaya memotong ${qty} unit stok untuk ${sku}. Sebab: ${reason}`);
         document.getElementById('outboundSkuSearch').value = '';
@@ -4118,6 +4141,16 @@ window.approveDiscrepancy = async function(reqId, sku, difference) {
         }
         
         await db.from('pending_requests').update({status: 'Approved'}).eq('id', reqId);
+        
+        await db.from('inventory_transactions').insert([{
+            sku: sku,
+            transaction_type: 'ADJUSTMENT',
+            qty: difference,
+            reason: 'Audit Discrepancy Approved',
+            staff_name: currentUser ? currentUser.name : 'System',
+            created_at: new Date().toISOString()
+        }]);
+        
         alert(`Discrepancy diluluskan. Baki stok ${sku} telah diselaraskan.`);
         await window.initApp();
     } catch(e) {
@@ -4432,3 +4465,60 @@ window.applyCalculatedPrice = async function() {
         alert("Ralat semasa menyimpan: " + e.message);
     }
 };
+
+// Start Ledger UI Logic
+window.renderInventoryLedger = function() {
+    const tbody = document.getElementById('inventoryLedgerTbody');
+    if(!tbody) return;
+    
+    if(!inventoryTransactions || inventoryTransactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Tiada log direkodkan atau sedang dimuatkan...</td></tr>';
+        return;
+    }
+    
+    const recentTxns = inventoryTransactions.slice(0, 100);
+    
+    tbody.innerHTML = recentTxns.map(t => {
+        const dateObj = new Date(t.created_at);
+        const dateStr = dateObj.toLocaleDateString('ms-MY') + ' ' + dateObj.toLocaleTimeString('ms-MY', {hour: '2-digit', minute:'2-digit'});
+        
+        let qtyColor = t.transaction_type === 'OUT' || t.qty < 0 ? '#EF4444' : '#10B981';
+        let qtyPrefix = (t.transaction_type === 'OUT' || t.qty < 0) && t.qty > 0 ? '-' : (t.qty > 0 ? '+' : '');
+        let actionStr = t.transaction_type; 
+        
+        if(t.transaction_type === 'SALE') { actionStr = '<span style="background:#DBEAFE; color:#1E40AF; padding:2px 6px; border-radius:4px; font-weight:bold;">SALE</span>'; }
+        else if(t.transaction_type === 'IN') { actionStr = '<span style="background:#D1FAE5; color:#065F46; padding:2px 6px; border-radius:4px; font-weight:bold;">INBOUND</span>'; }
+        else if(t.transaction_type === 'OUT') { actionStr = '<span style="background:#FEE2E2; color:#991B1B; padding:2px 6px; border-radius:4px; font-weight:bold;">OUTBOUND</span>'; }
+        else if(t.transaction_type === 'ADJUSTMENT') { actionStr = '<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-weight:bold;">AUDIT ADJUST</span>'; }
+
+        return `
+            <tr>
+                <td>${dateStr}</td>
+                <td style="font-weight:bold;">${t.staff_name || 'System'}</td>
+                <td>${actionStr}</td>
+                <td>${t.sku}</td>
+                <td style="color:${qtyColor}; font-weight:bold; font-size:14px;">${qtyPrefix}${Math.abs(t.qty)}</td>
+                <td>${t.reason || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.downloadLedgerCsv = function() {
+    if(!inventoryTransactions || inventoryTransactions.length === 0) return alert("Tiada data untuk dieksport.");
+    let csv = "Tarikh,Staf,Jenis,SKU,Kuantiti,Rujukan/Sebab\n";
+    inventoryTransactions.forEach(t => {
+        csv += `"${t.created_at}","${t.staff_name || 'System'}","${t.transaction_type}","${t.sku}","${t.qty}","${t.reason || ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Inventory_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+// End Ledger UI Logic

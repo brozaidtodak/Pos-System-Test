@@ -1612,6 +1612,33 @@
                     <datalist id="movementSkuList"></datalist>
                 </div>
 
+                <!-- STOCK MOVEMENT LEDGER (NEW) -->
+                <div class="admin-card" style="border-top:4px solid #6366F1; padding:20px; margin-bottom:20px; animation:fadeIn 0.5s;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 style="margin:0;">📖 Lejar Pergerakan Stok (Movement History)</h3>
+                        <button class="btn-success" style="font-size:10px; padding:5px 10px; margin:0; background:#4F46E5; border-color:#4F46E5;" onclick="window.downloadLedgerCsv()">📥 Eksport CSV</button>
+                    </div>
+                    <p style="font-size:12px; color:#888; margin-bottom:15px;">Log terperinci bagi setiap pergerakan inventori (Inbound, Outbound, Stock Take).</p>
+                    
+                    <div class="table-responsive" style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;">
+                        <table class="data-table" style="font-size:12px;">
+                            <thead style="position:sticky; top:0; background:#EEF2FF; color:#4338CA;">
+                                <tr>
+                                    <th>Tarikh & Masa</th>
+                                    <th>Staf Bertugas</th>
+                                    <th>Jenis Transaksi</th>
+                                    <th>SKU / Item</th>
+                                    <th>Kuantiti (+/-)</th>
+                                    <th>Rujukan / Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryLedgerTbody">
+                                <tr><td colspan="6" style="text-align:center;">Tiada log direkodkan atau sedang dimuatkan...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 
                 <!-- STOCK AUDIT MODULE -->
                 <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
@@ -1798,7 +1825,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=36"></script>
+    <script src="app.js?v=37"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
