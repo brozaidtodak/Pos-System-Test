@@ -4936,3 +4936,28 @@ window.renderValuationSection = function() {
     tbody.innerHTML = html;
 };
 // End Stock Valuation Logic
+
+// Danger Zone: Wipe Data
+window.wipeAllProductsData = async function() {
+    let passcode = prompt("AMARAN Keras: Ini akan memadam KESEMUA data produk dan stok secara kekal dari pangkalan data.\n\nSila taip 'PADAM' (huruf besar) untuk sahkan:");
+    if(passcode !== 'PADAM') {
+        alert("Operasi dibatalkan.");
+        return;
+    }
+    
+    if(!db) return alert("Pangkalan data belum disambungkan.");
+
+    try {
+        // Delete inventory batches
+        await db.from('inventory_batches').delete().neq('id', 0);
+        
+        // Delete master products (primary key is sku)
+        await db.from('products_master').delete().neq('sku', 'DUMMY_SKU_HANTU');
+        
+        alert("Bagus! Kesemua data produk telah berjaya dipadam bersih. Sistem akan di muat semula.");
+        window.location.reload();
+    } catch(e) {
+        console.error(e);
+        alert("Gagal memadam data. Sila semak console log atau padam secara manual di Supabase.");
+    }
+};
