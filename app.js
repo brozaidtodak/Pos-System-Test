@@ -3824,11 +3824,11 @@ window.calcShippingPerUnit = function() {
     document.getElementById("prShippingPerUnit").value = perUnit.toFixed(2);
 };
 
-window.saveProductRegistration = function() {
-    let shipmentNo = document.getElementById("prShipmentNo").value;
+window.saveProductRegistration = async function() {
+    let shipmentNo = document.getElementById("prShipmentNo").value.trim();
     let shipmentDate = document.getElementById("prShipmentDate").value;
-    let sku = document.getElementById("prSku").value;
-    let desc = document.getElementById("prDesc").value;
+    let sku = document.getElementById("prSku").value.trim().toUpperCase();
+    let desc = document.getElementById("prDesc").value.trim();
     let priceRmb = document.getElementById("prPriceRmb").value;
     let units = document.getElementById("prUnitPurchased").value;
     let shippingCost = document.getElementById("prShippingCost").value;
@@ -3839,8 +3839,52 @@ window.saveProductRegistration = function() {
         return;
     }
     
-    console.log("Registered Product: ", { shipmentNo, shipmentDate, sku, desc, priceRmb, units, shippingCost, shippingPerUnit });
-    alert("Produk Berjaya Didaftarkan!");
+    // Parse values
+    let qtyReceived = parseInt(units);
+    
+    const batchPayload = {
+        sku: sku,
+        batch_year: new Date(shipmentDate).getFullYear() || new Date().getFullYear(),
+        inbound_date: shipmentDate,
+        qty_received: qtyReceived,
+        qty_remaining: qtyReceived,
+        shipment_no: shipmentNo,
+        cost_rmb: parseFloat(priceRmb),
+        shipping_cost_total: parseFloat(shippingCost),
+        shipping_per_unit: parseFloat(shippingPerUnit),
+        po_desc: desc
+    };
+    
+    // Insert to Supabase (inventory_batches)
+    let { data: newBatch, error: batchErr } = await db.from('inventory_batches').insert([batchPayload]).select();
+    
+    if(batchErr) {
+        console.error("Batch Insert Error:", batchErr);
+        alert("Ralat menyimpan Batch. Sila pastikan kolum (shipment_no, cost_rmb dll) wujud di Supabase.");
+        return;
+    }
+
+    // Insert Transaction Audit Trail
+    const txnPayload = {
+        sku: sku,
+        transaction_type: 'PO_IN',
+        qty: qtyReceived,
+        reason: shipmentNo + " - " + desc,
+        staff_name: currentUser ? currentUser.name : 'System',
+        created_at: new Date().toISOString()
+    };
+    
+    let { data: newTxn, error: txnErr } = await db.from('inventory_transactions').insert([txnPayload]).select();
+    
+    if(txnErr) {
+        console.error("Transaction Insert Error:", txnErr);
+    }
+    
+    // Update Local State
+    if(newBatch && newBatch.length > 0) inventoryBatches.push(newBatch[0]);
+    if(newTxn && newTxn.length > 0) inventoryTransactions.unshift(newTxn[0]);
+    
+    alert(`Batch PO (${shipmentNo}) Berjaya Didaftarkan untuk SKU: ${sku}!`);
     
     // Clear fields
     document.getElementById("prShipmentNo").value = "";
@@ -3851,6 +3895,9 @@ window.saveProductRegistration = function() {
     document.getElementById("prUnitPurchased").value = "";
     document.getElementById("prShippingCost").value = "";
     document.getElementById("prShippingPerUnit").value = "";
+    
+    // Refresh relevant UI if they are open
+    if(typeof renderLowStockAlert === "function") renderLowStockAlert();
 };
 
 window.populateEditSkuList = function() {
