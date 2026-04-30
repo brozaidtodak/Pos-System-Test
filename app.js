@@ -1411,6 +1411,8 @@ window.handleCustomerLogin = async function() {
     }
     
     alert(`Berjaya Log Masuk. Anda kini mempunyai ${existing.points || 0} Points.`);
+};
+
 function handleLogin() {
     // Automatically default to superior admin access
     const user = authUsers.find(u => u.name === 'brozaidtodak');
