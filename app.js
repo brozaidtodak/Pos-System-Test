@@ -9464,3 +9464,176 @@ window.skelRows = function(rows, cols) {
 document.addEventListener('DOMContentLoaded', () => {
     if(typeof __initTheme === 'function') __initTheme();
 });
+
+// =============================================================
+// PRODUCT DATABASE — REDESIGN (UX-6, design-led grid + table)
+// =============================================================
+let __pdView = 'grid';
+
+window.pdSetView = function(v) {
+    __pdView = v;
+    document.querySelectorAll('.pd-view-toggle button').forEach(b => b.classList.toggle('is-active', b.dataset.view === v));
+    document.getElementById('pdGridView').style.display = v === 'grid' ? 'grid' : 'none';
+    document.getElementById('pdTableView').style.display = v === 'table' ? 'block' : 'none';
+    renderProductDatabase();
+};
+
+window.renderProductDatabase = function() {
+    const gridEl = document.getElementById('pdGridView');
+    const tableBody = document.getElementById('pdTableBody');
+    if(!gridEl || typeof masterProducts === 'undefined') return;
+
+    // Populate filter dropdowns lazily
+    const brandSel = document.getElementById('pdBrand');
+    const catSel = document.getElementById('pdCategory');
+    if(brandSel && brandSel.options.length <= 1) {
+        const brands = [...new Set(masterProducts.map(p => p.brand).filter(Boolean))].sort();
+        brandSel.innerHTML = '<option value="">Semua</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+    if(catSel && catSel.options.length <= 1) {
+        const cats = [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort();
+        catSel.innerHTML = '<option value="">Semua</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    // Read filters
+    const q = (document.getElementById('pdSearch')?.value || '').trim().toLowerCase();
+    const fBrand = document.getElementById('pdBrand')?.value || '';
+    const fCat = document.getElementById('pdCategory')?.value || '';
+    const fStatus = document.getElementById('pdStatus')?.value || '';
+    const sort = document.getElementById('pdSort')?.value || 'name';
+    const perPage = parseInt(document.getElementById('pdPerPage')?.value) || 96;
+
+    // Stock map
+    const stockMap = new Map();
+    (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+        stockMap.set(b.sku, (stockMap.get(b.sku) || 0) + (b.qty_remaining || 0));
+    });
+
+    // Filter
+    let list = masterProducts.filter(p => {
+        if(fBrand && p.brand !== fBrand) return false;
+        if(fCat && p.category !== fCat) return false;
+        const stock = stockMap.get(p.sku) || 0;
+        if(fStatus === 'published' && !isPublished(p)) return false;
+        if(fStatus === 'draft' && isPublished(p)) return false;
+        if(fStatus === 'oos' && stock > 0) return false;
+        if(q) {
+            const hay = `${p.sku||''} ${p.name||''} ${p.brand||''} ${p.category||''} ${p.erp_barcode||''}`.toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    // Sort
+    const sortFns = {
+        'name':       (a, b) => (a.name||'').localeCompare(b.name||''),
+        'price-desc': (a, b) => (b.price||0) - (a.price||0),
+        'price-asc':  (a, b) => (a.price||0) - (b.price||0),
+        'stock-desc': (a, b) => (stockMap.get(b.sku)||0) - (stockMap.get(a.sku)||0),
+        'brand':      (a, b) => (a.brand||'').localeCompare(b.brand||'') || (a.name||'').localeCompare(b.name||'')
+    };
+    list.sort(sortFns[sort] || sortFns.name);
+
+    // Stats cards (whole catalog, not just filtered)
+    const totalProducts = masterProducts.length;
+    const publishedCount = masterProducts.filter(p => isPublished(p)).length;
+    const draftCount = totalProducts - publishedCount;
+    const totalRetailValue = masterProducts.reduce((s, p) => s + (stockMap.get(p.sku)||0) * (p.price||0), 0);
+
+    const statsEl = document.getElementById('pdStats');
+    if(statsEl) {
+        statsEl.innerHTML = `
+            <div class="stat"><div class="stat__label">Total Products</div><div class="stat__value">${totalProducts.toLocaleString()}</div><div class="stat__hint">${list.length.toLocaleString()} match filter</div></div>
+            <div class="stat stat--success"><div class="stat__label">Published</div><div class="stat__value">${publishedCount.toLocaleString()}</div><div class="stat__hint">Live di Cashier</div></div>
+            <div class="stat stat--warning"><div class="stat__label">Draft</div><div class="stat__value">${draftCount.toLocaleString()}</div><div class="stat__hint">Belum live</div></div>
+            <div class="stat stat--info"><div class="stat__label">Stok Bernilai</div><div class="stat__value">RM ${totalRetailValue.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="stat__hint">Retail-side</div></div>
+        `;
+    }
+    const grandEl = document.getElementById('pdGrandCount'); if(grandEl) grandEl.textContent = totalProducts.toLocaleString();
+
+    // Summary line
+    const summaryEl = document.getElementById('pdSummary');
+    if(summaryEl) {
+        summaryEl.innerHTML = `Match: <strong>${list.length}</strong> · Show: <strong>${Math.min(list.length, perPage)}</strong>${list.length > perPage ? ' <span style="color:var(--warning-700);">(turunkan saiz halaman atau tighten filter untuk lihat semua)</span>' : ''}`;
+    }
+
+    const slice = list.slice(0, perPage);
+
+    if(slice.length === 0) {
+        const empty = `<div class="empty-state" style="grid-column:1/-1;">
+            <div class="empty-state__icon">🔍</div>
+            <div class="empty-state__title">Tiada produk match filter</div>
+            <div class="empty-state__desc">Cuba clear filter atau tukar status ke "Semua".</div>
+            <button class="btn btn--secondary" onclick="document.getElementById('pdSearch').value='';document.getElementById('pdBrand').value='';document.getElementById('pdCategory').value='';document.getElementById('pdStatus').value='';renderProductDatabase()">Reset Filter</button>
+        </div>`;
+        gridEl.innerHTML = empty;
+        if(tableBody) tableBody.innerHTML = `<tr><td colspan="8">${empty}</td></tr>`;
+        return;
+    }
+
+    // Render Grid
+    if(__pdView === 'grid') {
+        gridEl.innerHTML = slice.map(p => {
+            const stock = stockMap.get(p.sku) || 0;
+            const reorder = p.reorder_point || 5;
+            const stockClass = stock === 0 ? 'out' : (stock < reorder ? 'low' : '');
+            const stockLabel = stock === 0 ? 'OOS' : `${stock} ${p.unit || 'pcs'}`;
+            const img = (p.images && p.images[0]) || '';
+            const pub = isPublished(p);
+            const statusBadge = pub
+                ? '<span class="badge badge--success pd-card__status-badge">Live</span>'
+                : '<span class="badge badge--warning pd-card__status-badge">Draft</span>';
+            const cost = p.cost_price ? Number(p.cost_price).toFixed(2) : null;
+            return `
+                <div class="pd-card" onclick="window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')" tabindex="0" role="button" aria-label="Edit ${p.sku}">
+                    ${statusBadge}
+                    <span class="pd-card__stock-pill ${stockClass}">${stockLabel}</span>
+                    <div class="pd-card__image-wrap">
+                        ${img
+                            ? `<img class="pd-card__image" src="${img}" alt="${(p.name||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="this.style.display='none';this.parentNode.innerHTML+='<span class=&quot;pd-card__image-placeholder&quot;>📦</span>'">`
+                            : `<span class="pd-card__image-placeholder">📦</span>`}
+                    </div>
+                    <div class="pd-card__body">
+                        <span class="pd-card__brand">${p.brand || p.category || '·'}</span>
+                        <span class="pd-card__title">${(p.name || '').slice(0, 90)}</span>
+                        <span class="pd-card__sku">${p.sku}</span>
+                        <span class="pd-card__price">RM ${(p.price || 0).toFixed(2)}${cost ? `<span class="pd-card__price-sub">cost RM ${cost}</span>` : ''}</span>
+                    </div>
+                    <div class="pd-card__footer">
+                        <span>${p.category || '—'}</span>
+                        <button onclick="event.stopPropagation(); window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')" aria-label="Edit details">Edit ›</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else if(tableBody) {
+        // Render Table
+        tableBody.innerHTML = slice.map(p => {
+            const stock = stockMap.get(p.sku) || 0;
+            const reorder = p.reorder_point || 5;
+            const stockColor = stock === 0 ? 'var(--danger-600)' : (stock < reorder ? 'var(--warning-600)' : 'var(--neutral-700)');
+            const img = (p.images && p.images[0]) || '';
+            const pub = isPublished(p);
+            return `
+                <tr onclick="window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')" tabindex="0" role="button">
+                    <td>${img ? `<img src="${img}" class="pd-row-img" loading="lazy" alt="">` : '<div class="pd-row-img" style="display:flex;align-items:center;justify-content:center;color:var(--neutral-400);">📦</div>'}</td>
+                    <td><span class="pd-row-name">${(p.name||'').slice(0, 70)}</span><span class="pd-row-meta">${p.sku}${p.erp_barcode ? ' · '+p.erp_barcode : ''}</span></td>
+                    <td>${p.brand || '—'}</td>
+                    <td>${p.category || '—'}</td>
+                    <td style="text-align:right;" class="pd-row-price">RM ${(p.price||0).toFixed(2)}</td>
+                    <td style="text-align:right; color:${stockColor}; font-weight:var(--weight-bold);">${stock}</td>
+                    <td style="text-align:center;">${pub ? '<span class="badge badge--success">Live</span>' : '<span class="badge badge--warning">Draft</span>'}</td>
+                    <td><button class="btn btn--ghost btn--sm" onclick="event.stopPropagation(); window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')">Edit</button></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+};
+
+// Initial render when section opens — wire to nav click
+document.addEventListener('DOMContentLoaded', () => {
+    const dbBtn = document.querySelector('[data-tab="inv_database"]');
+    if(dbBtn) dbBtn.addEventListener('click', () => setTimeout(renderProductDatabase, 100));
+});

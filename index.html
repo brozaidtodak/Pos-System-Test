@@ -5,7 +5,7 @@
     <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=33">
-    <link rel="stylesheet" href="design-tokens.css?v=3">
+    <link rel="stylesheet" href="design-tokens.css?v=4">
     <!-- Supabase Core -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
@@ -2312,31 +2312,97 @@
                     </div>
                 </div>
             </div><div id="databaseSection" class="tab-section" style="display: none;">
-                <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);">️ Database Produk</h3>
-                <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;">️ Kemaskini Profil Produk (Edit)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Pilih SKU dari senarai Gudang untuk mengubah suai maklumat teras produk.</p>
-                    
-                    <label class="small-lbl">Cari SKU Produk</label>
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <input type="text" id="editSkuSearch" class="login-input" style="flex:1;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
-                        <datalist id="editSkuList"></datalist>
-                        <button class="btn-primary" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">Buka Profil (Edit)</button>
+                <!-- Page header (UX-6 redesign) -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:var(--space-4); flex-wrap:wrap; gap:var(--space-3);">
+                    <div>
+                        <h2 style="font-size:var(--text-2xl); font-weight:var(--weight-extra); margin:0 0 4px; letter-spacing:-0.5px;">Database Produk</h2>
+                        <p style="font-size:var(--text-sm); color:var(--neutral-600); margin:0;">Browse, edit, dan urus semua master products. <span id="pdGrandCount" style="font-weight:var(--weight-bold); color:var(--primary-700);">…</span> products in catalog.</p>
                     </div>
-                    <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;">
-                        <h4 style="margin-bottom:10px; color:var(--primary);">Pangkalan Data Produk (Gudang)</h4>
-                        <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead style="position:sticky; top:0; background:#FAFAFA;">
-                                    <tr><th>SKU Profile</th><th>Informasi Fizikal &amp; Logistik</th><th>Spesifikasi (Metafields)</th><th>Bilangan / Total Stock</th><th>Lokasi Gudang (Bin)</th><th>Cost / Retail</th><th>Kalkulator</th><th>Tindakan</th></tr>
-                                </thead>
-                                <tbody id="mgmtInventoryTableBody">
-                                    <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="pd-view-toggle" role="group" aria-label="View mode">
+                        <button class="is-active" data-view="grid" onclick="window.pdSetView('grid')" aria-label="Grid view">
+                            <i data-lucide="layout-grid" style="width:14px; height:14px;" aria-hidden="true"></i> Grid
+                        </button>
+                        <button data-view="table" onclick="window.pdSetView('table')" aria-label="Table view">
+                            <i data-lucide="list" style="width:14px; height:14px;" aria-hidden="true"></i> Table
+                        </button>
                     </div>
                 </div>
+
+                <!-- Stats cards -->
+                <div id="pdStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-2); margin-bottom:var(--space-4);"></div>
+
+                <!-- Quick edit by SKU -->
+                <div class="card" style="margin-bottom:var(--space-4); padding:var(--space-3) var(--space-4);">
+                    <div style="display:flex; gap:var(--space-2); align-items:center; flex-wrap:wrap;">
+                        <span style="font-size:var(--text-sm); font-weight:var(--weight-semibold); color:var(--neutral-700);">⚡ Quick edit by SKU:</span>
+                        <input type="text" id="editSkuSearch" class="cp-input" style="flex:1; min-width:200px; max-width:300px;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
+                        <datalist id="editSkuList"></datalist>
+                        <button class="btn btn--primary btn--sm" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">
+                            <i data-lucide="edit" style="width:14px; height:14px;" aria-hidden="true"></i> Buka Profil
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter toolbar -->
+                <div class="pd-toolbar">
+                    <div>
+                        <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">CARI</label>
+                        <input type="text" id="pdSearch" class="cp-input" placeholder="Nama / SKU / brand / barcode" oninput="window.renderProductDatabase()">
+                    </div>
+                    <div>
+                        <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">BRAND</label>
+                        <select id="pdBrand" class="cp-input" onchange="window.renderProductDatabase()"><option value="">Semua</option></select>
+                    </div>
+                    <div>
+                        <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">KATEGORI</label>
+                        <select id="pdCategory" class="cp-input" onchange="window.renderProductDatabase()"><option value="">Semua</option></select>
+                    </div>
+                    <div>
+                        <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">STATUS</label>
+                        <select id="pdStatus" class="cp-input" onchange="window.renderProductDatabase()">
+                            <option value="">Semua</option>
+                            <option value="published">Published</option>
+                            <option value="draft" selected>Draft sahaja</option>
+                            <option value="oos">Out-of-stock</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">SORT</label>
+                        <select id="pdSort" class="cp-input" onchange="window.renderProductDatabase()">
+                            <option value="name">Name (A-Z)</option>
+                            <option value="price-desc">Price (high → low)</option>
+                            <option value="price-asc">Price (low → high)</option>
+                            <option value="stock-desc">Stock (high → low)</option>
+                            <option value="brand">Brand</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">PER PAGE</label>
+                        <select id="pdPerPage" class="cp-input" onchange="window.renderProductDatabase()">
+                            <option value="48">48</option>
+                            <option value="96" selected>96</option>
+                            <option value="200">200</option>
+                            <option value="9999">All</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="pdSummary" style="font-size:var(--text-xs); color:var(--neutral-600); margin:var(--space-2) 0;"></p>
+
+                <!-- Grid view (default) -->
+                <div id="pdGridView" class="pd-grid"></div>
+
+                <!-- Table view (alternate) -->
+                <div id="pdTableView" class="card" style="display:none; padding:0; overflow:hidden;">
+                    <div style="max-height:600px; overflow-y:auto;">
+                        <table class="pd-table">
+                            <thead><tr><th></th><th>Product</th><th>Brand</th><th>Category</th><th style="text-align:right;">Price</th><th style="text-align:right;">Stock</th><th style="text-align:center;">Status</th><th></th></tr></thead>
+                            <tbody id="pdTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Legacy table tbody kept hidden for backward compat (other code references it) -->
+                <tbody id="mgmtInventoryTableBody" style="display:none;"></tbody>
 
                 <!-- BIN LOCATION BULK IMPORT (Sprint 2.4) -->
                 <div class="admin-card" style="border-top:4px solid #6366F1; padding:20px; margin-bottom:20px;">
@@ -7368,7 +7434,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=75"></script>
+    <script src="app.js?v=76"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
