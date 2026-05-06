@@ -3522,7 +3522,10 @@
                 { id:'p1_5', label:'Staff invite + permission UI', d:'done' },
                 { id:'p1_6', label:'End-of-day shift reconciliation', d:'done' },
                 { id:'p1_7', label:'Inventory critical fixes (Sprint 1: is_published consistency, bulk publish, stocktake PIN, write-off PIN, master full-form)', d:'done' },
-                { id:'p1_8', label:'Manager PIN reusable approval modal + audit_logs writes', d:'done' }
+                { id:'p1_8', label:'Manager PIN reusable approval modal + audit_logs writes', d:'done' },
+                { id:'p1_9', label:'Internal Mode capability matrix (Cashier/Operations/Manager per role) + role/mode coordination', d:'done' },
+                { id:'p1_10', label:'UX overhaul (UX-1 to UX-7: design tokens, mode bar, Ctrl+K palette, breadcrumbs, side-panel checkout, dark mode, A11y, redesigned product DB + dashboard)', d:'done' },
+                { id:'p1_11', label:'Automated test suite (jsdom + integration · 65 checks)', d:'done' }
               ]},
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -3538,12 +3541,14 @@
             { id:'p3', num:'PHASE 3', name:'Channels & Reach', status:'active', goal:'Multi-channel: WhatsApp, marketplace, mobile', eta:'Q3-Q4 2026 · 🚧 In Progress',
               desc:'Untuk MY merchant, marketplace sync = acquisition flywheel. Shopee/Lazada/TikTok Shop satu inventory, banyak channel. WhatsApp Commerce native (receipt + reorder + broadcast). Native mobile app untuk owner peek revenue. 5-min onboarding wizard supaya trialer jadi convert.',
               deliverables:[
-                { id:'p3_1', label:'Shopee / Lazada / TikTok Shop sync', d:'todo' },
+                { id:'p3_1', label:'Shopee / Lazada / TikTok Shop sync (via EasyStore unified channels)', d:'progress' },
                 { id:'p3_2', label:'WhatsApp Commerce (receipt + reorder + broadcast)', d:'progress' },
                 { id:'p3_3', label:'Native mobile app (iOS + Android)', d:'todo' },
                 { id:'p3_4', label:'5-min onboarding wizard', d:'done' },
                 { id:'p3_5', label:'Multi-language UI (BM/EN/中文/தமிழ்)', d:'todo' },
-                { id:'p3_6', label:'Public API + webhooks', d:'todo' }
+                { id:'p3_6', label:'Public API + webhooks', d:'todo' },
+                { id:'p3_7', label:'EasyStore live API integration (one-time sync 432 orders + real-time webhooks)', d:'done' },
+                { id:'p3_8', label:'Shopify CSV migration (22 months · 4,083 orders · 2,881 customers)', d:'done' }
               ]},
             { id:'p4', num:'PHASE 4', name:'Operations Excellence', status:'active', goal:'Roster, commission, KPI, hardware', eta:'Q4 2026 · 🚧 Started',
               desc:'Close-the-loop antara operasi harian dan KPI manager. Plus hardware ecosystem (printer profiles, cash drawer, scanner setup wizard, customer-facing display) — tanpa ni, kaunter masih rely on manual workaround.',
@@ -7483,7 +7488,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=78"></script>
+    <script src="app.js?v=79"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

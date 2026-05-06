@@ -1980,16 +1980,19 @@ function maybeShowOnboarding(user) {
 }
 
 // Boot a session for the given user (was the body of handleLogin).
-// Capability matrix — each role gets a SET of mode tabs they can access.
-// Capability-based (additive) instead of exclusive lanes.
-// ALL ROLES see Cashier (everyone needs to ring up customers).
-// Sales/Inventory ALSO see Operations (check stock during sale, manage inventory).
-// Mgmt+Superior see Manager (dashboards + admin).
+// Capability matrix — each role gets a SET of mode tabs they can access,
+// PLUS a default mode that aligns with their home section.
+// ALL ROLES see Cashier (everyone rings up customers when needed).
+// Sales/Inventory ALSO see Operations (check stock during sale).
+// Mgmt+Superior see Manager (dashboards + admin sections).
+//
+// IMPORTANT: defaultMode must match the home section's mode group,
+// otherwise the home tab will be hidden by mode-bar's class filter.
 const ROLE_CAPS = {
-    superior:  { modes: ['cashier', 'operations', 'manager'], home: 'overview',          label: 'Superior',   emoji: '👑' },
-    mgmt:      { modes: ['cashier', 'operations', 'manager'], home: 'overview',          label: 'Manager',    emoji: '🎯' },
-    inventory: { modes: ['cashier', 'operations'],            home: 'inv_database',      label: 'Inventory',  emoji: '📦' },
-    sales:     { modes: ['cashier', 'operations'],            home: 'sales_cashier',     label: 'Sales',      emoji: '🛒' },
+    superior:  { modes: ['cashier', 'operations', 'manager'], defaultMode: 'manager',    home: 'admin_dashboard',    label: 'Superior',  emoji: '👑' },
+    mgmt:      { modes: ['cashier', 'operations', 'manager'], defaultMode: 'manager',    home: 'admin_dashboard',    label: 'Manager',   emoji: '🎯' },
+    inventory: { modes: ['cashier', 'operations'],            defaultMode: 'operations', home: 'inv_database',       label: 'Inventory', emoji: '📦' },
+    sales:     { modes: ['cashier', 'operations'],            defaultMode: 'cashier',    home: 'sales_cashier',      label: 'Sales',     emoji: '🛒' },
 };
 
 function loginAs(user) {
@@ -2043,8 +2046,8 @@ function loginAs(user) {
         window.applyRoleCapabilities(cap.modes);
     }
 
-    // Set initial mode + home
-    const defaultMode = cap.modes[0] || 'cashier';
+    // Set initial mode + home — defaultMode aligns with home section's group
+    const defaultMode = cap.defaultMode || cap.modes[0] || 'cashier';
     if(typeof window.setMode === 'function') {
         window.__modeJumping = true;  // suppress auto-jump
         window.setMode(defaultMode);
@@ -9118,7 +9121,7 @@ window.setMode = function(mode) {
     const groups = {
         cashier: 'sales',
         operations: 'inv',
-        manager: null
+        manager: 'admin'
     };
     // Auto-expand the group for current mode (legacy applySidebarGroupState takes name+collapsed)
     if(groups[mode] && typeof window.applySidebarGroupState === 'function') {
