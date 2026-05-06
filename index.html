@@ -835,6 +835,12 @@
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_bulk" onclick="switchHub(['bulkOpsSection'], 'Bulk Operations', this); if(typeof renderBulkOps === 'function') renderBulkOps();">
                 <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Publish &amp; Edit
             </div>
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_aging" onclick="switchHub(['agingSection'], 'Stock Aging Report', this); if(typeof renderInventoryAging==='function') renderInventoryAging();">
+                <i data-lucide="hourglass" style="width:16px; height:16px;"></i> Stock Aging
+            </div>
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_snapshot" onclick="switchHub(['snapshotSection'], 'Monthly Snapshot', this);">
+                <i data-lucide="camera" style="width:16px; height:16px;"></i> Stock Snapshot
+            </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_valuation" onclick="switchHub(['valuationSection'], 'Stock Valuation', this); if(typeof renderValuationSection === 'function') renderValuationSection();">
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> Stock Valuation (Aset)
             </div>
@@ -1402,6 +1408,55 @@
             <!-- PRINTABLE AREA (Only visible during print via CSS) -->
             <div id="printLabelArea" style="background:#FFF; padding:20px; min-height:200px; border:2px dashed #CCC; border-radius:8px; display:flex; flex-direction:column; gap:20px; align-items:center;">
                 <p style="color:#999; text-align:center;">Prebiu label akan dipaparkan di sini.</p>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SECTION: STOCK AGING (Sprint 3.5)              -->
+        <!-- ============================================== -->
+        <div id="agingSection" class="tab-section" style="display:none;">
+            <h2 class="section-title" style="margin-top:20px;"><i data-lucide="hourglass" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Stock Aging Report</h2>
+            <p style="font-size:13px; color:#666; margin-bottom:18px;">Berapa lama setiap batch dah duduk dalam gudang? Stok > 365 hari biasanya dead stock — perlu clearance / discount.</p>
+
+            <div id="agingSummary" style="margin-bottom:14px;"></div>
+
+            <div class="admin-card" style="padding:0;">
+                <div class="table-responsive">
+                    <table class="data-table" style="font-size:13px;">
+                        <thead style="background:#FAFAFA;"><tr>
+                            <th>Bucket</th>
+                            <th style="text-align:right;">Qty</th>
+                            <th style="text-align:right;">Modal Diikat (RM)</th>
+                            <th style="text-align:right;">Potensi Jualan (RM)</th>
+                            <th style="text-align:right;">% Modal</th>
+                            <th>Drilldown</th>
+                        </tr></thead>
+                        <tbody id="agingTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SECTION: STOCK SNAPSHOT (Sprint 3.6)           -->
+        <!-- ============================================== -->
+        <div id="snapshotSection" class="tab-section" style="display:none;">
+            <h2 class="section-title" style="margin-top:20px;"><i data-lucide="camera" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Stock Snapshot (Period-End)</h2>
+            <p style="font-size:13px; color:#666; margin-bottom:18px;">Eksport laporan stok pada satu tarikh tertentu — guna untuk closing akaun bulanan / suku tahun. Sistem akan rewind transaction history untuk anggar baki sebenar pada tarikh tersebut.</p>
+
+            <div class="admin-card" style="padding:20px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:end;">
+                    <div>
+                        <label class="small-lbl">Tarikh Snapshot</label>
+                        <input type="date" id="snapshotDate" class="login-input" style="margin:0;">
+                    </div>
+                    <div>
+                        <button class="btn-success" onclick="window.exportInventorySnapshot()" style="width:100%;">📥 Eksport CSV</button>
+                    </div>
+                </div>
+                <div style="background:#FEF3C7; border:1px solid #FCD34D; padding:10px; border-radius:6px; margin-top:12px; font-size:12px; color:#92400E;">
+                    ⚠️ <strong>Nota:</strong> Snapshot adalah anggaran (rewind dari current state). Untuk akuracy 100%, recommend monthly cron job snapshot in real-time. Sekarang ni cukup untuk audit/accountant reference.
+                </div>
             </div>
         </div>
 
@@ -6565,7 +6620,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=67"></script>
+    <script src="app.js?v=68"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -253,6 +253,8 @@ async function initApp() {
         // Sprint 2.1+2.2: load real PO + suppliers tables
         try { if(typeof loadSuppliers === 'function') await loadSuppliers(); } catch(e) { console.warn('loadSuppliers:', e); }
         try { if(typeof loadPosV2 === 'function') await loadPosV2(); } catch(e) { console.warn('loadPosV2:', e); }
+        // Sprint 3.4: load active reservations
+        try { if(typeof loadReservations === 'function') await loadReservations(); } catch(e) { console.warn('loadReservations:', e); }
 
         // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
         renderPublicStorefront();
@@ -650,6 +652,14 @@ function renderWMS() {
                 <td style="font-weight:bold; color:${totalStock <= 0 ? 'red' : 'green'};">
                     ${totalStock} ${p.unit||'Pcs'}<br>
                     <small style="font-weight:normal; color:#888;">${myBatches.length} batch(es)</small>
+                    ${myBatches.length > 0 ? (() => {
+                        const sources = [...new Set(myBatches.map(b => b.po_number).filter(Boolean))];
+                        const suppliers = [...new Set(myBatches.map(b => b.supplier_name).filter(Boolean))];
+                        let trace = '';
+                        if(sources.length) trace += `<br><span style="font-weight:normal; color:#0EA5E9; font-size:10px;">📋 ${sources.slice(0,2).join(', ')}${sources.length > 2 ? '+' : ''}</span>`;
+                        if(suppliers.length) trace += `<br><span style="font-weight:normal; color:#7C3AED; font-size:10px;">🏭 ${suppliers.slice(0,2).join(', ')}${suppliers.length > 2 ? '+' : ''}</span>`;
+                        return trace;
+                    })() : ''}
                 </td>
                 <td>
                     <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
@@ -5185,6 +5195,14 @@ window.renderMgmtInventory = function() {
                 <td style="font-weight:bold; color:${totalStock <= 0 ? 'red' : 'green'};">
                     ${totalStock} ${p.unit||'Pcs'}<br>
                     <small style="font-weight:normal; color:#888;">${myBatches.length} batch(es)</small>
+                    ${myBatches.length > 0 ? (() => {
+                        const sources = [...new Set(myBatches.map(b => b.po_number).filter(Boolean))];
+                        const suppliers = [...new Set(myBatches.map(b => b.supplier_name).filter(Boolean))];
+                        let trace = '';
+                        if(sources.length) trace += `<br><span style="font-weight:normal; color:#0EA5E9; font-size:10px;">📋 ${sources.slice(0,2).join(', ')}${sources.length > 2 ? '+' : ''}</span>`;
+                        if(suppliers.length) trace += `<br><span style="font-weight:normal; color:#7C3AED; font-size:10px;">🏭 ${suppliers.slice(0,2).join(', ')}${suppliers.length > 2 ? '+' : ''}</span>`;
+                        return trace;
+                    })() : ''}
                 </td>
                 <td>
                     <div style="background:#F3F4F6; padding:5px; border-radius:4px; font-family:monospace; font-size:12px; border:1px solid #ddd; display:inline-block;">
@@ -6471,13 +6489,14 @@ window.openReceivePOModal = async function(poId) {
     if(!po) return;
     const items = purchaseOrderItemsV2.filter(i => i.po_id === poId);
 
-    // Build per-line input list — show qty ordered, ask actual received + actual cost
+    // Build per-line rows
     const linesHtml = items.map((it, idx) => {
         const remaining = it.qty_ordered - it.qty_received;
         const prod = masterProducts.find(p => p.sku === it.sku);
+        const barcode = prod?.erp_barcode || '';
         return `
-            <tr>
-                <td><strong>${it.sku}</strong><br><span style="font-size:10px; color:#666;">${(prod?.name || '').slice(0,40)}</span></td>
+            <tr id="grnRow_${idx}" data-sku="${it.sku}" data-barcode="${barcode}">
+                <td><strong>${it.sku}</strong>${barcode ? '<br><span style="font-size:10px; color:#9CA3AF;">📊 ' + barcode + '</span>' : ''}<br><span style="font-size:10px; color:#666;">${(prod?.name || '').slice(0,40)}</span></td>
                 <td style="text-align:center;">${it.qty_ordered}</td>
                 <td style="text-align:center;">${it.qty_received}</td>
                 <td><input type="number" id="grnQty_${idx}" data-itemid="${it.id}" data-sku="${it.sku}" min="0" max="${remaining}" value="${remaining}" class="login-input" style="margin:0; padding:4px; width:70px; text-align:center;"></td>
@@ -6488,26 +6507,152 @@ window.openReceivePOModal = async function(poId) {
 
     const modalHtml = `
         <div id="grnOverlay" class="login-overlay" style="display:flex; z-index:3700; align-items:center; justify-content:center;">
-            <div class="login-box" style="max-width:780px; width:96%; padding:24px;">
+            <div class="login-box" style="max-width:820px; width:96%; padding:24px;">
                 <button onclick="document.getElementById('grnOverlay').remove()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
                 <h2 style="font-weight:800; font-size:20px; margin-bottom:6px;">📦 Goods Received Note (GRN)</h2>
-                <p style="font-size:12px; color:#666; margin-bottom:14px;">PO <strong>${po.po_number}</strong> · Pembekal: <strong>${po.supplier_name}</strong> · ETA: ${po.eta_date}</p>
-                <div class="table-responsive" style="max-height:340px;">
+                <p style="font-size:12px; color:#666; margin-bottom:14px;">PO <strong>${po.po_number}</strong> · Pembekal: <strong>${po.supplier_name}</strong> · ETA: ${po.eta_date || '-'}</p>
+
+                <!-- Scanner input -->
+                <div style="background:#EFF6FF; border:2px dashed #60A5FA; padding:10px; border-radius:6px; margin-bottom:12px;">
+                    <label class="small-lbl" style="color:#1E40AF; font-weight:bold;">📱 Scan Barcode untuk auto-tick qty (atau taip SKU + Enter)</label>
+                    <input type="text" id="grnScannerInput" class="login-input" placeholder="Beep!" style="text-align:center; font-weight:bold; letter-spacing:1px; margin:6px 0 0;" onkeyup="window.handleGrnScan(event)" autofocus>
+                    <p id="grnScanFeedback" style="font-size:11px; color:#666; margin-top:4px; min-height:14px;"></p>
+                </div>
+
+                <div class="table-responsive" style="max-height:300px; border:1px solid var(--border-color);">
                     <table class="data-table" style="font-size:12px;">
-                        <thead><tr><th>SKU / Nama</th><th>Ordered</th><th>Sebelum</th><th>Terima Sekarang</th><th>Kos/Unit (RM)</th></tr></thead>
+                        <thead style="position:sticky; top:0; background:#FAFAFA;"><tr><th>SKU / Barcode / Nama</th><th>Ordered</th><th>Sebelum</th><th>Terima Sekarang</th><th>Kos/Unit (RM)</th></tr></thead>
                         <tbody>${linesHtml}</tbody>
                     </table>
                 </div>
+
                 <label class="small-lbl" style="margin-top:12px;">Catatan (kondisi barang, kerosakan, dsb)</label>
                 <textarea id="grnNotes" class="login-input" rows="2" placeholder="3 box ada kemek di sudut, foto disertakan via WhatsApp..."></textarea>
+
                 <div style="display:flex; gap:8px; margin-top:14px;">
                     <button onclick="document.getElementById('grnOverlay').remove()" class="login-btn" style="background:#6B7280; flex:1;">Tutup</button>
+                    <button onclick="window.printGrn(${poId})" class="login-btn" style="background:#0EA5E9; flex:1;">🖨️ Print GRN Slip</button>
                     <button onclick="window.confirmReceivePO(${poId})" class="login-btn" style="flex:2;">✓ Sahkan Penerimaan</button>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    setTimeout(() => document.getElementById('grnScannerInput')?.focus(), 200);
+};
+
+// Scanner handler — match by SKU OR barcode, increment that line's "terima" qty
+window.handleGrnScan = function(e) {
+    if(e.key !== 'Enter') return;
+    const input = e.target;
+    const code = input.value.trim().toUpperCase();
+    const fb = document.getElementById('grnScanFeedback');
+    if(!code) return;
+    let found = false;
+    document.querySelectorAll('#grnOverlay tr[data-sku]').forEach((row, idx) => {
+        const sku = (row.dataset.sku || '').toUpperCase();
+        const bc = (row.dataset.barcode || '').toUpperCase();
+        if(sku === code || (bc && bc === code)) {
+            const qtyInput = row.querySelector('input[id^="grnQty_"]');
+            if(qtyInput) {
+                const cur = parseInt(qtyInput.value) || 0;
+                const max = parseInt(qtyInput.max) || 9999;
+                qtyInput.value = Math.min(cur + 1, max);
+                row.style.background = '#D1FAE5';
+                setTimeout(() => row.style.background = '', 600);
+                fb.innerHTML = `✓ <strong style="color:#065F46;">${sku}</strong> +1 → ${qtyInput.value}`;
+                found = true;
+            }
+        }
+    });
+    if(!found) fb.innerHTML = `⚠️ <span style="color:#DC2626;">"${code}" tiada dalam PO ini</span>`;
+    input.value = '';
+};
+
+// Printable GRN — opens new window with formatted slip
+window.printGrn = function(poId) {
+    const po = purchaseOrdersV2.find(p => p.id === poId);
+    if(!po) return;
+    const items = purchaseOrderItemsV2.filter(i => i.po_id === poId);
+
+    // Read current form state for "received now" qty + cost
+    const lines = items.map((it, idx) => {
+        const qty = parseInt(document.getElementById(`grnQty_${idx}`)?.value) || 0;
+        const cost = parseFloat(document.getElementById(`grnCost_${idx}`)?.value) || 0;
+        const prod = masterProducts.find(p => p.sku === it.sku);
+        return { sku: it.sku, name: prod?.name || '', ordered: it.qty_ordered, prevReceived: it.qty_received, qty, cost };
+    });
+    const total = lines.reduce((s, l) => s + l.qty * l.cost, 0);
+    const notes = (document.getElementById('grnNotes')?.value || '').trim();
+
+    const settings = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop || {};
+    const shopName = settings.name || '10 CAMP STORE';
+    const shopAddr = settings.address || '';
+    const ssm = settings.ssm || '';
+    const today = new Date().toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const win = window.open('', '_blank', 'width=800,height=900');
+    win.document.write(`<!DOCTYPE html><html><head><title>GRN ${po.po_number}</title>
+        <style>
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width:780px; margin:auto; padding:30px; color:#111; }
+            h1 { font-size:22px; margin:0 0 4px; }
+            .header { border-bottom:3px solid #111; padding-bottom:10px; margin-bottom:20px; }
+            .meta { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+            .meta div { font-size:13px; }
+            table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:20px; }
+            th, td { border:1px solid #999; padding:6px 8px; text-align:left; }
+            th { background:#f3f4f6; }
+            .right { text-align:right; }
+            .center { text-align:center; }
+            .total-row { font-weight:bold; background:#fef3c7; }
+            .signoff { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:50px; }
+            .signoff div { border-top:1px solid #111; padding-top:6px; font-size:11px; }
+            .notes { background:#fff7ed; border:1px solid #fed7aa; padding:10px; border-radius:4px; margin-bottom:20px; font-size:12px; }
+            @media print { @page { margin:1.5cm; } button { display:none; } }
+        </style>
+    </head><body>
+        <div class="header">
+            <h1>${shopName}</h1>
+            <p style="margin:0; font-size:11px; color:#666;">${shopAddr}${ssm ? ' · SSM: ' + ssm : ''}</p>
+            <h2 style="font-size:18px; margin:12px 0 0; color:#0EA5E9;">📦 GOODS RECEIVED NOTE (GRN)</h2>
+        </div>
+        <div class="meta">
+            <div><strong>GRN #:</strong> GRN-${po.po_number}-${Date.now().toString(36).slice(-4).toUpperCase()}</div>
+            <div><strong>Tarikh:</strong> ${today}</div>
+            <div><strong>PO No.:</strong> ${po.po_number}</div>
+            <div><strong>Pembekal:</strong> ${po.supplier_name || '-'}</div>
+            <div><strong>ETA:</strong> ${po.eta_date || '-'}</div>
+            <div><strong>Penerima:</strong> ${currentUser ? currentUser.name : '___________'}</div>
+        </div>
+        <table>
+            <thead><tr><th>#</th><th>SKU</th><th>Nama Produk</th><th class="center">Ordered</th><th class="center">Diterima Kini</th><th class="right">Kos/Unit (RM)</th><th class="right">Total (RM)</th></tr></thead>
+            <tbody>
+                ${lines.map((l, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><strong>${l.sku}</strong></td>
+                        <td>${(l.name || '').slice(0, 60)}</td>
+                        <td class="center">${l.ordered}</td>
+                        <td class="center"><strong>${l.qty}</strong></td>
+                        <td class="right">${l.cost.toFixed(2)}</td>
+                        <td class="right">${(l.qty * l.cost).toFixed(2)}</td>
+                    </tr>
+                `).join('')}
+                <tr class="total-row">
+                    <td colspan="6" class="right">TOTAL DITERIMA (RM):</td>
+                    <td class="right">${total.toFixed(2)}</td>
+                </tr>
+            </tbody>
+        </table>
+        ${notes ? `<div class="notes"><strong>Catatan:</strong> ${notes}</div>` : ''}
+        <div class="signoff">
+            <div><strong>Penerima (Receiver)</strong><br><br>Nama: ___________________________<br>Tandatangan: ________________________<br>Tarikh: ${today}</div>
+            <div><strong>Lulus Manager (Approver)</strong><br><br>Nama: ___________________________<br>Tandatangan: ________________________<br>Tarikh: ___________</div>
+        </div>
+        <p style="margin-top:30px; font-size:10px; color:#999; text-align:center;">Auto-generated by 10 CAMP POS · GRN-${po.po_number}-${Date.now().toString(36).toUpperCase()}</p>
+        <button onclick="window.print()" style="position:fixed; top:20px; right:20px; padding:10px 20px; background:#0EA5E9; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🖨️ Print</button>
+    </body></html>`);
+    win.document.close();
 };
 
 window.confirmReceivePO = async function(poId) {
@@ -6684,4 +6829,233 @@ window.bulkImportBinConfirm = async function() {
     document.getElementById('binImportTextarea').value = '';
     document.getElementById('binImportPreview').innerHTML = '';
     document.getElementById('binImportConfirmBtn').disabled = true;
+};
+
+// ===================================
+// SPRINT 3.4 — STOCK RESERVATION
+// ===================================
+let stockReservations = [];
+
+window.loadReservations = async function() {
+    try {
+        const { data } = await db.from('stock_reservations').select('*').is('released_at', null);
+        stockReservations = data || [];
+    } catch(e) { stockReservations = []; }
+};
+
+window.getAvailableQty = function(sku) {
+    // Total physical stock minus active reservations
+    const stock = (inventoryBatches || [])
+        .filter(b => b.sku === sku && b.qty_remaining > 0)
+        .reduce((s, b) => s + b.qty_remaining, 0);
+    const reserved = stockReservations
+        .filter(r => r.sku === sku && !r.released_at)
+        .reduce((s, r) => s + (r.qty || 0), 0);
+    return Math.max(0, stock - reserved);
+};
+
+window.reserveStock = async function(sku, qty, sourceType, sourceRef, notes) {
+    const avail = getAvailableQty(sku);
+    if(avail < qty) return { ok: false, error: `Hanya ${avail} unit available untuk reserve.` };
+    try {
+        const { data, error } = await db.from('stock_reservations').insert([{
+            sku, qty, source_type: sourceType || 'manual',
+            source_ref: sourceRef || null,
+            reserved_by: currentUser ? currentUser.name : 'System',
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),  // 7 days default
+            notes: notes || null
+        }]).select();
+        if(error) throw error;
+        if(data?.length) stockReservations.push(data[0]);
+        return { ok: true, reservation: data[0] };
+    } catch(e) {
+        return { ok: false, error: e.message };
+    }
+};
+
+window.releaseReservation = async function(reservationId) {
+    try {
+        const { error } = await db.from('stock_reservations')
+            .update({ released_at: new Date().toISOString() })
+            .eq('id', reservationId);
+        if(error) throw error;
+        stockReservations = stockReservations.filter(r => r.id !== reservationId);
+        return { ok: true };
+    } catch(e) {
+        return { ok: false, error: e.message };
+    }
+};
+
+// ===================================
+// SPRINT 3.5 + 3.6 — AGING REPORT + MONTHLY SNAPSHOT
+// ===================================
+window.renderInventoryAging = function() {
+    const tbody = document.getElementById('agingTbody');
+    const summaryEl = document.getElementById('agingSummary');
+    if(!tbody) return;
+
+    const now = Date.now();
+    const buckets = {
+        '0-30':   { label: '0–30 hari (fresh)',     min: 0,    max: 30,  qty: 0, cost: 0, retail: 0, items: [] },
+        '31-90':  { label: '31–90 hari',            min: 31,   max: 90,  qty: 0, cost: 0, retail: 0, items: [] },
+        '91-180': { label: '91–180 hari',           min: 91,   max: 180, qty: 0, cost: 0, retail: 0, items: [] },
+        '181-365':{ label: '181–365 hari',          min: 181,  max: 365, qty: 0, cost: 0, retail: 0, items: [] },
+        '>365':   { label: '> 365 hari (dead?)',    min: 366,  max: 99999, qty: 0, cost: 0, retail: 0, items: [] }
+    };
+
+    inventoryBatches.filter(b => b.qty_remaining > 0).forEach(b => {
+        const ageDays = Math.floor((now - new Date(b.inbound_date).getTime()) / (24 * 60 * 60 * 1000));
+        const prod = masterProducts.find(p => p.sku === b.sku);
+        const cost = b.cost_price != null ? parseFloat(b.cost_price) : (prod?.cost_price || 0);
+        const retail = prod?.price || 0;
+        const lineCost = b.qty_remaining * cost;
+        const lineRetail = b.qty_remaining * retail;
+
+        for(const k in buckets) {
+            const bk = buckets[k];
+            if(ageDays >= bk.min && ageDays <= bk.max) {
+                bk.qty += b.qty_remaining;
+                bk.cost += lineCost;
+                bk.retail += lineRetail;
+                bk.items.push({ sku: b.sku, name: prod?.name || '?', age: ageDays, qty: b.qty_remaining, cost: lineCost, batch: b });
+                break;
+            }
+        }
+    });
+
+    const totalQty = Object.values(buckets).reduce((s, b) => s + b.qty, 0);
+    const totalCost = Object.values(buckets).reduce((s, b) => s + b.cost, 0);
+    const totalRetail = Object.values(buckets).reduce((s, b) => s + b.retail, 0);
+
+    if(summaryEl) {
+        const deadPct = totalCost > 0 ? (buckets['>365'].cost / totalCost * 100).toFixed(1) : '0';
+        summaryEl.innerHTML = `
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">
+                <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Total Stock</div><div style="font-size:18px; font-weight:bold;">${totalQty} unit</div></div>
+                <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Modal Diikat</div><div style="font-size:18px; font-weight:bold;">RM ${totalCost.toFixed(2)}</div></div>
+                <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Potensi Jualan</div><div style="font-size:18px; font-weight:bold;">RM ${totalRetail.toFixed(2)}</div></div>
+                <div style="background:#FEE2E2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">Dead Stock %</div><div style="font-size:18px; font-weight:bold;">${deadPct}%</div></div>
+            </div>
+        `;
+    }
+
+    let html = '';
+    Object.values(buckets).forEach(bk => {
+        const pct = totalCost > 0 ? (bk.cost / totalCost * 100) : 0;
+        const color = bk.min >= 366 ? '#DC2626' : bk.min >= 181 ? '#D97706' : bk.min >= 91 ? '#CA8A04' : '#10B981';
+        html += `
+            <tr style="background:${bk.qty > 0 ? '#FFF' : '#FAFAFA'};">
+                <td><strong style="color:${color};">${bk.label}</strong></td>
+                <td style="text-align:right;">${bk.qty}</td>
+                <td style="text-align:right;">RM ${bk.cost.toFixed(2)}</td>
+                <td style="text-align:right;">RM ${bk.retail.toFixed(2)}</td>
+                <td style="text-align:right;">
+                    <div style="background:#E5E7EB; border-radius:4px; height:8px; position:relative; width:80px; display:inline-block;">
+                        <div style="background:${color}; height:8px; border-radius:4px; width:${pct}%;"></div>
+                    </div>
+                    <span style="margin-left:6px;">${pct.toFixed(0)}%</span>
+                </td>
+                <td>
+                    ${bk.items.length > 0 ? `<button class="btn-primary" style="font-size:10px; padding:2px 8px; margin:0;" onclick="window.showAgingDrilldown('${bk.label.replace(/'/g, '\\\'')}')">${bk.items.length} item</button>` : '-'}
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+
+    // Stash for drilldown
+    window.__agingBuckets = buckets;
+};
+
+window.showAgingDrilldown = function(bucketLabel) {
+    const bucket = Object.values(window.__agingBuckets || {}).find(b => b.label === bucketLabel);
+    if(!bucket) return;
+    bucket.items.sort((a, b) => b.cost - a.cost);
+    const top20 = bucket.items.slice(0, 50);
+    const html = `
+        <div id="agingDrillOverlay" class="login-overlay" style="display:flex; z-index:3700;">
+            <div class="login-box" style="max-width:760px; width:96%; padding:24px;">
+                <button onclick="document.getElementById('agingDrillOverlay').remove()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer;">×</button>
+                <h2 style="margin-bottom:14px;">Drilldown: ${bucket.label}</h2>
+                <p style="font-size:12px; color:#666; margin-bottom:10px;">${bucket.items.length} item · ${bucket.qty} unit · modal RM ${bucket.cost.toFixed(2)}</p>
+                <div class="table-responsive" style="max-height:400px;">
+                    <table class="data-table" style="font-size:12px;">
+                        <thead><tr><th>SKU</th><th>Nama</th><th style="text-align:right;">Age (hari)</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Total Modal</th></tr></thead>
+                        <tbody>
+                            ${top20.map(it => `
+                                <tr>
+                                    <td><strong>${it.sku}</strong></td>
+                                    <td>${(it.name || '').slice(0, 60)}</td>
+                                    <td style="text-align:right;">${it.age}</td>
+                                    <td style="text-align:right;">${it.qty}</td>
+                                    <td style="text-align:right;">RM ${it.cost.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.exportInventorySnapshot = async function() {
+    const dateStr = document.getElementById('snapshotDate')?.value;
+    if(!dateStr) return showToast('Pilih tarikh dulu.', 'warn');
+    const cutoff = new Date(dateStr + 'T23:59:59Z').toISOString();
+
+    try {
+        // Approximate snapshot: current batches that were created on or before cutoff
+        // Plus replay txns to reconstruct historical qty (safer)
+        const [{ data: batches }, { data: txns }] = await Promise.all([
+            db.from('inventory_batches').select('*').lte('inbound_date', cutoff),
+            db.from('inventory_transactions').select('*').lte('created_at', cutoff)
+        ]);
+
+        // Build per-SKU qty by replaying txns (approximate; current state minus everything after cutoff)
+        const allTxns = await db.from('inventory_transactions').select('*');
+        const txnsAfter = (allTxns.data || []).filter(t => new Date(t.created_at) > new Date(cutoff));
+
+        const skuQty = {};
+        masterProducts.forEach(p => {
+            const cur = inventoryBatches.filter(b => b.sku === p.sku).reduce((s, b) => s + b.qty_remaining, 0);
+            // Reverse-apply post-cutoff transactions: IN → subtract, OUT → add, ADJUSTMENT → flip sign
+            const adj = txnsAfter.filter(t => t.sku === p.sku).reduce((s, t) => {
+                if(t.transaction_type === 'IN') return s - t.qty;
+                if(t.transaction_type === 'OUT') return s + t.qty;
+                return s - t.qty;  // ADJUSTMENT (positive added forward, so subtract)
+            }, 0);
+            skuQty[p.sku] = cur + adj;
+        });
+
+        const rows = masterProducts.filter(p => (skuQty[p.sku] || 0) > 0).map(p => {
+            const qty = skuQty[p.sku] || 0;
+            const cost = parseFloat(p.cost_price) || 0;
+            const retail = parseFloat(p.price) || 0;
+            return { sku: p.sku, name: p.name, brand: p.brand, category: p.category, qty, cost, retail, total_cost: qty * cost, total_retail: qty * retail };
+        });
+
+        // CSV download
+        const header = ['SKU', 'Name', 'Brand', 'Category', 'Qty', 'Cost/Unit (RM)', 'Retail/Unit (RM)', 'Total Modal (RM)', 'Total Retail (RM)'];
+        const csv = [header.join(',')].concat(
+            rows.map(r => [r.sku, `"${(r.name || '').replace(/"/g, '""')}"`, `"${r.brand || ''}"`, `"${r.category || ''}"`,
+                r.qty, r.cost.toFixed(2), r.retail.toFixed(2), r.total_cost.toFixed(2), r.total_retail.toFixed(2)].join(','))
+        ).join('\n');
+
+        const totalCost = rows.reduce((s, r) => s + r.total_cost, 0);
+        const totalRetail = rows.reduce((s, r) => s + r.total_retail, 0);
+        const summary = `\n,,,,SUMMARY,,,${totalCost.toFixed(2)},${totalRetail.toFixed(2)}\n,,,,Sebagai pada ${dateStr},,,RM ${totalCost.toFixed(2)},RM ${totalRetail.toFixed(2)}`;
+
+        const blob = new Blob([csv + summary], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `stock_snapshot_${dateStr}.csv`;
+        link.click();
+
+        showToast(`Snapshot ${dateStr}: ${rows.length} SKU, modal RM ${totalCost.toFixed(2)}`, 'success');
+    } catch(e) {
+        showToast('Ralat: ' + e.message, 'error');
+    }
 };
