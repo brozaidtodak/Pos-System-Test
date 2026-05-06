@@ -4327,15 +4327,20 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
                     .update({ superseded: true })
                     .eq('ref', currentQuoteRef)
                     .lt('version', currentQuoteVersion);
-                    
+
                 // Update local state temporarily mapping
                 quoteHistoryLogs.forEach(log => {
                     if(log.ref === currentQuoteRef && log.version < currentQuoteVersion) {
                         log.superseded = true;
                     }
                 });
+
+                // p4_12: release prior version reservations (new version will reserve fresh)
+                if(typeof window.releaseReservationsForQuote === 'function') {
+                    try { await window.releaseReservationsForQuote(currentQuoteRef); } catch(e){}
+                }
             }
-            
+
             let { data, error } = await db.from('quotations_log').insert([logEntry]).select();
             if(data && data.length > 0) {
                 // Convert to camelCase locally for UI consistency (Supabase uses snake_case based on our SQL script)
@@ -4354,6 +4359,17 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
                     createdAt: sc.created_at,
                     superseded: sc.superseded
                 });
+
+                // p4_12: auto-reserve stock for SKUs in master (custom lines skipped)
+                if(typeof window.reserveItemsForQuote === 'function' && Array.isArray(sc.items)) {
+                    try {
+                        const rr = await window.reserveItemsForQuote(sc.ref, sc.items);
+                        const failed = (rr.results || []).filter(x => x.ok === false);
+                        if(failed.length && typeof showToast === 'function') {
+                            showToast(`⚠ ${failed.length} item gagal reserve (stock kurang) — quote masih saved`, 'warn');
+                        }
+                    } catch(e) { console.error('reserve failed:', e); }
+                }
             } else if (error) {
                 console.error("Supabase Save Quote Error:", error.message);
                 alert("Fail saving to Cloud: " + error.message);
@@ -4373,6 +4389,11 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
 window.deleteQuoteLog = async function(logId) {
     if(!confirm('Adakah anda pasti mahu memadam Quotation/Invoice ini secara kekal?')) return;
     try {
+        // p4_12: release reservations linked to this quote ref BEFORE delete
+        const log = quoteHistoryLogs.find(l => l.id === logId);
+        if(log && log.ref && typeof window.releaseReservationsForQuote === 'function') {
+            try { await window.releaseReservationsForQuote(log.ref); } catch(e){}
+        }
         if(db) await db.from('quotations_log').delete().eq('id', logId);
         quoteHistoryLogs = quoteHistoryLogs.filter(l => l.id !== logId);
         window.renderQuoteLogs();
@@ -6981,6 +7002,105 @@ window.releaseReservation = async function(reservationId) {
         return { ok: true };
     } catch(e) {
         return { ok: false, error: e.message };
+    }
+};
+
+// ----- p4_12 (wired): reservations bound to quote/invoice flow -----
+window.reserveItemsForQuote = async function(quoteRef, items) {
+    if(!quoteRef || !Array.isArray(items)) return { ok:false, error:'no quote ref / items' };
+    const results = [];
+    for(const it of items) {
+        const sku = (it.sku || '').toUpperCase();
+        const qty = parseInt(it.qty) || 0;
+        if(!sku || sku === 'CUST-ITEM' || qty < 1) continue;
+        // Only reserve if SKU exists in master_products (else skip — custom line)
+        const exists = (masterProducts || []).find(p => p.sku === sku);
+        if(!exists) continue;
+        const r = await window.reserveStock(sku, qty, 'quote', quoteRef, `Auto-reserved for ${quoteRef}`);
+        results.push({ sku, qty, ...r });
+    }
+    return { ok:true, results };
+};
+
+window.releaseReservationsForQuote = async function(quoteRef) {
+    if(!quoteRef) return { ok:false };
+    try {
+        const { error } = await db.from('stock_reservations')
+            .update({ released_at: new Date().toISOString() })
+            .eq('source_ref', quoteRef)
+            .is('released_at', null);
+        if(error) throw error;
+        stockReservations = stockReservations.filter(r => r.source_ref !== quoteRef);
+        return { ok:true };
+    } catch(e) {
+        return { ok:false, error:e.message };
+    }
+};
+
+window.getReservedQty = function(sku) {
+    if(!sku) return 0;
+    return (stockReservations || [])
+        .filter(r => r.sku === sku && !r.released_at)
+        .reduce((s, r) => s + (parseInt(r.qty)||0), 0);
+};
+
+// ----- Stock Reservations panel (Inventory Dept) -----
+window.renderStockReservations = function() {
+    const tbody = document.getElementById('reservationsTbody');
+    const summaryEl = document.getElementById('reservationsSummary');
+    if(!tbody) return;
+
+    const active = (stockReservations || []).filter(r => !r.released_at);
+    const now = Date.now();
+
+    if(summaryEl) {
+        const totalQty = active.reduce((s, r) => s + (parseInt(r.qty)||0), 0);
+        const distinctSkus = new Set(active.map(r => r.sku)).size;
+        const expiringSoon = active.filter(r => r.expires_at && new Date(r.expires_at).getTime() - now < 24*3600*1000).length;
+        summaryEl.innerHTML = `
+            <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Active Reservations</div><div style="font-size:18px; font-weight:bold;">${active.length}</div></div>
+            <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Locked Qty</div><div style="font-size:18px; font-weight:bold;">${totalQty}</div></div>
+            <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Distinct SKUs</div><div style="font-size:18px; font-weight:bold;">${distinctSkus}</div></div>
+            <div style="background:#FEE2E2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">Expiring &lt; 24h</div><div style="font-size:18px; font-weight:bold;">${expiringSoon}</div></div>
+        `;
+    }
+
+    if(!active.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Tiada reservation aktif. Setiap kali create quotation, stock akan auto-lock di sini.</td></tr>';
+        return;
+    }
+
+    active.sort((a, b) => (b.created_at||'').localeCompare(a.created_at||''));
+    tbody.innerHTML = active.map(r => {
+        const prod = (masterProducts || []).find(p => p.sku === r.sku);
+        const name = prod ? prod.name.slice(0, 50) : r.sku;
+        const expires = r.expires_at ? new Date(r.expires_at) : null;
+        const expSoon = expires && (expires.getTime() - now < 24*3600*1000);
+        const expStr = expires ? expires.toLocaleString('en-MY', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
+        return `
+            <tr>
+                <td style="font-family:monospace; font-size:11px;">${r.sku}</td>
+                <td>${name}</td>
+                <td style="text-align:right; font-weight:bold;">${r.qty}</td>
+                <td><span class="badge ${r.source_type==='quote'?'badge--info':'badge--neutral'}">${r.source_type||'-'}</span></td>
+                <td style="font-family:monospace; font-size:11px;">${r.source_ref || '-'}</td>
+                <td style="color:${expSoon?'#DC2626':'#6B7280'}; ${expSoon?'font-weight:bold;':''}">${expStr}${expSoon?' ⚠':''}</td>
+                <td>
+                    <button class="btn btn--secondary btn--sm" onclick="window.__manualReleaseReservation('${r.id}')">Release</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.__manualReleaseReservation = async function(rid) {
+    if(!confirm('Release reservation ni? Stock akan jadi available semula.')) return;
+    const r = await window.releaseReservation(rid);
+    if(r.ok) {
+        if(typeof showToast==='function') showToast('Reservation released ✓', 'success');
+        window.renderStockReservations();
+    } else {
+        if(typeof showToast==='function') showToast('Release failed: ' + (r.error||''), 'error');
     }
 };
 
