@@ -255,6 +255,10 @@ async function initApp() {
         try { if(typeof loadPosV2 === 'function') await loadPosV2(); } catch(e) { console.warn('loadPosV2:', e); }
         // Sprint 3.4: load active reservations
         try { if(typeof loadReservations === 'function') await loadReservations(); } catch(e) { console.warn('loadReservations:', e); }
+        // p4_4: low-stock notification check (deferred to next tick after render)
+        setTimeout(() => { if(typeof checkLowStockNotify === 'function') checkLowStockNotify(); }, 5000);
+        // p7_3: load promo engine rules
+        try { if(typeof loadPromotions === 'function') await loadPromotions(); } catch(e) { console.warn('loadPromotions:', e); }
 
         // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
         renderPublicStorefront();
@@ -1384,7 +1388,28 @@ function renderCart() {
     if(subLabel) subLabel.textContent = total.toFixed(2);
     if(btnPay) btnPay.disabled = false;
     updateMobileBar(total, totalItems);
+    // p4_7 Customer-facing display: broadcast cart for second screen
+    if(typeof writeCustomerDisplayCart === 'function') writeCustomerDisplayCart();
 }
+
+// p4_7 Customer-facing display sync
+window.writeCustomerDisplayCart = function() {
+    try {
+        const payload = {
+            items: cart,
+            vip: window.__currentCheckoutVip || null,
+            updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem('customerDisplayCart_v1', JSON.stringify(payload));
+    } catch(e) {}
+};
+
+window.openCustomerDisplay = function() {
+    const win = window.open('customer-display.html', '_blank',
+        'width=1024,height=768,menubar=no,toolbar=no,location=no');
+    if(!win) showToast('Pop-up blocked. Allow pop-ups for this site.', 'warn');
+    else showToast('Customer display opened — drag to second screen', 'success');
+};
 
 // Payment Modal Logics
 window.openPaymentModal = function() {
@@ -7777,4 +7802,1001 @@ window.recomputeCheckoutTotal = function() {
     } else if(vipLine) {
         vipLine.style.display = 'none';
     }
+};
+
+// =============================================================
+// SPRINT A — OPERATIONS POLISH
+// =============================================================
+
+// ============= p4_3 MANAGER DASHBOARD =============
+let __dashPeriod = '30d';
+
+window.dashSetPeriod = function(p) {
+    __dashPeriod = p;
+    document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === p));
+    renderManagerDashboard();
+};
+
+function dashGetCutoff() {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    switch(__dashPeriod) {
+        case '7d': return now - 7 * day;
+        case '30d': return now - 30 * day;
+        case '90d': return now - 90 * day;
+        case 'ytd': {
+            const yr = new Date(); yr.setMonth(0, 1); yr.setHours(0,0,0,0);
+            return yr.getTime();
+        }
+        case 'all': return 0;
+    }
+    return now - 30 * day;
+}
+
+window.renderManagerDashboard = function() {
+    if(typeof salesHistory === 'undefined') return;
+    const cutoff = dashGetCutoff();
+    const sales = salesHistory.filter(s => {
+        const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+        return dt >= cutoff;
+    });
+    const positives = sales.filter(s => (s.total||0) > 0);
+    const refunds = sales.filter(s => (s.total||0) < 0);
+
+    const totalRev = positives.reduce((s, x) => s + (x.total||0), 0);
+    const refundTotal = Math.abs(refunds.reduce((s, x) => s + (x.total||0), 0));
+    const netRev = totalRev - refundTotal;
+    const orderCount = positives.length;
+    const aov = orderCount > 0 ? totalRev / orderCount : 0;
+
+    // Unique customers in period
+    const periodCustomers = new Set(positives.map(s => s.customer_phone || s.customer_name).filter(Boolean));
+
+    // Period label
+    const labelMap = { '7d':'Last 7 days', '30d':'Last 30 days', '90d':'Last 90 days', 'ytd':'Year-to-date', 'all':'All-time' };
+    document.getElementById('dashPeriodLabel').textContent = `${labelMap[__dashPeriod]} · ${sales.length} orders`;
+
+    // KPI cards
+    document.getElementById('dashKpiCards').innerHTML = `
+        <div style="background:#F0FDF4; padding:12px; border-radius:8px; border-left:4px solid #10B981;"><div style="font-size:10px; color:#166534; font-weight:700; text-transform:uppercase;">Revenue</div><div style="font-size:20px; font-weight:800;">RM ${totalRev.toFixed(2)}</div><div style="font-size:10px; color:#666;">Net: RM ${netRev.toFixed(2)}</div></div>
+        <div style="background:#EFF6FF; padding:12px; border-radius:8px; border-left:4px solid #2563EB;"><div style="font-size:10px; color:#1E40AF; font-weight:700; text-transform:uppercase;">Orders</div><div style="font-size:20px; font-weight:800;">${orderCount}</div><div style="font-size:10px; color:#666;">+${refunds.length} refunds</div></div>
+        <div style="background:#FAF5FF; padding:12px; border-radius:8px; border-left:4px solid #A855F7;"><div style="font-size:10px; color:#6B21A8; font-weight:700; text-transform:uppercase;">AOV</div><div style="font-size:20px; font-weight:800;">RM ${aov.toFixed(2)}</div></div>
+        <div style="background:#FEF3C7; padding:12px; border-radius:8px; border-left:4px solid #F59E0B;"><div style="font-size:10px; color:#92400E; font-weight:700; text-transform:uppercase;">Customers</div><div style="font-size:20px; font-weight:800;">${periodCustomers.size}</div></div>
+        <div style="background:#FEE2E2; padding:12px; border-radius:8px; border-left:4px solid #DC2626;"><div style="font-size:10px; color:#991B1B; font-weight:700; text-transform:uppercase;">Refund Rate</div><div style="font-size:20px; font-weight:800;">${orderCount ? (refunds.length*100/orderCount).toFixed(1) : '0.0'}%</div></div>
+    `;
+
+    // Revenue trend chart (canvas)
+    const canvas = document.getElementById('dashRevenueChart');
+    if(canvas) drawRevenueChart(canvas, positives, cutoff);
+
+    // Channel mix
+    const channelTotals = {};
+    positives.forEach(s => {
+        const ch = s.channel || 'Unknown';
+        channelTotals[ch] = (channelTotals[ch] || 0) + (s.total||0);
+    });
+    const sortedCh = Object.entries(channelTotals).sort((a,b) => b[1] - a[1]);
+    const grandCh = sortedCh.reduce((s, [_,v]) => s+v, 0) || 1;
+    document.getElementById('dashChannelMix').innerHTML = sortedCh.map(([ch, v]) => {
+        const pct = (v/grandCh*100);
+        return `<div style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;"><strong>${ch}</strong><span>RM ${v.toFixed(0)} · ${pct.toFixed(1)}%</span></div><div style="background:#E5E7EB; height:6px; border-radius:3px;"><div style="background:var(--primary); height:6px; border-radius:3px; width:${pct}%;"></div></div></div>`;
+    }).join('') || '<p style="color:#999; font-size:12px;">No data.</p>';
+
+    // Top 10 SKUs
+    const skuQty = {}; const skuRev = {};
+    positives.forEach(s => (s.items||[]).forEach(it => {
+        const sku = (it.sku || 'NO_SKU').toUpperCase();
+        const qty = parseInt(it.qty || 1);
+        skuQty[sku] = (skuQty[sku] || 0) + qty;
+        skuRev[sku] = (skuRev[sku] || 0) + qty * (parseFloat(it.price)||0);
+    }));
+    const topSku = Object.entries(skuQty).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    document.getElementById('dashTopSkus').innerHTML = topSku.map(([sku, qty], i) => {
+        const p = masterProducts.find(p => p.sku === sku);
+        const name = p ? (p.name || '').slice(0, 35) : '-';
+        return `<tr><td style="font-weight:bold; color:#666;">#${i+1}</td><td style="font-family:monospace; font-size:10px;">${sku}</td><td>${name}</td><td style="text-align:right; font-weight:bold;">${qty}</td><td style="text-align:right; color:#666;">${(skuRev[sku]||0).toFixed(0)}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center; color:#999;">No sales.</td></tr>';
+
+    // Top staff
+    const staffStats = {};
+    positives.forEach(s => {
+        const sn = s.staff_name || '(Unassigned)';
+        if(!staffStats[sn]) staffStats[sn] = { rev:0, orders:0 };
+        staffStats[sn].rev += (s.total||0);
+        staffStats[sn].orders++;
+    });
+    const topStaff = Object.entries(staffStats).sort((a,b) => b[1].rev - a[1].rev).slice(0, 8);
+    document.getElementById('dashTopStaff').innerHTML = topStaff.map(([name, st], i) =>
+        `<tr><td style="font-weight:bold; color:#666;">#${i+1}</td><td>${name}</td><td style="text-align:right;">${st.orders}</td><td style="text-align:right; font-weight:bold;">${st.rev.toFixed(0)}</td></tr>`
+    ).join('') || '<tr><td colspan="4" style="text-align:center; color:#999;">No sales.</td></tr>';
+
+    // Low stock
+    const low = [];
+    masterProducts.forEach(p => {
+        const stock = inventoryBatches.filter(b => b.sku === p.sku).reduce((s, b) => s + (b.qty_remaining||0), 0);
+        const rp = p.reorder_point || 10;
+        if(stock < rp && skuQty[p.sku]) low.push({ sku:p.sku, name:p.name, stock, rp, recent:skuQty[p.sku] });
+    });
+    low.sort((a,b) => b.recent - a.recent);
+    document.getElementById('dashLowStock').innerHTML = low.slice(0, 8).map(it =>
+        `<tr><td style="font-family:monospace; font-size:10px;">${it.sku}</td><td>${(it.name||'').slice(0, 28)}</td><td style="text-align:right; color:#DC2626; font-weight:bold;">${it.stock}/${it.rp}</td></tr>`
+    ).join('') || '<tr><td colspan="3" style="text-align:center; color:#10B981;">✓ Semua healthy.</td></tr>';
+
+    // Top customers
+    const custStats = {};
+    positives.forEach(s => {
+        const key = s.customer_phone || s.customer_name;
+        if(!key || key === 'Walk-In') return;
+        if(!custStats[key]) custStats[key] = { name:s.customer_name||'Unknown', spend:0, orders:0 };
+        custStats[key].spend += (s.total||0);
+        custStats[key].orders++;
+    });
+    const topCust = Object.values(custStats).sort((a,b) => b.spend - a.spend).slice(0, 10);
+    document.getElementById('dashTopCustomers').innerHTML = topCust.map((c, i) =>
+        `<tr><td style="font-weight:bold; color:#666;">#${i+1}</td><td>${(c.name||'').slice(0, 30)}</td><td style="text-align:right;">${c.orders}</td><td style="text-align:right; font-weight:bold;">${c.spend.toFixed(0)}</td></tr>`
+    ).join('') || '<tr><td colspan="4" style="text-align:center; color:#999;">No data.</td></tr>';
+
+    // Cohort: new customers per month
+    const monthSet = {};
+    if(typeof customersData !== 'undefined') {
+        customersData.forEach(c => {
+            if(!c.created_at) return;
+            const m = c.created_at.slice(0, 7);
+            monthSet[m] = (monthSet[m] || 0) + 1;
+        });
+    }
+    const sortedMonths = Object.entries(monthSet).sort((a,b) => b[0].localeCompare(a[0])).slice(0, 8);
+    document.getElementById('dashCohort').innerHTML = sortedMonths.map(([m, n]) =>
+        `<tr><td>${m}</td><td style="text-align:right; font-weight:bold;">${n} new</td></tr>`
+    ).join('') || '<tr><td colspan="2" style="text-align:center; color:#999;">No data.</td></tr>';
+};
+
+function drawRevenueChart(canvas, sales, cutoff) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth * 2;
+    canvas.height = 240 * 2;
+    canvas.style.height = '240px';
+    ctx.scale(2, 2);
+    const W = canvas.offsetWidth, H = 240;
+    ctx.clearRect(0, 0, W, H);
+
+    if(sales.length === 0) {
+        ctx.fillStyle = '#9CA3AF'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('No data for this period', W/2, H/2); return;
+    }
+
+    // Bucket by day
+    const dayMap = {};
+    sales.forEach(s => {
+        const dt = s.created_at ? new Date(s.created_at).toISOString().slice(0,10) : null;
+        if(!dt) return;
+        dayMap[dt] = (dayMap[dt] || 0) + (s.total||0);
+    });
+    const days = Object.keys(dayMap).sort();
+    const maxRev = Math.max(...Object.values(dayMap), 1);
+
+    // Axes + line
+    const padL = 50, padR = 20, padT = 20, padB = 30;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    ctx.strokeStyle = '#E5E7EB'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, H-padB); ctx.lineTo(W-padR, H-padB); ctx.stroke();
+
+    // Grid + Y labels
+    ctx.fillStyle = '#9CA3AF'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    for(let i = 0; i <= 4; i++) {
+        const y = padT + plotH * (1 - i/4);
+        const v = maxRev * i / 4;
+        ctx.fillText('RM ' + v.toFixed(0), padL - 6, y + 3);
+        ctx.strokeStyle = '#F3F4F6';
+        ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    }
+
+    // Line
+    if(days.length > 1) {
+        ctx.strokeStyle = '#CD7C32'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        days.forEach((d, i) => {
+            const x = padL + plotW * i / (days.length - 1);
+            const y = padT + plotH * (1 - dayMap[d] / maxRev);
+            if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        // Fill area
+        ctx.fillStyle = 'rgba(205, 124, 50, 0.1)';
+        ctx.lineTo(padL + plotW, H - padB);
+        ctx.lineTo(padL, H - padB);
+        ctx.closePath(); ctx.fill();
+    }
+
+    // X labels (first / mid / last)
+    ctx.fillStyle = '#666'; ctx.textAlign = 'center';
+    if(days.length) {
+        ctx.fillText(days[0].slice(5), padL, H - padB + 16);
+        ctx.fillText(days[days.length-1].slice(5), padL + plotW, H - padB + 16);
+        if(days.length > 5) {
+            const mid = Math.floor(days.length / 2);
+            ctx.fillText(days[mid].slice(5), padL + plotW/2, H - padB + 16);
+        }
+    }
+}
+
+// ============= p4_4 LOW STOCK PUSH NOTIFICATIONS =============
+window.checkLowStockNotify = async function() {
+    if(!('Notification' in window)) return;
+    const enabled = localStorage.getItem('lowStockNotifyEnabled_v1') === 'true';
+    if(!enabled || Notification.permission !== 'granted') return;
+    const lastNotify = parseInt(localStorage.getItem('lowStockLastNotify_v1') || '0');
+    if(Date.now() - lastNotify < 4 * 60 * 60 * 1000) return;  // throttle 4hr
+
+    const low = masterProducts.filter(p => {
+        const stock = inventoryBatches.filter(b => b.sku === p.sku).reduce((s, b) => s + (b.qty_remaining||0), 0);
+        const rp = p.reorder_point || 10;
+        return isPublished(p) && stock < rp;
+    });
+    if(low.length === 0) return;
+
+    new Notification('⚠️ 10 CAMP — Low Stock Alert', {
+        body: `${low.length} produk bawah reorder point. Top 3: ${low.slice(0,3).map(p => p.sku).join(', ')}`,
+        icon: 'https://placehold.co/64x64?text=10C',
+        tag: 'low-stock'
+    });
+    localStorage.setItem('lowStockLastNotify_v1', String(Date.now()));
+};
+
+window.requestNotifyPermission = async function() {
+    if(!('Notification' in window)) return showToast('Browser tak support notification', 'warn');
+    const r = await Notification.requestPermission();
+    if(r === 'granted') {
+        localStorage.setItem('lowStockNotifyEnabled_v1', 'true');
+        showToast('Low stock notifications enabled. Akan check setiap 4 jam.', 'success');
+        checkLowStockNotify();
+    } else {
+        showToast('Permission denied. Boleh enable balik dari browser settings.', 'warn');
+    }
+};
+
+// ============= SC1 p4_2 ROSTER ↔ ATTENDANCE RECONCILIATION =============
+window.renderRosterRecon = async function() {
+    const tbody = document.getElementById('rrTbody');
+    if(!tbody) return;
+
+    // Default date range: last 30 days
+    const fromEl = document.getElementById('rrFromDate');
+    const toEl = document.getElementById('rrToDate');
+    if(fromEl && !fromEl.value) {
+        const d = new Date(); d.setDate(d.getDate() - 30);
+        fromEl.value = d.toISOString().slice(0,10);
+    }
+    if(toEl && !toEl.value) toEl.value = new Date().toISOString().slice(0,10);
+
+    const fromDate = fromEl?.value || '';
+    const toDate = toEl?.value || '';
+    const filterStaff = document.getElementById('rrStaff')?.value || '';
+
+    let rosters = [], attendance = [];
+    try {
+        const r1 = await db.from('roster_schedules').select('*');
+        const r2 = await db.from('staff_attendance').select('*');
+        rosters = r1.data || [];
+        attendance = r2.data || [];
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#999;">Error: ${e.message}</td></tr>`;
+        return;
+    }
+
+    // Populate staff filter
+    const staffSel = document.getElementById('rrStaff');
+    if(staffSel && staffSel.options.length <= 1) {
+        const names = [...new Set([...rosters, ...attendance].map(r => r.staff_name).filter(Boolean))].sort();
+        staffSel.innerHTML = '<option value="">Semua</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
+    }
+
+    // Build per-day-per-staff records
+    const byKey = {};
+    rosters.forEach(r => {
+        const date = (r.shift_date || r.date || '').slice(0, 10);
+        if(!date) return;
+        if(fromDate && date < fromDate) return;
+        if(toDate && date > toDate) return;
+        if(filterStaff && r.staff_name !== filterStaff) return;
+        const key = `${date}|${r.staff_name||''}`;
+        if(!byKey[key]) byKey[key] = { date, staff:r.staff_name||'-', plan:null, in:null, out:null };
+        byKey[key].plan = `${r.shift_start||r.start||'09:00'}–${r.shift_end||r.end||'18:00'}`;
+    });
+    attendance.forEach(a => {
+        const date = (a.attendance_date || a.created_at || '').slice(0, 10);
+        if(!date) return;
+        if(fromDate && date < fromDate) return;
+        if(toDate && date > toDate) return;
+        if(filterStaff && a.staff_name !== filterStaff) return;
+        const key = `${date}|${a.staff_name||''}`;
+        if(!byKey[key]) byKey[key] = { date, staff:a.staff_name||'-', plan:null, in:null, out:null };
+        byKey[key].in = a.check_in || a.clock_in || null;
+        byKey[key].out = a.check_out || a.clock_out || null;
+    });
+
+    const rows = Object.values(byKey).sort((a,b) => b.date.localeCompare(a.date));
+    let onTime = 0, late = 0, noShow = 0, unscheduled = 0;
+    rows.forEach(r => {
+        if(r.plan && !r.in) { r.status = 'NO-SHOW'; noShow++; }
+        else if(!r.plan && r.in) { r.status = 'UNSCHEDULED'; unscheduled++; }
+        else if(r.plan && r.in) {
+            const planStart = (r.plan.split('–')[0] || '09:00').slice(0, 5);
+            const inTime = (r.in.match(/\d{2}:\d{2}/) || ['09:00'])[0];
+            if(inTime > planStart) { r.status = 'LATE'; late++; }
+            else { r.status = 'ON-TIME'; onTime++; }
+        } else { r.status = '-'; }
+    });
+
+    document.getElementById('rrSummary').innerHTML = `
+        <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">On-Time</div><div style="font-size:18px; font-weight:bold;">${onTime}</div></div>
+        <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Late</div><div style="font-size:18px; font-weight:bold;">${late}</div></div>
+        <div style="background:#FEE2E2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">No-Show</div><div style="font-size:18px; font-weight:bold;">${noShow}</div></div>
+        <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Unscheduled</div><div style="font-size:18px; font-weight:bold;">${unscheduled}</div></div>
+        <div style="background:#FAF5FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#6B21A8;">Total Days</div><div style="font-size:18px; font-weight:bold;">${rows.length}</div></div>
+    `;
+
+    if(rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Tiada data dalam tempoh ini. (Roster + Attendance kena ada data dulu.)</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = rows.slice(0, 200).map(r => {
+        const colors = {
+            'ON-TIME':     { bg:'#D1FAE5', fg:'#065F46' },
+            'LATE':        { bg:'#FEF3C7', fg:'#92400E' },
+            'NO-SHOW':     { bg:'#FEE2E2', fg:'#991B1B' },
+            'UNSCHEDULED': { bg:'#DBEAFE', fg:'#1E40AF' },
+            '-':           { bg:'#F3F4F6', fg:'#6B7280' }
+        };
+        const c = colors[r.status] || colors['-'];
+        return `<tr><td>${r.date}</td><td>${r.staff}</td><td style="font-family:monospace; font-size:11px;">${r.plan||'-'}</td><td>${r.in||'-'}</td><td>${r.out||'-'}</td><td>${r.plan && r.in ? 'auto' : '-'}</td><td><span style="background:${c.bg}; color:${c.fg}; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">${r.status}</span></td></tr>`;
+    }).join('');
+};
+
+// =============================================================
+// SPRINT B — GROWTH & LOYALTY
+// =============================================================
+
+// ============= p7_1 TIERED LOYALTY =============
+// Tier rules: Bronze (3-9 orders), Silver (10-29), Gold (30+).
+// Discount % per tier configurable in settings (defaults: 3 / 5 / 10).
+window.getCustomerTier = function(customer) {
+    const orders = customer ? (customer.total_orders || 0) : 0;
+    if(orders >= 30) return 'Gold';
+    if(orders >= 10) return 'Silver';
+    if(orders >= 3)  return 'Bronze';
+    return null;
+};
+
+window.getTierDiscount = function(tier) {
+    try {
+        const s = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}');
+        const t = s.tiers || {};
+        const defaults = { Bronze: 3, Silver: 5, Gold: 10 };
+        return parseFloat(t[tier]) || defaults[tier] || 0;
+    } catch(e) { return 0; }
+};
+
+window.getTierColor = function(tier) {
+    const map = {
+        Bronze: { bg:'#FED7AA', fg:'#9A3412', emoji:'🥉' },
+        Silver: { bg:'#E5E7EB', fg:'#374151', emoji:'🥈' },
+        Gold:   { bg:'#FEF3C7', fg:'#92400E', emoji:'🥇' }
+    };
+    return map[tier] || { bg:'#E5E7EB', fg:'#6B7280', emoji:'•' };
+};
+
+// Override checkoutVipLookup to use tier system
+const __originalCheckoutVipLookup = window.checkoutVipLookup;
+window.checkoutVipLookup = function() {
+    const nameEl = document.getElementById('customerName');
+    const phoneEl = document.getElementById('customerPhone');
+    const badge = document.getElementById('checkoutVipBadge');
+    if(!badge) return;
+
+    const name = (nameEl?.value || '').trim().toLowerCase();
+    const phoneRaw = (phoneEl?.value || '').trim();
+    const phone = (typeof normalisePhoneForMatch === 'function') ? normalisePhoneForMatch(phoneRaw) : phoneRaw;
+
+    let match = null;
+    if(typeof customersData !== 'undefined') {
+        if(phone) match = customersData.find(c => c.phone === phone);
+        if(!match && name && name.length >= 3) match = customersData.find(c => (c.name || '').toLowerCase() === name);
+    }
+
+    window.__currentCheckoutVip = null;
+    if(!match) {
+        badge.style.display = 'none';
+        recomputeCheckoutTotal();
+        return;
+    }
+
+    const tier = getCustomerTier(match);
+    if(tier) {
+        const pct = getTierDiscount(tier);
+        const c = getTierColor(tier);
+        window.__currentCheckoutVip = {
+            customer_id: match.id,
+            customer_name: match.name,
+            customer_phone: match.phone,
+            tier, discount_pct: pct,
+            total_orders: match.total_orders || 0,
+            total_spent: match.total_spent || 0
+        };
+        badge.style.background = c.bg;
+        badge.style.color = c.fg;
+        badge.style.border = `2px solid ${c.fg}`;
+        badge.style.display = 'block';
+        badge.innerHTML = `${c.emoji} <strong>${tier.toUpperCase()} TIER</strong> · ${match.name} · ${match.total_orders} orders · RM${(match.total_spent||0).toFixed(0)} spent — auto-discount <strong>${pct}%</strong> applied`;
+    } else {
+        const orders = match.total_orders || 0;
+        const need = 3 - orders;
+        badge.style.background = '#EFF6FF';
+        badge.style.color = '#1E40AF';
+        badge.style.border = '1px solid #BFDBFE';
+        badge.style.display = 'block';
+        badge.innerHTML = `👤 ${match.name} · ${orders} order(s) · ${need > 0 ? need + ' more order to unlock 🥉 Bronze' : 'qualifies next checkout'}`;
+    }
+    recomputeCheckoutTotal();
+};
+
+// ============= p7_3 PROMO ENGINE (rules-based) =============
+let __activePromos = [];
+
+window.loadPromotions = async function() {
+    try {
+        const { data } = await db.from('promotions').select('*').eq('active', true);
+        __activePromos = data || [];
+    } catch(e) { __activePromos = []; }
+};
+
+window.evaluatePromos = function(cart, customer) {
+    if(!cart || cart.length === 0) return [];
+    const today = new Date().toISOString().slice(0, 10);
+    const cartTotal = cart.reduce((s, it) => s + (it.qty||it.quantity||1) * (it.price||0), 0);
+    const cartQty = cart.reduce((s, it) => s + (it.qty||it.quantity||1), 0);
+    const tier = customer ? getCustomerTier(customer) : null;
+
+    const eligible = [];
+    __activePromos.forEach(p => {
+        if(!p.active) return;
+        if(p.start_date && p.start_date > today) return;
+        if(p.end_date && p.end_date < today) return;
+        if(p.max_uses && (p.uses_count || 0) >= p.max_uses) return;
+        if(p.min_spend && cartTotal < p.min_spend) return;
+        if(p.min_qty && cartQty < p.min_qty) return;
+        if(p.customer_tier && p.customer_tier !== tier) return;
+
+        // Compute discount based on scope
+        let discount = 0;
+        const dv = parseFloat(p.discount_value) || 0;
+        const matchItems = (p.scope === 'cart_total')
+            ? cart
+            : cart.filter(it => {
+                if(p.scope === 'sku')      return (it.sku || '').toUpperCase() === (p.scope_value || '').toUpperCase();
+                if(p.scope === 'brand') {
+                    const prod = masterProducts.find(m => m.sku === it.sku);
+                    return prod && (prod.brand || '').toLowerCase() === (p.scope_value || '').toLowerCase();
+                }
+                if(p.scope === 'category') {
+                    const prod = masterProducts.find(m => m.sku === it.sku);
+                    return prod && (prod.category || '').toLowerCase() === (p.scope_value || '').toLowerCase();
+                }
+                return false;
+            });
+        if(matchItems.length === 0 && p.scope !== 'cart_total') return;
+
+        const matchTotal = matchItems.reduce((s, it) => s + (it.qty||it.quantity||1) * (it.price||0), 0);
+
+        if(p.discount_type === 'percent') {
+            discount = matchTotal * dv / 100;
+        } else if(p.discount_type === 'fixed') {
+            discount = Math.min(dv, matchTotal);
+        } else if(p.discount_type === 'bogo') {
+            // Buy 1 get 1 — half the qty pairs get free
+            const matchQty = matchItems.reduce((s, it) => s + (it.qty||it.quantity||1), 0);
+            const freeQty = Math.floor(matchQty / 2);
+            const avgPrice = matchTotal / matchQty;
+            discount = freeQty * avgPrice;
+        }
+
+        if(discount > 0) {
+            eligible.push({ promo: p, discount, applies_to: p.scope, value_target: p.scope_value });
+        }
+    });
+
+    // Sort by priority (lower number = higher priority) then by discount desc
+    eligible.sort((a, b) => (a.promo.priority||100) - (b.promo.priority||100) || b.discount - a.discount);
+    return eligible;
+};
+
+// ============= p7_4 CUSTOMER SEGMENTS / RFM =============
+window.renderSegments = function() {
+    if(typeof customersData === 'undefined' || typeof salesHistory === 'undefined') return;
+
+    // RFM compute
+    const now = Date.now();
+    const customerAgg = {};
+    salesHistory.filter(s => (s.total||0) > 0).forEach(s => {
+        const key = s.customer_phone || s.customer_name;
+        if(!key || key === 'Walk-In') return;
+        if(!customerAgg[key]) customerAgg[key] = { phone:s.customer_phone, name:s.customer_name||'-', orders:0, spent:0, lastOrder:null };
+        customerAgg[key].orders++;
+        customerAgg[key].spent += (s.total||0);
+        if(!customerAgg[key].lastOrder || (s.created_at||'') > customerAgg[key].lastOrder) customerAgg[key].lastOrder = s.created_at;
+    });
+
+    // Classify per RFM
+    const buckets = {
+        'Champion':            { desc:'High recency + freq + spend', filter:c => daysSince(c.lastOrder) < 60 && c.orders >= 5 && c.spent >= 1000 },
+        'Loyal':               { desc:'Frequent + recent', filter:c => daysSince(c.lastOrder) < 90 && c.orders >= 3 },
+        'Potential Loyalist':  { desc:'Recent but low frequency', filter:c => daysSince(c.lastOrder) < 60 && c.orders < 3 },
+        'New Customer':        { desc:'1 order, recent', filter:c => c.orders === 1 && daysSince(c.lastOrder) < 30 },
+        'At Risk':             { desc:'Last bought 90-180 days ago', filter:c => daysSince(c.lastOrder) >= 90 && daysSince(c.lastOrder) < 180 && c.orders >= 2 },
+        'Hibernating':         { desc:'Inactive 180+ days', filter:c => daysSince(c.lastOrder) >= 180 },
+    };
+
+    const segmentMap = {};
+    Object.keys(buckets).forEach(k => segmentMap[k] = []);
+
+    Object.values(customerAgg).forEach(c => {
+        for(const [name, b] of Object.entries(buckets)) {
+            if(b.filter(c)) { segmentMap[name].push(c); break; }
+        }
+    });
+
+    // Stats cards
+    const totalCust = Object.values(customerAgg).length;
+    const totalSpent = Object.values(customerAgg).reduce((s, c) => s + c.spent, 0);
+    const totalOrders = Object.values(customerAgg).reduce((s, c) => s + c.orders, 0);
+    const avgAOV = totalOrders > 0 ? totalSpent / totalOrders : 0;
+    document.getElementById('segStats').innerHTML = `
+        <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Active Customers</div><div style="font-size:18px; font-weight:bold;">${totalCust}</div></div>
+        <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Total Spent</div><div style="font-size:18px; font-weight:bold;">RM ${totalSpent.toLocaleString(undefined,{maximumFractionDigits:0})}</div></div>
+        <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Avg Order Value</div><div style="font-size:18px; font-weight:bold;">RM ${avgAOV.toFixed(2)}</div></div>
+        <div style="background:#FAF5FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#6B21A8;">Champions</div><div style="font-size:18px; font-weight:bold;">${segmentMap['Champion'].length}</div></div>
+        <div style="background:#FEE2E2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">At Risk + Hibernating</div><div style="font-size:18px; font-weight:bold;">${segmentMap['At Risk'].length + segmentMap['Hibernating'].length}</div></div>
+    `;
+
+    // RFM table
+    const segColors = {
+        'Champion':           '#10B981',
+        'Loyal':              '#3B82F6',
+        'Potential Loyalist': '#A855F7',
+        'New Customer':       '#F59E0B',
+        'At Risk':            '#EF4444',
+        'Hibernating':        '#9CA3AF'
+    };
+    document.getElementById('segRfmTbody').innerHTML = Object.entries(segmentMap).map(([name, list]) => {
+        const spend = list.reduce((s, c) => s + c.spent, 0);
+        const orders = list.reduce((s, c) => s + c.orders, 0);
+        const aov = orders > 0 ? spend / orders : 0;
+        return `<tr>
+            <td><span style="background:${segColors[name]}; color:#FFF; padding:2px 8px; border-radius:50px; font-weight:bold; font-size:10px;">${name}</span><br><span style="font-size:10px; color:#888;">${buckets[name].desc}</span></td>
+            <td style="text-align:right; font-weight:bold;">${list.length}</td>
+            <td style="text-align:right;">RM ${spend.toFixed(0)}</td>
+            <td style="text-align:right;">RM ${aov.toFixed(2)}</td>
+        </tr>`;
+    }).join('');
+
+    // Cohort
+    const cohort = {};
+    customersData.forEach(c => {
+        if(!c.created_at) return;
+        const m = c.created_at.slice(0, 7);
+        if(!cohort[m]) cohort[m] = { count:0, spent:0 };
+        cohort[m].count++;
+        cohort[m].spent += (c.total_spent||0);
+    });
+    const sortedCohort = Object.entries(cohort).sort((a,b) => b[0].localeCompare(a[0])).slice(0, 12);
+    document.getElementById('segCohortTbody').innerHTML = sortedCohort.map(([m, d]) =>
+        `<tr><td>${m}</td><td style="text-align:right;">${d.count}</td><td style="text-align:right;">RM ${d.spent.toFixed(0)}</td><td style="text-align:right;">RM ${(d.spent / d.count).toFixed(2)}</td></tr>`
+    ).join('') || '<tr><td colspan="4" style="text-align:center; color:#999;">No data.</td></tr>';
+
+    // Top 20
+    const top = Object.values(customerAgg).sort((a,b) => b.spent - a.spent).slice(0, 20);
+    document.getElementById('segTopTbody').innerHTML = top.map((c, i) => {
+        // tier
+        const cust = customersData.find(cu => cu.phone === c.phone || cu.name === c.name);
+        const tier = getCustomerTier(cust);
+        const tierBadge = tier ? `<span style="background:${getTierColor(tier).bg}; color:${getTierColor(tier).fg}; padding:1px 6px; border-radius:50px; font-weight:bold; font-size:10px;">${getTierColor(tier).emoji} ${tier}</span>` : '-';
+        const aov = c.orders > 0 ? c.spent / c.orders : 0;
+        const lastDate = c.lastOrder ? c.lastOrder.slice(0, 10) : '-';
+        return `<tr>
+            <td><strong>#${i+1}</strong></td>
+            <td>${(c.name||'').slice(0, 40)}</td>
+            <td style="font-family:monospace; font-size:11px;">${c.phone||'-'}</td>
+            <td>${tierBadge}</td>
+            <td style="text-align:right;">${c.orders}</td>
+            <td style="text-align:right; font-weight:bold;">${c.spent.toFixed(2)}</td>
+            <td style="text-align:right;">${aov.toFixed(2)}</td>
+            <td style="font-size:11px;">${lastDate}</td>
+        </tr>`;
+    }).join('');
+};
+
+function daysSince(iso) {
+    if(!iso) return 999999;
+    return Math.floor((Date.now() - new Date(iso).getTime()) / (24*60*60*1000));
+}
+
+// ============= p7_5 FESTIVAL TEMPLATES =============
+const FESTIVAL_TEMPLATES = [
+    { id:'raya',    label:'🌙 Hari Raya Aidilfitri',    code:'RAYA2026',    type:'percent', value:20, scope:'cart_total', minSpend:200, desc:'Diskaun 20% sempena Raya untuk pembelian melebihi RM200' },
+    { id:'cny',     label:'🧧 Chinese New Year',        code:'CNY2026',     type:'percent', value:15, scope:'cart_total', minSpend:150, desc:'Diskaun 15% sempena CNY untuk pembelian melebihi RM150' },
+    { id:'depavali',label:'🪔 Deepavali',                code:'DEEPAVALI',   type:'percent', value:15, scope:'cart_total', minSpend:150, desc:'Diskaun 15% sempena Deepavali' },
+    { id:'merdeka', label:'🇲🇾 Hari Merdeka',           code:'MERDEKA31',   type:'percent', value:31, scope:'cart_total', minSpend:300, desc:'31% off sempena Merdeka untuk pembelian melebihi RM300' },
+    { id:'malaysia',label:'🇲🇾 Hari Malaysia',          code:'MALAYSIA16',  type:'percent', value:16, scope:'cart_total', minSpend:200, desc:'16% off sempena Hari Malaysia' },
+    { id:'xmas',    label:'🎄 Christmas',                code:'XMAS2026',    type:'fixed',   value:50, scope:'cart_total', minSpend:300, desc:'RM50 off sempena Christmas untuk pembelian melebihi RM300' },
+    { id:'newyear', label:'🎉 New Year',                 code:'NY2026',      type:'percent', value:10, scope:'cart_total', desc:'10% off New Year sale' },
+    { id:'pekerja', label:'💼 Hari Pekerja',             code:'WORKER',      type:'fixed',   value:30, scope:'cart_total', minSpend:200, desc:'RM30 off Hari Pekerja' },
+    { id:'campday', label:'🏕️ 10 CAMP Anniversary',      code:'TENCAMP',     type:'percent', value:10, scope:'cart_total', desc:'10% off semua sempena anniversary 10 CAMP' },
+];
+
+window.openFestivalTemplates = function() {
+    const html = `
+        <div id="festOverlay" class="login-overlay" style="display:flex; z-index:3700;">
+            <div class="login-box" style="max-width:760px; width:96%; padding:24px;">
+                <button onclick="document.getElementById('festOverlay').remove()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
+                <h2 style="margin:0 0 8px;">🎉 Festival Promo Templates</h2>
+                <p style="font-size:13px; color:#666; margin-bottom:14px;">One-click recipe untuk promo festival. Klik "Add" untuk insert ke promotions table sebagai inactive — pergi Promotions section untuk activate.</p>
+                <div style="max-height:520px; overflow-y:auto; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    ${FESTIVAL_TEMPLATES.map(t => `
+                        <div style="background:#FFF; border:1px solid var(--border-color); border-radius:8px; padding:14px;">
+                            <h4 style="margin:0 0 4px; font-size:14px;">${t.label}</h4>
+                            <p style="font-size:11px; color:#666; margin:0 0 8px; min-height:30px;">${t.desc}</p>
+                            <div style="font-size:11px; margin-bottom:8px;">
+                                <span style="background:#F3F4F6; padding:1px 6px; border-radius:3px; font-family:monospace;">${t.code}</span>
+                                · ${t.type === 'percent' ? t.value + '%' : 'RM' + t.value}
+                                ${t.minSpend ? ' · min RM' + t.minSpend : ''}
+                            </div>
+                            <button class="btn-success" style="width:100%; padding:6px; font-size:11px; margin:0;" onclick="window.applyFestivalTemplate('${t.id}')">+ Add to Promotions</button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.applyFestivalTemplate = async function(id) {
+    const t = FESTIVAL_TEMPLATES.find(x => x.id === id);
+    if(!t) return;
+    try {
+        const { error } = await db.from('promotions').insert([{
+            code: t.code,
+            discount_type: t.type,
+            discount_value: t.value,
+            scope: t.scope,
+            min_spend: t.minSpend || null,
+            description: t.desc,
+            active: false  // start inactive — admin must enable
+        }]);
+        if(error) throw error;
+        showToast(`${t.label} added (inactive). Activate dari Promotions.`, 'success');
+        await loadPromotions();
+    } catch(e) {
+        showToast('Ralat: ' + e.message, 'error');
+    }
+};
+
+// Promo Engine — improved Promotions section render
+window.renderPromotionsV2 = async function() {
+    const tbody = document.getElementById('promotionsTableBody');
+    if(!tbody) return;
+    try {
+        const { data: promos } = await db.from('promotions').select('*').order('priority').order('id', {ascending:false});
+        if(!promos || promos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">Tiada promo. Klik "+ Festival Templates" untuk add satu set.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = promos.map(p => {
+            const today = new Date().toISOString().slice(0, 10);
+            const isLive = p.active && (!p.start_date || p.start_date <= today) && (!p.end_date || p.end_date >= today);
+            const valDisp = p.discount_type === 'percent' ? p.discount_value + '%' : (p.discount_type === 'fixed' ? 'RM' + parseFloat(p.discount_value).toFixed(2) : 'BOGO');
+            const cond = [];
+            if(p.scope && p.scope !== 'cart_total') cond.push(`${p.scope}=${p.scope_value||'-'}`);
+            if(p.min_spend) cond.push(`min RM${p.min_spend}`);
+            if(p.min_qty) cond.push(`${p.min_qty}+ items`);
+            if(p.customer_tier) cond.push(`${p.customer_tier} tier`);
+            const condStr = cond.length ? cond.join(' · ') : 'all carts';
+            return `<tr>
+                <td><strong>${p.code||'-'}</strong><br><span style="font-size:10px; color:#666;">${p.description||''}</span></td>
+                <td>${p.discount_type||'-'}<br><span style="font-size:10px; color:#666;">${condStr}</span></td>
+                <td style="font-weight:bold;">${valDisp}</td>
+                <td>
+                    ${isLive ? '<span style="color:#10B981; font-weight:bold;">🟢 Active</span>' : (p.active ? '<span style="color:#F59E0B;">⏰ Scheduled</span>' : '<span style="color:#9CA3AF;">⚪ Inactive</span>')}
+                    <br><button onclick="window.togglePromoActive(${p.id}, ${!p.active})" class="btn-primary" style="font-size:10px; padding:2px 8px; margin-top:4px;">${p.active ? 'Disable' : 'Enable'}</button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#DC2626;">Error: ${e.message}</td></tr>`;
+    }
+};
+
+window.togglePromoActive = async function(id, newState) {
+    try {
+        await db.from('promotions').update({ active: newState }).eq('id', id);
+        showToast(`Promo ${newState ? 'enabled' : 'disabled'}`, 'success');
+        await loadPromotions();
+        renderPromotionsV2();
+    } catch(e) { showToast('Ralat: ' + e.message, 'error'); }
+};
+
+// Override the old renderPromotions
+window.renderPromotions = window.renderPromotionsV2;
+
+// =============================================================
+// SPRINT C — CLOSE THE LOOP
+// =============================================================
+
+// ============= SC2 p4_5 EOD CLOSE / DAILY Z-REPORT =============
+window.openEodClose = async function() {
+    const today = new Date().toISOString().slice(0, 10);
+    const todaySales = (salesHistory || []).filter(s => (s.created_at||'').slice(0, 10) === today);
+
+    if(todaySales.length === 0) {
+        return showToast('Tiada transaksi hari ini.', 'warn');
+    }
+
+    // Aggregate
+    const positives = todaySales.filter(s => (s.total||0) > 0);
+    const refunds = todaySales.filter(s => (s.total||0) < 0);
+    const totalRev = positives.reduce((s, x) => s + (x.total||0), 0);
+    const refundTotal = Math.abs(refunds.reduce((s, x) => s + (x.total||0), 0));
+    const netRev = totalRev - refundTotal;
+
+    const byPayment = {};
+    positives.forEach(s => {
+        const pm = s.payment_method || '(Unknown)';
+        byPayment[pm] = (byPayment[pm] || 0) + (s.total||0);
+    });
+    const byChannel = {};
+    positives.forEach(s => {
+        const ch = s.channel || '(Unknown)';
+        byChannel[ch] = (byChannel[ch] || 0) + (s.total||0);
+    });
+    const byStaff = {};
+    positives.forEach(s => {
+        const st = s.staff_name || '(Unassigned)';
+        if(!byStaff[st]) byStaff[st] = { rev:0, orders:0 };
+        byStaff[st].rev += (s.total||0);
+        byStaff[st].orders++;
+    });
+
+    const detailsHtml = `
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; font-size:11px;">
+            <div><strong>Tarikh:</strong> ${today}</div>
+            <div><strong>Orders:</strong> ${positives.length} (+${refunds.length} refunds)</div>
+            <div><strong>Net Revenue:</strong> RM ${netRev.toFixed(2)}</div>
+        </div>
+    `;
+
+    const result = await requireManagerPin({
+        title: 'End-of-Day Close',
+        subtitle: `Lock ${today} sales — generate Z-report dan rekod ke finance_records.`,
+        detailsHtml,
+        reasons: ['Closing — normal day', 'Closing — high variance day', 'Closing — manual reconciliation needed', 'Lain-lain']
+    });
+    if(!result) return;
+
+    // Build Z-report html for printing
+    const settings = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop || {};
+    const shopName = settings.name || '10 CAMP STORE';
+    const win = window.open('', '_blank', 'width=600,height=900');
+    win.document.write(`<!DOCTYPE html><html><head><title>Z-Report ${today}</title>
+        <style>
+            body { font-family: monospace; padding:20px; max-width:580px; margin:auto; font-size:12px; }
+            h1 { font-size:16px; text-align:center; margin:0 0 4px; }
+            h2 { font-size:13px; margin:14px 0 4px; border-bottom:2px solid #111; padding-bottom:4px; }
+            .row { display:flex; justify-content:space-between; padding:2px 0; }
+            .total { font-weight:bold; border-top:2px solid #111; padding-top:4px; margin-top:6px; }
+            .meta { font-size:10px; color:#666; text-align:center; margin-bottom:14px; }
+            @media print { @page { margin:1cm; } button { display:none; } }
+        </style></head><body>
+        <h1>${shopName}</h1>
+        <p class="meta">Z-REPORT (DAILY CLOSE)</p>
+        <p class="meta">${today} · Approved by ${result.manager.name}</p>
+
+        <h2>Summary</h2>
+        <div class="row"><span>Total Orders:</span><span>${positives.length}</span></div>
+        <div class="row"><span>Refunds:</span><span>${refunds.length}</span></div>
+        <div class="row"><span>Gross Revenue:</span><span>RM ${totalRev.toFixed(2)}</span></div>
+        <div class="row"><span>Refund Total:</span><span>−RM ${refundTotal.toFixed(2)}</span></div>
+        <div class="row total"><span>NET REVENUE:</span><span>RM ${netRev.toFixed(2)}</span></div>
+
+        <h2>By Payment Method</h2>
+        ${Object.entries(byPayment).map(([k, v]) => `<div class="row"><span>${k}</span><span>RM ${v.toFixed(2)}</span></div>`).join('')}
+
+        <h2>By Channel</h2>
+        ${Object.entries(byChannel).map(([k, v]) => `<div class="row"><span>${k}</span><span>RM ${v.toFixed(2)}</span></div>`).join('')}
+
+        <h2>By Staff</h2>
+        ${Object.entries(byStaff).map(([k, v]) => `<div class="row"><span>${k} (${v.orders})</span><span>RM ${v.rev.toFixed(2)}</span></div>`).join('')}
+
+        <h2>Approval Reason</h2>
+        <p style="font-size:11px;">${result.reason}${result.note ? ' — '+result.note : ''}</p>
+
+        <p class="meta" style="margin-top:30px;">Generated by 10 CAMP POS · ${new Date().toLocaleString()}</p>
+        <button onclick="window.print()" style="margin-top:20px; padding:8px 16px; background:#0EA5E9; color:#FFF; border:none; border-radius:4px; cursor:pointer;">🖨️ Print Z-Report</button>
+        </body></html>`);
+    win.document.close();
+
+    // Persist to finance_records + audit_logs
+    try {
+        await db.from('finance_records').insert([{
+            month: new Date().toLocaleString('en-MY', { month:'short' }),
+            year: new Date().getFullYear(),
+            category: 'EOD_CLOSE',
+            amount: netRev,
+            description: `Z-Report ${today} · ${positives.length} orders · approved by ${result.manager.name}`,
+            metadata: { date: today, gross: totalRev, refunds: refundTotal, net: netRev, byPayment, byChannel, byStaff }
+        }]);
+    } catch(e) { /* finance_records may have different schema; non-blocking */ }
+
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'eod_close',
+            actor_name: result.manager.name,
+            target_staff: currentUser ? currentUser.name : null,
+            details: JSON.stringify({ date:today, orders:positives.length, refunds:refunds.length, net:netRev, reason:result.reason, note:result.note }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
+
+    showToast(`Z-Report ${today} generated · approved by ${result.manager.name}`, 'success');
+};
+
+// ============= SC3 p8_1+p8_2 IN-APP VELOCITY ANALYSIS =============
+window.openVelocityAnalysis = function() {
+    if(typeof salesHistory === 'undefined' || !salesHistory.length) {
+        return showToast('Tiada sales data. Run velocity selepas ada data.', 'warn');
+    }
+
+    // Compute velocity per SKU
+    const now = Date.now();
+    const window6mo = now - 180 * 24*60*60*1000;
+    const skuStats = new Map();
+    masterProducts.forEach(p => {
+        skuStats.set(p.sku, {
+            sku:p.sku, name:p.name, brand:p.brand,
+            recent:0, lifetime:0, firstSale:null, lastSale:null,
+            stock: 0,
+            currentRP: p.reorder_point, currentRQ: p.reorder_qty,
+            lead: p.lead_time_days || 14
+        });
+    });
+    inventoryBatches.forEach(b => {
+        const st = skuStats.get(b.sku);
+        if(st) st.stock += (b.qty_remaining||0);
+    });
+    salesHistory.filter(s => (s.total||0) > 0).forEach(s => {
+        const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+        (s.items || []).forEach(it => {
+            const sku = (it.sku||'').toUpperCase();
+            const qty = parseFloat(it.qty) || 0;
+            const st = skuStats.get(sku);
+            if(!st || qty <= 0) return;
+            st.lifetime += qty;
+            if(dt >= window6mo) st.recent += qty;
+            if(!st.firstSale || dt < new Date(st.firstSale).getTime()) st.firstSale = s.created_at;
+            if(!st.lastSale || dt > new Date(st.lastSale).getTime()) st.lastSale = s.created_at;
+        });
+    });
+    salesHistory.filter(s => (s.total||0) < 0).forEach(s => {
+        (s.items || []).forEach(it => {
+            const sku = (it.sku||'').toUpperCase();
+            const st = skuStats.get(sku);
+            if(st) st.lifetime = Math.max(0, st.lifetime - (parseFloat(it.qty)||0));
+        });
+    });
+
+    // Compute recommendations
+    const SAFETY_FACTOR = 1.5, COVER_MONTHS = 2.0, MIN_RP = 2;
+    const recs = [];
+    skuStats.forEach(st => {
+        let avgMonthly = 0, window = 'no-sales';
+        if(st.recent > 0) { avgMonthly = st.recent / 6; window = '6mo'; }
+        else if(st.lifetime > 0 && st.firstSale && st.lastSale) {
+            const months = Math.max(1, (new Date(st.lastSale) - new Date(st.firstSale)) / (1000*60*60*24*30));
+            avgMonthly = st.lifetime / months; window = `lifetime(${Math.round(months)}mo)`;
+        }
+        let newRP = avgMonthly === 0 ? MIN_RP : Math.max(MIN_RP, Math.ceil(avgMonthly/30 * st.lead * SAFETY_FACTOR));
+        let newRQ = avgMonthly === 0 ? 5 : Math.max(MIN_RP, Math.ceil(avgMonthly * COVER_MONTHS));
+        const isStale = st.lastSale && (now - new Date(st.lastSale).getTime()) > 180*24*60*60*1000 && st.lifetime > 0;
+        if(isStale) { newRP = MIN_RP; newRQ = 5; }
+        recs.push({ ...st, avgMonthly, window, newRP, newRQ, isStale, urgent: st.recent > 0 && st.stock < newRP });
+    });
+
+    // Stats
+    const totalUpdate = recs.length;
+    const moving = recs.filter(r => r.recent > 0).length;
+    const stale = recs.filter(r => r.isStale).length;
+    const urgent = recs.filter(r => r.urgent).length;
+    const recsSorted = recs.sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || b.recent - a.recent);
+
+    const html = `
+        <div id="velocityOverlay" class="login-overlay" style="display:flex; z-index:3700;">
+            <div class="login-box" style="max-width:880px; width:96%; padding:24px;">
+                <button onclick="document.getElementById('velocityOverlay').remove()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
+                <h2 style="margin:0 0 8px;">📊 Velocity Analysis (in-app)</h2>
+                <p style="font-size:12px; color:#666; margin-bottom:14px;">Auto-suggest reorder_point + reorder_qty based on real sales velocity. Window: 6 months recent, fallback to lifetime.</p>
+
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:14px;">
+                    <div style="background:#EFF6FF; padding:10px; border-radius:6px; text-align:center;"><div style="font-size:10px; color:#1E40AF;">Total SKU</div><div style="font-size:18px; font-weight:bold;">${totalUpdate}</div></div>
+                    <div style="background:#F0FDF4; padding:10px; border-radius:6px; text-align:center;"><div style="font-size:10px; color:#166534;">Active (6mo)</div><div style="font-size:18px; font-weight:bold;">${moving}</div></div>
+                    <div style="background:#FEF3C7; padding:10px; border-radius:6px; text-align:center;"><div style="font-size:10px; color:#92400E;">Stale (180d+)</div><div style="font-size:18px; font-weight:bold;">${stale}</div></div>
+                    <div style="background:#FEE2E2; padding:10px; border-radius:6px; text-align:center;"><div style="font-size:10px; color:#991B1B;">⚠️ Urgent (under-stocked)</div><div style="font-size:18px; font-weight:bold;">${urgent}</div></div>
+                </div>
+
+                <div style="max-height:380px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:14px;">
+                    <table class="data-table" style="font-size:11px;"><thead style="position:sticky; top:0; background:#FAFAFA;"><tr><th>SKU</th><th>Brand</th><th style="text-align:right;">6mo Qty</th><th style="text-align:right;">Avg/mo</th><th style="text-align:right;">Cur RP</th><th style="text-align:right;">New RP</th><th style="text-align:right;">New RQ</th><th style="text-align:right;">Stock</th></tr></thead><tbody>
+                    ${recsSorted.slice(0, 100).map(r => `
+                        <tr style="${r.urgent ? 'background:#FEF2F2;' : (r.isStale ? 'color:#9CA3AF;' : '')}">
+                            <td><strong>${r.sku}</strong>${r.urgent ? ' ⚠️' : ''}${r.isStale ? ' 💤' : ''}</td>
+                            <td>${(r.brand||'-').slice(0, 14)}</td>
+                            <td style="text-align:right;">${r.recent.toFixed(0)}</td>
+                            <td style="text-align:right;">${r.avgMonthly.toFixed(1)}</td>
+                            <td style="text-align:right; color:#666;">${r.currentRP||'-'}</td>
+                            <td style="text-align:right; font-weight:bold;">${r.newRP}</td>
+                            <td style="text-align:right;">${r.newRQ}</td>
+                            <td style="text-align:right; color:${r.stock===0?'#DC2626':'#111'};">${r.stock}</td>
+                        </tr>
+                    `).join('')}
+                    ${recsSorted.length > 100 ? `<tr><td colspan="8" style="text-align:center; color:#666;">+ ${recsSorted.length - 100} lagi (akan diupdate juga)</td></tr>` : ''}
+                    </tbody></table>
+                </div>
+
+                <div style="background:#FEF3C7; padding:10px; border-radius:6px; margin-bottom:14px; font-size:11px; color:#92400E;">
+                    💡 Klik "Apply" untuk update reorder_point + reorder_qty pada ${totalUpdate} produk. Boleh re-run anytime, akan recompute dari latest sales data.
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <button onclick="document.getElementById('velocityOverlay').remove()" class="login-btn" style="background:#6B7280; flex:1;">Tutup</button>
+                    <button onclick="window.applyVelocityRecs()" class="login-btn" style="flex:2;">✓ Apply ke ${totalUpdate} Produk</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    window.__pendingVelocityRecs = recsSorted;
+};
+
+window.applyVelocityRecs = async function() {
+    const recs = window.__pendingVelocityRecs || [];
+    if(recs.length === 0) return;
+    if(!confirm(`Apply velocity recommendations ke ${recs.length} produk?`)) return;
+
+    let ok = 0, fail = 0;
+    const chunk = 50;
+    for(let i = 0; i < recs.length; i += chunk) {
+        const slice = recs.slice(i, i + chunk);
+        await Promise.all(slice.map(async r => {
+            try {
+                await db.from('products_master').update({
+                    reorder_point: r.newRP,
+                    reorder_qty: r.newRQ,
+                    lead_time_days: r.lead
+                }).eq('sku', r.sku);
+                const p = masterProducts.find(x => x.sku === r.sku);
+                if(p) { p.reorder_point = r.newRP; p.reorder_qty = r.newRQ; p.lead_time_days = r.lead; }
+                ok++;
+            } catch(e) { fail++; }
+        }));
+    }
+
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'velocity_reorder_applied',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ updated:ok, failed:fail, total:recs.length }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
+
+    showToast(`Velocity update: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
+    document.getElementById('velocityOverlay').remove();
 };

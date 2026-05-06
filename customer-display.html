@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 CAMP — Customer Display</title>
+<style>
+    :root {
+        --primary: #CD7C32;
+        --bg: #FFFAF3;
+        --text: #1F2937;
+        --muted: #9CA3AF;
+        --border: #E5E7EB;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+    .layout {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        max-height: 100vh;
+    }
+    header {
+        background: linear-gradient(135deg, var(--primary), #A05F22);
+        color: #FFF;
+        padding: 24px 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    header .logo { font-size: 32px; font-weight: 900; letter-spacing: -1px; }
+    header .tagline { font-size: 14px; opacity: 0.85; }
+    header .live-indicator {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; font-weight: 600;
+    }
+    header .live-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: #34D399; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    main { overflow-y: auto; padding: 24px 40px; }
+    .empty {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        height: 100%; color: var(--muted); text-align: center;
+    }
+    .empty .icon { font-size: 80px; margin-bottom: 14px; }
+    .empty .msg { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+    .empty .sub { font-size: 14px; }
+
+    .cart-list { display: flex; flex-direction: column; gap: 10px; }
+    .cart-item {
+        background: #FFF; border: 1px solid var(--border); border-radius: 10px;
+        padding: 14px 18px; display: grid; grid-template-columns: 1fr auto auto auto;
+        gap: 16px; align-items: center;
+    }
+    .cart-item .name { font-size: 16px; font-weight: 600; }
+    .cart-item .sku { font-size: 11px; color: var(--muted); font-family: monospace; }
+    .cart-item .qty { font-size: 18px; font-weight: 700; color: var(--primary); min-width: 60px; text-align: center; background: #FFF5EB; padding: 6px 14px; border-radius: 8px; }
+    .cart-item .price { font-size: 14px; color: var(--muted); min-width: 100px; text-align: right; }
+    .cart-item .subtotal { font-size: 18px; font-weight: 800; min-width: 130px; text-align: right; }
+
+    footer {
+        background: #FFF;
+        border-top: 3px solid var(--primary);
+        padding: 24px 40px;
+    }
+    .totals { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: end; }
+    .total-meta { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .total-meta .lbl { font-weight: 600; color: var(--text); }
+    .grand {
+        font-size: 56px; font-weight: 900; letter-spacing: -2px;
+        line-height: 1; color: var(--primary);
+    }
+    .grand-prefix { font-size: 24px; font-weight: 700; vertical-align: top; margin-right: 4px; color: var(--text); }
+    .vip-badge {
+        display: inline-block; background: #FEF3C7; color: #92400E;
+        padding: 4px 12px; border-radius: 50px; font-size: 13px; font-weight: 700;
+        margin-top: 6px;
+    }
+    .discount-line {
+        font-size: 14px; color: #B45309; font-weight: 600; margin-top: 4px;
+    }
+    .timestamp { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="layout">
+    <header>
+        <div>
+            <div class="logo">10 CAMP</div>
+            <div class="tagline" id="shopTagline">Outdoor & Camping Specialist</div>
+        </div>
+        <div class="live-indicator"><span class="live-dot"></span><span id="liveStatus">Connected to cashier</span></div>
+    </header>
+
+    <main id="mainContent">
+        <div class="empty" id="emptyState">
+            <div class="icon">🛒</div>
+            <div class="msg">Selamat datang ke 10 CAMP</div>
+            <div class="sub">Cashier sedang siapkan order anda...</div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="totals">
+            <div class="total-meta" id="totalMeta">
+                <div><span class="lbl">Items:</span> <span id="itemCount">0</span></div>
+                <div><span class="lbl">Subtotal:</span> RM <span id="subtotal">0.00</span></div>
+                <div id="vipDiscountLine" class="discount-line" style="display:none;"></div>
+                <div id="vipBadgeLine" style="display:none;"></div>
+                <div class="timestamp" id="lastUpdate">Waiting...</div>
+            </div>
+            <div>
+                <div style="font-size:13px; color:var(--muted); margin-bottom:6px; text-align:right; font-weight:700;">JUMLAH BAYAR</div>
+                <div class="grand"><span class="grand-prefix">RM</span><span id="grandTotal">0.00</span></div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script>
+// Read cart from localStorage (set by main POS) every 500ms.
+// Main POS writes to "customerDisplayCart_v1" on cart change.
+const STORAGE_KEY = 'customerDisplayCart_v1';
+const SHOP_KEY = 'complianceSettings_v1';
+
+function fmt(n) { return Number(n || 0).toFixed(2); }
+
+function render() {
+    let payload;
+    try { payload = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { payload = null; }
+
+    // Shop tagline from settings
+    try {
+        const s = JSON.parse(localStorage.getItem(SHOP_KEY) || '{}');
+        if (s.shop && s.shop.name) {
+            document.querySelector('.logo').textContent = s.shop.name;
+        }
+    } catch (e) { }
+
+    const main = document.getElementById('mainContent');
+    const empty = document.getElementById('emptyState');
+    const itemCountEl = document.getElementById('itemCount');
+    const subtotalEl = document.getElementById('subtotal');
+    const grandEl = document.getElementById('grandTotal');
+    const vipLine = document.getElementById('vipDiscountLine');
+    const vipBadge = document.getElementById('vipBadgeLine');
+    const lastUpdate = document.getElementById('lastUpdate');
+
+    const items = (payload && payload.items) || [];
+    const vip = payload && payload.vip;
+
+    if (items.length === 0) {
+        empty.style.display = 'flex';
+        // Clear non-empty cart UI if present
+        document.querySelectorAll('.cart-list').forEach(el => el.remove());
+        itemCountEl.textContent = '0';
+        subtotalEl.textContent = '0.00';
+        grandEl.textContent = '0.00';
+        vipLine.style.display = 'none';
+        vipBadge.style.display = 'none';
+        lastUpdate.textContent = 'Waiting for cashier...';
+        return;
+    }
+
+    empty.style.display = 'none';
+
+    let listEl = document.querySelector('.cart-list');
+    if (!listEl) {
+        listEl = document.createElement('div');
+        listEl.className = 'cart-list';
+        main.appendChild(listEl);
+    }
+
+    let subtotal = 0;
+    listEl.innerHTML = items.map(it => {
+        const qty = parseInt(it.quantity || it.qty || 1);
+        const price = parseFloat(it.price || 0);
+        const sub = qty * price;
+        subtotal += sub;
+        return `
+            <div class="cart-item">
+                <div>
+                    <div class="name">${(it.name || '').slice(0, 60)}</div>
+                    <div class="sku">${it.sku || '-'}</div>
+                </div>
+                <div class="qty">×${qty}</div>
+                <div class="price">RM ${fmt(price)}</div>
+                <div class="subtotal">RM ${fmt(sub)}</div>
+            </div>
+        `;
+    }).join('');
+
+    itemCountEl.textContent = items.reduce((s, it) => s + parseInt(it.quantity || it.qty || 1), 0);
+    subtotalEl.textContent = fmt(subtotal);
+
+    let final = subtotal;
+    if (vip && vip.discount_pct) {
+        const discAmt = subtotal * vip.discount_pct / 100;
+        final = subtotal - discAmt;
+        vipLine.style.display = 'block';
+        vipLine.innerHTML = `⭐ VIP discount: −RM ${fmt(discAmt)} (${vip.discount_pct}% off)`;
+        vipBadge.style.display = 'block';
+        vipBadge.innerHTML = `<span class="vip-badge">⭐ ${vip.tier || 'VIP'} MEMBER</span>`;
+    } else {
+        vipLine.style.display = 'none';
+        vipBadge.style.display = 'none';
+    }
+    grandEl.textContent = fmt(final);
+
+    if (payload && payload.updatedAt) {
+        const dt = new Date(payload.updatedAt);
+        lastUpdate.textContent = `Last update: ${dt.toLocaleTimeString()}`;
+    }
+}
+
+setInterval(render, 500);
+window.addEventListener('storage', e => { if (e.key === STORAGE_KEY) render(); });
+render();
+</script>
+</body>
+</html>

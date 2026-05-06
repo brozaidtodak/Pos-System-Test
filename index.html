@@ -862,8 +862,18 @@
                 <span>HR &amp; Admin Dept</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_dashboard" onclick="switchHub(['managerDashboardSection'], 'Manager Dashboard', this); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="layout-dashboard" style="width:16px; height:16px;"></i> Manager Dashboard
+                <span style="margin-left:auto; font-size:9px; background:var(--primary); color:#fff; padding:2px 6px; border-radius:50px; font-weight:800; letter-spacing:.3px;">P4</span>
+            </div>
             <div class="menu-item" data-group="admin" data-tab="admin_roster" onclick="switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="calendar-clock" style="width:16px; height:16px;"></i> Jadual Operasi 10 CAMP
+            </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_roster_recon" onclick="switchHub(['rosterReconSection'], 'Roster ↔ Attendance', this); if(typeof renderRosterRecon==='function') renderRosterRecon();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="calendar-check" style="width:16px; height:16px;"></i> Roster ↔ Attendance
+            </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_segments" onclick="switchHub(['segmentsSection'], 'Customer Segments', this); if(typeof renderSegments==='function') renderSegments();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="pie-chart" style="width:16px; height:16px;"></i> Customer Segments
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_finance" onclick="switchHub(['financeSection'], 'Kewangan &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> Kewangan &amp; Memo
@@ -1184,7 +1194,10 @@
                             <h2 class="cart-title" style="margin-bottom:0; border:none; padding:0;">Troli Jualan</h2>
                             <button onclick="window.toggleMobileCartSheet()" style="background:none; border:none; font-size:24px; font-weight:bold; color:var(--text-muted); cursor:pointer;">×</button>
                         </div>
-                        <h2 class="cart-title desktop-cart-title" style="font-size:20px; font-weight:800;">Troli Jualan</h2>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h2 class="cart-title desktop-cart-title" style="font-size:20px; font-weight:800; margin:0;">Troli Jualan</h2>
+                            <button onclick="window.openCustomerDisplay()" style="background:#FFF; border:1px solid var(--border-color); padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer; color:#666;" title="Open second-screen display for customer">📺 Customer Display</button>
+                        </div>
                         <div id="cartItems" class="cart-items" style="max-height: 480px; overflow-y:auto; padding-right:10px; margin-bottom:15px;"><p class="empty-cart-message">Tiada barang di-scan.</p></div>
                     </div>
                     
@@ -1767,11 +1780,17 @@
         <!-- ============================================== -->
         <div id="promotionsSection" class="tab-section" style="display: none;">
             <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;"> Promotion &amp; Voucher Manager</h2>
-                <p style="font-size:13px; color:#888; margin-bottom:20px;">Urus kod diskaun dan promosi aktif.</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:8px;">
+                    <h2 style="margin:0;">🎁 Promotion &amp; Voucher Manager</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-success" onclick="window.openFestivalTemplates()" style="background:#A855F7; border-color:#A855F7;">🎉 Festival Templates</button>
+                        <button class="btn-primary" onclick="if(typeof renderPromotionsV2==='function')renderPromotionsV2()">↻ Refresh</button>
+                    </div>
+                </div>
+                <p style="font-size:13px; color:#888; margin-bottom:14px;">Promo aktif auto-apply masa checkout (rules-based: cart total / brand / category / SKU / customer tier). Klik Festival Templates untuk one-click setup Raya/CNY/Deepavali/Merdeka/dll.</p>
                 <div class="table-responsive">
-                    <table class="inventory-table">
-                        <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Status</th></tr></thead>
+                    <table class="data-table" style="font-size:12px;">
+                        <thead><tr><th>Code / Description</th><th>Type / Conditions</th><th>Value</th><th>Status</th></tr></thead>
                         <tbody id="promotionsTableBody"><tr><td colspan="4"><i>Loading...</i></td></tr></tbody>
                     </table>
                 </div>
@@ -1793,6 +1812,17 @@
         <!-- SECTION: FINANCE & P&L (ADMIN ONLY)            -->
         <!-- ============================================== -->
         <div id="financeSection" class="tab-section" style="display:none;">
+            <!-- EOD Close action card (p4_5) -->
+            <div class="admin-card" style="padding:14px; margin-bottom:14px; background:linear-gradient(135deg, #FFFBEB, #FEF3C7); border-left:4px solid #F59E0B;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <h3 style="margin:0 0 4px;">🔒 End-of-Day Close (Z-Report)</h3>
+                        <p style="font-size:12px; color:#666; margin:0;">Lock semua transaksi hari ni · generate Z-Report (sales by payment/channel/staff) · save to finance ledger. Manager PIN required.</p>
+                    </div>
+                    <button class="btn-primary" onclick="window.openEodClose()" style="background:#F59E0B; border-color:#F59E0B;">🔒 Run EOD Close</button>
+                </div>
+            </div>
+
             <!-- P&L OVERVIEW WIDGETS -->
             <div class="dash-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
                 <div class="metric-card" style="border-left:5px solid #22C55E;">
@@ -2288,6 +2318,17 @@
                     </div>
                 </div>
                 
+                <!-- Velocity Analysis launcher (p8_1+p8_2) -->
+                <div class="admin-card" style="padding:14px; margin-bottom:14px; background:linear-gradient(135deg, #F0F9FF, #DBEAFE); border-left:4px solid #0EA5E9;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <h3 style="margin:0 0 4px;">📊 Velocity Analysis (auto-tune reorder points)</h3>
+                            <p style="font-size:12px; color:#666; margin:0;">Computes per-SKU sales velocity from history → suggests reorder_point + reorder_qty. Recommend run sebulan sekali.</p>
+                        </div>
+                        <button class="btn-primary" onclick="window.openVelocityAnalysis()" style="background:#0EA5E9; border-color:#0EA5E9;">📊 Run Velocity Analysis</button>
+                    </div>
+                </div>
+
                 <!-- Master Product Registration (Sprint 1.5: full form) -->
                 <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-top:20px; margin-bottom:20px;">
                     <h3 style="margin-bottom:6px;">📦 Daftar Profil Produk Baru (Master Product)</h3>
@@ -2924,6 +2965,119 @@
         @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 70% { box-shadow: 0 0 0 15px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
     </style>
 
+    <!-- ============================================== -->
+    <!-- p4_3 MANAGER DASHBOARD                          -->
+    <!-- ============================================== -->
+    <div id="managerDashboardSection" class="tab-section" style="display:none;">
+        <h2 class="section-title" style="margin-top:20px;"><i data-lucide="layout-dashboard" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Manager Dashboard</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:14px;">Snapshot operasi 10 CAMP — sales, staff, stock, customer dalam satu page.</p>
+
+        <!-- Period selector -->
+        <div class="admin-card" style="padding:12px 16px; margin-bottom:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <strong style="font-size:13px;">Period:</strong>
+            <button class="dash-period-btn" data-period="7d" onclick="dashSetPeriod('7d')">7 Hari</button>
+            <button class="dash-period-btn active" data-period="30d" onclick="dashSetPeriod('30d')">30 Hari</button>
+            <button class="dash-period-btn" data-period="90d" onclick="dashSetPeriod('90d')">90 Hari</button>
+            <button class="dash-period-btn" data-period="ytd" onclick="dashSetPeriod('ytd')">YTD</button>
+            <button class="dash-period-btn" data-period="all" onclick="dashSetPeriod('all')">All-time</button>
+            <span id="dashPeriodLabel" style="margin-left:auto; font-size:11px; color:#666;"></span>
+        </div>
+
+        <!-- KPI cards -->
+        <div id="dashKpiCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+        <!-- Charts + tables grid -->
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:14px; margin-bottom:14px;">
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">📈 Revenue Trend (Daily)</h3>
+                <canvas id="dashRevenueChart" style="width:100%; max-height:240px;"></canvas>
+            </div>
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">🌐 Channel Mix</h3>
+                <div id="dashChannelMix"></div>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; margin-bottom:14px;">
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">🔥 Top 10 SKUs</h3>
+                <table style="width:100%; font-size:11px;"><tbody id="dashTopSkus"></tbody></table>
+            </div>
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">👥 Top Staff</h3>
+                <table style="width:100%; font-size:11px;"><tbody id="dashTopStaff"></tbody></table>
+            </div>
+            <div class="admin-card" style="padding:14px; border-left:4px solid #DC2626;">
+                <h3 style="margin:0 0 10px; font-size:14px; color:#DC2626;">⚠️ Low Stock Alerts</h3>
+                <table style="width:100%; font-size:11px;"><tbody id="dashLowStock"></tbody></table>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">💎 Top Customers</h3>
+                <table style="width:100%; font-size:11px;"><tbody id="dashTopCustomers"></tbody></table>
+            </div>
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">🆕 Cohort — New Customers per Month</h3>
+                <table style="width:100%; font-size:11px;"><tbody id="dashCohort"></tbody></table>
+            </div>
+        </div>
+
+        <style>
+            .dash-period-btn { background:#FFF; border:1px solid var(--border-color); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; color:#666; }
+            .dash-period-btn.active { background:var(--primary); border-color:var(--primary); color:#FFF; }
+            .dash-period-btn:hover:not(.active) { border-color:var(--primary); color:var(--primary); }
+        </style>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- p4_2 ROSTER ↔ ATTENDANCE RECONCILIATION         -->
+    <!-- ============================================== -->
+    <div id="rosterReconSection" class="tab-section" style="display:none;">
+        <h2 class="section-title" style="margin-top:20px;"><i data-lucide="calendar-check" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Roster ↔ Attendance Reconciliation</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:14px;">Bandingkan jadual yang dirancang vs attendance sebenar. Highlight no-show, late check-in, missed shift.</p>
+
+        <div class="admin-card" style="padding:14px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+            <div><label class="small-lbl">Dari</label><input type="date" id="rrFromDate" class="login-input" style="margin:0;" onchange="renderRosterRecon()"></div>
+            <div><label class="small-lbl">Hingga</label><input type="date" id="rrToDate" class="login-input" style="margin:0;" onchange="renderRosterRecon()"></div>
+            <div><label class="small-lbl">Staff</label><select id="rrStaff" class="login-input" style="margin:0;" onchange="renderRosterRecon()"><option value="">Semua</option></select></div>
+        </div>
+        <div id="rrSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+        <div class="admin-card" style="padding:0;"><div class="table-responsive"><table class="data-table" style="font-size:12px;"><thead style="background:#FAFAFA;"><tr><th>Tarikh</th><th>Staff</th><th>Shift Plan</th><th>Check-In</th><th>Check-Out</th><th>Variance</th><th>Status</th></tr></thead><tbody id="rrTbody"><tr><td colspan="7" style="text-align:center; padding:20px; color:#999;">Loading...</td></tr></tbody></table></div></div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- p7_4 CUSTOMER SEGMENTS                          -->
+    <!-- ============================================== -->
+    <div id="segmentsSection" class="tab-section" style="display:none;">
+        <h2 class="section-title" style="margin-top:20px;"><i data-lucide="pie-chart" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Customer Segments &amp; RFM Analytics</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:14px;">RFM (Recency / Frequency / Monetary) — kenal pasti customer mana yang loyal, mana yang dah hilang, mana yang VIP.</p>
+
+        <div id="segStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">📊 RFM Buckets</h3>
+                <table style="width:100%; font-size:12px;"><thead><tr><th style="text-align:left;">Segment</th><th style="text-align:right;">Customers</th><th style="text-align:right;">Spend Total (RM)</th><th style="text-align:right;">Avg Order Value</th></tr></thead><tbody id="segRfmTbody"></tbody></table>
+            </div>
+            <div class="admin-card" style="padding:14px;">
+                <h3 style="margin:0 0 10px; font-size:14px;">📅 Cohort: New Customers × Total Spend</h3>
+                <table style="width:100%; font-size:11px;"><thead><tr><th>Bulan Daftar</th><th style="text-align:right;">New</th><th style="text-align:right;">Total Spend</th><th style="text-align:right;">Avg/Customer</th></tr></thead><tbody id="segCohortTbody"></tbody></table>
+            </div>
+        </div>
+
+        <div class="admin-card" style="padding:14px;">
+            <h3 style="margin:0 0 10px; font-size:14px;">🏆 Top 20 Customers by Lifetime Value</h3>
+            <div class="table-responsive"><table class="data-table" style="font-size:12px;"><thead style="background:#FAFAFA;"><tr><th>Rank</th><th>Name</th><th>Phone</th><th>Tier</th><th style="text-align:right;">Total Orders</th><th style="text-align:right;">Total Spent (RM)</th><th style="text-align:right;">AOV (RM)</th><th>Last Order</th></tr></thead><tbody id="segTopTbody"></tbody></table></div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- p4_7 CUSTOMER-FACING DISPLAY (separate window)  -->
+    <!-- (rendered by /customer-display.html or new tab)  -->
+    <!-- ============================================== -->
+
     <!-- ROADMAP & PROGRESS SECTION -->
     <div id="roadmapSection" class="tab-section" style="display:none;">
         <style>
@@ -3098,12 +3252,12 @@
               desc:'Close-the-loop antara operasi harian dan KPI manager. Plus hardware ecosystem (printer profiles, cash drawer, scanner setup wizard, customer-facing display) — tanpa ni, kaunter masih rely on manual workaround.',
               deliverables:[
                 { id:'p4_1', label:'Auto-calc commission dari sales', d:'done' },
-                { id:'p4_2', label:'Roster ↔ attendance reconciliation', d:'todo' },
-                { id:'p4_3', label:'Manager dashboard (sales/staff/stock KPI)', d:'todo' },
-                { id:'p4_4', label:'Push notification untuk low stock', d:'todo' },
-                { id:'p4_5', label:'Daily memo + finance close', d:'todo' },
-                { id:'p4_6', label:'Hardware profiles (printer/drawer/scanner)', d:'todo' },
-                { id:'p4_7', label:'Customer-facing display mode', d:'todo' },
+                { id:'p4_2', label:'Roster ↔ attendance reconciliation', d:'done' },
+                { id:'p4_3', label:'Manager dashboard (sales/staff/stock KPI)', d:'done' },
+                { id:'p4_4', label:'Push notification untuk low stock', d:'done' },
+                { id:'p4_5', label:'Daily memo + finance close (EOD Z-report)', d:'done' },
+                { id:'p4_6', label:'Hardware profiles (printer/drawer/scanner)', d:'done' },
+                { id:'p4_7', label:'Customer-facing display mode', d:'done' },
                 { id:'p4_8', label:'PO + Supplier DB + GRN flow (Sprint 2)', d:'done' },
                 { id:'p4_9', label:'Stock Aging + Snapshot reports + per-SKU reorder policy (Sprint 2-3)', d:'done' },
                 { id:'p4_10', label:'Bulk Operations (publish/price/category/bin import) — Sprint 1-2', d:'done' },
@@ -3132,11 +3286,11 @@
             { id:'p7', num:'PHASE 7', name:'Growth & Loyalty', status:'future', goal:'CRM automation & repeat-purchase engine', eta:'2028 H1 · Tentative',
               desc:'Sistem dah ada CRM table tapi belum trigger campaign. Turn customer data jadi repeat-purchase engine. Festival promo template (Raya/CNY/Deepavali) untuk MY context.',
               deliverables:[
-                { id:'p7_1', label:'Loyalty points + tier system (auto-member at 3+ orders)', d:'progress' },
+                { id:'p7_1', label:'Loyalty Tier system (Bronze/Silver/Gold) with per-tier discount', d:'done' },
                 { id:'p7_2', label:'Auto re-engage (WhatsApp/email)', d:'todo' },
-                { id:'p7_3', label:'Promo engine (rules-based)', d:'todo' },
-                { id:'p7_4', label:'Customer segment analytics', d:'todo' },
-                { id:'p7_5', label:'Festival promo templates (Raya/CNY/Deepavali)', d:'todo' },
+                { id:'p7_3', label:'Promo engine (rules-based: scope/min-spend/tier/dates)', d:'done' },
+                { id:'p7_4', label:'Customer segment analytics (RFM + cohort + top spenders)', d:'done' },
+                { id:'p7_5', label:'Festival promo templates (Raya/CNY/Deepavali/Merdeka/+5 lagi)', d:'done' },
                 { id:'p7_6', label:'Shopify catalogue + sales + customer migration (May 2024–Mar 2026 → POS DB)', d:'done' },
                 { id:'p7_7', label:'Customer DB enrichment (email + marketing consent + address + tags)', d:'done' },
                 { id:'p7_8', label:'CRM enhancement: filter by consent, tags, VIP, total spent', d:'done' },
@@ -3146,8 +3300,8 @@
             { id:'p8', num:'PHASE 8', name:'Intelligence', status:'future', goal:'AI assistant & predictive ops', eta:'2028 H2 · Vision',
               desc:'Layer AI atas data yang dah accumulate. Demand forecast, smart re-order, anomaly detection dalam audit, natural-language query untuk owner.',
               deliverables:[
-                { id:'p8_1', label:'Demand forecasting per SKU', d:'todo' },
-                { id:'p8_2', label:'Auto-reorder threshold tuning', d:'todo' },
+                { id:'p8_1', label:'Demand forecasting per SKU (in-app velocity analysis)', d:'done' },
+                { id:'p8_2', label:'Auto-reorder threshold tuning (one-click apply)', d:'done' },
                 { id:'p8_3', label:'"Tanya 10 CAMP" NL query', d:'todo' },
                 { id:'p8_4', label:'Audit anomaly alerts', d:'todo' },
                 { id:'p8_5', label:'Velocity-based reorder auto-suggest (script-based, 22mo Shopify data)', d:'done' }
@@ -5564,18 +5718,59 @@
                     <span id="shopInfoSaved" style="display:none; margin-left:10px; color:var(--success); font-size:12px; font-weight:600;">✓ Saved</span>
                 </div>
 
-                <!-- VIP discount config -->
+                <!-- Hardware profile config (p4_6) -->
                 <div class="compl-card" style="margin-top:14px;">
-                    <h3>⭐ VIP Member Auto-Discount</h3>
-                    <p class="sub">Customer dengan 3+ orders auto-tagged sebagai VIP. Bila phone/nama mereka match di checkout, sistem auto-apply diskaun ni. Set 0 untuk disable.</p>
+                    <h3>🖨️ Hardware Profiles</h3>
+                    <p class="sub">Configure printer + cash drawer + scanner. Settings akan apply masa cetak receipt.</p>
                     <div class="field-row">
-                        <div class="field"><label>VIP Discount %</label><input type="number" id="vipDiscountPct" step="0.5" min="0" max="50" placeholder="5"></div>
-                        <div class="field" style="display:flex; align-items:center;">
-                            <button class="compl-btn primary" onclick="window.__saveVipDiscount()" style="margin-top:18px;">💾 Save</button>
-                            <span id="vipDiscountSaved" style="display:none; margin-left:10px; color:var(--success); font-size:12px; font-weight:600;">✓ Saved</span>
+                        <div class="field"><label>Printer Type</label>
+                            <select id="hwPrinterType">
+                                <option value="thermal58">Thermal 58mm (compact)</option>
+                                <option value="thermal80" selected>Thermal 80mm (standard)</option>
+                                <option value="a4">A4 (full-page invoice)</option>
+                            </select>
+                        </div>
+                        <div class="field"><label>Cash Drawer Trigger</label>
+                            <select id="hwCashDrawer">
+                                <option value="auto" selected>Auto-open after cash payment</option>
+                                <option value="manual">Manual button only</option>
+                                <option value="off">Disabled</option>
+                            </select>
                         </div>
                     </div>
-                    <p style="font-size:11px; color:#9CA3AF; margin-top:6px;">Sekarang ada <strong id="vipMemberCount">-</strong> customer yang qualify sebagai VIP (auto-tag dari Shopify migration).</p>
+                    <div class="field"><label>Scanner Test (scan barcode untuk verify)</label><input type="text" id="hwScannerTest" placeholder="Beep!" autocomplete="off" onkeyup="if(event.key==='Enter'){this.style.background='#D1FAE5';setTimeout(()=>this.style.background='',1000);this.value='';}"></div>
+                    <button class="compl-btn primary" onclick="window.__saveHardwareProfile()" style="margin-top:8px;">💾 Save Hardware Profile</button>
+                    <span id="hwSaved" style="display:none; margin-left:10px; color:var(--success); font-size:12px; font-weight:600;">✓ Saved</span>
+                </div>
+
+                <!-- Low stock notification toggle (p4_4) -->
+                <div class="compl-card" style="margin-top:14px;">
+                    <h3>🔔 Low Stock Push Notifications</h3>
+                    <p class="sub">Browser akan bagitau bila stok produk jatuh di bawah reorder point. Check setiap 4 jam.</p>
+                    <div id="notifStatus" style="font-size:13px; padding:8px 12px; border-radius:6px; margin-bottom:8px;"></div>
+                    <button class="compl-btn primary" onclick="window.requestNotifyPermission()" style="background:#10B981; border-color:#10B981;">🔔 Enable Notifications</button>
+                </div>
+
+                <!-- Loyalty Tier discount config (p7_1 — replaces flat VIP) -->
+                <div class="compl-card" style="margin-top:14px;">
+                    <h3>⭐ Loyalty Tier Discounts (Bronze / Silver / Gold)</h3>
+                    <p class="sub">Customer auto-tier based on lifetime order count: Bronze (3-9), Silver (10-29), Gold (30+). Set per-tier diskaun %.</p>
+                    <div class="field-row">
+                        <div class="field"><label>🥉 Bronze %</label><input type="number" id="tierBronzePct" step="0.5" min="0" max="50" placeholder="3"></div>
+                        <div class="field"><label>🥈 Silver %</label><input type="number" id="tierSilverPct" step="0.5" min="0" max="50" placeholder="5"></div>
+                        <div class="field"><label>🥇 Gold %</label><input type="number" id="tierGoldPct" step="0.5" min="0" max="50" placeholder="10"></div>
+                    </div>
+                    <button class="compl-btn primary" onclick="window.__saveTierDiscounts()" style="margin-top:8px;">💾 Save Tier Settings</button>
+                    <span id="tierSaved" style="display:none; margin-left:10px; color:var(--success); font-size:12px; font-weight:600;">✓ Saved</span>
+                    <p style="font-size:11px; color:#9CA3AF; margin-top:6px;">
+                        🥉 Bronze: <strong id="tierBronzeCount">-</strong> ·
+                        🥈 Silver: <strong id="tierSilverCount">-</strong> ·
+                        🥇 Gold: <strong id="tierGoldCount">-</strong>
+                    </p>
+                    <!-- legacy field kept for backward-compat hydration -->
+                    <input type="hidden" id="vipDiscountPct">
+                    <span id="vipDiscountSaved" style="display:none;"></span>
+                    <span id="vipMemberCount" style="display:none;"></span>
                 </div>
             </div>
 
@@ -5945,6 +6140,74 @@
         if (typeof window.showToast === 'function') window.showToast(`VIP discount set to ${pct}%`, 'success');
     };
 
+    window.__saveHardwareProfile = function() {
+        const s = loadSettings();
+        s.hardware = {
+            printerType: document.getElementById('hwPrinterType').value,
+            cashDrawer: document.getElementById('hwCashDrawer').value
+        };
+        saveSettings(s);
+        flashStatus('hwSaved');
+        if (typeof window.showToast === 'function') window.showToast('Hardware profile saved.', 'success');
+    };
+
+    window.__saveTierDiscounts = function() {
+        const s = loadSettings();
+        s.tiers = {
+            Bronze: parseFloat(document.getElementById('tierBronzePct').value) || 0,
+            Silver: parseFloat(document.getElementById('tierSilverPct').value) || 0,
+            Gold:   parseFloat(document.getElementById('tierGoldPct').value)   || 0
+        };
+        saveSettings(s);
+        flashStatus('tierSaved');
+        if (typeof window.showToast === 'function') window.showToast('Loyalty tier discounts saved.', 'success');
+    };
+
+    function hydrateTierDiscounts() {
+        const s = loadSettings();
+        const t = s.tiers || {};
+        const defs = { Bronze:3, Silver:5, Gold:10 };
+        ['Bronze','Silver','Gold'].forEach(k => {
+            const el = document.getElementById('tier'+k+'Pct');
+            if(el) el.value = (t[k] != null ? t[k] : defs[k]);
+        });
+        if (typeof customersData !== 'undefined') {
+            let b=0, si=0, g=0;
+            customersData.forEach(c => {
+                const o = c.total_orders || 0;
+                if(o >= 30) g++; else if(o >= 10) si++; else if(o >= 3) b++;
+            });
+            const elB=document.getElementById('tierBronzeCount'); if(elB)elB.textContent=b;
+            const elS=document.getElementById('tierSilverCount'); if(elS)elS.textContent=si;
+            const elG=document.getElementById('tierGoldCount'); if(elG)elG.textContent=g;
+        }
+    }
+
+    function hydrateHardwareProfile() {
+        const s = loadSettings();
+        const hw = s.hardware || {};
+        const pt = document.getElementById('hwPrinterType'); if(pt) pt.value = hw.printerType || 'thermal80';
+        const cd = document.getElementById('hwCashDrawer'); if(cd) cd.value = hw.cashDrawer || 'auto';
+    }
+
+    function hydrateNotifStatus() {
+        const el = document.getElementById('notifStatus');
+        if (!el) return;
+        if (!('Notification' in window)) {
+            el.style.background = '#FEE2E2'; el.style.color = '#991B1B';
+            el.innerHTML = '⚠️ Browser anda tak support notification.';
+        } else if (Notification.permission === 'granted' && localStorage.getItem('lowStockNotifyEnabled_v1') === 'true') {
+            el.style.background = '#D1FAE5'; el.style.color = '#065F46';
+            el.innerHTML = '✓ Notifications ENABLED. Throttled to 4-hour intervals.';
+        } else if (Notification.permission === 'denied') {
+            el.style.background = '#FEE2E2'; el.style.color = '#991B1B';
+            el.innerHTML = '✗ Notifications BLOCKED. Enable manually in browser settings.';
+        } else {
+            el.style.background = '#FEF3C7'; el.style.color = '#92400E';
+            el.innerHTML = 'Notifications belum dienable. Click below.';
+        }
+    }
+
     function hydrateVipDiscount() {
         const s = loadSettings();
         const pct = (s.vip && s.vip.discountPercent != null) ? s.vip.discountPercent : 5;
@@ -5964,7 +6227,7 @@
             if (el) el.value = s[k] || '';
         });
     }
-    document.addEventListener('DOMContentLoaded', () => { hydrateShopFields(); hydrateVipDiscount(); });
+    document.addEventListener('DOMContentLoaded', () => { hydrateShopFields(); hydrateVipDiscount(); hydrateHardwareProfile(); hydrateNotifStatus(); hydrateTierDiscounts(); });
 
     // ===== SST =====
     window.__saveSstSettings = function(){
@@ -6906,7 +7169,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=70"></script>
+    <script src="app.js?v=71"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
