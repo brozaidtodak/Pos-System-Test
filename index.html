@@ -928,41 +928,39 @@
                 <span>Inventory Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders (PO)', this)">
-                <i data-lucide="truck" style="width:16px; height:16px;"></i> Purchase Orders (PO)
+            <!-- Daily ops (most-clicked first) -->
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Browse Products', this)">
+                <i data-lucide="package" style="width:16px; height:16px;"></i> Browse Products
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_registration" onclick="switchHub(['warehouseConfigSection'], 'Daftar &amp; Edit Gudang', this); if(typeof refreshMpDatalists==='function') refreshMpDatalists();">
-                <i data-lucide="package-plus" style="width:16px; height:16px;"></i> Daftar &amp; Edit Produk
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders', this)">
+                <i data-lucide="truck" style="width:16px; height:16px;"></i> Purchase Orders
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_barcode" onclick="switchHub(['barcodeSection'], 'Barcode Generator', this)">
-                <i data-lucide="printer" style="width:16px; height:16px;"></i> Barcode Generator
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_warehouse_hub" onclick="switchHub(['warehouseConfigSection'], 'Warehouse Hub', this); if(typeof refreshMpDatalists==='function') refreshMpDatalists();">
+                <i data-lucide="warehouse" style="width:16px; height:16px;"></i> Warehouse Hub
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_mapping" onclick="switchHub(['inventorySection'], 'Main Product', this)">
-                <i data-lucide="package" style="width:16px; height:16px;"></i> Main Product
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_stocktake" onclick="switchHub(['stockTakeSection'], 'Stock Take', this)">
+                <i data-lucide="clipboard-check" style="width:16px; height:16px;"></i> Stock Take
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_picking" onclick="switchHub(['pickingSection'], 'Smart Picking List', this)">
-                <i data-lucide="route" style="width:16px; height:16px;"></i> Smart Picking List
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_picking" onclick="switchHub(['pickingSection'], 'Smart Picking', this)">
+                <i data-lucide="route" style="width:16px; height:16px;"></i> Smart Picking
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_stocktake" onclick="switchHub(['stockTakeSection'], 'Stock Take Count', this)">
-                <i data-lucide="clipboard-check" style="width:16px; height:16px;"></i> Stock Take Count
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_barcode" onclick="switchHub(['barcodeSection'], 'Barcode Labels', this)">
+                <i data-lucide="printer" style="width:16px; height:16px;"></i> Barcode Labels
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Database Produk', this)">
-                <i data-lucide="database" style="width:16px; height:16px;"></i> Database Produk (Wipe Data)
+
+            <!-- Reports / Analytics -->
+            <div style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:1px; font-weight:700; letter-spacing:0.8px;">— Reports —</div>
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_velocity" onclick="switchHub(['productSalesSection'], 'Velocity &amp; Sales', this); if(typeof renderProductSales==='function') renderProductSales();">
+                <i data-lucide="trending-up" style="width:16px; height:16px;"></i> Velocity &amp; Sales
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_bulk" onclick="switchHub(['bulkOpsSection'], 'Bulk Operations', this); if(typeof renderBulkOps === 'function') renderBulkOps();">
-                <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Publish &amp; Edit
-            </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_product_sales" onclick="switchHub(['productSalesSection'], 'Product Sales Summary', this); if(typeof renderProductSales==='function') renderProductSales();">
-                <i data-lucide="trending-up" style="width:16px; height:16px;"></i> Product Sales Summary
-            </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_aging" onclick="switchHub(['agingSection'], 'Stock Aging Report', this); if(typeof renderInventoryAging==='function') renderInventoryAging();">
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_aging" onclick="switchHub(['agingSection'], 'Stock Aging', this); if(typeof renderInventoryAging==='function') renderInventoryAging();">
                 <i data-lucide="hourglass" style="width:16px; height:16px;"></i> Stock Aging
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_snapshot" onclick="switchHub(['snapshotSection'], 'Monthly Snapshot', this);">
-                <i data-lucide="camera" style="width:16px; height:16px;"></i> Stock Snapshot
-            </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_valuation" onclick="switchHub(['valuationSection'], 'Stock Valuation', this); if(typeof renderValuationSection === 'function') renderValuationSection();">
-                <i data-lucide="wallet" style="width:16px; height:16px;"></i> Stock Valuation (Aset)
+                <i data-lucide="wallet" style="width:16px; height:16px;"></i> Stock Valuation
+            </div>
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_snapshot" onclick="switchHub(['snapshotSection'], 'Period Snapshot', this);">
+                <i data-lucide="camera" style="width:16px; height:16px;"></i> Period Snapshot
             </div>
 
 
@@ -1002,6 +1000,9 @@
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_invoice" onclick="switchHub(['invoiceSection'], 'Invoice &amp; Quotation', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="file-text" style="width:16px; height:16px;"></i> Invoice &amp; Quotation (B2B)
+            </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_bulk_ops" onclick="switchHub(['bulkOpsSection'], 'Bulk Publish &amp; Edit', this); if(typeof renderBulkOps === 'function') renderBulkOps();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Publish &amp; Edit
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_finance" onclick="switchHub(['financeSection'], 'Kewangan &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> Kewangan &amp; Memo
@@ -3533,7 +3534,8 @@
                 { id:'p1_9', label:'Internal Mode capability matrix (Cashier/Operations/Manager per role) + role/mode coordination', d:'done' },
                 { id:'p1_10', label:'UX overhaul (UX-1 to UX-7: design tokens, mode bar, Ctrl+K palette, breadcrumbs, side-panel checkout, dark mode, A11y, redesigned product DB + dashboard)', d:'done' },
                 { id:'p1_11', label:'Automated test suite (jsdom + integration · 65 checks)', d:'done' },
-                { id:'p1_12', label:'Sales Department lean refactor (4 daily items only; admin-tier moved to Manager mode)', d:'done' }
+                { id:'p1_12', label:'Sales Department lean refactor (4 daily items only; admin-tier moved to Manager mode)', d:'done' },
+                { id:'p1_13', label:'Inventory Department refactor (drop legacy duplicate; rename consistent EN; ordered by daily-ops frequency; Reports group; Bulk Ops moved to Manager)', d:'done' }
               ]},
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -7496,7 +7498,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=80"></script>
+    <script src="app.js?v=81"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
