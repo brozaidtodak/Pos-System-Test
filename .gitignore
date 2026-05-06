@@ -5,3 +5,4 @@ test-*.js
 check-db.js
 scripts/products_master.json
 scripts/inventory_batches.json
+scripts/unmatched_skus.txt
