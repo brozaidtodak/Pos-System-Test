@@ -969,19 +969,28 @@
             
 
             
+            <!-- HR DEPARTMENT (people-related) -->
+            <div class="menu-item" data-group-toggle="hr" onclick="toggleSidebarGroup('hr')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
+                <span>HR Department</span>
+                <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
+            </div>
+            <div class="menu-item" data-group="hr" data-tab="hr_staff" onclick="switchHub(['staffMgmtSection'], 'Staff Management', this); if(typeof renderStaffMgmt==='function') renderStaffMgmt();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="users-round" style="width:16px; height:16px;"></i> Staff Management
+            </div>
+            <div class="menu-item" data-group="hr" data-tab="hr_roster" onclick="switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="calendar-clock" style="width:16px; height:16px;"></i> Jadual Operasi
+            </div>
+            <div class="menu-item" data-group="hr" data-tab="hr_roster_recon" onclick="switchHub(['rosterReconSection'], 'Roster ↔ Attendance', this); if(typeof renderRosterRecon==='function') renderRosterRecon();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="calendar-check" style="width:16px; height:16px;"></i> Roster ↔ Attendance
+            </div>
+
+            <!-- ADMIN & REPORTS (system + analytics) -->
             <div class="menu-item" data-group-toggle="admin" onclick="toggleSidebarGroup('admin')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>HR &amp; Admin Dept</span>
+                <span>Admin &amp; Reports</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_dashboard" onclick="switchHub(['managerDashboardSection'], 'Manager Dashboard', this); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="layout-dashboard" style="width:16px; height:16px;"></i> Manager Dashboard
-                <span style="margin-left:auto; font-size:9px; background:var(--primary); color:#fff; padding:2px 6px; border-radius:50px; font-weight:800; letter-spacing:.3px;">P4</span>
-            </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_roster" onclick="switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="calendar-clock" style="width:16px; height:16px;"></i> Jadual Operasi 10 CAMP
-            </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_roster_recon" onclick="switchHub(['rosterReconSection'], 'Roster ↔ Attendance', this); if(typeof renderRosterRecon==='function') renderRosterRecon();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="calendar-check" style="width:16px; height:16px;"></i> Roster ↔ Attendance
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_sales_performance" onclick="switchHub(['salesAnalyticsSection', 'salesMgmtSection'], 'Sales Performance', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="bar-chart" style="width:16px; height:16px;"></i> Sales Performance
@@ -1007,17 +1016,11 @@
             <div class="menu-item" data-group="admin" data-tab="admin_finance" onclick="switchHub(['financeSection'], 'Kewangan &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> Kewangan &amp; Memo
             </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_staff" onclick="switchHub(['staffMgmtSection'], 'Staff Management', this); if(typeof renderStaffMgmt==='function') renderStaffMgmt();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="users-round" style="width:16px; height:16px;"></i> Staff Management
-                <span style="margin-left:auto; font-size:9px; background:var(--success); color:#fff; padding:2px 6px; border-radius:50px; font-weight:800; letter-spacing:.3px;">P1</span>
-            </div>
             <div class="menu-item" data-group="admin" data-tab="admin_sync" onclick="switchHub(['syncSection'], 'Sync &amp; Data Integrity', this); if(typeof renderSyncSection==='function') renderSyncSection();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="git-merge" style="width:16px; height:16px;"></i> Sync Manager
-                <span style="margin-left:auto; font-size:9px; background:var(--success); color:#fff; padding:2px 6px; border-radius:50px; font-weight:800; letter-spacing:.3px;">P1</span>
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_compliance" onclick="switchHub(['complianceSection'], 'Compliance &amp; Payments MY', this); if(typeof renderCompliancePanel==='function') renderCompliancePanel();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="shield-check" style="width:16px; height:16px;"></i> Compliance &amp; Payments
-                <span style="margin-left:auto; font-size:9px; background:var(--primary); color:#fff; padding:2px 6px; border-radius:50px; font-weight:800; letter-spacing:.3px;">P2</span>
             </div>
     <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
             <div class="menu-item" id="sidebarRoadmapBtn" data-tab="roadmap" onclick="switchHub(['roadmapSection'], 'Roadmap &amp; Progress', this); if(typeof renderRoadmap==='function') renderRoadmap();" style="background:linear-gradient(135deg, var(--primary), #A05F22); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 14px; border-radius:10px; box-shadow:0 4px 12px rgba(205,124,50,0.28); margin:6px 0 4px 0;">
@@ -3535,7 +3538,8 @@
                 { id:'p1_10', label:'UX overhaul (UX-1 to UX-7: design tokens, mode bar, Ctrl+K palette, breadcrumbs, side-panel checkout, dark mode, A11y, redesigned product DB + dashboard)', d:'done' },
                 { id:'p1_11', label:'Automated test suite (jsdom + integration · 65 checks)', d:'done' },
                 { id:'p1_12', label:'Sales Department lean refactor (4 daily items only; admin-tier moved to Manager mode)', d:'done' },
-                { id:'p1_13', label:'Inventory Department refactor (drop legacy duplicate; rename consistent EN; ordered by daily-ops frequency; Reports group; Bulk Ops moved to Manager)', d:'done' }
+                { id:'p1_13', label:'Inventory Department refactor (drop legacy duplicate; rename consistent EN; ordered by daily-ops frequency; Reports group; Bulk Ops moved to Manager)', d:'done' },
+                { id:'p1_14', label:'Sidebar split: HR Department (Staff/Roster/Attendance) separated from Admin & Reports (Dashboard/Sales/CRM/Finance/System)', d:'done' }
               ]},
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -7498,7 +7502,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=81"></script>
+    <script src="app.js?v=82"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
