@@ -9927,3 +9927,210 @@ window.openComplianceAll = function() {
     if(typeof switchHub === 'function') switchHub(['complianceSection'], 'Compliance & Settings', null);
     if(typeof renderCompliancePanel === 'function') renderCompliancePanel();
 };
+
+// =============================================================
+// B2B / Wholesale Customers (p1_17)
+// =============================================================
+window.renderB2BCustomers = function() {
+    const tbody = document.getElementById('b2bTbody');
+    const statsEl = document.getElementById('b2bStats');
+    if(!tbody) return;
+    if(typeof customersData === 'undefined' || !Array.isArray(customersData)) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Loading...</td></tr>';
+        return;
+    }
+
+    const all = customersData.filter(c => c.is_b2b === true);
+    const q = (document.getElementById('b2bSearch')?.value || '').trim().toLowerCase();
+    const status = document.getElementById('b2bStatus')?.value || 'all';
+    const sortMode = document.getElementById('b2bSort')?.value || 'spent_desc';
+
+    let filtered = all.filter(c => {
+        if(q) {
+            const hay = `${c.company_name||''} ${c.name||''} ${c.phone||''} ${c.pic_phone||''} ${c.buyer_tin||''}`.toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        if(status === 'active'   && (c.total_orders||0) === 0) return false;
+        if(status === 'inactive' && (c.total_orders||0) > 0)   return false;
+        return true;
+    });
+
+    filtered.sort((a, b) => {
+        switch(sortMode) {
+            case 'spent_desc':  return (b.total_spent||0) - (a.total_spent||0);
+            case 'orders_desc': return (b.total_orders||0) - (a.total_orders||0);
+            case 'recent':      return (b.created_at||'').localeCompare(a.created_at||'');
+            case 'name':        return (a.company_name||a.name||'').localeCompare(b.company_name||b.name||'');
+        }
+        return 0;
+    });
+
+    if(statsEl) {
+        const totalSpent = filtered.reduce((s, c) => s + (c.total_spent||0), 0);
+        const totalCredit = filtered.reduce((s, c) => s + (parseFloat(c.credit_limit)||0), 0);
+        const activeCount = filtered.filter(c => (c.total_orders||0) > 0).length;
+        statsEl.innerHTML = `
+            <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">B2B Total</div><div style="font-size:18px; font-weight:bold;">${filtered.length}</div></div>
+            <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Active (≥1 order)</div><div style="font-size:18px; font-weight:bold;">${activeCount}</div></div>
+            <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Total Spent</div><div style="font-size:18px; font-weight:bold;">RM ${totalSpent.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+            <div style="background:#FAF5FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#6B21A8;">Credit Exposure</div><div style="font-size:18px; font-weight:bold;">RM ${totalCredit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+        `;
+    }
+
+    if(filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999; padding:20px;">Tiada B2B customer. Klik <strong>Tambah B2B</strong> untuk register first wholesale account.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(c => {
+        const company = (c.company_name || c.name || '(no name)').slice(0, 50);
+        const pic = c.name && c.company_name ? c.name : '-';
+        const tin = c.buyer_tin || '-';
+        const terms = c.payment_terms || '-';
+        const cl = c.credit_limit ? `RM ${parseFloat(c.credit_limit).toFixed(2)}` : '-';
+        const spent = (c.total_spent||0).toFixed(2);
+        const orders = c.total_orders || 0;
+        return `
+            <tr>
+                <td><strong>${company}</strong>${c.pic_phone?`<br><span style="color:#999;font-size:10px;">${c.pic_phone}</span>`:''}</td>
+                <td>${pic}</td>
+                <td style="font-family:monospace; font-size:11px;">${tin}</td>
+                <td>${terms}</td>
+                <td style="text-align:right;">${cl}</td>
+                <td style="text-align:right; font-weight:bold; color:${spent>1000?'#10B981':'#111'};">RM ${spent}</td>
+                <td style="text-align:right;">${orders}</td>
+                <td>
+                    <button class="btn btn--secondary btn--sm" onclick="window.openB2BEditModal('${c.id}')">Edit</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.openB2BAddModal = function() {
+    document.getElementById('b2bModalTitle').textContent = 'B2B Customer Baru';
+    document.getElementById('b2bEditId').value = '';
+    ['b2bCompany','b2bPicName','b2bPicPhone','b2bPicEmail','b2bTin','b2bCreditLimit','b2bAddress','b2bNotes'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('b2bPaymentTerms').value = '';
+    document.getElementById('b2bModal').style.display = 'flex';
+};
+
+window.openB2BEditModal = function(id) {
+    const c = (customersData || []).find(x => String(x.id) === String(id));
+    if(!c) { if(typeof showToast==='function') showToast('Customer tak jumpa', 'error'); return; }
+    document.getElementById('b2bModalTitle').textContent = 'Edit B2B Customer';
+    document.getElementById('b2bEditId').value      = c.id;
+    document.getElementById('b2bCompany').value     = c.company_name || c.name || '';
+    document.getElementById('b2bPicName').value     = c.company_name ? (c.name || '') : '';
+    document.getElementById('b2bPicPhone').value    = c.pic_phone || c.phone || '';
+    document.getElementById('b2bPicEmail').value    = c.pic_email || c.email || '';
+    document.getElementById('b2bTin').value         = c.buyer_tin || '';
+    document.getElementById('b2bPaymentTerms').value= c.payment_terms || '';
+    document.getElementById('b2bCreditLimit').value = c.credit_limit || '';
+    document.getElementById('b2bAddress').value     = c.address || '';
+    document.getElementById('b2bNotes').value       = c.b2b_notes || '';
+    document.getElementById('b2bModal').style.display = 'flex';
+};
+
+window.saveB2BCustomer = async function() {
+    const company = (document.getElementById('b2bCompany').value || '').trim();
+    if(!company) { if(typeof showToast==='function') showToast('Company name wajib diisi', 'error'); return; }
+
+    const pic     = (document.getElementById('b2bPicName').value || '').trim();
+    const phone   = (document.getElementById('b2bPicPhone').value || '').trim();
+    const email   = (document.getElementById('b2bPicEmail').value || '').trim();
+    const tin     = (document.getElementById('b2bTin').value || '').trim();
+    const terms   = document.getElementById('b2bPaymentTerms').value || null;
+    const cl      = parseFloat(document.getElementById('b2bCreditLimit').value) || null;
+    const addr    = (document.getElementById('b2bAddress').value || '').trim();
+    const notes   = (document.getElementById('b2bNotes').value || '').trim();
+    const editId  = document.getElementById('b2bEditId').value;
+
+    const payload = {
+        is_b2b: true,
+        company_name: company,
+        name: pic || company,
+        phone: phone || null,
+        email: email || null,
+        pic_phone: phone || null,
+        pic_email: email || null,
+        buyer_tin: tin || null,
+        payment_terms: terms,
+        credit_limit: cl,
+        address: addr || null,
+        b2b_notes: notes || null
+    };
+
+    try {
+        if(editId) {
+            const { error } = await db.from('customers').update(payload).eq('id', editId);
+            if(error) throw error;
+            if(typeof showToast==='function') showToast('B2B customer updated ✓', 'success');
+        } else {
+            const { data, error } = await db.from('customers').insert([payload]).select();
+            if(error) throw error;
+            if(data && data[0] && Array.isArray(customersData)) customersData.push(data[0]);
+            if(typeof showToast==='function') showToast('B2B customer saved ✓', 'success');
+        }
+        // Reload list
+        const { data: fresh } = await db.from('customers').select('*');
+        if(fresh) window.customersData = fresh;
+        document.getElementById('b2bModal').style.display = 'none';
+        window.renderB2BCustomers();
+    } catch(e) {
+        console.error(e);
+        if(typeof showToast==='function') showToast('Save failed: ' + (e.message||'').slice(0,80), 'error');
+    }
+};
+
+// =============================================================
+// Data & Backup section (Finance Dept · surfaced from Sync)
+// =============================================================
+window.renderDataBackup = function() {
+    // Last backup timestamp
+    const tsEl = document.getElementById('dbLastBackupText');
+    if(tsEl) {
+        const ts = localStorage.getItem('lastFullBackup_v1');
+        tsEl.innerHTML = ts
+            ? `Last backup: <strong>${new Date(ts).toLocaleString('en-MY')}</strong>`
+            : 'Last backup: <em>belum ada</em>';
+    }
+
+    // Conflict log
+    const logEl = document.getElementById('dbConflictLog');
+    if(logEl) {
+        let log = [];
+        try {
+            log = (window.SyncGuard && typeof window.SyncGuard.getLog === 'function')
+                ? window.SyncGuard.getLog()
+                : JSON.parse(localStorage.getItem('syncConflictLog_v1') || '[]');
+        } catch(e) { log = []; }
+        if(!log.length) {
+            logEl.innerHTML = '<em style="color:#10B981;">✓ Tiada conflict — bagus!</em>';
+        } else {
+            logEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <strong>${log.length} conflict(s) · last 50</strong>
+                    <button class="btn btn--secondary btn--sm" onclick="if(window.SyncGuard&&window.SyncGuard.clearLog){window.SyncGuard.clearLog();window.renderDataBackup();}">Clear log</button>
+                </div>
+                <div style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;">
+                    <table class="data-table" style="font-size:11px; margin:0;">
+                        <thead><tr><th>When</th><th>Table</th><th>ID</th><th>Expected v.</th></tr></thead>
+                        <tbody>
+                            ${log.slice().reverse().map(e => `
+                                <tr>
+                                    <td>${e.when ? new Date(e.when).toLocaleString('en-MY') : '-'}</td>
+                                    <td><code>${e.table || '-'}</code></td>
+                                    <td style="font-family:monospace;">${(e.id||'').toString().slice(0,12)}</td>
+                                    <td>${e.expectedVersion ?? '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+    }
+};

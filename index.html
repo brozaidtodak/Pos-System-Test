@@ -984,52 +984,28 @@
                 <i data-lucide="calendar-check" style="width:16px; height:16px;"></i> Roster ↔ Attendance
             </div>
 
-            <!-- ADMIN & REPORTS — system + analytics -->
+            <!-- ADMIN DEPARTMENT — manager tools, ops, system -->
             <div class="menu-item" data-group-toggle="admin" onclick="toggleSidebarGroup('admin')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>Admin &amp; Reports</span>
+                <span>Admin Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
-
-            <!-- Reports (analytics first — most-used by manager) -->
-            <div class="menu-item admin-divider" data-group="admin" style="padding:6px 35px 2px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:1px; font-weight:700; pointer-events:none;">— Reports —</div>
             <div class="menu-item" data-group="admin" data-tab="admin_dashboard" onclick="switchHub(['managerDashboardSection'], 'Manager Dashboard', this); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="layout-dashboard" style="width:16px; height:16px;"></i> Manager Dashboard
             </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_sales_performance" onclick="switchHub(['salesAnalyticsSection', 'salesMgmtSection'], 'Sales Performance', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="bar-chart" style="width:16px; height:16px;"></i> Sales Performance
-            </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_sales_ledger" onclick="switchHub(['salesLedgerSection'], 'Sales Ledger', this); if(typeof renderSalesLedger==='function') renderSalesLedger();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="scroll-text" style="width:16px; height:16px;"></i> Sales Ledger
-            </div>
-
-            <!-- Customer & Marketing -->
-            <div class="menu-item admin-divider" data-group="admin" style="padding:6px 35px 2px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:1px; font-weight:700; pointer-events:none;">— Customer &amp; Marketing —</div>
-            <div class="menu-item" data-group="admin" data-tab="admin_crm" onclick="switchHub(['customersSection'], 'Customer Database (CRM)', this); if(typeof renderCustomersV2==='function') renderCustomersV2();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+            <div class="menu-item" data-group="admin" data-tab="admin_crm" onclick="switchHub(['customersSection'], 'Customer Database', this); if(typeof renderCustomersV2==='function') renderCustomersV2();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="users" style="width:16px; height:16px;"></i> Customer Database
             </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_segments" onclick="switchHub(['segmentsSection'], 'Customer Segments', this); if(typeof renderSegments==='function') renderSegments();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="pie-chart" style="width:16px; height:16px;"></i> Customer Segments
+            <div class="menu-item" data-group="admin" data-tab="admin_b2b" onclick="switchHub(['b2bCustomersSection'], 'B2B Customers', this); if(typeof renderB2BCustomers==='function') renderB2BCustomers();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="briefcase" style="width:16px; height:16px;"></i> B2B Customers
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_promotions" onclick="switchHub(['promotionsSection'], 'Promotions &amp; Vouchers', this); if(typeof renderPromotionsV2==='function') renderPromotionsV2();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="gift" style="width:16px; height:16px;"></i> Promotions &amp; Vouchers
             </div>
-
-            <!-- Sales Tools -->
-            <div class="menu-item admin-divider" data-group="admin" style="padding:6px 35px 2px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:1px; font-weight:700; pointer-events:none;">— Sales Tools —</div>
             <div class="menu-item" data-group="admin" data-tab="admin_invoice" onclick="switchHub(['invoiceSection'], 'Invoice &amp; Quotation', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="file-text" style="width:16px; height:16px;"></i> Invoice &amp; Quotation (B2B)
+                <i data-lucide="file-text" style="width:16px; height:16px;"></i> Invoice &amp; Quotation
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_bulk_ops" onclick="switchHub(['bulkOpsSection'], 'Bulk Product Edit', this); if(typeof renderBulkOps === 'function') renderBulkOps();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Product Edit
-            </div>
-
-            <!-- System -->
-            <div class="menu-item admin-divider" data-group="admin" style="padding:6px 35px 2px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:1px; font-weight:700; pointer-events:none;">— System —</div>
-            <div class="menu-item" data-group="admin" data-tab="admin_finance" onclick="switchHub(['financeSection'], 'Finance &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="wallet" style="width:16px; height:16px;"></i> Finance &amp; Memo
-            </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_sync" onclick="switchHub(['syncSection'], 'Sync', this); if(typeof renderSyncSection==='function') renderSyncSection();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="git-merge" style="width:16px; height:16px;"></i> Sync
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_settings" onclick="window.openComplianceFiltered('settings', 'shop', 'Shop Settings'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="settings" style="width:16px; height:16px;"></i> Shop Settings
@@ -1037,8 +1013,26 @@
             <div class="menu-item" data-group="admin" data-tab="admin_payments" onclick="window.openComplianceFiltered('payments', 'duitnow', 'Payments'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="credit-card" style="width:16px; height:16px;"></i> Payments
             </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_compliance" onclick="window.openComplianceFiltered('compliance', 'sst', 'Compliance &amp; Tax'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+            <div class="menu-item" data-group="admin" data-tab="admin_sync" onclick="switchHub(['syncSection'], 'Sync', this); if(typeof renderSyncSection==='function') renderSyncSection();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="git-merge" style="width:16px; height:16px;"></i> Sync (Advanced)
+            </div>
+
+            <!-- FINANCE DEPARTMENT — money/accounting/tax -->
+            <div class="menu-item" data-group-toggle="finance" onclick="toggleSidebarGroup('finance')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
+                <span>Finance Department</span>
+                <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
+            </div>
+            <div class="menu-item" data-group="finance" data-tab="finance_main" onclick="switchHub(['financeSection'], 'Finance &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="wallet" style="width:16px; height:16px;"></i> Finance &amp; Memo
+            </div>
+            <div class="menu-item" data-group="finance" data-tab="finance_ledger" onclick="switchHub(['salesLedgerSection'], 'Sales Ledger', this); if(typeof renderSalesLedger==='function') renderSalesLedger();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="scroll-text" style="width:16px; height:16px;"></i> Sales Ledger
+            </div>
+            <div class="menu-item" data-group="finance" data-tab="finance_compliance" onclick="window.openComplianceFiltered('compliance', 'sst', 'Compliance &amp; Tax'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="shield-check" style="width:16px; height:16px;"></i> Compliance &amp; Tax
+            </div>
+            <div class="menu-item" data-group="finance" data-tab="finance_backup" onclick="switchHub(['dataBackupSection'], 'Data &amp; Backup', this); if(typeof renderDataBackup==='function') renderDataBackup();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="hard-drive" style="width:16px; height:16px;"></i> Data &amp; Backup
             </div>
     <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
             <div class="menu-item" id="sidebarRoadmapBtn" data-tab="roadmap" onclick="switchHub(['roadmapSection'], 'Roadmap &amp; Progress', this); if(typeof renderRoadmap==='function') renderRoadmap();" style="background:linear-gradient(135deg, var(--primary), #A05F22); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 14px; border-radius:10px; box-shadow:0 4px 12px rgba(205,124,50,0.28); margin:6px 0 4px 0;">
@@ -3400,9 +3394,125 @@
     </div>
 
     <!-- ============================================== -->
+    <!-- ============================================== -->
+    <!-- B2B / WHOLESALE CUSTOMERS                       -->
+    <!-- ============================================== -->
+    <div id="b2bCustomersSection" class="tab-section" style="display:none;">
+        <h2 class="section-title" style="margin-top:20px;"><i data-lucide="briefcase" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> B2B / Wholesale Customers</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:14px;">Pelanggan korporat / wholesale (companies, resorts, event organizers). Different fields dari retail customer — TIN, payment terms, credit limit, PIC contacts.</p>
+
+        <!-- Stats row -->
+        <div id="b2bStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+        <!-- Toolbar -->
+        <div class="card" style="padding:14px; margin-bottom:14px;">
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr auto; gap:10px; align-items:end;">
+                <div><label class="small-lbl">Cari (Company / Phone / TIN)</label><input type="text" id="b2bSearch" class="cp-input" placeholder="Search…" oninput="window.renderB2BCustomers()"></div>
+                <div><label class="small-lbl">Status</label>
+                    <select id="b2bStatus" class="cp-input" onchange="window.renderB2BCustomers()">
+                        <option value="all">Semua</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div><label class="small-lbl">Sort</label>
+                    <select id="b2bSort" class="cp-input" onchange="window.renderB2BCustomers()">
+                        <option value="spent_desc">Total Spent (high→low)</option>
+                        <option value="orders_desc">Total Orders</option>
+                        <option value="recent">Recently added</option>
+                        <option value="name">Name A-Z</option>
+                    </select>
+                </div>
+                <button class="btn btn--primary" onclick="window.openB2BAddModal()">
+                    <i data-lucide="plus" style="width:14px; height:14px;"></i> Tambah B2B
+                </button>
+            </div>
+        </div>
+
+        <div class="card" style="padding:0;">
+            <div class="table-responsive">
+                <table class="data-table" style="font-size:12px;">
+                    <thead style="position:sticky; top:0; background:#FAFAFA; z-index:5;"><tr>
+                        <th>Company</th>
+                        <th>PIC</th>
+                        <th>TIN</th>
+                        <th>Payment Terms</th>
+                        <th style="text-align:right;">Credit Limit</th>
+                        <th style="text-align:right;">Total Spent</th>
+                        <th style="text-align:right;">Orders</th>
+                        <th>Action</th>
+                    </tr></thead>
+                    <tbody id="b2bTbody">
+                        <tr class="skel-row" aria-hidden="true"><td colspan="8"><span class="skeleton skeleton--text"></span></td></tr>
+                        <tr class="skel-row" aria-hidden="true"><td colspan="8"><span class="skeleton skeleton--text"></span></td></tr>
+                        <tr class="skel-row" aria-hidden="true"><td colspan="8"><span class="skeleton skeleton--text"></span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- B2B ADD/EDIT MODAL -->
+    <div id="b2bModal" class="login-overlay" style="display:none; z-index:3650;">
+        <div class="login-box" style="max-width:560px; padding:28px;">
+            <button onclick="document.getElementById('b2bModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
+            <h2 id="b2bModalTitle" style="font-weight:800; font-size:20px; margin-bottom:14px;">B2B Customer Baru</h2>
+            <input type="hidden" id="b2bEditId">
+            <label class="small-lbl">Company Name *</label>
+            <input type="text" id="b2bCompany" class="cp-input" placeholder="ABC Resort Sdn Bhd">
+            <label class="small-lbl">Person In Charge (PIC) Name</label>
+            <input type="text" id="b2bPicName" class="cp-input" placeholder="Encik Ahmad">
+            <div class="cp-input--inline-row">
+                <input type="text" id="b2bPicPhone" class="cp-input" placeholder="PIC Phone">
+                <input type="email" id="b2bPicEmail" class="cp-input" placeholder="PIC Email">
+            </div>
+            <div class="cp-input--inline-row">
+                <input type="text" id="b2bTin" class="cp-input" placeholder="Buyer TIN (e.g. C20880050010)">
+                <select id="b2bPaymentTerms" class="cp-input">
+                    <option value="">— Payment Terms —</option>
+                    <option value="COD">COD (Cash on Delivery)</option>
+                    <option value="Prepaid">100% Prepaid</option>
+                    <option value="50% Deposit">50% Deposit, 50% on Delivery</option>
+                    <option value="Net 7">Net 7 days</option>
+                    <option value="Net 14">Net 14 days</option>
+                    <option value="Net 30">Net 30 days</option>
+                    <option value="Net 60">Net 60 days</option>
+                </select>
+            </div>
+            <input type="number" id="b2bCreditLimit" class="cp-input" placeholder="Credit limit (RM, optional)" step="0.01">
+            <textarea id="b2bAddress" class="cp-input" rows="2" placeholder="Address (billing/shipping)"></textarea>
+            <textarea id="b2bNotes" class="cp-input" rows="2" placeholder="Notes (volume discount, special terms, etc.)"></textarea>
+            <div style="display:flex; gap:8px; margin-top:14px;">
+                <button onclick="document.getElementById('b2bModal').style.display='none'" class="btn btn--secondary" style="flex:1;">Batal</button>
+                <button onclick="window.saveB2BCustomer()" class="btn btn--primary" style="flex:2;">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- DATA & BACKUP (surfaced from Sync)              -->
+    <!-- ============================================== -->
+    <div id="dataBackupSection" class="tab-section" style="display:none;">
+        <h2 class="section-title" style="margin-top:20px;"><i data-lucide="hard-drive" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Data &amp; Backup</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:14px;">Manual backup semua data — tables Supabase + localStorage (sales history, custom staff, shift log) jadi 1 file JSON. Recommend simpan ke external drive / Google Drive at least <strong>weekly</strong>.</p>
+
+        <div class="card card--bordered-warning" style="margin-bottom:14px;">
+            <h3 class="card-title">💾 Manual Backup</h3>
+            <p class="card-subtitle" id="dbLastBackupText">Last backup: <em>belum ada</em></p>
+            <button onclick="if(typeof window.__downloadFullBackup==='function') window.__downloadFullBackup(); else if(typeof downloadFullBackup==='function') downloadFullBackup();" class="btn btn--primary btn--lg">
+                <i data-lucide="download" style="width:16px; height:16px;"></i> Download Full Backup (.json)
+            </button>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">📋 Sync Conflict Log</h3>
+            <p class="card-subtitle">Bila multi-user edit data sama dalam masa yang sama, conflict detected → log di sini.</p>
+            <div id="dbConflictLog" style="font-size:12px; color:var(--neutral-600);">Loading conflict log...</div>
+        </div>
+    </div>
+
     <!-- p4_7 CUSTOMER-FACING DISPLAY (separate window)  -->
     <!-- (rendered by /customer-display.html or new tab)  -->
-    <!-- ============================================== -->
 
     <!-- ROADMAP & PROGRESS SECTION -->
     <div id="roadmapSection" class="tab-section" style="display:none;">
@@ -3559,7 +3669,8 @@
                 { id:'p1_13', label:'Inventory Department refactor (drop legacy duplicate; rename consistent EN; ordered by daily-ops frequency; Reports group; Bulk Ops moved to Manager)', d:'done' },
                 { id:'p1_14', label:'Sidebar split: HR Department (Staff/Roster/Attendance) separated from Admin & Reports (Dashboard/Sales/CRM/Finance/System)', d:'done' },
                 { id:'p1_15', label:'Admin & Reports refactor (4 subsections: Reports / Customer / Sales Tools / System; renamed for EN consistency; duplicate IDs neutralised)', d:'done' },
-                { id:'p1_16', label:'Compliance section split into 3 entries (Shop Settings / Payments / Compliance & Tax) via category-filtered tab bar', d:'done' }
+                { id:'p1_16', label:'Compliance section split into 3 entries (Shop Settings / Payments / Compliance & Tax) via category-filtered tab bar', d:'done' },
+                { id:'p1_17', label:'Department restructure (3 manager groups: Admin Dept · Finance Dept · HR Dept). Added B2B/Wholesale Customers section + Data & Backup widget. Merged Customer Segments into Customer DB. Moved Sales Ledger + Compliance & Tax + Backup into Finance Dept', d:'done' }
               ]},
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -7522,7 +7633,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=84"></script>
+    <script src="app.js?v=85"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
