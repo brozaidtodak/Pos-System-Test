@@ -5,7 +5,7 @@
     <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=33">
-    <link rel="stylesheet" href="design-tokens.css?v=2">
+    <link rel="stylesheet" href="design-tokens.css?v=3">
     <!-- Supabase Core -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
@@ -1026,18 +1026,24 @@
         </div>
     </div>
 
-    <!-- 2. APP HEADER (UX-2.3 with breadcrumbs + Ctrl+K hint) -->
-    <header class="app-header" style="display:flex; align-items:center; gap:14px;">
-        <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle sidebar"><i data-lucide="menu" style="color:var(--primary);"></i></button>
+    <!-- UX-5.2 Skip-to-main link for keyboard / screen reader users -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- 2. APP HEADER (UX-2.3 breadcrumbs + UX-4.1 dark mode + UX-5 ARIA) -->
+    <header class="app-header" style="display:flex; align-items:center; gap:14px;" role="banner">
+        <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle sidebar menu"><i data-lucide="menu" style="color:var(--primary);" aria-hidden="true"></i></button>
         <nav id="headerBreadcrumb" class="breadcrumb" aria-label="Breadcrumb">
             <span class="breadcrumb__item breadcrumb__item--current" id="bcCurrent">Dashboard</span>
         </nav>
-        <h1 id="pageTitle" style="display:none;">Dashboard</h1>
+        <h1 id="pageTitle" class="sr-only">Dashboard</h1>
         <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-            <button onclick="window.openCmdK()" class="btn btn--ghost btn--sm" style="color:#FFF; background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.15);" title="Quick search (Ctrl+K)">
-                <i data-lucide="search" style="width:14px; height:14px;"></i>
+            <button onclick="window.openCmdK()" class="btn btn--ghost btn--sm" style="color:#FFF; background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.15);" title="Quick search (Ctrl+K)" aria-label="Open quick search (Control K)">
+                <i data-lucide="search" style="width:14px; height:14px;" aria-hidden="true"></i>
                 <span style="font-size:11px;">Search</span>
                 <kbd style="background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:3px; font-size:10px; font-family:monospace;">⌘K</kbd>
+            </button>
+            <button id="themeToggle" class="theme-toggle" onclick="window.toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
+                <i id="themeIcon" data-lucide="moon" style="width:16px; height:16px;" aria-hidden="true"></i>
             </button>
         </div>
     </header>
@@ -1075,7 +1081,7 @@
     </div>
 
     <!-- 3. MAIN DASHBOARD AREA -->
-    <div class="app-container">
+    <div id="main-content" class="app-container" role="main">
         
         <!-- ============================================== -->
         <!-- PUBLIC ROSTER SECTION -->
@@ -1671,7 +1677,11 @@
                             <th style="text-align:center;">Status</th>
                         </tr></thead>
                         <tbody id="ledgerTbody">
-                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">Loading...</td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1741,7 +1751,11 @@
                             <th style="text-align:center;">Last Sale</th>
                         </tr></thead>
                         <tbody id="prodSalesTbody">
-                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">Loading...</td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1907,7 +1921,13 @@
                             <th style="text-align:center;">Consent</th>
                             <th>Tags</th>
                         </tr></thead>
-                        <tbody id="customersTableBody"><tr><td colspan="9" style="text-align:center; color:#999;">Loading...</td></tr></tbody>
+                        <tbody id="customersTableBody">
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                            <tr class="skel-row" aria-hidden="true"><td colspan="9"><span class="skeleton skeleton--text"></span></td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -7348,7 +7368,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=74"></script>
+    <script src="app.js?v=75"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

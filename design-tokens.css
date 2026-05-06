@@ -709,6 +709,185 @@
     .checkout-panel { max-width: 100%; }
 }
 
+/* ============================================================
+   UX-4 POLISH — Mobile + Print + Skeleton
+   ============================================================ */
+
+/* ---------- MOBILE RESPONSIVE SWEEP ---------- */
+@media (max-width: 720px) {
+    .mode-bar { padding: 4px; gap: 2px; }
+    .mode-tab { padding: 6px 10px; font-size: 12px; }
+    .mode-tab span:not(.mode-tab__icon) { display: none; }
+    #modeHint { display: none !important; }
+    .breadcrumb { font-size: 12px; }
+    .breadcrumb__item { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Header search button — icon only on mobile */
+    header.app-header .btn span:not(.mode-tab__icon) { display: none; }
+    header.app-header .btn kbd { display: none; }
+    /* Cmdk overlay full-screen on mobile */
+    .cmdk-overlay { padding: 16px 8px; align-items: flex-start; }
+    .cmdk { max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+    .cp-payment-grid { grid-template-columns: 1fr 1fr; }
+    .cp-pay-pill { min-height: 56px; }
+    .cp-success-actions { grid-template-columns: 1fr; }
+    .stat__value { font-size: var(--text-md); }
+}
+
+/* ---------- PRINT STYLESHEET (UX-4.2) ---------- */
+@media print {
+    @page { margin: 1.5cm; }
+    html, body { background: #FFF !important; color: #000 !important; }
+
+    /* Hide chrome */
+    .app-header, #appSidebar, .sidebar-overlay,
+    #modeBar, #cmdkOverlay,
+    #checkoutPanel, #checkoutPanelOverlay,
+    .checkout-btn, .login-btn, .btn-primary, .btn-success, .btn-danger, .btn,
+    .cp-pay-pill, .cp-section,
+    .roadmap-toolbar, .pos-search, .empty-cart-message,
+    .login-overlay, .modal,
+    [data-tab], .menu-item,
+    button, .hamburger-btn { display: none !important; }
+
+    /* Show only the active tab-section */
+    .tab-section { page-break-inside: avoid; }
+    .tab-section[style*="display: block"], .tab-section[style*="display:block"] {
+        display: block !important;
+    }
+
+    /* Tables clean for paper */
+    table { border-collapse: collapse !important; width: 100% !important; }
+    th, td {
+        border: 1px solid #999 !important;
+        padding: 4px 6px !important;
+        font-size: 10pt !important;
+    }
+    th { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+
+    /* Card simplification */
+    .card, .admin-card {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        background: #FFF !important;
+        padding: 8px !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* Headings monospace-style for receipts */
+    h1, h2, h3 { color: #000 !important; }
+    .stat, .cp-total { background: #FFF !important; color: #000 !important; border-left: 3px solid #000 !important; }
+
+    /* Page break helpers */
+    .print-page-break { page-break-after: always; }
+    .print-no-break { page-break-inside: avoid; }
+}
+
+/* ---------- SKELETON LOADER USAGE (UX-4.3) ---------- */
+/* Skeleton row for tables — apply to tr/td */
+.skel-row td { padding: 8px !important; }
+.skel-row .skeleton { display: block; height: 14px; width: 100%; }
+.skel-row td:first-child .skeleton { width: 40%; }
+.skel-row td:last-child .skeleton { width: 60%; }
+
+/* ============================================================
+   UX-5 ACCESSIBILITY
+   ============================================================ */
+
+/* ---------- VISIBLE FOCUS RINGS ---------- */
+*:focus-visible {
+    outline: none;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid var(--primary-300);
+    outline-offset: 1px;
+    border-color: var(--primary-500);
+}
+a:focus-visible {
+    outline: 3px solid var(--primary-300);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+}
+.menu-item:focus-visible {
+    outline: 3px solid var(--primary-300);
+    outline-offset: -3px;
+}
+.cp-pay-pill:focus-visible {
+    outline: 3px solid var(--primary-300);
+    outline-offset: 2px;
+}
+
+/* ---------- SKIP-TO-MAIN LINK ---------- */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 8px;
+    background: var(--primary-500);
+    color: #FFF;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    z-index: 10000;
+    transition: top var(--transition-fast);
+    text-decoration: none;
+}
+.skip-link:focus {
+    top: 8px;
+}
+
+/* ---------- CONTRAST FIX: muted text minimum WCAG AA ---------- */
+.cmdk-item__subtitle, .cp-ac-meta, .stat__hint {
+    /* Was sometimes too light against white. Bump to neutral-600 minimum (4.5:1 on white). */
+    color: var(--neutral-600);
+}
+
+/* ---------- SCREEN-READER ONLY (visually hidden) ---------- */
+.sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- DARK MODE — full overrides for chrome ---------- */
+[data-theme="dark"] body { background: #18181B; color: #E4E4E7; }
+[data-theme="dark"] .card,
+[data-theme="dark"] .admin-card,
+[data-theme="dark"] .checkout-panel,
+[data-theme="dark"] .cmdk,
+[data-theme="dark"] .cp-section { background: #27272A; border-color: #3F3F46; color: #E4E4E7; }
+[data-theme="dark"] .stat { background: #27272A; }
+[data-theme="dark"] .cp-input, [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+    background: #18181B;
+    color: #E4E4E7;
+    border-color: #3F3F46;
+}
+[data-theme="dark"] .table-responsive,
+[data-theme="dark"] .data-table thead { background: #18181B; }
+[data-theme="dark"] .mode-bar { background: #27272A; border-color: #3F3F46; }
+[data-theme="dark"] .mode-tab { color: #A1A1AA; }
+[data-theme="dark"] .mode-tab:hover { background: #3F3F46; color: #FAFAFA; }
+
+/* Theme toggle button (in header) */
+.theme-toggle {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #FFF;
+    width: 36px; height: 36px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--transition-fast);
+}
+.theme-toggle:hover { background: rgba(255,255,255,0.16); }
+.theme-toggle:focus-visible { outline: 3px solid var(--primary-300); outline-offset: 2px; }
+
 /* ---------- UTILITY HELPERS ---------- */
 .u-hidden { display: none !important; }
 .u-text-center { text-align: center; }

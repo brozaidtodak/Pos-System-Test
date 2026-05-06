@@ -48,6 +48,37 @@
     .empty .icon { font-size: 80px; margin-bottom: 14px; }
     .empty .msg { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
     .empty .sub { font-size: 14px; }
+    .idle-art {
+        position: relative; height: 130px; width: 200px; margin: 0 auto var(--space-4, 16px);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .idle-emoji { position: absolute; font-size: 60px; animation: idleFloat 4s ease-in-out infinite; }
+    .idle-emoji--2 { animation-delay: 1s;  font-size: 36px; left: 0; opacity: 0.5; }
+    .idle-emoji--3 { animation-delay: 2s;  font-size: 32px; right: 10px; top: 0; opacity: 0.4; }
+    .idle-emoji--4 { animation-delay: 0.5s; font-size: 28px; right: 0; bottom: 4px; opacity: 0.5; }
+    @keyframes idleFloat {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-12px) rotate(-3deg); }
+    }
+    .quote-rotator {
+        margin-top: 18px;
+        font-style: italic;
+        font-size: 13px;
+        color: #999;
+        max-width: 400px;
+        margin-left: auto; margin-right: auto;
+        opacity: 0;
+        transition: opacity 800ms;
+    }
+    .quote-rotator.is-visible { opacity: 1; }
+
+    .brand-footer {
+        margin-top: 14px; padding-top: 12px;
+        border-top: 1px dashed var(--border);
+        font-size: 12px; color: var(--muted); text-align: center;
+        font-weight: 600; letter-spacing: 0.3px;
+    }
+    .dot-sep { margin: 0 12px; color: #CBD5E1; }
 
     .cart-list { display: flex; flex-direction: column; gap: 10px; }
     .cart-item {
@@ -97,9 +128,15 @@
 
     <main id="mainContent">
         <div class="empty" id="emptyState">
-            <div class="icon">🛒</div>
-            <div class="msg">Selamat datang ke 10 CAMP</div>
-            <div class="sub">Cashier sedang siapkan order anda...</div>
+            <div class="idle-art">
+                <span class="idle-emoji">🏕️</span>
+                <span class="idle-emoji idle-emoji--2">🔥</span>
+                <span class="idle-emoji idle-emoji--3">⛺</span>
+                <span class="idle-emoji idle-emoji--4">🌲</span>
+            </div>
+            <div class="msg" id="emptyMsg">Selamat datang ke 10 CAMP</div>
+            <div class="sub" id="emptySub">Cashier sedang siapkan order anda...</div>
+            <div class="quote-rotator" id="quoteRotator"></div>
         </div>
     </main>
 
@@ -116,6 +153,11 @@
                 <div style="font-size:13px; color:var(--muted); margin-bottom:6px; text-align:right; font-weight:700;">JUMLAH BAYAR</div>
                 <div class="grand"><span class="grand-prefix">RM</span><span id="grandTotal">0.00</span></div>
             </div>
+        </div>
+        <div class="brand-footer" id="brandFooter">
+            <span id="brandPhone">📱 +601133109547</span>
+            <span class="dot-sep">·</span>
+            <span id="brandEmail">📧 admin@10camp.com</span>
         </div>
     </footer>
 </div>
@@ -219,6 +261,47 @@ function render() {
 setInterval(render, 500);
 window.addEventListener('storage', e => { if (e.key === STORAGE_KEY) render(); });
 render();
+
+// Quote rotator on idle empty state
+const QUOTES = [
+    "🏕️ \"The mountains are calling and I must go.\" — John Muir",
+    "🌲 \"In every walk with nature, one receives far more than he seeks.\"",
+    "🔥 \"The campfire is the magnet of the wilderness.\"",
+    "⛺ Tent terbaik = tent yang sesuai dengan adventure kau.",
+    "🥾 Gear yang tahan lasak = pengalaman yang lasting.",
+    "🌟 \"Adventure is worthwhile.\" — Aesop",
+    "💧 \"Water is life. Always pack extra.\"",
+    "🌿 \"Leave only footprints, take only memories.\""
+];
+let quoteIdx = 0;
+function rotateQuote() {
+    const el = document.getElementById('quoteRotator');
+    if (!el) return;
+    const empty = document.getElementById('emptyState');
+    if (!empty || empty.style.display === 'none') return;
+    el.classList.remove('is-visible');
+    setTimeout(() => {
+        el.textContent = QUOTES[quoteIdx % QUOTES.length];
+        el.classList.add('is-visible');
+        quoteIdx++;
+    }, 400);
+}
+rotateQuote();
+setInterval(rotateQuote, 6000);
+
+// Hydrate brand footer from settings
+function hydrateBrand() {
+    try {
+        const s = JSON.parse(localStorage.getItem(SHOP_KEY) || '{}');
+        const shop = s.shop || {};
+        const phoneEl = document.getElementById('brandPhone');
+        const emailEl = document.getElementById('brandEmail');
+        if (phoneEl && shop.phone) phoneEl.textContent = '📱 ' + shop.phone;
+        if (emailEl && shop.email) emailEl.textContent = '📧 ' + shop.email;
+    } catch (e) {}
+}
+hydrateBrand();
+setInterval(hydrateBrand, 5000);
 </script>
 </body>
 </html>

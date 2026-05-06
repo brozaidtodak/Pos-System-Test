@@ -9420,3 +9420,47 @@ document.addEventListener('keydown', e => {
         }
     }
 });
+
+// =============================================================
+// SPRINT UX-4 — POLISH (Dark mode + Skeleton helper)
+// =============================================================
+
+window.toggleTheme = function() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('uxTheme_v1', next);
+    // Update icon
+    const icon = document.getElementById('themeIcon');
+    if(icon) {
+        icon.setAttribute('data-lucide', next === 'dark' ? 'sun' : 'moon');
+        if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
+};
+
+window.__initTheme = function() {
+    const saved = localStorage.getItem('uxTheme_v1') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    const icon = document.getElementById('themeIcon');
+    if(icon && saved === 'dark') {
+        icon.setAttribute('data-lucide', 'sun');
+        if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
+};
+
+// Reusable skeleton row generator
+window.skelRows = function(rows, cols) {
+    const rowsHtml = [];
+    for(let r = 0; r < rows; r++) {
+        let tds = '';
+        for(let c = 0; c < cols; c++) tds += '<td><span class="skeleton skeleton--text"></span></td>';
+        rowsHtml.push(`<tr class="skel-row" aria-hidden="true">${tds}</tr>`);
+    }
+    return rowsHtml.join('');
+};
+
+// Init theme + skip link focus on Tab from URL
+document.addEventListener('DOMContentLoaded', () => {
+    if(typeof __initTheme === 'function') __initTheme();
+});
