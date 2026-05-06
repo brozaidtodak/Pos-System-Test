@@ -197,8 +197,10 @@ function switchHub(sectionIds, title, btnElement) {
         if(el) el.style.display = 'block';
     });
     
-    // Set Window Title
-    document.getElementById('pageTitle').textContent = title;
+    // Set Window Title (legacy + new breadcrumb)
+    const oldTitle = document.getElementById('pageTitle');
+    if(oldTitle) oldTitle.textContent = title;
+    if(typeof updateBreadcrumb === 'function') updateBreadcrumb(title);
     
     // Update active state in sidebar
     document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
@@ -8800,3 +8802,261 @@ window.applyVelocityRecs = async function() {
     showToast(`Velocity update: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
     document.getElementById('velocityOverlay').remove();
 };
+
+// =============================================================
+// SPRINT UX-2 — MODE BAR + CTRL+K + BREADCRUMBS
+// =============================================================
+
+// ============= UX-2.3 BREADCRUMBS =============
+window.updateBreadcrumb = function(sectionTitle) {
+    const el = document.getElementById('bcCurrent');
+    if(!el) return;
+    const mode = (localStorage.getItem('uxMode_v1') || 'cashier');
+    const modeLabel = { cashier:'Cashier', operations:'Operations', manager:'Manager' }[mode] || 'Manager';
+    const wrapper = document.getElementById('headerBreadcrumb');
+    if(wrapper) {
+        wrapper.innerHTML = `
+            <span class="breadcrumb__item">${modeLabel}</span>
+            <span class="breadcrumb__separator">›</span>
+            <span class="breadcrumb__item breadcrumb__item--current" id="bcCurrent">${sectionTitle || 'Overview'}</span>
+        `;
+    }
+};
+
+// ============= UX-2.1 MODE BAR =============
+window.setMode = function(mode) {
+    if(!['cashier','operations','manager'].includes(mode)) return;
+    localStorage.setItem('uxMode_v1', mode);
+
+    // Update tabs UI
+    document.querySelectorAll('.mode-tab').forEach(t => {
+        const isActive = t.dataset.modeSet === mode;
+        t.classList.toggle('is-active', isActive);
+        t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    // Filter sidebar items via mode-hidden class (additive — respects existing role classes)
+    const items = document.querySelectorAll('#appSidebar .menu-item');
+    items.forEach(it => {
+        const isSales = it.classList.contains('sales-only');
+        const isInv   = it.classList.contains('inv-only');
+        const isMgmtOnly = it.classList.contains('mgmt-only');
+        const dataGroup = it.getAttribute('data-group');
+        const groupToggle = it.getAttribute('data-group-toggle');
+        const dataTab = it.getAttribute('data-tab');
+        // Roadmap button — keep visible in all modes
+        if(it.id === 'sidebarRoadmapBtn') { it.classList.remove('mode-hidden'); return; }
+
+        let show = false;
+        if(mode === 'cashier') {
+            show = isSales || (groupToggle === 'sales');
+        } else if(mode === 'operations') {
+            show = isInv || (groupToggle === 'inv');
+        } else { // manager — show all
+            show = true;
+        }
+        it.classList.toggle('mode-hidden', !show);
+    });
+
+    // Auto-expand relevant group + redirect to first item if current section not in mode
+    const groups = {
+        cashier: 'sales',
+        operations: 'inv',
+        manager: null
+    };
+    // Auto-expand the group for current mode (legacy applySidebarGroupState takes name+collapsed)
+    if(groups[mode] && typeof window.applySidebarGroupState === 'function') {
+        try { window.applySidebarGroupState(groups[mode], false); } catch(e){}
+    }
+
+    // Auto-jump to logical home for that mode (only on explicit user click, not initial load)
+    if(window.__modeJumping === false || window.__modeJumping === undefined) {
+        if(mode === 'cashier') {
+            const cashierBtn = document.querySelector('[data-tab="sales_cashier"]');
+            if(cashierBtn) cashierBtn.click();
+        } else if(mode === 'operations') {
+            const inv = document.querySelector('[data-tab="inv_database"]');
+            if(inv) inv.click();
+        } else {
+            const dash = document.querySelector('[data-tab="admin_dashboard"]');
+            if(dash) dash.click();
+        }
+    }
+
+    if(typeof updateBreadcrumb === 'function') {
+        const cur = document.getElementById('bcCurrent');
+        const t = cur ? cur.textContent : 'Overview';
+        updateBreadcrumb(t);
+    }
+};
+
+// Apply persisted mode at boot — without auto-jumping (so user's last section restores)
+window.__initMode = function() {
+    const saved = localStorage.getItem('uxMode_v1') || 'manager';
+    window.__modeJumping = true;  // prevent auto-jump on initial restore
+    setMode(saved);
+    window.__modeJumping = false;
+};
+
+// ============= UX-2.2 COMMAND PALETTE (Ctrl+K) =============
+const CMDK_INDEX = [];   // built lazily
+
+function buildCmdkIndex() {
+    if(CMDK_INDEX.length > 0) return;
+    document.querySelectorAll('#appSidebar .menu-item[data-tab]').forEach(item => {
+        const label = item.textContent.trim().replace(/\s+/g, ' ').slice(0, 80);
+        const onclickStr = item.getAttribute('onclick');
+        const groupCls = (item.classList.contains('sales-only') ? 'Sales' :
+                          item.classList.contains('inv-only')   ? 'Inventory' :
+                          item.dataset.group === 'admin'        ? 'HR & Admin' : 'General');
+        CMDK_INDEX.push({
+            type: 'section',
+            label,
+            subtitle: groupCls,
+            icon: 'arrow-right',
+            action: () => item.click()
+        });
+    });
+    // Common actions
+    const actions = [
+        { label:'Open Customer Display (2nd screen)', subtitle:'Action · Cashier', icon:'monitor', action:() => window.openCustomerDisplay && openCustomerDisplay() },
+        { label:'Run EOD Close (Z-Report)',           subtitle:'Action · Manager', icon:'lock',    action:() => window.openEodClose && openEodClose() },
+        { label:'Run Velocity Analysis',              subtitle:'Action · Inventory', icon:'trending-up', action:() => window.openVelocityAnalysis && openVelocityAnalysis() },
+        { label:'Open Festival Templates',            subtitle:'Action · Promotions', icon:'gift', action:() => window.openFestivalTemplates && openFestivalTemplates() },
+        { label:'Switch to Cashier Mode',             subtitle:'Mode',             icon:'shopping-cart', action:() => setMode('cashier') },
+        { label:'Switch to Operations Mode',          subtitle:'Mode',             icon:'package',       action:() => setMode('operations') },
+        { label:'Switch to Manager Mode',             subtitle:'Mode',             icon:'layout-dashboard', action:() => setMode('manager') },
+    ];
+    CMDK_INDEX.push(...actions.map(a => ({ ...a, type:'action' })));
+}
+
+let __cmdkCursor = 0;
+
+window.openCmdK = function() {
+    buildCmdkIndex();
+    const overlay = document.getElementById('cmdkOverlay');
+    const input = document.getElementById('cmdkInput');
+    if(!overlay || !input) return;
+    overlay.classList.add('is-open');
+    input.value = '';
+    __cmdkCursor = 0;
+    renderCmdkResults('');
+    setTimeout(() => input.focus(), 50);
+};
+
+window.closeCmdK = function() {
+    const overlay = document.getElementById('cmdkOverlay');
+    if(overlay) overlay.classList.remove('is-open');
+};
+
+function renderCmdkResults(query) {
+    const list = document.getElementById('cmdkList');
+    if(!list) return;
+    const q = (query || '').trim().toLowerCase();
+    let results = CMDK_INDEX;
+    if(q) {
+        results = CMDK_INDEX.filter(it => {
+            const hay = (it.label + ' ' + (it.subtitle||'')).toLowerCase();
+            return q.split(/\s+/).every(token => hay.includes(token));
+        });
+    }
+    // Add dynamic results: customers + products if query is meaningful
+    if(q && q.length >= 2) {
+        // Customers — search top 5
+        if(typeof customersData !== 'undefined') {
+            const custMatches = customersData.filter(c =>
+                (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q) || (c.email || '').toLowerCase().includes(q)
+            ).slice(0, 5);
+            custMatches.forEach(c => {
+                results.push({
+                    type:'customer',
+                    label: c.name + (c.phone ? ` · ${c.phone}` : ''),
+                    subtitle: `Customer · ${c.total_orders||0} orders · RM${(c.total_spent||0).toFixed(0)}`,
+                    icon: 'user',
+                    action: () => {
+                        const btn = document.querySelector('[data-tab="sales_crm"]');
+                        if(btn) btn.click();
+                        setTimeout(() => {
+                            const s = document.getElementById('crmSearch');
+                            if(s) { s.value = c.name; s.dispatchEvent(new Event('input')); }
+                        }, 200);
+                    }
+                });
+            });
+        }
+        // Products — search top 5
+        if(typeof masterProducts !== 'undefined') {
+            const prodMatches = masterProducts.filter(p =>
+                (p.sku||'').toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q) || (p.brand||'').toLowerCase().includes(q)
+            ).slice(0, 5);
+            prodMatches.forEach(p => {
+                results.push({
+                    type:'product',
+                    label: `[${p.sku}] ${p.name||''}`.slice(0, 80),
+                    subtitle: `Product · ${p.brand||'-'} · RM${(p.price||0).toFixed(2)}`,
+                    icon: 'package',
+                    action: () => {
+                        const btn = document.querySelector('[data-tab="inv_database"]');
+                        if(btn) btn.click();
+                    }
+                });
+            });
+        }
+    }
+
+    if(results.length === 0) {
+        list.innerHTML = '<div class="cmdk-empty">Nothing matches "' + q + '". Try section names like "dashboard" or actions like "EOD".</div>';
+        return;
+    }
+    if(__cmdkCursor >= results.length) __cmdkCursor = 0;
+    if(__cmdkCursor < 0) __cmdkCursor = results.length - 1;
+    list.innerHTML = results.slice(0, 30).map((r, i) => `
+        <div class="cmdk-item ${i === __cmdkCursor ? 'is-active' : ''}" data-idx="${i}" onmouseenter="window.__cmdkSetCursor(${i})" onclick="window.__cmdkSelect(${i})">
+            <div class="cmdk-item__icon"><i data-lucide="${r.icon||'arrow-right'}" style="width:14px; height:14px;"></i></div>
+            <div class="cmdk-item__main">
+                <div class="cmdk-item__title">${r.label}</div>
+                <div class="cmdk-item__subtitle">${r.subtitle||''}</div>
+            </div>
+            ${r.type === 'action' ? '<span class="cmdk-item__shortcut">action</span>' : ''}
+        </div>
+    `).join('');
+    if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    window.__cmdkResults = results;
+}
+
+window.__cmdkSetCursor = function(i) {
+    __cmdkCursor = i;
+    document.querySelectorAll('#cmdkList .cmdk-item').forEach((el, idx) => el.classList.toggle('is-active', idx === i));
+};
+
+window.__cmdkSelect = function(i) {
+    const r = (window.__cmdkResults || [])[i];
+    if(!r || !r.action) return;
+    closeCmdK();
+    setTimeout(r.action, 50);
+};
+
+document.addEventListener('keydown', function(e) {
+    // Open palette
+    if((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        openCmdK();
+        return;
+    }
+    // While palette open
+    const overlay = document.getElementById('cmdkOverlay');
+    if(!overlay || !overlay.classList.contains('is-open')) return;
+
+    if(e.key === 'Escape') { closeCmdK(); return; }
+    if(e.key === 'ArrowDown') { e.preventDefault(); __cmdkCursor++; renderCmdkResults(document.getElementById('cmdkInput').value); return; }
+    if(e.key === 'ArrowUp')   { e.preventDefault(); __cmdkCursor--; renderCmdkResults(document.getElementById('cmdkInput').value); return; }
+    if(e.key === 'Enter')     { e.preventDefault(); __cmdkSelect(__cmdkCursor); return; }
+});
+
+// Re-render on input typing
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('cmdkInput');
+    if(input) input.addEventListener('input', e => { __cmdkCursor = 0; renderCmdkResults(e.target.value); });
+    // Apply persisted mode at boot — defer so sidebar items rendered
+    setTimeout(() => { if(typeof __initMode === 'function') __initMode(); }, 300);
+});
