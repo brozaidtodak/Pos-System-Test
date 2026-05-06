@@ -112,6 +112,10 @@ window.changePosPage = function(dir) {
 // Memory State
 let masterProducts = [];
 
+// Single source of truth for "is this product live in cashier?"
+// Strict: only `true` counts as published. NULL / false / undefined = draft.
+window.isPublished = function(p) { return !!p && p.is_published === true; };
+
 let pettyCashLedger = [];
 let customerIssues = [];
 let globalMemo = { active: false, text: "" };
@@ -497,7 +501,7 @@ window.renderDashboard = function() {
     // 3. Inventory Stock Health
     let activeP=0; let draftP=0; let oosP=0; let lowP=0;
     masterProducts.forEach(p => {
-        if(p.is_published === false) { draftP++; return; }
+        if(!isPublished(p)) { draftP++; return; }
         activeP++;
         
         let qty = inventoryBatches.filter(b=>b.sku===p.sku).reduce((sum, b)=>sum+b.qty_remaining,0);
@@ -628,7 +632,7 @@ function renderWMS() {
         let thumb = "https://placehold.co/100x100?text=Img";
         let imgs = p.images || []; if(imgs.length > 0) thumb = imgs[0];
 
-        let sBadge = p.is_published ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
+        let sBadge = isPublished(p) ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
 
         htmlBuf3 += `
             <tr>
@@ -1276,7 +1280,7 @@ function renderPOS(searchTerm = "") {
     }
 
     let filtered = masterProducts.filter(p => {
-        if(p.is_published === false) return false;
+        if(!isPublished(p)) return false;
         if(searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase()) && !p.sku.toLowerCase().includes(searchTerm.toLowerCase())) return false;
         return true;
     });
@@ -2019,7 +2023,7 @@ function renderPublicStorefront() {
     if(!list) return;
     let htmlBuf2 = "";
 
-    let filtered = masterProducts.filter(p => p.is_published !== false);
+    let filtered = masterProducts.filter(p => isPublished(p));
     const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
     if(publicCurrentPage > totalPages) publicCurrentPage = totalPages;
     if(publicCurrentPage < 1) publicCurrentPage = 1;
@@ -3900,7 +3904,7 @@ window.renderQuotePOS = function(searchTerm = "") {
     list.innerHTML = "";
     
     // Filter published products
-    let activeProducts = masterProducts.filter(p => String(p.is_published) === "true");
+    let activeProducts = masterProducts.filter(p => isPublished(p));
     
     if(searchTerm) {
         let q = searchTerm.toLowerCase();
@@ -4478,52 +4482,90 @@ window.calculateEditableTotal = function() {
 // PRODUCT REGISTRATION MODE
 // ===================================
 window.saveMasterProduct = async function() {
-    let name = document.getElementById("mpName").value.trim();
-    let sku = document.getElementById("mpSku").value.trim().toUpperCase();
-    let category = document.getElementById("mpCategory").value.trim();
-    let price = document.getElementById("mpPrice").value;
-
-    if(!name || !sku || !category || !price) {
-        alert("Sila lengkapkan semua maklumat Master Product.");
-        return;
-    }
-
-    // Check if SKU already exists
-    let existing = masterProducts.find(p => p.sku === sku);
-    if(existing) {
-        alert("SKU ini sudah wujud dalam Master Product! Sila gunakan fungsi Edit atau terus ke Masukkan Stok.");
-        return;
-    }
-
-    const payload = {
-        sku: sku,
-        name: name,
-        category: category,
-        price: parseFloat(price),
-        cost_price: 0,
-        stock_status: 'in_stock',
-        is_published: true
+    const get = (id) => (document.getElementById(id)?.value || '').trim();
+    const getNum = (id) => {
+        const v = document.getElementById(id)?.value;
+        return v === '' || v == null ? null : parseFloat(v);
     };
 
-    let { data: newProd, error } = await db.from('products_master').insert([payload]).select();
+    const name = get('mpName');
+    const sku = get('mpSku').toUpperCase();
+    const price = getNum('mpPrice');
 
+    if(!name || !sku || price == null || isNaN(price)) {
+        return showToast('Nama, SKU, Harga Jualan wajib diisi.', 'warn');
+    }
+
+    if(masterProducts.find(p => p.sku === sku)) {
+        return showToast(`SKU "${sku}" sudah wujud. Guna Edit untuk update.`, 'warn');
+    }
+
+    const imageUrl = get('mpImageUrl');
+    const payload = {
+        sku, name,
+        unit: get('mpUnit') || 'pcs',
+        price,
+        cost_price: getNum('mpCostPrice'),
+        category: get('mpCategory') || null,
+        brand: get('mpBrand') || null,
+        model_no: get('mpModelNo') || null,
+        parent_sku: get('mpParentSku').toUpperCase() || null,
+        erp_barcode: get('mpErpBarcode') || null,
+        variant_color: get('mpVariantColor') || null,
+        variant_size: get('mpVariantSize') || null,
+        weight_kg: getNum('mpWeightKg'),
+        length_cm: getNum('mpLengthCm'),
+        width_cm: getNum('mpWidthCm'),
+        height_cm: getNum('mpHeightCm'),
+        location_bin: get('mpLocationBin') || null,
+        description: get('mpDescription') || null,
+        commission_rate: getNum('mpCommissionRate'),
+        images: imageUrl ? [imageUrl] : null,
+        is_published: get('mpIsPublished') === 'true'
+    };
+
+    // Strip null fields so PG defaults / nulls land cleanly
+    const cleaned = {};
+    for(const [k, v] of Object.entries(payload)) {
+        if(v !== null && v !== '' && !(typeof v === 'number' && isNaN(v))) cleaned[k] = v;
+    }
+
+    const { data: newProd, error } = await db.from('products_master').insert([cleaned]).select();
     if(error) {
-        console.error("Master Product Insert Error:", error);
-        alert("Ralat mencipta Master Product. Sila cuba lagi.");
-        return;
+        console.error('Master Product insert error:', error);
+        return showToast('Ralat: ' + error.message, 'error');
     }
+    if(newProd && newProd.length > 0) masterProducts.push(newProd[0]);
 
-    if(newProd && newProd.length > 0) {
-        masterProducts.push(newProd[0]);
-    }
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'master_product_create',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ sku, name, brand: cleaned.brand, price, published: cleaned.is_published }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
 
-    alert(`Profil Produk '${name}' (${sku}) Berjaya Dicipta! Anda kini boleh memasukkan stok (Purchase Order).`);
+    showToast(`Profil "${name}" (${sku}) berjaya dicipta!`, 'success');
 
-    // Clear fields
-    document.getElementById("mpName").value = "";
-    document.getElementById("mpSku").value = "";
-    document.getElementById("mpCategory").value = "";
-    document.getElementById("mpPrice").value = "";
+    // Clear all fields
+    ['mpName','mpSku','mpBrand','mpCategory','mpModelNo','mpParentSku','mpPrice','mpCostPrice',
+     'mpVariantColor','mpVariantSize','mpErpBarcode','mpWeightKg','mpLengthCm','mpWidthCm','mpHeightCm',
+     'mpLocationBin','mpDescription','mpImageUrl','mpCommissionRate'
+    ].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const unitEl = document.getElementById('mpUnit'); if(unitEl) unitEl.value = 'pcs';
+    const pubEl = document.getElementById('mpIsPublished'); if(pubEl) pubEl.value = 'false';
+};
+
+// Auto-populate brand & category datalists from existing products
+window.refreshMpDatalists = function() {
+    const bList = document.getElementById('mpBrandList');
+    const cList = document.getElementById('mpCategoryList');
+    if(!bList || !cList || typeof masterProducts === 'undefined') return;
+    const brands = [...new Set(masterProducts.map(p => p.brand).filter(Boolean))].sort();
+    const cats = [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort();
+    bList.innerHTML = brands.map(b => `<option value="${b}">`).join('');
+    cList.innerHTML = cats.map(c => `<option value="${c}">`).join('');
 };
 window.saveProductRegistration = async function() {
     let shipmentNo = document.getElementById("prShipmentNo").value.trim();
@@ -4716,46 +4758,90 @@ window.processOutbound = async function() {
     const qty = parseInt(document.getElementById('outboundQty').value) || 0;
     const reason = document.getElementById('outboundReason').value;
     const note = document.getElementById('outboundNote').value.trim();
-    
-    if(!sku || qty <= 0) return alert("Sila isikan SKU dan kuantiti sah untuk Outbound.");
-    
-    // Simple logic: we need to deduct from the oldest inventory batches
-    let remainingToDeduct = qty;
-    let relevantBatches = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
-    
+
+    if(!sku || qty <= 0) return showToast("Sila isikan SKU dan kuantiti sah untuk Outbound.", 'warn');
+
+    let relevantBatches = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0)
+        .sort((a, b) => new Date(a.inbound_date) - new Date(b.inbound_date));
     let totalStock = relevantBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
-    if(totalStock < qty) {
-        return alert(`Kuantiti dalam sistem tidak mencukupi. Baki sistem: ${totalStock}`);
+    if(totalStock < qty) return showToast(`Stok tak cukup. Baki sistem: ${totalStock}`, 'warn');
+
+    // Compute write-off RM value (rough — uses master price)
+    const prod = masterProducts.find(p => p.sku === sku);
+    const unitCost = prod ? (prod.cost_price || prod.price || 0) : 0;
+    const writeoffValue = unitCost * qty;
+
+    // Decide if Manager PIN required
+    const HIGH_RISK = ['Kerosakan / Pecah', 'Lain-lain'];
+    const VALUE_THRESHOLD = 100; // RM
+    const needsPin = HIGH_RISK.includes(reason) || writeoffValue >= VALUE_THRESHOLD;
+
+    let approval = null;
+    if(needsPin) {
+        const detailsHtml = `
+            <strong>SKU:</strong> ${sku}<br>
+            <strong>Qty keluar:</strong> ${qty} unit<br>
+            <strong>Sebab dari staf:</strong> ${reason}${note ? ' — ' + note : ''}<br>
+            <strong>Anggaran nilai write-off:</strong> RM ${writeoffValue.toFixed(2)}
+        `;
+        approval = await requireManagerPin({
+            title: 'Kelulusan Write-Off / Outbound',
+            subtitle: 'Outbound bernilai tinggi atau berisiko fraud — perlu sahkan dengan Manager PIN.',
+            detailsHtml,
+            reasons: [
+                'Sah — kerosakan diperakui',
+                'Sah — transfer cawangan',
+                'Sah — display/marketing',
+                'Sah — promosi / sample',
+                'Sah — kos operasi',
+                'Lain-lain (catat dalam note)'
+            ]
+        });
+        if(!approval) return showToast('Outbound dibatalkan (tiada kelulusan).', 'warn');
     }
-    
+
     try {
-        for(let batch of relevantBatches) {
-            if(remainingToDeduct <= 0) break;
-            let deductAmount = Math.min(batch.qty_remaining, remainingToDeduct);
-            
-            let { error } = await db.from('inventory_batches').update({ qty_remaining: batch.qty_remaining - deductAmount }).eq('id', batch.id);
+        let remaining = qty;
+        for(const batch of relevantBatches) {
+            if(remaining <= 0) break;
+            const deduct = Math.min(batch.qty_remaining, remaining);
+            const { error } = await db.from('inventory_batches')
+                .update({ qty_remaining: batch.qty_remaining - deduct }).eq('id', batch.id);
             if(error) throw error;
-            
-            remainingToDeduct -= deductAmount;
+            remaining -= deduct;
         }
-        
+
+        const fullReason = approval
+            ? `${reason} | Approved by: ${approval.manager.name} (${approval.reason})${approval.note ? ' — ' + approval.note : ''}${note ? ' | Staf note: ' + note : ''}`
+            : reason + (note ? ' - ' + note : '');
+
         await db.from('inventory_transactions').insert([{
-            sku: sku,
-            transaction_type: 'OUT',
-            qty: qty,
-            reason: reason + (note ? ' - ' + note : ''),
+            sku, transaction_type: 'OUT', qty, reason: fullReason,
             staff_name: currentUser ? currentUser.name : 'System',
             created_at: new Date().toISOString()
         }]);
-        
-        alert(`Berjaya memotong ${qty} unit stok untuk ${sku}. Sebab: ${reason}`);
+
+        if(approval) {
+            await db.from('audit_logs').insert([{
+                action_type: 'outbound_writeoff',
+                actor_name: approval.manager.name,
+                target_staff: currentUser ? currentUser.name : null,
+                details: JSON.stringify({
+                    sku, qty, reason, staff_note: note,
+                    approver_reason: approval.reason, approver_note: approval.note,
+                    estimated_value_rm: writeoffValue
+                }),
+                created_at: new Date().toISOString()
+            }]);
+        }
+
+        showToast(`${qty} unit ${sku} ditolak. ${approval ? 'Approved by ' + approval.manager.name : ''}`, 'success');
         document.getElementById('outboundSkuSearch').value = '';
         document.getElementById('outboundQty').value = '';
         document.getElementById('outboundNote').value = '';
-        
-        await window.initApp(); // reload data
+        await window.initApp();
     } catch(e) {
-        alert("Ralat Outbound: " + e.message);
+        showToast('Ralat Outbound: ' + e.message, 'error');
     }
 };
 
@@ -4910,7 +4996,7 @@ window.openPdpModal = function(sku) {
 
     document.getElementById('pdpOriginalSku').value = prod.sku;
     document.getElementById('pdpHeaderTitle').innerText = `${prod.sku} | ${prod.name}`;
-    document.getElementById('pdpStatus').value = prod.is_published === false ? "false" : "true";
+    document.getElementById('pdpStatus').value = isPublished(prod) ? "true" : "false";
     document.getElementById('pdpName').value = prod.name || '';
     document.getElementById('pdpCategory').value = prod.category || '';
     document.getElementById('pdpBrand').value = prod.brand || '';
@@ -5043,7 +5129,7 @@ window.renderMgmtInventory = function() {
         let thumb = "https://placehold.co/100x100?text=Img";
         let imgs = p.images || []; if(imgs.length > 0) thumb = imgs[0];
 
-        let sBadge = p.is_published ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
+        let sBadge = isPublished(p) ? `<span style="color:green;font-size:10px;">Active</span>` : `<span style="color:red;font-size:10px;">Draft</span>`;
 
         let metaHtml = "";
         try {
@@ -5674,5 +5760,450 @@ window.wipeAllProductsData = async function() {
     } catch(e) {
         console.error(e);
         alert("Gagal memadam data. Sila semak console log atau padam secara manual di Supabase.");
+    }
+};
+
+// ===================================
+// BULK OPERATIONS (Sprint 1.2)
+// ===================================
+let bulkSelected = new Set();      // SKUs currently ticked
+let bulkVisibleSkus = [];          // SKUs in current filtered render
+
+window.bulkComputeStock = function(sku) {
+    if(typeof inventoryBatches === 'undefined') return 0;
+    return inventoryBatches.filter(b => b.sku === sku)
+        .reduce((s, b) => s + (b.qty_remaining || 0), 0);
+};
+
+window.bulkPopulateFilters = function() {
+    const brandSel = document.getElementById('bulkFilterBrand');
+    const catSel = document.getElementById('bulkFilterCategory');
+    if(!brandSel || !catSel) return;
+    const prevB = brandSel.value, prevC = catSel.value;
+    const brands = [...new Set(masterProducts.map(p => p.brand).filter(Boolean))].sort();
+    const cats = [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort();
+    brandSel.innerHTML = '<option value="">Semua Brand</option>' +
+        brands.map(b => `<option value="${b}"${b === prevB ? ' selected' : ''}>${b}</option>`).join('');
+    catSel.innerHTML = '<option value="">Semua Kategori</option>' +
+        cats.map(c => `<option value="${c}"${c === prevC ? ' selected' : ''}>${c}</option>`).join('');
+};
+
+window.renderBulkOps = function() {
+    const tbody = document.getElementById('bulkOpsTbody');
+    if(!tbody) return;
+    bulkPopulateFilters();
+
+    const q = (document.getElementById('bulkSearchInput').value || '').trim().toLowerCase();
+    const filterBrand = document.getElementById('bulkFilterBrand').value;
+    const filterCat = document.getElementById('bulkFilterCategory').value;
+    const filterStatus = document.getElementById('bulkFilterStatus').value;
+    const pageSize = parseInt(document.getElementById('bulkPageSize').value) || 100;
+
+    let filtered = masterProducts.filter(p => {
+        if(filterBrand && p.brand !== filterBrand) return false;
+        if(filterCat && p.category !== filterCat) return false;
+        if(filterStatus === 'draft' && isPublished(p)) return false;
+        if(filterStatus === 'published' && !isPublished(p)) return false;
+        if(q) {
+            const hay = `${p.sku||''} ${p.name||''} ${p.brand||''} ${p.category||''}`.toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    const total = filtered.length;
+    filtered = filtered.slice(0, pageSize);
+    bulkVisibleSkus = filtered.map(p => p.sku);
+
+    document.getElementById('bulkSummaryLine').innerHTML =
+        `Match: <strong>${total}</strong> produk · Tunjuk: <strong>${filtered.length}</strong>` +
+        (total > filtered.length ? ` <span style="color:#DC2626;">(turunkan saiz halaman atau tightenkan filter untuk lihat semua)</span>` : '');
+
+    if(filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px; color:#999;">Tiada produk match filter. Cuba tukar Status ke "Semua".</td></tr>';
+        bulkUpdateActionBar();
+        return;
+    }
+
+    const html = filtered.map(p => {
+        const stock = bulkComputeStock(p.sku);
+        const checked = bulkSelected.has(p.sku) ? 'checked' : '';
+        const thumb = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/40x40?text=?';
+        const pub = isPublished(p);
+        const statusBadge = pub
+            ? '<span style="background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">PUBLISHED</span>'
+            : '<span style="background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">DRAFT</span>';
+        const stockTakeBadge = (p.description || '').includes('STOK BELUM DISAHKAN')
+            ? ' <span title="Stock-take pending" style="background:#FEF3C7; color:#92400E; padding:1px 5px; border-radius:3px; font-weight:bold; font-size:9px;">⚠</span>'
+            : '';
+        return `
+            <tr>
+                <td><input type="checkbox" data-sku="${p.sku}" ${checked} onchange="bulkToggleRow('${p.sku.replace(/'/g, "\\'")}', this.checked)"></td>
+                <td><img src="${thumb}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; background:#F3F4F6;" loading="lazy" onerror="this.src='https://placehold.co/40x40?text=?'"></td>
+                <td style="font-family:monospace; font-size:11px;">${p.sku}</td>
+                <td>${(p.name || '').slice(0, 90)}${stockTakeBadge}</td>
+                <td>${p.brand || '-'}</td>
+                <td>${p.category || '-'}</td>
+                <td style="text-align:right; font-weight:bold;">RM ${(p.price || 0).toFixed(2)}</td>
+                <td style="text-align:right; color:#666;">${p.cost_price != null ? 'RM ' + Number(p.cost_price).toFixed(2) : '-'}</td>
+                <td style="text-align:right; ${stock <= 0 ? 'color:#DC2626;' : ''}">${stock}</td>
+                <td style="text-align:center;">${statusBadge}</td>
+            </tr>
+        `;
+    }).join('');
+    tbody.innerHTML = html;
+    bulkUpdateActionBar();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+window.bulkToggleRow = function(sku, checked) {
+    if(checked) bulkSelected.add(sku); else bulkSelected.delete(sku);
+    bulkUpdateActionBar();
+};
+
+window.bulkToggleAll = function(checkbox) {
+    bulkVisibleSkus.forEach(sku => {
+        if(checkbox.checked) bulkSelected.add(sku); else bulkSelected.delete(sku);
+    });
+    document.querySelectorAll('#bulkOpsTbody input[type="checkbox"][data-sku]').forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    bulkUpdateActionBar();
+};
+
+window.bulkUpdateActionBar = function() {
+    const c = document.getElementById('bulkSelectedCount');
+    const v = document.getElementById('bulkVisibleCount');
+    if(c) c.textContent = bulkSelected.size;
+    if(v) v.textContent = `· ${bulkVisibleSkus.length} terlihat`;
+    const all = document.getElementById('bulkSelectAll');
+    if(all && bulkVisibleSkus.length) {
+        const visTicked = bulkVisibleSkus.filter(s => bulkSelected.has(s)).length;
+        all.checked = visTicked === bulkVisibleSkus.length;
+        all.indeterminate = visTicked > 0 && visTicked < bulkVisibleSkus.length;
+    }
+};
+
+window.bulkAction = async function(action) {
+    if(bulkSelected.size === 0) return showToast('Pilih sekurang-kurangnya 1 produk dulu', 'warn');
+    const skus = [...bulkSelected];
+    let confirmMsg, payload, descNote;
+    if(action === 'publish') {
+        confirmMsg = `Publish ${skus.length} produk? Mereka akan muncul dalam Cashier mode.`;
+        payload = { is_published: true };
+    } else if(action === 'unpublish') {
+        confirmMsg = `Unpublish ${skus.length} produk? Mereka akan disorok dari Cashier mode.`;
+        payload = { is_published: false };
+    } else if(action === 'strip-stocktake-tag') {
+        confirmMsg = `Buang tag "STOK BELUM DISAHKAN" dari ${skus.length} produk? Gunakan ini selepas stock-take fizikal selesai.`;
+        descNote = 'strip';
+    } else { return; }
+    if(!confirm(confirmMsg)) return;
+
+    let ok = 0, fail = 0;
+    for(const sku of skus) {
+        try {
+            if(descNote === 'strip') {
+                const p = masterProducts.find(x => x.sku === sku);
+                if(!p) { fail++; continue; }
+                const cleaned = (p.description || '').replace(/^\[STOK BELUM DISAHKAN[^\]]*\]\s*\n*\n*/, '').trim();
+                const { error } = await db.from('products_master').update({ description: cleaned }).eq('sku', sku);
+                if(error) { fail++; continue; }
+                p.description = cleaned;
+                ok++;
+            } else {
+                const { error } = await db.from('products_master').update(payload).eq('sku', sku);
+                if(error) { fail++; continue; }
+                const p = masterProducts.find(x => x.sku === sku);
+                if(p) p.is_published = payload.is_published;
+                ok++;
+            }
+        } catch(e) { fail++; }
+    }
+
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'bulk_' + action,
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ sku_count: skus.length, succeeded: ok, failed: fail, sample_skus: skus.slice(0, 5) }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
+
+    showToast(`Bulk ${action}: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
+    bulkSelected.clear();
+    renderBulkOps();
+};
+
+window.bulkOpenPriceModal = function() {
+    if(bulkSelected.size === 0) return showToast('Pilih produk dulu', 'warn');
+    const mode = prompt(
+        `Edit harga untuk ${bulkSelected.size} produk.\n\n` +
+        `Pilih cara:\n` +
+        `1 = Set harga absolute (e.g. 99.00)\n` +
+        `2 = Tambah % (e.g. 10 = naik 10%)\n` +
+        `3 = Tolak % (e.g. 5 = turun 5%)\n\n` +
+        `Taip 1, 2 atau 3:`
+    );
+    if(!['1', '2', '3'].includes(mode)) return;
+    const valStr = prompt(mode === '1' ? 'Harga baru (RM):' : 'Peratus (%):');
+    const v = parseFloat(valStr);
+    if(isNaN(v) || v < 0) return showToast('Nilai tak sah', 'warn');
+    bulkApplyPrice(mode, v);
+};
+
+window.bulkApplyPrice = async function(mode, val) {
+    const skus = [...bulkSelected];
+    if(!confirm(`Apply price change ke ${skus.length} produk?`)) return;
+    let ok = 0, fail = 0;
+    for(const sku of skus) {
+        const p = masterProducts.find(x => x.sku === sku);
+        if(!p) { fail++; continue; }
+        let newPrice = p.price;
+        if(mode === '1') newPrice = val;
+        else if(mode === '2') newPrice = Number((p.price * (1 + val/100)).toFixed(2));
+        else if(mode === '3') newPrice = Number((p.price * (1 - val/100)).toFixed(2));
+        try {
+            const { error } = await db.from('products_master').update({ price: newPrice }).eq('sku', sku);
+            if(error) { fail++; continue; }
+            p.price = newPrice;
+            ok++;
+        } catch(e) { fail++; }
+    }
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'bulk_price_update',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ mode, value: val, sku_count: skus.length, succeeded: ok, failed: fail }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
+    showToast(`Price update: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
+    bulkSelected.clear();
+    renderBulkOps();
+};
+
+window.bulkOpenCategoryModal = function() {
+    if(bulkSelected.size === 0) return showToast('Pilih produk dulu', 'warn');
+    const newCat = prompt(`Reassign ${bulkSelected.size} produk ke kategori baru.\n\nKategori baru (kosongkan untuk clear):`);
+    if(newCat === null) return;
+    bulkApplyCategory(newCat.trim() || null);
+};
+
+window.bulkApplyCategory = async function(newCat) {
+    const skus = [...bulkSelected];
+    if(!confirm(`Set category = "${newCat || '(kosong)'}" untuk ${skus.length} produk?`)) return;
+    let ok = 0, fail = 0;
+    for(const sku of skus) {
+        try {
+            const { error } = await db.from('products_master').update({ category: newCat }).eq('sku', sku);
+            if(error) { fail++; continue; }
+            const p = masterProducts.find(x => x.sku === sku);
+            if(p) p.category = newCat;
+            ok++;
+        } catch(e) { fail++; }
+    }
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'bulk_category_update',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ new_category: newCat, sku_count: skus.length, succeeded: ok, failed: fail }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
+    showToast(`Category update: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
+    bulkSelected.clear();
+    renderBulkOps();
+};
+
+// ===================================
+// MANAGER PIN APPROVAL MODAL (Sprint 1.3 + 1.4)
+// ===================================
+// Generic reusable modal — opens, returns Promise that resolves with
+// { manager, reason, note } on success or null on cancel/wrong-PIN.
+let __mgrPinResolver = null;
+
+window.requireManagerPin = function(opts) {
+    return new Promise((resolve) => {
+        __mgrPinResolver = resolve;
+        const overlay = document.getElementById('mgrPinOverlay');
+        if(!overlay) { resolve(null); return; }
+
+        document.getElementById('mgrPinTitle').textContent = opts.title || 'Kelulusan Manager Diperlukan';
+        document.getElementById('mgrPinSubtitle').textContent = opts.subtitle || '';
+        document.getElementById('mgrPinDetails').innerHTML = opts.detailsHtml || '';
+        document.getElementById('mgrPinError').textContent = '';
+        document.getElementById('mgrPinInput').value = '';
+        document.getElementById('mgrPinNote').value = '';
+
+        // Manager dropdown — only mgmt/superior, active only
+        const inactive = JSON.parse(localStorage.getItem('staffInactive_v1') || '[]');
+        const managers = (typeof authUsers !== 'undefined' ? authUsers : [])
+            .filter(u => (u.role === 'mgmt' || u.role === 'superior') && !inactive.includes(u.staff_id));
+        const sel = document.getElementById('mgrPinStaff');
+        sel.innerHTML = managers.map(m =>
+            `<option value="${m.staff_id}">${m.name} (${m.role})</option>`
+        ).join('') || '<option value="">Tiada manager aktif</option>';
+
+        // Reason dropdown
+        const reasons = opts.reasons || ['Lain-lain'];
+        const reasonSel = document.getElementById('mgrPinReason');
+        reasonSel.innerHTML = reasons.map(r => `<option value="${r}">${r}</option>`).join('');
+
+        // Wire submit
+        const submitBtn = document.getElementById('mgrPinSubmit');
+        submitBtn.onclick = window.__mgrPinSubmit;
+
+        // Enter key on PIN
+        document.getElementById('mgrPinInput').onkeyup = function(e) {
+            if(e.key === 'Enter') window.__mgrPinSubmit();
+        };
+
+        overlay.style.display = 'flex';
+        setTimeout(() => document.getElementById('mgrPinInput').focus(), 100);
+    });
+};
+
+window.__mgrPinSubmit = async function() {
+    const errEl = document.getElementById('mgrPinError');
+    const staffId = document.getElementById('mgrPinStaff').value;
+    const pin = (document.getElementById('mgrPinInput').value || '').trim();
+    const reason = document.getElementById('mgrPinReason').value;
+    const note = document.getElementById('mgrPinNote').value.trim();
+
+    if(!staffId) { errEl.textContent = 'Sila pilih manager.'; return; }
+    if(!/^\d{4,8}$/.test(pin)) { errEl.textContent = 'PIN mesti 4-8 digit.'; return; }
+
+    const manager = authUsers.find(u => u.staff_id === staffId);
+    if(!manager) { errEl.textContent = 'Manager tak dijumpai.'; return; }
+
+    // Lockout check
+    const state = JSON.parse(localStorage.getItem('pinLockout_v1') || '{}');
+    const rec = state[staffId] || { attempts: 0, lockedUntil: 0 };
+    if(rec.lockedUntil && rec.lockedUntil > Date.now()) {
+        const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+        errEl.textContent = `Akaun terkunci. Cuba semula ~${mins} min.`;
+        return;
+    }
+
+    const computed = await hashPin(staffId, pin);
+    if(computed !== manager.pin_hash) {
+        rec.attempts = (rec.attempts || 0) + 1;
+        if(rec.attempts >= 5) {
+            rec.lockedUntil = Date.now() + 5 * 60 * 1000;
+            rec.attempts = 0;
+            errEl.textContent = `Salah PIN 5 kali. Akaun dikunci 5 minit.`;
+        } else {
+            errEl.textContent = `PIN salah. Tinggal ${5 - rec.attempts} cubaan.`;
+        }
+        state[staffId] = rec;
+        localStorage.setItem('pinLockout_v1', JSON.stringify(state));
+        return;
+    }
+
+    // Success
+    delete state[staffId];
+    localStorage.setItem('pinLockout_v1', JSON.stringify(state));
+    document.getElementById('mgrPinOverlay').style.display = 'none';
+    if(__mgrPinResolver) {
+        __mgrPinResolver({ manager, reason, note });
+        __mgrPinResolver = null;
+    }
+};
+
+window.mgrPinCancel = function() {
+    document.getElementById('mgrPinOverlay').style.display = 'none';
+    if(__mgrPinResolver) { __mgrPinResolver(null); __mgrPinResolver = null; }
+};
+
+// ===================================
+// DISCREPANCY APPROVAL — REWIRED (Sprint 1.3)
+// Replaces the previous direct-approve flow with PIN gate + audit log + reason capture.
+// ===================================
+const DISCREPANCY_REASONS = [
+    'Hilang (suspect theft)',
+    'Rosak / Pecah masa storan',
+    'Salah kira sebelumnya',
+    'Salah masuk sistem (data entry)',
+    'Stok belum direkod (newly arrived)',
+    'Sample / Display unit',
+    'Lain-lain'
+];
+
+// Override the old approveDiscrepancy with PIN-gated version
+const __originalApproveDiscrepancy = window.approveDiscrepancy;
+window.approveDiscrepancy = async function(reqId, sku, difference) {
+    const detailsHtml = `
+        <strong>SKU:</strong> ${sku}<br>
+        <strong>Variance:</strong> ${difference > 0 ? '+' + difference : difference} unit
+        ${difference > 0 ? ' <em>(stok berlebihan)</em>' : ' <em>(stok kurang)</em>'}
+    `;
+    const result = await requireManagerPin({
+        title: 'Lulus Pelarasan Stok',
+        subtitle: 'Manager kena sahkan & rekod sebab perbezaan ini.',
+        detailsHtml,
+        reasons: DISCREPANCY_REASONS
+    });
+    if(!result) return;
+
+    // Pre-flight: confirm enough stock for shortage
+    if(difference < 0) {
+        const totalStock = (typeof inventoryBatches !== 'undefined' ? inventoryBatches : [])
+            .filter(b => b.sku === sku && b.qty_remaining > 0)
+            .reduce((s, b) => s + b.qty_remaining, 0);
+        if(totalStock < Math.abs(difference)) {
+            return showToast(`Tak boleh tolak ${Math.abs(difference)} unit — sistem cuma ada ${totalStock}.`, 'warn');
+        }
+    }
+
+    try {
+        if(difference > 0) {
+            await db.from('inventory_batches').insert([{
+                sku, qty_received: difference, qty_remaining: difference,
+                inbound_date: new Date().toISOString().split('T')[0]
+            }]);
+        } else {
+            let qtyToDeduct = Math.abs(difference);
+            const batches = (typeof inventoryBatches !== 'undefined' ? inventoryBatches : [])
+                .filter(b => b.sku === sku && b.qty_remaining > 0)
+                .sort((a, b) => new Date(a.inbound_date) - new Date(b.inbound_date));
+            for(const batch of batches) {
+                if(qtyToDeduct <= 0) break;
+                const deduct = Math.min(batch.qty_remaining, qtyToDeduct);
+                const { error } = await db.from('inventory_batches')
+                    .update({ qty_remaining: batch.qty_remaining - deduct })
+                    .eq('id', batch.id);
+                if(error) throw error;
+                qtyToDeduct -= deduct;
+            }
+        }
+
+        await db.from('pending_requests').update({
+            status: 'Approved',
+            metadata: { approved_by: result.manager.name, reason: result.reason, note: result.note }
+        }).eq('id', reqId);
+
+        await db.from('inventory_transactions').insert([{
+            sku, transaction_type: 'ADJUSTMENT', qty: difference,
+            reason: `Discrepancy: ${result.reason}${result.note ? ' — ' + result.note : ''}`,
+            staff_name: currentUser ? currentUser.name : 'System',
+            created_at: new Date().toISOString()
+        }]);
+
+        await db.from('audit_logs').insert([{
+            action_type: 'discrepancy_approved',
+            actor_name: result.manager.name,
+            target_staff: currentUser ? currentUser.name : null,
+            details: JSON.stringify({
+                sku, difference, reason: result.reason,
+                note: result.note, request_id: reqId
+            }),
+            created_at: new Date().toISOString()
+        }]);
+
+        showToast(`Discrepancy ${sku} diluluskan oleh ${result.manager.name}`, 'success');
+        await window.initApp();
+    } catch(e) {
+        showToast(`Ralat: ${e.message}`, 'error');
     }
 };

@@ -287,6 +287,33 @@
         </div>
     </div>
 
+    <!-- 0.25 GENERIC MANAGER PIN APPROVAL MODAL (Sprint 1) -->
+    <div id="mgrPinOverlay" class="login-overlay" style="display:none; z-index:3700; align-items:center; justify-content:center;">
+        <div class="login-box" style="max-width:480px; padding:28px;">
+            <button onclick="window.mgrPinCancel()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-15px;">×</button>
+            <h2 id="mgrPinTitle" style="font-weight:800; font-size:20px; margin-bottom:6px;">Kelulusan Manager Diperlukan</h2>
+            <p id="mgrPinSubtitle" style="font-size:13px; color:#666; margin-bottom:18px;"></p>
+
+            <div id="mgrPinDetails" style="background:#FEF3C7; border:1px solid #FCD34D; padding:12px; border-radius:6px; margin-bottom:14px; font-size:13px; color:#92400E;"></div>
+
+            <label class="small-lbl">Manager / Superior</label>
+            <select id="mgrPinStaff" class="login-input" style="margin-bottom:12px;"></select>
+
+            <label class="small-lbl">Sebab / Reason</label>
+            <select id="mgrPinReason" class="login-input" style="margin-bottom:12px;"></select>
+
+            <label class="small-lbl">Catatan Tambahan (Pilihan)</label>
+            <input type="text" id="mgrPinNote" class="login-input" placeholder="contoh: Kotak rosak masa shipment" style="margin-bottom:12px;">
+
+            <label class="small-lbl">Manager PIN (4-8 digit)</label>
+            <input type="password" id="mgrPinInput" class="login-input" maxlength="8" inputmode="numeric" autocomplete="off" style="margin-bottom:6px; letter-spacing:6px; text-align:center;">
+            <p id="mgrPinError" style="font-size:12px; color:#dc2626; min-height:16px; margin-bottom:10px;"></p>
+
+            <button id="mgrPinSubmit" class="login-btn" style="width:100%;">Sahkan &amp; Lulus</button>
+            <button onclick="window.mgrPinCancel()" class="login-btn" style="width:100%; background:#6B7280; margin-top:8px;">Batal</button>
+        </div>
+    </div>
+
     <!-- 0.3 BARCODE SCANNER MODAL FOR AUDIT -->
     <div id="barcodeScannerModal" class="login-overlay" style="display:none; z-index:3500; align-items:center; justify-content:center;">
         <div class="login-box" style="max-width:450px; text-align:center; padding:30px;">
@@ -747,7 +774,7 @@
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders (PO)', this)">
                 <i data-lucide="truck" style="width:16px; height:16px;"></i> Purchase Orders (PO)
             </div>
-            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_registration" onclick="switchHub(['warehouseConfigSection'], 'Daftar &amp; Edit Gudang', this)">
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_registration" onclick="switchHub(['warehouseConfigSection'], 'Daftar &amp; Edit Gudang', this); if(typeof refreshMpDatalists==='function') refreshMpDatalists();">
                 <i data-lucide="package-plus" style="width:16px; height:16px;"></i> Daftar &amp; Edit Produk
             </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_barcode" onclick="switchHub(['barcodeSection'], 'Barcode Generator', this)">
@@ -764,6 +791,9 @@
             </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Database Produk', this)">
                 <i data-lucide="database" style="width:16px; height:16px;"></i> Database Produk (Wipe Data)
+            </div>
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_bulk" onclick="switchHub(['bulkOpsSection'], 'Bulk Operations', this); if(typeof renderBulkOps === 'function') renderBulkOps();">
+                <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Publish &amp; Edit
             </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_valuation" onclick="switchHub(['valuationSection'], 'Stock Valuation', this); if(typeof renderValuationSection === 'function') renderValuationSection();">
                 <i data-lucide="wallet" style="width:16px; height:16px;"></i> Stock Valuation (Aset)
@@ -1769,6 +1799,99 @@
                     <button class="btn-danger" style="background:var(--danger); font-weight:bold; width:auto; padding:10px 20px;" onclick="window.wipeAllProductsData()">Padam Semua Data Produk</button>
                 </div>
 
+            </div><div id="bulkOpsSection" class="tab-section" style="display:none;">
+                <h2 class="section-title" style="margin-top:20px;"><i data-lucide="check-square" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Bulk Publish &amp; Edit</h2>
+                <p style="font-size:13px; color:#666; margin-bottom:18px;">Tapis produk → tick → bulk action. Berguna selepas import katalog Shopify atau bila nak adjust harga seluruh brand.</p>
+
+                <!-- Filter bar -->
+                <div class="admin-card" style="border-top:4px solid var(--primary); padding:18px; margin-bottom:18px;">
+                    <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+                        <div>
+                            <label class="small-lbl">Cari (Nama / SKU / Brand)</label>
+                            <input type="text" id="bulkSearchInput" class="login-input" placeholder="contoh: tent, naturehike, BD001" style="margin:0;" oninput="renderBulkOps()">
+                        </div>
+                        <div>
+                            <label class="small-lbl">Brand</label>
+                            <select id="bulkFilterBrand" class="login-input" style="margin:0;" onchange="renderBulkOps()">
+                                <option value="">Semua Brand</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="small-lbl">Kategori</label>
+                            <select id="bulkFilterCategory" class="login-input" style="margin:0;" onchange="renderBulkOps()">
+                                <option value="">Semua Kategori</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="small-lbl">Status</label>
+                            <select id="bulkFilterStatus" class="login-input" style="margin:0;" onchange="renderBulkOps()">
+                                <option value="all">Semua</option>
+                                <option value="draft" selected>Draft sahaja</option>
+                                <option value="published">Published sahaja</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="small-lbl">Tunjuk</label>
+                            <select id="bulkPageSize" class="login-input" style="margin:0;" onchange="renderBulkOps()">
+                                <option value="50">50</option>
+                                <option value="100" selected>100</option>
+                                <option value="250">250</option>
+                                <option value="999999">Semua</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="bulkSummaryLine" style="margin-top:12px; font-size:12px; color:#666;"></div>
+                </div>
+
+                <!-- Action bar -->
+                <div id="bulkActionBar" style="position:sticky; top:0; z-index:50; background:#FFF; border:1px solid var(--border-color); border-radius:8px; padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="font-size:13px;">
+                        <strong id="bulkSelectedCount">0</strong> dipilih
+                        <span style="color:#999; margin-left:10px;" id="bulkVisibleCount"></span>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-success" style="padding:6px 14px; font-size:12px; margin:0;" onclick="bulkAction('publish')">
+                            <i data-lucide="eye" style="width:14px; height:14px;"></i> Publish
+                        </button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:12px; margin:0; background:#6B7280; border-color:#6B7280;" onclick="bulkAction('unpublish')">
+                            <i data-lucide="eye-off" style="width:14px; height:14px;"></i> Unpublish
+                        </button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:12px; margin:0; background:#0EA5E9; border-color:#0EA5E9;" onclick="bulkOpenPriceModal()">
+                            <i data-lucide="tag" style="width:14px; height:14px;"></i> Edit Price
+                        </button>
+                        <button class="btn-primary" style="padding:6px 14px; font-size:12px; margin:0; background:#A855F7; border-color:#A855F7;" onclick="bulkOpenCategoryModal()">
+                            <i data-lucide="folder" style="width:14px; height:14px;"></i> Reassign Category
+                        </button>
+                        <button class="btn-danger" style="padding:6px 14px; font-size:12px; margin:0;" onclick="bulkAction('strip-stocktake-tag')" title="Buang prefix [STOK BELUM DISAHKAN] dari description">
+                            <i data-lucide="check-circle" style="width:14px; height:14px;"></i> Tandakan Selesai Stock-take
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product table -->
+                <div class="admin-card" style="padding:0;">
+                    <div class="table-responsive">
+                        <table class="data-table" style="font-size:12px;">
+                            <thead style="position:sticky; top:0; background:#FAFAFA; z-index:5;">
+                                <tr>
+                                    <th style="width:36px;"><input type="checkbox" id="bulkSelectAll" onchange="bulkToggleAll(this)"></th>
+                                    <th style="width:60px;">Img</th>
+                                    <th>SKU</th>
+                                    <th>Nama Produk</th>
+                                    <th>Brand</th>
+                                    <th>Kategori</th>
+                                    <th style="text-align:right;">Harga</th>
+                                    <th style="text-align:right;">Kos</th>
+                                    <th style="text-align:right;">Stok</th>
+                                    <th style="text-align:center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bulkOpsTbody">
+                                <tr><td colspan="10" style="text-align:center; padding:30px; color:#999;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div><div id="warehouseConfigSection" class="tab-section" style="display: none;">
                 <h3 style="font-size:18px; margin-bottom:15px; color:var(--primary);"> Penyeliaan Gudang Pusat</h3>
 
@@ -1816,17 +1939,80 @@
                     </div>
                 </div>
                 
-                <!-- Master Product Registration -->
+                <!-- Master Product Registration (Sprint 1.5: full form) -->
                 <div class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-top:20px; margin-bottom:20px;">
-                    <h3 style="margin-bottom:15px;">📦 Daftar Profil Produk Baru (Master Product)</h3>
-                    <p style="font-size:12px; color:#888; margin-bottom:20px;">Wujudkan profil produk di pangkalan data sebelum memasukkan stok fizikal.</p>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div><label class="small-lbl">Nama Produk</label><input type="text" id="mpName" class="login-input" placeholder="e.g. Kerusi Healing"></div>
-                        <div><label class="small-lbl">Product SKU</label><input type="text" id="mpSku" class="login-input" placeholder="e.g. SKU-123"></div>
-                        <div><label class="small-lbl">Kategori</label><input type="text" id="mpCategory" class="login-input" placeholder="e.g. Perabot"></div>
-                        <div><label class="small-lbl">Harga Jualan (RM)</label><input type="number" id="mpPrice" class="login-input" step="0.01" placeholder="0.00"></div>
+                    <h3 style="margin-bottom:6px;">📦 Daftar Profil Produk Baru (Master Product)</h3>
+                    <p style="font-size:12px; color:#888; margin-bottom:18px;">Lengkapkan profil produk di pangkalan data. Field bertanda <span style="color:#dc2626;">*</span> wajib. Yang lain pilihan tapi sangat berguna untuk reporting.</p>
+
+                    <!-- Group A: ASAS -->
+                    <h4 style="font-size:13px; color:var(--primary); margin:12px 0 8px; text-transform:uppercase; letter-spacing:1px;">A. Maklumat Asas</h4>
+                    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px;">
+                        <div><label class="small-lbl">Nama Produk <span style="color:#dc2626;">*</span></label><input type="text" id="mpName" class="login-input" placeholder="e.g. Naturehike Cloud Up 2 Tent"></div>
+                        <div><label class="small-lbl">SKU <span style="color:#dc2626;">*</span></label><input type="text" id="mpSku" class="login-input" placeholder="e.g. NH-CU2"></div>
                     </div>
-                    <button class="btn-primary" style="margin-top:20px; width:100%; background:#10B981;" onclick="window.saveMasterProduct()">Daftar Master Product</button>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+                        <div><label class="small-lbl">Brand</label><input type="text" id="mpBrand" class="login-input" placeholder="Naturehike" list="mpBrandList"></div>
+                        <div><label class="small-lbl">Kategori</label><input type="text" id="mpCategory" class="login-input" placeholder="Tent" list="mpCategoryList"></div>
+                        <div><label class="small-lbl">Model No.</label><input type="text" id="mpModelNo" class="login-input" placeholder="CNH22DZ006"></div>
+                    </div>
+                    <datalist id="mpBrandList"></datalist>
+                    <datalist id="mpCategoryList"></datalist>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div><label class="small-lbl">Parent SKU (untuk variant grouping)</label><input type="text" id="mpParentSku" class="login-input" placeholder="NH-CU2 (kosongkan kalau standalone)"></div>
+                        <div><label class="small-lbl">Unit Ukuran</label>
+                            <select id="mpUnit" class="login-input">
+                                <option value="pcs" selected>pcs (keping)</option>
+                                <option value="set">set</option>
+                                <option value="pair">pair</option>
+                                <option value="box">box</option>
+                                <option value="meter">meter</option>
+                                <option value="kg">kg</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Group B: KOS & HARGA -->
+                    <h4 style="font-size:13px; color:var(--primary); margin:18px 0 8px; text-transform:uppercase; letter-spacing:1px;">B. Kos &amp; Harga</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div><label class="small-lbl">Harga Jualan (RM) <span style="color:#dc2626;">*</span></label><input type="number" id="mpPrice" class="login-input" step="0.01" placeholder="0.00"></div>
+                        <div><label class="small-lbl">Kos Modal / Unit (RM)</label><input type="number" id="mpCostPrice" class="login-input" step="0.01" placeholder="0.00"></div>
+                    </div>
+                    <p style="font-size:11px; color:#888; margin-top:6px;">💡 Tip: Margin = (Harga − Kos) ÷ Harga. Sistem akan auto-paparkan dalam Stock Valuation.</p>
+
+                    <!-- Group C: VARIANT -->
+                    <h4 style="font-size:13px; color:var(--primary); margin:18px 0 8px; text-transform:uppercase; letter-spacing:1px;">C. Variant (Pilihan)</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+                        <div><label class="small-lbl">Warna</label><input type="text" id="mpVariantColor" class="login-input" placeholder="Khaki"></div>
+                        <div><label class="small-lbl">Saiz</label><input type="text" id="mpVariantSize" class="login-input" placeholder="L / XL / 2P / 4P"></div>
+                        <div><label class="small-lbl">Barcode (EAN/UPC)</label><input type="text" id="mpErpBarcode" class="login-input" placeholder="6975641887294"></div>
+                    </div>
+
+                    <!-- Group D: LOGISTIK -->
+                    <h4 style="font-size:13px; color:var(--primary); margin:18px 0 8px; text-transform:uppercase; letter-spacing:1px;">D. Logistik &amp; Saiz Fizikal</h4>
+                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px;">
+                        <div><label class="small-lbl">Berat (kg)</label><input type="number" id="mpWeightKg" class="login-input" step="0.001" placeholder="2.5"></div>
+                        <div><label class="small-lbl">Panjang (cm)</label><input type="number" id="mpLengthCm" class="login-input" step="0.1" placeholder="50"></div>
+                        <div><label class="small-lbl">Lebar (cm)</label><input type="number" id="mpWidthCm" class="login-input" step="0.1" placeholder="20"></div>
+                        <div><label class="small-lbl">Tinggi (cm)</label><input type="number" id="mpHeightCm" class="login-input" step="0.1" placeholder="20"></div>
+                    </div>
+                    <div><label class="small-lbl">Lokasi Bin (kalau dah ada)</label><input type="text" id="mpLocationBin" class="login-input" placeholder="A01-R02-S03-B01"></div>
+
+                    <!-- Group E: META -->
+                    <h4 style="font-size:13px; color:var(--primary); margin:18px 0 8px; text-transform:uppercase; letter-spacing:1px;">E. Maklumat Tambahan</h4>
+                    <div><label class="small-lbl">Description / Penerangan</label><textarea id="mpDescription" class="login-input" rows="3" placeholder="Tent ringan untuk hiking 2 orang, double-wall, 3-season..."></textarea></div>
+                    <div><label class="small-lbl">Image URL (utama, pilihan)</label><input type="text" id="mpImageUrl" class="login-input" placeholder="https://..."></div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div><label class="small-lbl">Kadar Komisen Khas (%)</label><input type="number" id="mpCommissionRate" class="login-input" step="0.1" placeholder="(kosongkan = guna default staf)"></div>
+                        <div><label class="small-lbl">Status Awal</label>
+                            <select id="mpIsPublished" class="login-input">
+                                <option value="false" selected>Draft (sembunyikan dari Cashier)</option>
+                                <option value="true">Published (live di Cashier)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" style="margin-top:20px; width:100%; background:#10B981; font-size:15px; padding:12px;" onclick="window.saveMasterProduct()">📦 Daftar Master Product</button>
+                    <p style="font-size:11px; color:#999; margin-top:8px; text-align:center;">Lepas daftar, scroll ke bawah ke "Masukkan Stok" untuk record kuantiti fizikal pertama.</p>
                 </div>
 
                 <!-- Product Registration Mode (Moved to Gudang Pusat) -->
@@ -6309,7 +6495,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=65"></script>
+    <script src="app.js?v=66"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
