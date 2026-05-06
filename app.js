@@ -250,14 +250,9 @@ async function initApp() {
         let { data: txns } = await db.from('inventory_transactions').select('*').order('created_at', {ascending: false});
         if(txns) inventoryTransactions = txns;
 
-        try {
-            let { data: pos } = await db.from('purchase_orders').select('*').order('created_at', {ascending: false});
-            if(pos) purchaseOrders = pos;
-        } catch(e) {
-            console.log("No purchase_orders table yet, using memory/localStorage fallback.");
-            let localPo = localStorage.getItem('local_purchase_orders');
-            if(localPo) purchaseOrders = JSON.parse(localPo);
-        }
+        // Sprint 2.1+2.2: load real PO + suppliers tables
+        try { if(typeof loadSuppliers === 'function') await loadSuppliers(); } catch(e) { console.warn('loadSuppliers:', e); }
+        try { if(typeof loadPosV2 === 'function') await loadPosV2(); } catch(e) { console.warn('loadPosV2:', e); }
 
         // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
         renderPublicStorefront();
@@ -3152,29 +3147,47 @@ renderStaffSchedule = function() {
 function renderWarehouseLowStock() {
     const tbody = document.getElementById("whLowStockTbody");
     if(!tbody) return;
-    
+
+    // Sprint 2.5: per-SKU reorder_point (fallback to 10 if NULL)
     let lowStocks = [];
     masterProducts.forEach(p => {
-        let total = inventoryBatches.filter(b => b.sku === p.sku).reduce((acc, b) => acc + parseInt(b.qty_remaining), 0);
-        if(total < 10) {
-            lowStocks.push({ sku: p.sku, name: p.name, remaining: total });
+        const total = inventoryBatches.filter(b => b.sku === p.sku)
+            .reduce((acc, b) => acc + parseInt(b.qty_remaining || 0), 0);
+        const threshold = (p.reorder_point != null) ? parseInt(p.reorder_point) : 10;
+        if(total < threshold) {
+            lowStocks.push({
+                sku: p.sku, name: p.name,
+                remaining: total,
+                threshold,
+                reorderQty: p.reorder_qty,
+                leadDays: p.lead_time_days
+            });
         }
     });
 
+    // Sort: 0-stock first, then by ratio
+    lowStocks.sort((a, b) => {
+        if(a.remaining === 0 && b.remaining !== 0) return -1;
+        if(b.remaining === 0 && a.remaining !== 0) return 1;
+        return (a.remaining / a.threshold) - (b.remaining / b.threshold);
+    });
+
     if(lowStocks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Tiada stok kritikal.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#10B981;">✓ Semua stok di atas reorder point.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = lowStocks.map(s => {
-        let color = s.remaining === 0 ? "red" : "#D97706";
+    tbody.innerHTML = lowStocks.slice(0, 50).map(s => {
+        const color = s.remaining === 0 ? "#DC2626" : (s.remaining < s.threshold * 0.5 ? "#D97706" : "#CA8A04");
+        const reorderHint = s.reorderQty
+            ? `<br><span style="font-size:9px; color:#0EA5E9;">📦 Order ${s.reorderQty}${s.leadDays ? ' (lead ' + s.leadDays + 'd)' : ''}</span>`
+            : '';
         return `
         <tr>
             <td><strong>${s.sku}</strong></td>
-            <td>${s.name}</td>
-            <td style="color:${color}; font-weight:bold;">${s.remaining} Pcs</td>
-        </tr>
-        `;
+            <td>${(s.name || '').slice(0, 50)}${reorderHint}</td>
+            <td style="color:${color}; font-weight:bold;">${s.remaining} <span style="color:#9CA3AF; font-weight:normal;">/ ${s.threshold}</span></td>
+        </tr>`;
     }).join('');
 }
 
@@ -4520,6 +4533,9 @@ window.saveMasterProduct = async function() {
         location_bin: get('mpLocationBin') || null,
         description: get('mpDescription') || null,
         commission_rate: getNum('mpCommissionRate'),
+        reorder_point: getNum('mpReorderPoint'),
+        reorder_qty: getNum('mpReorderQty'),
+        lead_time_days: getNum('mpLeadTimeDays'),
         images: imageUrl ? [imageUrl] : null,
         is_published: get('mpIsPublished') === 'true'
     };
@@ -4551,7 +4567,8 @@ window.saveMasterProduct = async function() {
     // Clear all fields
     ['mpName','mpSku','mpBrand','mpCategory','mpModelNo','mpParentSku','mpPrice','mpCostPrice',
      'mpVariantColor','mpVariantSize','mpErpBarcode','mpWeightKg','mpLengthCm','mpWidthCm','mpHeightCm',
-     'mpLocationBin','mpDescription','mpImageUrl','mpCommissionRate'
+     'mpLocationBin','mpDescription','mpImageUrl','mpCommissionRate',
+     'mpReorderPoint','mpReorderQty','mpLeadTimeDays'
     ].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const unitEl = document.getElementById('mpUnit'); if(unitEl) unitEl.value = 'pcs';
     const pubEl = document.getElementById('mpIsPublished'); if(pubEl) pubEl.value = 'false';
@@ -4712,44 +4729,46 @@ window.populateMovementSkuList = function() {
 };
 
 window.processInbound = async function() {
-    const sku = document.getElementById('inboundSkuSearch').value.trim();
+    const sku = (document.getElementById('inboundSkuSearch').value || '').trim();
     const qty = parseInt(document.getElementById('inboundQty').value) || 0;
-    const ref = document.getElementById('inboundRef').value.trim();
-    
-    if(!sku || qty <= 0) return alert("Sila isikan SKU dan kuantiti sah untuk Inbound.");
-    
+    const costEl = document.getElementById('inboundCost');
+    const cost = costEl ? parseFloat(costEl.value) : null;
+    const supplier = (document.getElementById('inboundSupplier')?.value || '').trim();
+    const ref = (document.getElementById('inboundRef').value || '').trim();
+
+    if(!sku || qty <= 0) return showToast('SKU & kuantiti wajib.', 'warn');
     const prod = masterProducts.find(p => p.sku === sku);
-    if(!prod) return alert("SKU tidak wujud di dalam sistem utama.");
-    
+    if(!prod) return showToast('SKU tak wujud dalam Master Product.', 'warn');
+
     try {
         const batchPayload = {
-            sku: sku,
-            qty_received: qty,
-            qty_remaining: qty,
+            sku, qty_received: qty, qty_remaining: qty,
             inbound_date: new Date().toISOString().split('T')[0]
         };
-        
-        let { error } = await db.from('inventory_batches').insert([batchPayload]);
+        if(!isNaN(cost) && cost != null && cost > 0) {
+            batchPayload.cost_price = cost;
+            batchPayload.landed_cost = cost;
+        }
+        if(supplier) batchPayload.supplier_name = supplier;
+        if(ref) batchPayload.notes = ref;
+
+        const { error } = await db.from('inventory_batches').insert([batchPayload]);
         if(error) throw error;
-        
+
+        const reasonText = `Manual Inbound${supplier ? ' from ' + supplier : ''}${ref ? ' (' + ref + ')' : ''}${cost ? ' @ RM' + cost.toFixed(2) : ''}`;
         await db.from('inventory_transactions').insert([{
-            sku: sku,
-            transaction_type: 'IN',
-            qty: qty,
-            reason: ref || 'Manual Inbound',
+            sku, transaction_type: 'IN', qty, reason: reasonText,
             staff_name: currentUser ? currentUser.name : 'System',
             created_at: new Date().toISOString()
         }]);
-        
-        // Let realtime handle UI update, or reload
-        alert(`Berjaya merekod Inbound sebanyak ${qty} unit untuk ${sku}.`);
-        document.getElementById('inboundSkuSearch').value = '';
-        document.getElementById('inboundQty').value = '';
-        document.getElementById('inboundRef').value = '';
-        
-        await window.initApp(); // reload data
+
+        showToast(`+${qty} ${sku} diterima${cost ? ' @ RM' + cost.toFixed(2) : ''}`, 'success');
+        ['inboundSkuSearch','inboundQty','inboundCost','inboundSupplier','inboundRef'].forEach(id => {
+            const el = document.getElementById(id); if(el) el.value = '';
+        });
+        await window.initApp();
     } catch(e) {
-        alert("Ralat Inbound: " + e.message);
+        showToast('Ralat Inbound: ' + e.message, 'error');
     }
 };
 
@@ -5674,31 +5693,36 @@ window.printBarcodes = function() {
 
 // Start Stock Valuation Logic
 window.renderValuationSection = function() {
+    // Sprint 2.3: prefer per-batch cost (weighted-avg) over master fallback
     let totalCostAsset = 0;
     let totalRetailAsset = 0;
     let assetsData = [];
 
     masterProducts.forEach(p => {
-        // Calculate stock
         const stockBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining > 0);
         const stockQty = stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
 
         if(stockQty > 0) {
-            const cost = parseFloat(p.cost_price) || 0;
+            // Compute weighted-avg cost: sum(qty × batch_cost) / total_qty
+            // Fall back to master cost_price for batches without their own cost.
+            const masterCost = parseFloat(p.cost_price) || 0;
+            let weightedCost = 0;
+            stockBatches.forEach(b => {
+                const c = (b.cost_price != null) ? parseFloat(b.cost_price) : masterCost;
+                weightedCost += b.qty_remaining * c;
+            });
+            const cost = stockQty > 0 ? weightedCost / stockQty : masterCost;
             const retail = parseFloat(p.price) || 0;
-            
-            const totalCost = cost * stockQty;
+
+            const totalCost = weightedCost;
             const totalRetail = retail * stockQty;
 
             totalCostAsset = round2(totalCostAsset + totalCost);
             totalRetailAsset = round2(totalRetailAsset + totalRetail);
 
             assetsData.push({
-                sku: p.sku,
-                name: p.name,
-                stock: stockQty,
-                cost: cost,
-                totalCost: totalCost
+                sku: p.sku, name: p.name, stock: stockQty,
+                cost: cost, totalCost: totalCost
             });
         }
     });
@@ -6206,4 +6230,458 @@ window.approveDiscrepancy = async function(reqId, sku, difference) {
     } catch(e) {
         showToast(`Ralat: ${e.message}`, 'error');
     }
+};
+
+// ===================================
+// SPRINT 2.2 — SUPPLIERS CRUD
+// ===================================
+let suppliersList = [];
+let purchaseOrdersV2 = [];   // new DB-backed PO list
+let purchaseOrderItemsV2 = [];
+
+window.loadSuppliers = async function() {
+    try {
+        const { data, error } = await db.from('suppliers').select('*').order('name');
+        if(error) throw error;
+        suppliersList = data || [];
+    } catch(e) {
+        console.error('loadSuppliers:', e);
+        suppliersList = [];
+    }
+    renderSupplierList();
+    refreshSupplierDropdowns();
+};
+
+window.renderSupplierList = function() {
+    const tbody = document.getElementById('supplierListTbody');
+    if(!tbody) return;
+    if(!suppliersList.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999;">Tiada pembekal lagi. Klik "+ Tambah" untuk daftar.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = suppliersList.map(s => `
+        <tr>
+            <td><a href="#" onclick="event.preventDefault(); window.openSupplierModal(${s.id})" style="color:var(--primary); font-weight:bold; text-decoration:none;">${s.name}</a><br><span style="color:#888; font-size:10px;">${s.contact_person || ''}</span></td>
+            <td>${s.country || '-'}</td>
+            <td>${s.lead_time_days ? s.lead_time_days + 'd' : '-'}</td>
+            <td>${s.is_active ? '<span style="color:#10B981; font-weight:bold;">Aktif</span>' : '<span style="color:#9CA3AF;">Tak Aktif</span>'}</td>
+            <td><button class="btn-danger" style="font-size:10px; padding:2px 6px; margin:0;" onclick="window.toggleSupplierActive(${s.id}, ${!s.is_active})">${s.is_active ? 'Disable' : 'Enable'}</button></td>
+        </tr>
+    `).join('');
+};
+
+window.openSupplierModal = function(id) {
+    document.getElementById('supplierEditId').value = id || '';
+    const titleEl = document.getElementById('supplierModalTitle');
+    if(id) {
+        const s = suppliersList.find(x => x.id === id);
+        if(!s) return;
+        titleEl.textContent = `Edit Pembekal: ${s.name}`;
+        document.getElementById('supplierName').value = s.name || '';
+        document.getElementById('supplierCountry').value = s.country || '';
+        document.getElementById('supplierContact').value = s.contact_person || '';
+        document.getElementById('supplierPhone').value = s.phone || '';
+        document.getElementById('supplierEmail').value = s.email || '';
+        document.getElementById('supplierCurrency').value = s.currency || 'RM';
+        document.getElementById('supplierLeadTime').value = s.lead_time_days || '';
+        document.getElementById('supplierPayTerms').value = s.payment_terms || '';
+        document.getElementById('supplierNotes').value = s.notes || '';
+        document.getElementById('supplierActive').checked = s.is_active !== false;
+    } else {
+        titleEl.textContent = 'Pembekal Baru';
+        ['supplierName','supplierCountry','supplierContact','supplierPhone','supplierEmail',
+         'supplierLeadTime','supplierPayTerms','supplierNotes'].forEach(i => document.getElementById(i).value = '');
+        document.getElementById('supplierCurrency').value = 'RM';
+        document.getElementById('supplierActive').checked = true;
+    }
+    document.getElementById('supplierModal').style.display = 'flex';
+};
+
+window.saveSupplier = async function() {
+    const id = document.getElementById('supplierEditId').value;
+    const name = document.getElementById('supplierName').value.trim();
+    if(!name) return showToast('Nama pembekal wajib.', 'warn');
+
+    const payload = {
+        name,
+        country: document.getElementById('supplierCountry').value.trim() || null,
+        contact_person: document.getElementById('supplierContact').value.trim() || null,
+        phone: document.getElementById('supplierPhone').value.trim() || null,
+        email: document.getElementById('supplierEmail').value.trim() || null,
+        currency: document.getElementById('supplierCurrency').value,
+        lead_time_days: parseInt(document.getElementById('supplierLeadTime').value) || null,
+        payment_terms: document.getElementById('supplierPayTerms').value.trim() || null,
+        notes: document.getElementById('supplierNotes').value.trim() || null,
+        is_active: document.getElementById('supplierActive').checked
+    };
+
+    try {
+        if(id) {
+            const { error } = await db.from('suppliers').update(payload).eq('id', parseInt(id));
+            if(error) throw error;
+        } else {
+            const { error } = await db.from('suppliers').insert([payload]);
+            if(error) throw error;
+        }
+        showToast(id ? 'Pembekal dikemaskini' : 'Pembekal ditambah', 'success');
+        document.getElementById('supplierModal').style.display = 'none';
+        await loadSuppliers();
+    } catch(e) {
+        showToast('Ralat: ' + e.message, 'error');
+    }
+};
+
+window.toggleSupplierActive = async function(id, newState) {
+    try {
+        const { error } = await db.from('suppliers').update({ is_active: newState }).eq('id', id);
+        if(error) throw error;
+        await loadSuppliers();
+    } catch(e) {
+        showToast('Ralat: ' + e.message, 'error');
+    }
+};
+
+window.refreshSupplierDropdowns = function() {
+    // PO supplier dropdown — replace input with list-backed select if exists
+    const datalist = document.getElementById('supplierDatalist') || (() => {
+        const dl = document.createElement('datalist');
+        dl.id = 'supplierDatalist';
+        document.body.appendChild(dl);
+        return dl;
+    })();
+    datalist.innerHTML = suppliersList.filter(s => s.is_active)
+        .map(s => `<option value="${s.name}" data-id="${s.id}">${s.country || ''}</option>`).join('');
+    const poSupplierInput = document.getElementById('poSupplier');
+    if(poSupplierInput && !poSupplierInput.getAttribute('list')) {
+        poSupplierInput.setAttribute('list', 'supplierDatalist');
+    }
+};
+
+// ===================================
+// SPRINT 2.1 — PO V2 (DB-BACKED)
+// ===================================
+window.loadPosV2 = async function() {
+    try {
+        const [poRes, itemRes] = await Promise.all([
+            db.from('purchase_orders').select('*').order('created_at', { ascending: false }),
+            db.from('purchase_order_items').select('*')
+        ]);
+        purchaseOrdersV2 = poRes.data || [];
+        purchaseOrderItemsV2 = itemRes.data || [];
+    } catch(e) {
+        console.error('loadPosV2:', e);
+        purchaseOrdersV2 = []; purchaseOrderItemsV2 = [];
+    }
+    if(typeof renderPoSection === 'function') renderPoSection();
+};
+
+// Override submitPurchaseOrder to use DB tables
+window.submitPurchaseOrder = async function() {
+    const poNo = (document.getElementById('poNumber').value || '').trim() || `PO-${Date.now()}`;
+    const supplierName = (document.getElementById('poSupplier').value || '').trim();
+    const eta = document.getElementById('poEtaDate').value;
+
+    if(!supplierName || !eta) return showToast('Nama Pembekal + ETA wajib.', 'warn');
+    if(!poDraftItems || poDraftItems.length === 0) return showToast('Tiada barang dalam draf PO.', 'warn');
+
+    // Resolve supplier_id (create on-fly if not in DB)
+    let supplier = suppliersList.find(s => s.name === supplierName);
+    if(!supplier) {
+        const created = await db.from('suppliers').insert([{ name: supplierName, is_active: true }]).select();
+        if(created.data && created.data.length) {
+            supplier = created.data[0];
+            suppliersList.push(supplier);
+        }
+    }
+
+    const subtotal = poDraftItems.reduce((s, i) => s + (i.qty * (i.cost || 0)), 0);
+
+    try {
+        const { data: poRow, error: poErr } = await db.from('purchase_orders').insert([{
+            po_number: poNo,
+            supplier_id: supplier ? supplier.id : null,
+            supplier_name: supplierName,
+            eta_date: eta,
+            status: 'Pending',
+            currency: supplier ? supplier.currency : 'RM',
+            subtotal_rm: subtotal, total_rm: subtotal,
+            created_by: currentUser ? currentUser.name : 'System'
+        }]).select();
+        if(poErr) throw poErr;
+        const newPo = poRow[0];
+
+        const itemRows = poDraftItems.map(i => ({
+            po_id: newPo.id,
+            po_number: poNo,
+            sku: i.sku,
+            qty_ordered: i.qty,
+            qty_received: 0,
+            unit_cost_rm: i.cost || 0,
+            line_total_rm: i.qty * (i.cost || 0)
+        }));
+        const { error: itemErr } = await db.from('purchase_order_items').insert(itemRows);
+        if(itemErr) throw itemErr;
+
+        showToast(`PO ${poNo} dicipta · RM ${subtotal.toFixed(2)}`, 'success');
+        poDraftItems = [];
+        ['poNumber','poSupplier','poEtaDate'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+        if(typeof renderPoDraftTable === 'function') renderPoDraftTable();
+        await loadPosV2();
+    } catch(e) {
+        showToast('Ralat cipta PO: ' + e.message, 'error');
+    }
+};
+
+// Override renderPoSection to read from V2 tables
+window.renderPoSection = function() {
+    const tbody = document.getElementById('poListTbody');
+    if(!tbody) return;
+    if(!purchaseOrdersV2 || !purchaseOrdersV2.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">Tiada Purchase Order. Cipta PO baru di atas.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = purchaseOrdersV2.map(po => {
+        const items = purchaseOrderItemsV2.filter(i => i.po_id === po.id);
+        const skus = items.map(i => `${i.sku} (${i.qty_received}/${i.qty_ordered})`).join(', ').slice(0, 60);
+        const statusColor = {
+            'Draft':     { bg:'#F3F4F6', fg:'#374151' },
+            'Pending':   { bg:'#FEF3C7', fg:'#92400E' },
+            'Partial':   { bg:'#DBEAFE', fg:'#1E40AF' },
+            'Completed': { bg:'#D1FAE5', fg:'#065F46' },
+            'Cancelled': { bg:'#FEE2E2', fg:'#991B1B' }
+        }[po.status] || { bg:'#F3F4F6', fg:'#374151' };
+        const action = (po.status === 'Pending' || po.status === 'Partial')
+            ? `<button class="btn-success" style="font-size:10px; padding:4px 8px; margin:0;" onclick="window.openReceivePOModal(${po.id})">Terima Stok</button>`
+            : '-';
+        return `
+            <tr>
+                <td style="font-weight:bold; font-family:monospace;">${po.po_number}</td>
+                <td>${po.supplier_name || '-'}</td>
+                <td>${po.eta_date || '-'}</td>
+                <td><span style="background:${statusColor.bg}; color:${statusColor.fg}; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">${po.status}</span></td>
+                <td style="font-size:11px;">${skus}${items.length > 3 ? '...' : ''}</td>
+                <td>${action}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.openReceivePOModal = async function(poId) {
+    const po = purchaseOrdersV2.find(p => p.id === poId);
+    if(!po) return;
+    const items = purchaseOrderItemsV2.filter(i => i.po_id === poId);
+
+    // Build per-line input list — show qty ordered, ask actual received + actual cost
+    const linesHtml = items.map((it, idx) => {
+        const remaining = it.qty_ordered - it.qty_received;
+        const prod = masterProducts.find(p => p.sku === it.sku);
+        return `
+            <tr>
+                <td><strong>${it.sku}</strong><br><span style="font-size:10px; color:#666;">${(prod?.name || '').slice(0,40)}</span></td>
+                <td style="text-align:center;">${it.qty_ordered}</td>
+                <td style="text-align:center;">${it.qty_received}</td>
+                <td><input type="number" id="grnQty_${idx}" data-itemid="${it.id}" data-sku="${it.sku}" min="0" max="${remaining}" value="${remaining}" class="login-input" style="margin:0; padding:4px; width:70px; text-align:center;"></td>
+                <td><input type="number" id="grnCost_${idx}" min="0" step="0.01" value="${it.unit_cost_rm}" class="login-input" style="margin:0; padding:4px; width:80px;"></td>
+            </tr>
+        `;
+    }).join('');
+
+    const modalHtml = `
+        <div id="grnOverlay" class="login-overlay" style="display:flex; z-index:3700; align-items:center; justify-content:center;">
+            <div class="login-box" style="max-width:780px; width:96%; padding:24px;">
+                <button onclick="document.getElementById('grnOverlay').remove()" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
+                <h2 style="font-weight:800; font-size:20px; margin-bottom:6px;">📦 Goods Received Note (GRN)</h2>
+                <p style="font-size:12px; color:#666; margin-bottom:14px;">PO <strong>${po.po_number}</strong> · Pembekal: <strong>${po.supplier_name}</strong> · ETA: ${po.eta_date}</p>
+                <div class="table-responsive" style="max-height:340px;">
+                    <table class="data-table" style="font-size:12px;">
+                        <thead><tr><th>SKU / Nama</th><th>Ordered</th><th>Sebelum</th><th>Terima Sekarang</th><th>Kos/Unit (RM)</th></tr></thead>
+                        <tbody>${linesHtml}</tbody>
+                    </table>
+                </div>
+                <label class="small-lbl" style="margin-top:12px;">Catatan (kondisi barang, kerosakan, dsb)</label>
+                <textarea id="grnNotes" class="login-input" rows="2" placeholder="3 box ada kemek di sudut, foto disertakan via WhatsApp..."></textarea>
+                <div style="display:flex; gap:8px; margin-top:14px;">
+                    <button onclick="document.getElementById('grnOverlay').remove()" class="login-btn" style="background:#6B7280; flex:1;">Tutup</button>
+                    <button onclick="window.confirmReceivePO(${poId})" class="login-btn" style="flex:2;">✓ Sahkan Penerimaan</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+};
+
+window.confirmReceivePO = async function(poId) {
+    const po = purchaseOrdersV2.find(p => p.id === poId);
+    if(!po) return;
+    const items = purchaseOrderItemsV2.filter(i => i.po_id === poId);
+    const notes = document.getElementById('grnNotes').value.trim();
+
+    // Read each line's qty + cost
+    const receipts = [];
+    items.forEach((it, idx) => {
+        const qtyEl = document.getElementById(`grnQty_${idx}`);
+        const costEl = document.getElementById(`grnCost_${idx}`);
+        const qty = parseInt(qtyEl.value) || 0;
+        const cost = parseFloat(costEl.value) || 0;
+        if(qty > 0) receipts.push({ item: it, qty, cost });
+    });
+
+    if(receipts.length === 0) return showToast('Tiada qty diterima.', 'warn');
+
+    if(!confirm(`Sahkan penerimaan ${receipts.length} item untuk ${po.po_number}?`)) return;
+
+    try {
+        const inboundDate = new Date().toISOString().split('T')[0];
+        // Insert one batch per received line — with cost + PO link
+        const batchRows = receipts.map(r => ({
+            sku: r.item.sku,
+            qty_received: r.qty,
+            qty_remaining: r.qty,
+            inbound_date: inboundDate,
+            cost_price: r.cost,
+            landed_cost: r.cost,    // for now equal; freight/tax can be added later
+            po_number: po.po_number,
+            supplier_name: po.supplier_name,
+            notes: notes || null
+        }));
+        const { error: bErr } = await db.from('inventory_batches').insert(batchRows);
+        if(bErr) throw bErr;
+
+        // Update PO line qty_received
+        for(const r of receipts) {
+            const newQtyReceived = r.item.qty_received + r.qty;
+            await db.from('purchase_order_items').update({ qty_received: newQtyReceived }).eq('id', r.item.id);
+        }
+
+        // Update PO status
+        const updatedItems = purchaseOrderItemsV2.filter(i => i.po_id === poId).map(it => {
+            const r = receipts.find(x => x.item.id === it.id);
+            return r ? { ...it, qty_received: it.qty_received + r.qty } : it;
+        });
+        const allComplete = updatedItems.every(i => i.qty_received >= i.qty_ordered);
+        const someReceived = updatedItems.some(i => i.qty_received > 0);
+        const newStatus = allComplete ? 'Completed' : (someReceived ? 'Partial' : 'Pending');
+
+        await db.from('purchase_orders').update({
+            status: newStatus,
+            received_date: allComplete ? inboundDate : po.received_date,
+            received_by: currentUser ? currentUser.name : 'System'
+        }).eq('id', poId);
+
+        // Inventory transactions log
+        await db.from('inventory_transactions').insert(receipts.map(r => ({
+            sku: r.item.sku,
+            transaction_type: 'IN',
+            qty: r.qty,
+            reason: `PO ${po.po_number} received from ${po.supplier_name}${notes ? ' — ' + notes : ''}`,
+            staff_name: currentUser ? currentUser.name : 'System',
+            created_at: new Date().toISOString()
+        })));
+
+        // Audit log
+        await db.from('audit_logs').insert([{
+            action_type: 'po_received',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({
+                po_number: po.po_number, supplier: po.supplier_name,
+                items_count: receipts.length,
+                total_qty: receipts.reduce((s, r) => s + r.qty, 0),
+                new_status: newStatus, notes
+            }),
+            created_at: new Date().toISOString()
+        }]);
+
+        document.getElementById('grnOverlay').remove();
+        showToast(`PO ${po.po_number} → ${newStatus}`, 'success');
+        await loadPosV2();
+        await window.initApp();
+    } catch(e) {
+        showToast('Ralat: ' + e.message, 'error');
+    }
+};
+
+// ===================================
+// SPRINT 2.4 — BIN LOCATION BULK IMPORT
+// ===================================
+let __binImportRows = [];  // parsed + validated rows ready to commit
+
+window.bulkImportBinPreview = function() {
+    const txt = (document.getElementById('binImportTextarea').value || '').trim();
+    const preview = document.getElementById('binImportPreview');
+    const confirmBtn = document.getElementById('binImportConfirmBtn');
+    if(!txt) { preview.innerHTML = ''; confirmBtn.disabled = true; return; }
+
+    const lines = txt.split('\n').map(l => l.trim()).filter(Boolean);
+    const parsed = [];
+    const errors = [];
+    lines.forEach((line, idx) => {
+        const parts = line.split(',').map(s => s.trim());
+        if(parts.length < 2) {
+            errors.push(`Baris ${idx + 1}: format salah ("${line}")`);
+            return;
+        }
+        const sku = parts[0].toUpperCase();
+        const loc = parts.slice(1).join(',').trim();
+        const prod = masterProducts.find(p => p.sku === sku);
+        if(!prod) {
+            errors.push(`Baris ${idx + 1}: SKU "${sku}" tak wujud`);
+            return;
+        }
+        parsed.push({ sku, name: prod.name, oldLoc: prod.location_bin || '-', newLoc: loc });
+    });
+
+    __binImportRows = parsed;
+
+    let html = `<div style="background:#EFF6FF; border:1px solid #BFDBFE; padding:10px; border-radius:6px; margin-bottom:8px;">
+        ✓ <strong>${parsed.length}</strong> baris valid · ✗ <strong>${errors.length}</strong> baris error
+    </div>`;
+    if(parsed.length > 0) {
+        html += `<div style="max-height:240px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;">
+            <table class="data-table" style="font-size:11px;">
+                <thead style="background:#FAFAFA; position:sticky; top:0;"><tr><th>SKU</th><th>Nama</th><th>Sebelum</th><th>Selepas</th></tr></thead>
+                <tbody>${parsed.slice(0, 100).map(r => `
+                    <tr><td><strong>${r.sku}</strong></td><td>${r.name.slice(0,50)}</td><td style="color:#999;">${r.oldLoc}</td><td style="color:#10B981; font-weight:bold;">${r.newLoc}</td></tr>
+                `).join('')}</tbody>
+            </table>
+        </div>`;
+        if(parsed.length > 100) html += `<p style="font-size:11px; color:#666; margin-top:6px;">+ ${parsed.length - 100} baris lagi (akan diimport semua)</p>`;
+    }
+    if(errors.length > 0) {
+        html += `<details style="margin-top:8px;"><summary style="cursor:pointer; color:#DC2626;">Lihat ${errors.length} error</summary>
+            <ul style="font-size:11px; color:#991B1B; margin-top:6px;">${errors.slice(0, 50).map(e => `<li>${e}</li>`).join('')}</ul>
+        </details>`;
+    }
+    preview.innerHTML = html;
+    confirmBtn.disabled = parsed.length === 0;
+};
+
+window.bulkImportBinConfirm = async function() {
+    if(__binImportRows.length === 0) return;
+    if(!confirm(`Update lokasi bin untuk ${__binImportRows.length} produk?`)) return;
+
+    let ok = 0, fail = 0;
+    for(const row of __binImportRows) {
+        try {
+            const { error } = await db.from('products_master').update({ location_bin: row.newLoc }).eq('sku', row.sku);
+            if(error) { fail++; continue; }
+            const p = masterProducts.find(x => x.sku === row.sku);
+            if(p) p.location_bin = row.newLoc;
+            ok++;
+        } catch(e) { fail++; }
+    }
+
+    try {
+        await db.from('audit_logs').insert([{
+            action_type: 'bulk_bin_import',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ count: __binImportRows.length, succeeded: ok, failed: fail }),
+            created_at: new Date().toISOString()
+        }]);
+    } catch(_){}
+
+    showToast(`Bin import: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
+    __binImportRows = [];
+    document.getElementById('binImportTextarea').value = '';
+    document.getElementById('binImportPreview').innerHTML = '';
+    document.getElementById('binImportConfirmBtn').disabled = true;
 };
