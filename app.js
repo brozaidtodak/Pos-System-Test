@@ -10329,3 +10329,146 @@ window.toggleLang = function() {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => { try { window.applyI18N(); } catch(e){} }, 100);
 });
+
+// =============================================================
+// p3_2 — WhatsApp Broadcast (wa.me click-to-send · batched)
+// =============================================================
+const WA_TEMPLATES = {
+    raya: 'Selamat Hari Raya {name}! 🌙\n\nSpecial diskaun *20% off* untuk member 10 CAMP.\nUse code: *{promo_code}*\nValid sampai 30 Apr.\n\nShop online: 10camp.com\n📍 Visit kedai kami di Setapak.\n\nTerima kasih, semoga raya ceria! 🎉',
+    cny: 'Gong Xi Fa Cai {name}! 🧧\n\nCelebrate dengan diskaun *8% off* satu store.\nCode: *{promo_code}*\nValid sampai 15 Feb.\n\nShop: 10camp.com\n\nMay your year be filled with adventure! 🏔️',
+    deepavali: 'Happy Deepavali {name}! 🪔\n\nDiskaun spesial *15% off* untuk semua camping gear.\nCode: *{promo_code}*\nValid sampai 7 hari.\n\nShop: 10camp.com\n\nTerima kasih, semoga cahaya membawa kebahagiaan! ✨',
+    merdeka: 'Selamat Hari Merdeka {name}! 🇲🇾\n\nMerdeka deal *RM57 off* untuk pembelian RM 300+.\nCode: *{promo_code}*\nValid 28 Aug – 16 Sep.\n\nShop: 10camp.com\n\nMerdeka! Merdeka! Merdeka! 🎊',
+    vip_nudge: 'Hi {name}, VIP member 10 CAMP yang dihormati ⭐\n\nAnda ada *{points} points* dalam akaun.\nRedeem untuk diskaun atau free items sebelum expire.\n\nLogin: 10camp.com/account\n\nTerima kasih atas sokongan!',
+    reorder_nudge: 'Hi {name} 👋\n\nDah {last_order_days} hari last shopping kat 10 CAMP. Rindu! 😊\n\nKalau nak refresh gear, ada banyak new arrival.\nCheckout: 10camp.com\n\nNak tanya apa-apa? Reply je message ni. 🙌',
+    generic: 'Hi {name}! 📢\n\nNew update dari 10 CAMP:\n[Tulis announcement di sini]\n\nUse code *{promo_code}* untuk diskaun (kalau ada).\n\nThanks!\n10 CAMP team'
+};
+
+window.__waCurrentMatches = [];
+
+function __waMatchCustomers(filter) {
+    if(typeof customersData === 'undefined' || !Array.isArray(customersData)) return [];
+    const now = Date.now();
+    return customersData.filter(c => {
+        if(!c.phone) return false;
+        switch(filter) {
+            case 'vip':          return c.is_member;
+            case 'sms_consent':  return c.accepts_sms_marketing;
+            case 'big_spender':  return (c.total_spent || 0) >= 1000;
+            case 'dormant': {
+                if(!c.last_order_at) return (c.total_orders || 0) === 0;
+                const days = (now - new Date(c.last_order_at).getTime()) / (24*3600*1000);
+                return days > 60;
+            }
+            default: return true;
+        }
+    });
+}
+
+function __waFillVars(template, c, promoCode) {
+    const days = c && c.last_order_at
+        ? Math.floor((Date.now() - new Date(c.last_order_at).getTime()) / (24*3600*1000))
+        : 0;
+    return template
+        .replace(/\{name\}/g, (c && (c.name || '').split(' ')[0]) || 'kawan')
+        .replace(/\{points\}/g, String(c?.points || 0))
+        .replace(/\{total_spent\}/g, ((c?.total_spent) || 0).toFixed(2))
+        .replace(/\{last_order_days\}/g, String(days))
+        .replace(/\{promo_code\}/g, promoCode || 'PROMO');
+}
+
+window.__waPreviewMessage = function(skipReset) {
+    const tpl = document.getElementById('waTemplate')?.value || 'generic';
+    const ta = document.getElementById('waMessage');
+    if(!ta) return;
+    if(!skipReset) ta.value = WA_TEMPLATES[tpl] || '';
+    const promo = document.getElementById('waPromoCode')?.value || 'PROMO';
+    const matches = window.__waCurrentMatches.length ? window.__waCurrentMatches : __waMatchCustomers(document.getElementById('waAudience')?.value || 'all');
+    const sample = matches[0];
+    const previewEl = document.getElementById('waSamplePreview');
+    if(previewEl) {
+        previewEl.textContent = sample
+            ? __waFillVars(ta.value, sample, promo)
+            : '(no audience match — pilih filter lain)';
+    }
+};
+
+window.__waPreviewCount = function() {
+    const filter = document.getElementById('waAudience')?.value || 'all';
+    window.__waCurrentMatches = __waMatchCustomers(filter);
+    const el = document.getElementById('waMatchCount');
+    if(el) el.textContent = window.__waCurrentMatches.length;
+    window.__waPreviewMessage(true);
+};
+
+window.__waSendCursor = 0;
+
+window.__waSendBroadcast = function() {
+    const matches = window.__waCurrentMatches.length ? window.__waCurrentMatches : __waMatchCustomers(document.getElementById('waAudience')?.value || 'all');
+    if(!matches.length) {
+        if(typeof showToast==='function') showToast('Tiada customer match. Pilih filter lain.', 'warn');
+        return;
+    }
+    const tplText = document.getElementById('waMessage')?.value || '';
+    const promo = document.getElementById('waPromoCode')?.value || '';
+    const start = window.__waSendCursor;
+    const end = Math.min(start + 10, matches.length);
+    const batch = matches.slice(start, end);
+
+    if(!batch.length) {
+        if(typeof showToast==='function') showToast('Broadcast complete ✓', 'success');
+        return;
+    }
+
+    if(start === 0) {
+        if(!confirm(`Open ${batch.length} WhatsApp tabs untuk customer #1-${end}? (Total: ${matches.length})`)) return;
+    }
+
+    batch.forEach((c, i) => {
+        const phoneNorm = String(c.phone).replace(/\D/g, '').replace(/^0/, '60');
+        const text = __waFillVars(tplText, c, promo);
+        const url = `https://wa.me/${phoneNorm}?text=${encodeURIComponent(text)}`;
+        // Stagger by 200ms to avoid popup blocker
+        setTimeout(() => window.open(url, '_blank'), i * 200);
+    });
+
+    window.__waSendCursor = end;
+    const remaining = matches.length - end;
+    const status = document.getElementById('waSendStatus');
+    if(status) {
+        status.innerHTML = `
+            <div style="background:#F0FDF4; padding:10px; border-radius:6px; border-left:4px solid #10B981;">
+                ✅ Sent batch ${start+1}–${end} of ${matches.length}.
+                ${remaining > 0
+                    ? `<br><strong>${remaining}</strong> customer left. Klik <em>Send batch</em> untuk continue.`
+                    : '<br><strong>All done!</strong>'}
+            </div>
+        `;
+    }
+
+    // Log to localStorage
+    try {
+        const log = JSON.parse(localStorage.getItem('waBroadcastLog_v1') || '[]');
+        log.push({
+            ts: new Date().toISOString(),
+            template: document.getElementById('waTemplate')?.value,
+            audience: document.getElementById('waAudience')?.value,
+            count: batch.length,
+            sender: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'unknown'
+        });
+        if(log.length > 100) log.splice(0, log.length - 100);
+        localStorage.setItem('waBroadcastLog_v1', JSON.stringify(log));
+    } catch(e){}
+};
+
+window.__waResetBroadcast = function() {
+    window.__waSendCursor = 0;
+    const status = document.getElementById('waSendStatus');
+    if(status) status.innerHTML = '';
+    if(typeof showToast==='function') showToast('Cursor reset ke 0. Klik Send batch untuk start over.', 'success');
+};
+
+window.renderWABroadcast = function() {
+    window.__waSendCursor = 0;
+    window.__waPreviewCount();
+    window.__waPreviewMessage();
+};

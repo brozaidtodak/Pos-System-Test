@@ -1004,6 +1004,9 @@
             <div class="menu-item" data-group="admin" data-tab="admin_promotions" onclick="switchHub(['promotionsSection'], 'Promotions &amp; Vouchers', this); if(typeof renderPromotionsV2==='function') renderPromotionsV2();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="gift" style="width:16px; height:16px;"></i> Promotions &amp; Vouchers
             </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_wa_broadcast" onclick="switchHub(['waBroadcastSection'], 'WhatsApp Broadcast', this); if(typeof renderWABroadcast==='function') renderWABroadcast();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="message-circle" style="width:16px; height:16px;"></i> WhatsApp Broadcast
+            </div>
             <div class="menu-item" data-group="admin" data-tab="admin_invoice" onclick="switchHub(['invoiceSection'], 'Invoice &amp; Quotation', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="file-text" style="width:16px; height:16px;"></i> Invoice &amp; Quotation
             </div>
@@ -3518,6 +3521,70 @@
     </div>
 
     <!-- ============================================== -->
+    <!-- WHATSAPP BROADCAST (p3_2 expand)                -->
+    <!-- ============================================== -->
+    <div id="waBroadcastSection" class="tab-section" style="display:none;">
+        <h2 class="section-title" style="margin-top:20px;"><i data-lucide="message-circle" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> WhatsApp Broadcast</h2>
+        <p style="font-size:13px; color:#666; margin-bottom:14px;">Hantar promo / reminder ke ramai customers sekaligus via wa.me click-to-send. Tak perlu WhatsApp Business API. Browser akan open tab baru per customer (max 10 sekali untuk avoid rate-limit).</p>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
+            <!-- LEFT: Template + filter -->
+            <div class="card" style="padding:16px;">
+                <h3 class="card-title" style="margin-bottom:10px;">📝 Template &amp; Audience</h3>
+                <label class="small-lbl">Template</label>
+                <select id="waTemplate" class="cp-input" onchange="window.__waPreviewMessage()">
+                    <option value="raya">🌙 Hari Raya promo</option>
+                    <option value="cny">🧧 CNY promo</option>
+                    <option value="deepavali">🪔 Deepavali promo</option>
+                    <option value="merdeka">🇲🇾 Merdeka promo</option>
+                    <option value="vip_nudge">⭐ VIP points reminder</option>
+                    <option value="reorder_nudge">🔁 Re-order nudge (last order &gt; 60 days)</option>
+                    <option value="generic">📢 Generic announcement</option>
+                </select>
+
+                <label class="small-lbl" style="margin-top:10px;">Audience filter</label>
+                <select id="waAudience" class="cp-input" onchange="window.__waPreviewCount()">
+                    <option value="all">Semua customer (yang ada phone)</option>
+                    <option value="vip">VIP members sahaja</option>
+                    <option value="sms_consent">Yang consent SMS marketing</option>
+                    <option value="big_spender">Big spender (RM 1,000+)</option>
+                    <option value="dormant">Dormant (last order &gt; 60 days)</option>
+                </select>
+
+                <label class="small-lbl" style="margin-top:10px;">Promo code (optional)</label>
+                <input type="text" id="waPromoCode" class="cp-input" placeholder="RAYA20" oninput="window.__waPreviewMessage()">
+
+                <div style="margin-top:14px; padding:10px; background:#FEF3C7; border-radius:6px; font-size:12px;">
+                    <strong>Audience match:</strong> <span id="waMatchCount">-</span> customer(s)
+                </div>
+            </div>
+
+            <!-- RIGHT: Message preview -->
+            <div class="card" style="padding:16px;">
+                <h3 class="card-title" style="margin-bottom:10px;">💬 Message preview</h3>
+                <p style="font-size:11px; color:#666; margin-bottom:6px;">Variables: <code>{name}</code>, <code>{points}</code>, <code>{total_spent}</code>, <code>{last_order_days}</code>, <code>{promo_code}</code></p>
+                <textarea id="waMessage" class="cp-input" rows="9" style="font-family:monospace; font-size:12px;" oninput="window.__waPreviewMessage(true)"></textarea>
+                <div style="margin-top:10px; padding:10px; background:#E0F2FE; border-radius:6px; font-size:12px;">
+                    <strong>Sample for first match:</strong>
+                    <div id="waSamplePreview" style="margin-top:4px; white-space:pre-wrap; color:#1E40AF;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="padding:16px;">
+            <h3 class="card-title" style="margin-bottom:10px;">🚀 Send broadcast</h3>
+            <p style="font-size:12px; color:#666; margin-bottom:10px;">Click button untuk start. Browser akan open <strong>10 tab</strong> sekali (batched). Sila approve popup permission. Selepas tu klik tab "Continue" untuk batch seterusnya.</p>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn--primary" onclick="window.__waSendBroadcast()">
+                    <i data-lucide="send" style="width:14px; height:14px;"></i> Send batch
+                </button>
+                <button class="btn btn--secondary" onclick="window.__waResetBroadcast()">Reset</button>
+            </div>
+            <div id="waSendStatus" style="margin-top:14px; font-size:12px; color:#374151;"></div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
     <!-- STOCK RESERVATIONS (p4_12 wired)                 -->
     <!-- ============================================== -->
     <div id="reservationsSection" class="tab-section" style="display:none;">
@@ -3722,7 +3789,7 @@
               desc:'Untuk MY merchant, marketplace sync = acquisition flywheel. Shopee/Lazada/TikTok Shop satu inventory, banyak channel. WhatsApp Commerce native (receipt + reorder + broadcast). Native mobile app untuk owner peek revenue. 5-min onboarding wizard supaya trialer jadi convert.',
               deliverables:[
                 { id:'p3_1', label:'Shopee / Lazada / TikTok Shop sync (via EasyStore unified channels)', d:'progress' },
-                { id:'p3_2', label:'WhatsApp Commerce (receipt + reorder + broadcast)', d:'progress' },
+                { id:'p3_2', label:'WhatsApp Commerce (receipt + reorder + broadcast). Broadcast tool: 7 templates (Raya/CNY/Deepavali/Merdeka/VIP/Reorder/Generic), 5 audience filters, batched click-to-send via wa.me, log audit', d:'done' },
                 { id:'p3_3', label:'Native mobile app (iOS + Android)', d:'todo' },
                 { id:'p3_4', label:'5-min onboarding wizard', d:'done' },
                 { id:'p3_5', label:'Multi-language UI BM/EN toggle (light i18n with t() helper, header switcher; mode bar + dept groups + common buttons covered. 中文/தமிழ் pickup later)', d:'progress' },
@@ -7668,7 +7735,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=88"></script>
+    <script src="app.js?v=89"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
