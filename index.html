@@ -3809,11 +3809,11 @@
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
               deliverables:[
-                { id:'p2_1', label:'e-Invoice MyInvois LHDN integration', d:'progress' },
+                { id:'p2_1', label:'e-Invoice MyInvois LHDN integration (UBL 2.1 XML + JSON Production-API spec; bulk-submit + export bundle; B2B TIN auto-lookup from customers; validation pre-check). Real LHDN submission still needs sandbox creds + signing cert', d:'progress' },
                 { id:'p2_2', label:'DuitNow QR generator + reconciliation', d:'done' },
                 { id:'p2_3', label:'TnG / Boost / GrabPay / ShopeePay native', d:'progress' },
                 { id:'p2_4', label:'SST auto-calc + tax-inclusive toggle', d:'done' },
-                { id:'p2_5', label:'LHDN-compliant tax invoice format', d:'progress' },
+                { id:'p2_5', label:'LHDN-compliant tax invoice format (UBL 2.1 XML draft + JSON; B2B buyer TIN auto-attach from customer record; B2C consolidated TIN EI00000000010 fallback)', d:'done' },
                 { id:'p2_6', label:'PDPA: data export + right-to-delete', d:'done' },
                 { id:'p2_7', label:'Returns/exchanges first-class flow', d:'done' }
               ]},
@@ -6526,8 +6526,10 @@
                 <div class="compl-card">
                     <h3>📥 Submission Queue (last 30 days)</h3>
                     <p class="sub">Senarai sales yang **belum di-submit** ke MyInvois. Sebelum auto-submit live, kau boleh: (1) preview UBL XML yang akan dihantar, (2) tandakan manually sebagai "Submitted" lepas hantar via portal LHDN. Status simpan dalam localStorage <code>myinvoisSubmitted_v1</code>.</p>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
                         <button class="compl-btn compl-btn-secondary" onclick="window.__renderMyInvoisQueue()"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i>Refresh</button>
+                        <button class="compl-btn compl-btn-secondary" onclick="window.__myinvoisDownloadAllPending()"><i data-lucide="download-cloud" style="width:13px;height:13px;"></i>Export Bundle (XML+JSON)</button>
+                        <button class="compl-btn" onclick="window.__myinvoisBulkSubmit()" style="background:#10B981; color:white;"><i data-lucide="check-check" style="width:13px;height:13px;"></i>Bulk Mark Submitted</button>
                         <span id="myinvoisQueueStats" style="margin-left:auto; font-size:12px; color:var(--text-muted); align-self:center;">—</span>
                     </div>
                     <div id="myinvoisQueueTable" style="font-size:12.5px; max-height:380px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;"></div>
@@ -6541,7 +6543,7 @@
                         <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">Format draft mengikut LHDN MyInvois schema. Production submission perlu signed XML + JWT auth dari server-side service.</p>
                         <pre id="myinvoisXmlBody" style="background:#0f172a; color:#e2e8f0; padding:14px; border-radius:8px; max-height:380px; overflow:auto; font-size:11.5px; line-height:1.5;"></pre>
                         <div style="display:flex; gap:8px; margin-top:10px;">
-                            <button class="compl-btn" onclick="window.__copyMyInvoisXml()"><i data-lucide="copy" style="width:13px;height:13px;"></i>Copy XML</button>
+                            <button class="compl-btn" onclick="window.__copyMyInvoisXml()"><i data-lucide="copy" style="width:13px;height:13px;"></i>Copy</button>
                             <button class="compl-btn compl-btn-secondary" onclick="document.getElementById('myinvoisXmlModal').style.display='none'">Close</button>
                         </div>
                     </div>
@@ -7105,8 +7107,9 @@
                         : '<span style="display:inline-block; padding:3px 8px; border-radius:10px; font-size:10.5px; font-weight:700; background:#fef3c7; color:#92400e;">Pending</span>');
                 const actions = isSubm
                     ? '<button class="compl-btn compl-btn-secondary" style="font-size:10.5px; padding:4px 8px;" onclick="window.__myinvoisUnsubmit(\''+id+'\')">Unmark</button>'
-                    : '<button class="compl-btn compl-btn-secondary" style="font-size:10.5px; padding:4px 8px;" onclick="window.__myinvoisShowXml(\''+id+'\')">Preview XML</button> '
-                      + '<button class="compl-btn" style="font-size:10.5px; padding:4px 8px;" onclick="window.__myinvoisMarkSubmitted(\''+id+'\')">Mark Submitted</button>';
+                    : '<button class="compl-btn compl-btn-secondary" style="font-size:10.5px; padding:4px 8px;" onclick="window.__myinvoisShowXml(\''+id+'\')" title="UBL 2.1 XML">XML</button> '
+                      + '<button class="compl-btn compl-btn-secondary" style="font-size:10.5px; padding:4px 8px;" onclick="window.__myinvoisShowJSON(\''+id+'\')" title="LHDN JSON spec">JSON</button> '
+                      + '<button class="compl-btn" style="font-size:10.5px; padding:4px 8px;" onclick="window.__myinvoisMarkSubmitted(\''+id+'\')">Mark ✓</button>';
                 return '<tr style="border-top:1px solid #f1f1f1;">'
                     + '<td style="padding:8px 10px;">'+dt+'</td>'
                     + '<td style="padding:8px 10px;"><strong>#'+(id||'?')+'</strong></td>'
@@ -7152,6 +7155,157 @@
         delete m[saleId];
         saveMyInvoisSubmitted(m);
         window.__renderMyInvoisQueue();
+    };
+
+    // ===== p2_1/p2_5 enhancements: bulk submit, JSON payload, validation =====
+    // Look up B2B buyer TIN from customers table by phone match
+    function __myinvoisLookupBuyerTin(sale){
+        if (sale.buyer_tin) return sale.buyer_tin;
+        const cs = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
+        const phone = (sale.customer_phone||'').replace(/\D/g,'');
+        if (!phone) return null;
+        const c = cs.find(x => (String(x.phone||'').replace(/\D/g,'')) === phone || (String(x.pic_phone||'').replace(/\D/g,'')) === phone);
+        return (c && c.is_b2b) ? c.buyer_tin || null : null;
+    }
+
+    // Validation pre-check — returns array of warnings
+    window.__myinvoisValidate = function(sale, sstSettings){
+        const warns = [];
+        const total = parseFloat(sale.total_amount||sale.total||0);
+        if (total <= 0) warns.push('Total ≤ 0');
+        const items = (typeof sale.items === 'string') ? (function(){ try { return JSON.parse(sale.items); } catch(e){ return []; } })() : (Array.isArray(sale.items)?sale.items:[]);
+        if (!items.length) warns.push('Tiada line items');
+        if (!sstSettings || !sstSettings.number) warns.push('Supplier SST/TIN belum di-set di Compliance settings');
+        if (sale.customer_name && sale.customer_name !== 'Walk-in' && !__myinvoisLookupBuyerTin(sale)) {
+            warns.push('B2B customer detected tapi buyer TIN takde — kena edit customer record');
+        }
+        return warns;
+    };
+
+    // JSON payload (matches LHDN MyInvois Production API JSON spec)
+    window.__buildMyInvoisJSON = function(sale, sstSettings, shopInfo){
+        const items = (typeof sale.items === 'string') ? (function(){ try { return JSON.parse(sale.items); } catch(e){ return []; } })() : (Array.isArray(sale.items)?sale.items:[]);
+        const total = parseFloat(sale.total_amount||sale.total||0);
+        const sstPct = (sstSettings && sstSettings.registered) ? parseFloat(sstSettings.rate||0) : 0;
+        const inclusive = !sstSettings || sstSettings.inclusive !== false;
+        let taxBase, taxAmt, taxIncl;
+        if (sstPct > 0) {
+            if (inclusive) { taxBase = +(total/(1+sstPct/100)).toFixed(2); taxAmt = +(total - taxBase).toFixed(2); taxIncl = total; }
+            else { taxBase = total; taxAmt = +(total*sstPct/100).toFixed(2); taxIncl = +(total + taxAmt).toFixed(2); }
+        } else { taxBase = total; taxAmt = 0; taxIncl = total; }
+
+        const buyerTin = __myinvoisLookupBuyerTin(sale);
+        return {
+            _DocumentReference: sale.id || sale.invoice_id,
+            Invoice: [{
+                ID: [{ _: String(sale.id||sale.invoice_id||'') }],
+                IssueDate: [{ _: (sale.created_at ? sale.created_at.slice(0,10) : new Date().toISOString().slice(0,10)) }],
+                IssueTime: [{ _: (sale.created_at ? sale.created_at.slice(11,19) : '00:00:00') + 'Z' }],
+                InvoiceTypeCode: [{ _: '01', listVersionID: '1.0' }],
+                DocumentCurrencyCode: [{ _: 'MYR' }],
+                AccountingSupplierParty: [{ Party: [{
+                    PartyLegalEntity: [{ RegistrationName: [{ _: shopInfo.name || '10 CAMP' }] }],
+                    PartyTaxScheme: [{ CompanyID: [{ _: (sstSettings && sstSettings.number) || '' }], TaxScheme: [{ ID: [{ _: 'OTH', schemeID: 'UN/ECE 5153', schemeAgencyID: '6' }] }] }]
+                }] }],
+                AccountingCustomerParty: [{ Party: [{
+                    PartyLegalEntity: [{ RegistrationName: [{ _: sale.customer_name || 'Walk-in' }] }],
+                    PartyIdentification: buyerTin
+                        ? [{ ID: [{ _: buyerTin, schemeID: 'TIN' }] }]
+                        : [{ ID: [{ _: 'EI00000000010', schemeID: 'TIN' }] }],
+                    Contact: [{ Telephone: [{ _: sale.customer_phone || '' }] }]
+                }] }],
+                TaxTotal: [{
+                    TaxAmount: [{ _: taxAmt.toFixed(2), currencyID: 'MYR' }],
+                    TaxSubtotal: [{
+                        TaxableAmount: [{ _: taxBase.toFixed(2), currencyID: 'MYR' }],
+                        TaxAmount: [{ _: taxAmt.toFixed(2), currencyID: 'MYR' }],
+                        TaxCategory: [{ ID: [{ _: '01' }], Percent: [{ _: sstPct.toFixed(2) }], TaxScheme: [{ ID: [{ _: 'OTH', schemeID: 'UN/ECE 5153', schemeAgencyID: '6' }] }] }]
+                    }]
+                }],
+                LegalMonetaryTotal: [{
+                    LineExtensionAmount: [{ _: taxBase.toFixed(2), currencyID: 'MYR' }],
+                    TaxExclusiveAmount: [{ _: taxBase.toFixed(2), currencyID: 'MYR' }],
+                    TaxInclusiveAmount: [{ _: taxIncl.toFixed(2), currencyID: 'MYR' }],
+                    PayableAmount:      [{ _: taxIncl.toFixed(2), currencyID: 'MYR' }]
+                }],
+                InvoiceLine: items.map((it, i) => ({
+                    ID: [{ _: String(i+1) }],
+                    InvoicedQuantity: [{ _: String(it.quantity || it.qty || 0), unitCode: 'EA' }],
+                    LineExtensionAmount: [{ _: ((parseFloat(it.price)||0) * (parseFloat(it.quantity || it.qty)||0)).toFixed(2), currencyID: 'MYR' }],
+                    Item: [{ Description: [{ _: it.name || it.sku || '-' }], OriginCountry: [{ IdentificationCode: [{ _: 'MYS' }] }], CommodityClassification: [{ ItemClassificationCode: [{ _: '022', listID: 'CLASS' }] }] }],
+                    Price: [{ PriceAmount: [{ _: (parseFloat(it.price)||0).toFixed(2), currencyID: 'MYR' }] }]
+                }))
+            }]
+        };
+    };
+
+    window.__myinvoisShowJSON = function(saleId){
+        const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+        const sale = sales.find(s => String(s.id||s.invoice_id) === String(saleId));
+        if (!sale) return;
+        const settings = loadSettings();
+        const json = window.__buildMyInvoisJSON(sale, settings.sst, settings.shop || { name:'10 CAMP' });
+        const text = JSON.stringify(json, null, 2);
+        _myinvoisXmlCache = text;
+        document.getElementById('myinvoisXmlBody').textContent = text;
+        document.getElementById('myinvoisXmlModal').style.display = 'flex';
+    };
+
+    window.__myinvoisBulkSubmit = function(){
+        const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+        const submitted = loadMyInvoisSubmitted();
+        const since = Date.now() - 30*24*60*60*1000;
+        const pending = sales.filter(s => {
+            const t = s.created_at ? new Date(s.created_at).getTime() : 0;
+            if (t < since) return false;
+            const meta = s.metadata || {};
+            if (meta.kind === 'refund') return false;
+            const id = s.id || s.invoice_id;
+            if (parseFloat(s.total_amount||s.total||0) <= 0) return false;
+            return !submitted[id];
+        });
+        if (!pending.length) { (typeof showToast==='function' ? showToast('Tiada pending sale untuk submit','info') : alert('Tiada pending sale')); return; }
+        if (!confirm(`Mark ${pending.length} pending sale(s) sebagai submitted ke MyInvois?\n\nNota: Ini scaffold mode — system tak betul-betul hantar ke LHDN. Kau kena upload XML/JSON manually via portal LHDN dulu, baru tekan ni untuk record.`)) return;
+        const m = loadMyInvoisSubmitted();
+        const ts = new Date().toISOString();
+        const by = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'unknown';
+        pending.forEach(s => {
+            const id = s.id || s.invoice_id;
+            m[id] = { at: ts, by, bulk: true };
+        });
+        saveMyInvoisSubmitted(m);
+        if (typeof showToast==='function') showToast(`✓ ${pending.length} sales marked as submitted (bulk)`, 'success');
+        window.__renderMyInvoisQueue();
+    };
+
+    window.__myinvoisDownloadAllPending = function(){
+        const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+        const submitted = loadMyInvoisSubmitted();
+        const since = Date.now() - 30*24*60*60*1000;
+        const pending = sales.filter(s => {
+            const t = s.created_at ? new Date(s.created_at).getTime() : 0;
+            if (t < since) return false;
+            const meta = s.metadata || {};
+            if (meta.kind === 'refund') return false;
+            const id = s.id || s.invoice_id;
+            if (parseFloat(s.total_amount||s.total||0) <= 0) return false;
+            return !submitted[id];
+        });
+        if (!pending.length) { (typeof showToast==='function' ? showToast('Tiada pending — semua dah submitted','info') : alert('Tiada pending')); return; }
+        const settings = loadSettings();
+        const shop = settings.shop || { name:'10 CAMP' };
+        const bundle = pending.map(s => ({
+            sale_id: s.id || s.invoice_id,
+            json: window.__buildMyInvoisJSON(s, settings.sst, shop),
+            xml: buildMyInvoisXml(s, settings.sst, shop),
+            warnings: window.__myinvoisValidate(s, settings.sst)
+        }));
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type:'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'myinvois-pending-bundle-' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        if (typeof showToast==='function') showToast(`Downloaded ${pending.length} pending sale(s) as bundle`, 'success');
     };
 
     // Re-render when user clicks the einvoice tab
@@ -7767,7 +7921,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=90"></script>
+    <script src="app.js?v=91"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
