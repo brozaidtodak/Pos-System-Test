@@ -10,3 +10,9 @@
   to = "/.netlify/functions/easystore-webhook"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/ask"
+  to = "/.netlify/functions/claude-ask"
+  status = 200
+  force = true

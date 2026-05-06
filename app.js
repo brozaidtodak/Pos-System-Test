@@ -10472,3 +10472,179 @@ window.renderWABroadcast = function() {
     window.__waPreviewCount();
     window.__waPreviewMessage();
 };
+
+// =============================================================
+// p8_3 — Tanya 10 CAMP (Claude API proxy)
+// =============================================================
+function __askBuildContextSummary() {
+    // Build a compact data brief for Claude — summary of sales / inventory / customers
+    const lines = [];
+    const now = Date.now();
+
+    // ----- SALES (last 7d, last 30d, all-time) -----
+    if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+        const positive = salesHistory.filter(s => (s.total||0) > 0);
+        const last7 = positive.filter(s => s.created_at && (now - new Date(s.created_at).getTime() < 7*24*3600*1000));
+        const last30 = positive.filter(s => s.created_at && (now - new Date(s.created_at).getTime() < 30*24*3600*1000));
+        const prev30 = positive.filter(s => {
+            if(!s.created_at) return false;
+            const d = now - new Date(s.created_at).getTime();
+            return d >= 30*24*3600*1000 && d < 60*24*3600*1000;
+        });
+        const sum = arr => arr.reduce((s, x) => s + (x.total||0), 0);
+        lines.push('## Sales');
+        lines.push(`- Last 7 days: ${last7.length} orders, RM ${sum(last7).toFixed(2)} revenue`);
+        lines.push(`- Last 30 days: ${last30.length} orders, RM ${sum(last30).toFixed(2)} revenue`);
+        lines.push(`- Prev 30 days (30-60d ago): ${prev30.length} orders, RM ${sum(prev30).toFixed(2)} revenue`);
+        lines.push(`- All-time: ${positive.length} orders, RM ${sum(positive).toFixed(2)} revenue`);
+        const aov = last30.length ? (sum(last30)/last30.length) : 0;
+        lines.push(`- AOV (last 30d): RM ${aov.toFixed(2)}`);
+
+        // Top products last 30d
+        const skuTally = {};
+        last30.forEach(s => (s.items||[]).forEach(it => {
+            const k = it.sku || it.name || 'unknown';
+            skuTally[k] = skuTally[k] || { qty: 0, revenue: 0, name: it.name||k };
+            skuTally[k].qty += parseInt(it.qty)||0;
+            skuTally[k].revenue += (parseFloat(it.price)||0) * (parseInt(it.qty)||0);
+        }));
+        const topProducts = Object.entries(skuTally).sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,10);
+        if(topProducts.length) {
+            lines.push('### Top 10 products (last 30d, by revenue):');
+            topProducts.forEach(([sku, d]) => {
+                lines.push(`  - ${d.name} (${sku}): ${d.qty} units, RM ${d.revenue.toFixed(2)}`);
+            });
+        }
+    }
+
+    // ----- INVENTORY (low stock + total qty) -----
+    if(typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches) &&
+       typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+        const totalQty = inventoryBatches.reduce((s, b) => s + (b.qty_remaining||0), 0);
+        const skuQty = {};
+        inventoryBatches.forEach(b => {
+            if((b.qty_remaining||0) > 0) skuQty[b.sku] = (skuQty[b.sku]||0) + b.qty_remaining;
+        });
+        const lowStock = masterProducts
+            .map(p => ({ sku: p.sku, name: p.name, qty: skuQty[p.sku] || 0 }))
+            .filter(x => x.qty < 5)
+            .slice(0, 20);
+        lines.push('\n## Inventory');
+        lines.push(`- Total products in master: ${masterProducts.length}`);
+        lines.push(`- Total stock units across all batches: ${totalQty}`);
+        if(lowStock.length) {
+            lines.push(`### Low stock (qty < 5, max 20 shown):`);
+            lowStock.forEach(x => lines.push(`  - ${x.name} (${x.sku}): ${x.qty}`));
+        }
+    }
+
+    // ----- CUSTOMERS (top spenders, total) -----
+    if(typeof customersData !== 'undefined' && Array.isArray(customersData)) {
+        const sorted = [...customersData].sort((a,b)=>(b.total_spent||0)-(a.total_spent||0));
+        const vip = sorted.filter(c => c.is_member).length;
+        const b2b = sorted.filter(c => c.is_b2b).length;
+        lines.push('\n## Customers');
+        lines.push(`- Total customers: ${customersData.length} (VIP: ${vip}, B2B: ${b2b})`);
+        lines.push('### Top 10 by lifetime spend (names anonymized):');
+        sorted.slice(0,10).forEach((c, i) => {
+            const initial = (c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,3);
+            lines.push(`  - #${i+1} ${initial}*** : RM ${(c.total_spent||0).toFixed(2)} (${c.total_orders||0} orders)`);
+        });
+    }
+
+    // ----- STAFF perf (sales-by-staff last 30d) -----
+    if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+        const last30 = salesHistory.filter(s => s.created_at && (now - new Date(s.created_at).getTime() < 30*24*3600*1000) && (s.total||0)>0);
+        const staffTally = {};
+        last30.forEach(s => {
+            const name = s.staff_name || 'Unattributed';
+            staffTally[name] = staffTally[name] || { count:0, rev:0 };
+            staffTally[name].count++;
+            staffTally[name].rev += (s.total||0);
+        });
+        const staffSorted = Object.entries(staffTally).sort((a,b)=>b[1].rev-a[1].rev);
+        if(staffSorted.length) {
+            lines.push('\n## Staff performance (last 30d):');
+            staffSorted.forEach(([name, d]) => lines.push(`  - ${name}: ${d.count} orders, RM ${d.rev.toFixed(2)}`));
+        }
+    }
+
+    lines.push(`\n## Snapshot generated: ${new Date().toLocaleString('en-MY')}`);
+    return lines.join('\n');
+}
+
+window.__askExample = function(q) {
+    const inp = document.getElementById('askInput');
+    if(inp) { inp.value = q; window.__askSend(); }
+};
+
+window.__askSend = async function() {
+    const inp = document.getElementById('askInput');
+    const thread = document.getElementById('askThread');
+    if(!inp || !thread) return;
+    const q = inp.value.trim();
+    if(!q) return;
+    inp.value = '';
+
+    // Append user bubble
+    const userBubble = document.createElement('div');
+    userBubble.className = 'card';
+    userBubble.style.cssText = 'padding:12px; background:#EFF6FF; border-left:4px solid #3B82F6;';
+    userBubble.innerHTML = `<div style="font-size:11px; color:#1E40AF; font-weight:700; margin-bottom:4px;">🧑 Anda</div><div style="white-space:pre-wrap;">${q.replace(/[<>]/g, c=>({ '<':'&lt;','>':'&gt;'})[c])}</div>`;
+    thread.prepend(userBubble);
+
+    // Pending bubble
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'card';
+    aiBubble.style.cssText = 'padding:12px; background:#F0FDF4; border-left:4px solid #10B981;';
+    aiBubble.innerHTML = `<div style="font-size:11px; color:#166534; font-weight:700; margin-bottom:4px;">✨ 10 CAMP AI</div><div style="color:#666;"><em>Berfikir…</em></div>`;
+    thread.prepend(aiBubble);
+
+    try {
+        const ctx = __askBuildContextSummary();
+        const r = await fetch('/api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: q, context_summary: ctx })
+        });
+        const data = await r.json();
+        if(!r.ok || !data.ok) {
+            const errMsg = data.error || 'unknown';
+            const help = errMsg.includes('ANTHROPIC_API_KEY')
+                ? '<br><small style="color:#666;">Setup: tambah <code>ANTHROPIC_API_KEY</code> di Netlify dashboard → Site settings → Environment variables → Save → Re-deploy.</small>'
+                : '';
+            aiBubble.innerHTML = `<div style="font-size:11px; color:#991B1B; font-weight:700; margin-bottom:4px;">⚠ Error</div><div>${errMsg}${help}</div>`;
+            return;
+        }
+        const ans = (data.answer||'').replace(/[<>]/g, c=>({ '<':'&lt;','>':'&gt;'})[c]);
+        const formatted = ans.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        aiBubble.innerHTML = `<div style="font-size:11px; color:#166534; font-weight:700; margin-bottom:4px;">✨ 10 CAMP AI <span style="font-weight:400; color:#999;">· ${data.usage_input||0} in / ${data.usage_output||0} out tokens</span></div><div>${formatted}</div>`;
+    } catch(e) {
+        aiBubble.innerHTML = `<div style="font-size:11px; color:#991B1B; font-weight:700; margin-bottom:4px;">⚠ Network error</div><div>${(e.message||'').slice(0,200)}</div>`;
+    }
+};
+
+window.renderAskSection = async function() {
+    // Probe API status
+    const statusEl = document.getElementById('askApiStatus');
+    if(statusEl) {
+        statusEl.innerHTML = '<em>Checking API…</em>';
+        try {
+            const r = await fetch('/api/ask');
+            const d = await r.json();
+            if(d.ok && d.api_key_configured) {
+                statusEl.innerHTML = `✅ AI ready · model: <code>${d.model}</code>`;
+                statusEl.style.color = '#10B981';
+            } else if(d.ok && !d.api_key_configured) {
+                statusEl.innerHTML = `⚠ <code>ANTHROPIC_API_KEY</code> not set in Netlify env vars. <a href="https://app.netlify.com" target="_blank">Setup →</a>`;
+                statusEl.style.color = '#D97706';
+            } else {
+                statusEl.innerHTML = `⚠ API endpoint not deployed yet (waiting for Netlify build).`;
+                statusEl.style.color = '#D97706';
+            }
+        } catch(e) {
+            statusEl.innerHTML = `⚠ Network: ${e.message}. Try after deploy.`;
+            statusEl.style.color = '#DC2626';
+        }
+    }
+};
