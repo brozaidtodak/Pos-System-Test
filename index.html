@@ -1031,8 +1031,14 @@
             <div class="menu-item" data-group="admin" data-tab="admin_sync" onclick="switchHub(['syncSection'], 'Sync', this); if(typeof renderSyncSection==='function') renderSyncSection();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
                 <i data-lucide="git-merge" style="width:16px; height:16px;"></i> Sync
             </div>
-            <div class="menu-item" data-group="admin" data-tab="admin_compliance" onclick="switchHub(['complianceSection'], 'Compliance &amp; Settings', this); if(typeof renderCompliancePanel==='function') renderCompliancePanel();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
-                <i data-lucide="shield-check" style="width:16px; height:16px;"></i> Compliance &amp; Settings
+            <div class="menu-item" data-group="admin" data-tab="admin_settings" onclick="window.openComplianceFiltered('settings', 'shop', 'Shop Settings'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="settings" style="width:16px; height:16px;"></i> Shop Settings
+            </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_payments" onclick="window.openComplianceFiltered('payments', 'duitnow', 'Payments'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="credit-card" style="width:16px; height:16px;"></i> Payments
+            </div>
+            <div class="menu-item" data-group="admin" data-tab="admin_compliance" onclick="window.openComplianceFiltered('compliance', 'sst', 'Compliance &amp; Tax'); document.querySelectorAll('.menu-item').forEach(m=>m.classList.remove('active')); this.classList.add('active');" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+                <i data-lucide="shield-check" style="width:16px; height:16px;"></i> Compliance &amp; Tax
             </div>
     <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
             <div class="menu-item" id="sidebarRoadmapBtn" data-tab="roadmap" onclick="switchHub(['roadmapSection'], 'Roadmap &amp; Progress', this); if(typeof renderRoadmap==='function') renderRoadmap();" style="background:linear-gradient(135deg, var(--primary), #A05F22); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 14px; border-radius:10px; box-shadow:0 4px 12px rgba(205,124,50,0.28); margin:6px 0 4px 0;">
@@ -3552,7 +3558,8 @@
                 { id:'p1_12', label:'Sales Department lean refactor (4 daily items only; admin-tier moved to Manager mode)', d:'done' },
                 { id:'p1_13', label:'Inventory Department refactor (drop legacy duplicate; rename consistent EN; ordered by daily-ops frequency; Reports group; Bulk Ops moved to Manager)', d:'done' },
                 { id:'p1_14', label:'Sidebar split: HR Department (Staff/Roster/Attendance) separated from Admin & Reports (Dashboard/Sales/CRM/Finance/System)', d:'done' },
-                { id:'p1_15', label:'Admin & Reports refactor (4 subsections: Reports / Customer / Sales Tools / System; renamed for EN consistency; duplicate IDs neutralised)', d:'done' }
+                { id:'p1_15', label:'Admin & Reports refactor (4 subsections: Reports / Customer / Sales Tools / System; renamed for EN consistency; duplicate IDs neutralised)', d:'done' },
+                { id:'p1_16', label:'Compliance section split into 3 entries (Shop Settings / Payments / Compliance & Tax) via category-filtered tab bar', d:'done' }
               ]},
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -6018,14 +6025,14 @@
                 </div>
             </div>
 
-            <div class="compl-tabs">
-                <button class="compl-tab" data-tab="shop" data-status="working" onclick="window.__switchComplTab('shop')"><span class="status-dot"></span>Shop Info</button>
-                <button class="compl-tab active" data-tab="sst" data-status="working" onclick="window.__switchComplTab('sst')"><span class="status-dot"></span>SST &amp; Tax</button>
-                <button class="compl-tab" data-tab="duitnow" data-status="working" onclick="window.__switchComplTab('duitnow')"><span class="status-dot"></span>DuitNow QR</button>
-                <button class="compl-tab" data-tab="ewallet" data-status="stub" onclick="window.__switchComplTab('ewallet')"><span class="status-dot"></span>E-Wallets</button>
-                <button class="compl-tab" data-tab="einvoice" data-status="stub" onclick="window.__switchComplTab('einvoice')"><span class="status-dot"></span>e-Invoice MyInvois</button>
-                <button class="compl-tab" data-tab="pdpa" data-status="working" onclick="window.__switchComplTab('pdpa')"><span class="status-dot"></span>PDPA</button>
-                <button class="compl-tab" data-tab="returns" data-status="stub" onclick="window.__switchComplTab('returns')"><span class="status-dot"></span>Returns</button>
+            <div class="compl-tabs" id="complTabBar">
+                <button class="compl-tab" data-tab="shop"     data-category="settings"   data-status="working" onclick="window.__switchComplTab('shop')"><span class="status-dot"></span>Shop Info</button>
+                <button class="compl-tab active" data-tab="sst" data-category="compliance" data-status="working" onclick="window.__switchComplTab('sst')"><span class="status-dot"></span>SST &amp; Tax</button>
+                <button class="compl-tab" data-tab="duitnow"  data-category="payments"   data-status="working" onclick="window.__switchComplTab('duitnow')"><span class="status-dot"></span>DuitNow QR</button>
+                <button class="compl-tab" data-tab="ewallet"  data-category="payments"   data-status="stub"    onclick="window.__switchComplTab('ewallet')"><span class="status-dot"></span>E-Wallets</button>
+                <button class="compl-tab" data-tab="einvoice" data-category="compliance" data-status="stub"    onclick="window.__switchComplTab('einvoice')"><span class="status-dot"></span>e-Invoice MyInvois</button>
+                <button class="compl-tab" data-tab="pdpa"     data-category="compliance" data-status="working" onclick="window.__switchComplTab('pdpa')"><span class="status-dot"></span>PDPA</button>
+                <button class="compl-tab" data-tab="returns"  data-category="compliance" data-status="stub"    onclick="window.__switchComplTab('returns')"><span class="status-dot"></span>Returns</button>
             </div>
 
             <!-- TAB 0 — Shop Info -->
@@ -7515,7 +7522,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=83"></script>
+    <script src="app.js?v=84"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -9896,3 +9896,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const dbBtn = document.querySelector('[data-tab="inv_database"]');
     if(dbBtn) dbBtn.addEventListener('click', () => setTimeout(renderProductDatabase, 100));
 });
+
+// =============================================================
+// Compliance section — open with category filter (3 sidebar entries)
+// =============================================================
+window.openComplianceFiltered = function(category, defaultTab, title) {
+    // Show the section
+    if(typeof switchHub === 'function') switchHub(['complianceSection'], title || 'Compliance', null);
+    if(typeof renderCompliancePanel === 'function') renderCompliancePanel();
+
+    // Filter visible tabs to the category
+    document.querySelectorAll('#complTabBar .compl-tab').forEach(t => {
+        const cat = t.getAttribute('data-category');
+        const matches = !category || cat === category;
+        t.style.display = matches ? '' : 'none';
+    });
+
+    // Switch to default tab (must be in visible category)
+    if(defaultTab && typeof window.__switchComplTab === 'function') {
+        setTimeout(() => window.__switchComplTab(defaultTab), 50);
+    }
+
+    // Update breadcrumb if the function exists
+    if(typeof updateBreadcrumb === 'function') updateBreadcrumb(title);
+};
+
+// Reset filter (show all tabs)
+window.openComplianceAll = function() {
+    document.querySelectorAll('#complTabBar .compl-tab').forEach(t => { t.style.display = ''; });
+    if(typeof switchHub === 'function') switchHub(['complianceSection'], 'Compliance & Settings', null);
+    if(typeof renderCompliancePanel === 'function') renderCompliancePanel();
+};
