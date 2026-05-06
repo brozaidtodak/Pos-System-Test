@@ -222,9 +222,10 @@
             <div style="background:#FAFAFA; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:15px;">
                 <label class="small-lbl">1. Maklumat CRM &amp; E-Resit</label>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <input type="text" id="customerName" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="Nama Pelanggan">
-                    <input type="tel" id="customerPhone" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="No. Telefon (Pilihan)">
+                    <input type="text" id="customerName" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="Nama Pelanggan" onchange="if(typeof checkoutVipLookup==='function')checkoutVipLookup()">
+                    <input type="tel" id="customerPhone" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="No. Telefon (Pilihan)" onchange="if(typeof checkoutVipLookup==='function')checkoutVipLookup()" onblur="if(typeof checkoutVipLookup==='function')checkoutVipLookup()">
                 </div>
+                <div id="checkoutVipBadge" style="display:none; padding:8px 12px; border-radius:6px; margin-bottom:8px; font-size:13px; font-weight:bold;"></div>
                 <input type="email" id="customerEmail" class="login-input" style="margin-bottom:5px; padding:12px; border-color:#93c5fd; background:#eff6ff;" placeholder="Alamat E-mel (Untuk Auto-Resit)">
                 <input type="text" id="customerBuyerTin" class="login-input" style="margin-top:5px; margin-bottom:5px; padding:12px;" placeholder="Buyer TIN (B2B sahaja — pilihan, untuk e-Invoice)" autocomplete="off">
                 <small style="color:#64748b; font-size:10px; display:block;">* TIN diperlukan kalau customer business yang nak claim invoice. Tinggal kosong untuk B2C.</small>
@@ -1672,14 +1673,91 @@
         <!-- SECTION: CUSTOMERS CRM                         -->
         <!-- ============================================== -->
         <div id="customersSection" class="tab-section" style="display: none;">
-            <div class="admin-card" style="padding:20px;">
-                <h2 style="margin-bottom:15px;"> Customer Database (CRM)</h2>
-                <p style="font-size:13px; color:#888; margin-bottom:20px;">Senarai pelanggan berdaftar dan maklumat keahlian.</p>
+            <h2 class="section-title" style="margin-top:20px;"><i data-lucide="users" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Customer Database (CRM)</h2>
+
+            <!-- Stats cards -->
+            <div id="crmStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+            <!-- Filter + actions bar -->
+            <div class="admin-card" style="padding:14px; margin-bottom:14px;">
+                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+                    <div><label class="small-lbl">Cari (nama / phone / email)</label><input type="text" id="crmSearch" class="login-input" placeholder="zaid / 60123 / @gmail" style="margin:0;" oninput="renderCustomersV2()"></div>
+                    <div><label class="small-lbl">Segment</label>
+                        <select id="crmSegment" class="login-input" style="margin:0;" onchange="renderCustomersV2()">
+                            <option value="">Semua</option>
+                            <option value="vip">⭐ VIP (3+ orders)</option>
+                            <option value="email_consent">📧 Email consent (430)</option>
+                            <option value="sms_consent">📱 SMS consent</option>
+                            <option value="tiktok">🎵 TikTok customers</option>
+                            <option value="shopee">🛒 Shopee customers</option>
+                            <option value="never_bought">🆕 Newsletter / never bought</option>
+                            <option value="big_spender">💎 Big spender (RM1K+)</option>
+                        </select>
+                    </div>
+                    <div><label class="small-lbl">Susun</label>
+                        <select id="crmSort" class="login-input" style="margin:0;" onchange="renderCustomersV2()">
+                            <option value="spent_desc">Total Spent (terbesar)</option>
+                            <option value="orders_desc">Total Orders (terbanyak)</option>
+                            <option value="recent">Terkini ditambah</option>
+                            <option value="name">Nama A-Z</option>
+                        </select>
+                    </div>
+                    <div><label class="small-lbl">Page Size</label>
+                        <select id="crmPageSize" class="login-input" style="margin:0;" onchange="renderCustomersV2()">
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="500">500</option>
+                            <option value="9999">Semua</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <button class="btn-primary" onclick="window.openEmailBlast()" style="background:#0EA5E9; border-color:#0EA5E9; padding:6px 10px; font-size:12px; margin:0;">📧 Email Blast</button>
+                        <button class="btn-success" onclick="window.exportCustomersCsv()" style="padding:6px 10px; font-size:12px; margin:0;">📥 Export CSV</button>
+                    </div>
+                </div>
+                <p id="crmSummaryLine" style="font-size:12px; color:#666; margin-top:10px;"></p>
+            </div>
+
+            <div class="admin-card" style="padding:0;">
                 <div class="table-responsive">
-                    <table class="inventory-table">
-                        <thead><tr><th>Nama</th><th>Telefon</th><th>Points</th><th>Member</th><th>Tindakan (Staf)</th></tr></thead>
-                        <tbody id="customersTableBody"><tr><td colspan="5"><i>Loading...</i></td></tr></tbody>
+                    <table class="data-table" style="font-size:12px;">
+                        <thead style="position:sticky; top:0; background:#FAFAFA; z-index:5;"><tr>
+                            <th>Nama</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th style="text-align:right;">Total Spent (RM)</th>
+                            <th style="text-align:right;">Orders</th>
+                            <th style="text-align:right;">Points</th>
+                            <th style="text-align:center;">Member</th>
+                            <th style="text-align:center;">Consent</th>
+                            <th>Tags</th>
+                        </tr></thead>
+                        <tbody id="customersTableBody"><tr><td colspan="9" style="text-align:center; color:#999;">Loading...</td></tr></tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMAIL BLAST COMPOSER MODAL -->
+        <div id="emailBlastOverlay" class="login-overlay" style="display:none; z-index:3700;">
+            <div class="login-box" style="max-width:680px; width:96%; padding:24px;">
+                <button onclick="document.getElementById('emailBlastOverlay').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
+                <h2 style="margin:0 0 8px;">📧 Email Blast Composer</h2>
+                <p id="emailBlastRecipients" style="font-size:13px; color:#666; margin-bottom:14px;"></p>
+
+                <label class="small-lbl">Subject</label>
+                <input type="text" id="emailBlastSubject" class="login-input" placeholder="🏕️ Promo Hari Raya 10 CAMP — 20% off semua tent!">
+
+                <label class="small-lbl">Body</label>
+                <textarea id="emailBlastBody" class="login-input" rows="10" placeholder="Salam {nama},&#10;&#10;Promo eksklusif untuk member 10 CAMP...&#10;&#10;Klik link bawah untuk shop:&#10;https://10camp.my&#10;&#10;Salam,&#10;Team 10 CAMP"></textarea>
+
+                <div style="background:#FEF3C7; border:1px solid #FCD34D; padding:10px; border-radius:6px; margin:12px 0; font-size:12px; color:#92400E;">
+                    💡 <strong>Cara guna:</strong> Klik <em>Generate</em> → fail .txt akan download dengan SUBJECT + BODY + senarai BCC. Buka email kau (Gmail/Outlook), salin kandungan & paste. Real SMTP integration untuk send terus akan datang dalam Phase 7.2.
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <button onclick="document.getElementById('emailBlastOverlay').style.display='none'" class="login-btn" style="background:#6B7280; flex:1;">Batal</button>
+                    <button onclick="window.generateEmailBlast()" class="login-btn" style="flex:2;">📥 Generate Email + BCC List</button>
                 </div>
             </div>
         </div>
@@ -2991,7 +3069,9 @@
                 { id:'p1_3', label:'Role-based menu visibility', d:'done' },
                 { id:'p1_4', label:'Sync conflict resolution', d:'done' },
                 { id:'p1_5', label:'Staff invite + permission UI', d:'done' },
-                { id:'p1_6', label:'End-of-day shift reconciliation', d:'done' }
+                { id:'p1_6', label:'End-of-day shift reconciliation', d:'done' },
+                { id:'p1_7', label:'Inventory critical fixes (Sprint 1: is_published consistency, bulk publish, stocktake PIN, write-off PIN, master full-form)', d:'done' },
+                { id:'p1_8', label:'Manager PIN reusable approval modal + audit_logs writes', d:'done' }
               ]},
             { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 🚧 Mostly Done',
               desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -3023,7 +3103,12 @@
                 { id:'p4_4', label:'Push notification untuk low stock', d:'todo' },
                 { id:'p4_5', label:'Daily memo + finance close', d:'todo' },
                 { id:'p4_6', label:'Hardware profiles (printer/drawer/scanner)', d:'todo' },
-                { id:'p4_7', label:'Customer-facing display mode', d:'todo' }
+                { id:'p4_7', label:'Customer-facing display mode', d:'todo' },
+                { id:'p4_8', label:'PO + Supplier DB + GRN flow (Sprint 2)', d:'done' },
+                { id:'p4_9', label:'Stock Aging + Snapshot reports + per-SKU reorder policy (Sprint 2-3)', d:'done' },
+                { id:'p4_10', label:'Bulk Operations (publish/price/category/bin import) — Sprint 1-2', d:'done' },
+                { id:'p4_11', label:'Sales Ledger + Product Sales Summary (post-Shopify migration)', d:'done' },
+                { id:'p4_12', label:'Stock reservation foundation (table + helpers; quote-flow wiring pending)', d:'progress' }
               ]},
             { id:'p5', num:'PHASE 5', name:'Vertical Specialization', status:'future', goal:'Pilih lane: F&B / Retail / Service', eta:'2027 H1 · Strategic',
               desc:'Generic POS = best at nothing. Kena pilih satu vertical dan double-down. F&B → Kitchen Display + table mgmt. Retail → variant matrix + bundle. Service → appointment booking. Plus advanced inventory: variant, bundle, batch/expiry, gift card, layaway.',
@@ -3047,11 +3132,16 @@
             { id:'p7', num:'PHASE 7', name:'Growth & Loyalty', status:'future', goal:'CRM automation & repeat-purchase engine', eta:'2028 H1 · Tentative',
               desc:'Sistem dah ada CRM table tapi belum trigger campaign. Turn customer data jadi repeat-purchase engine. Festival promo template (Raya/CNY/Deepavali) untuk MY context.',
               deliverables:[
-                { id:'p7_1', label:'Loyalty points + tier system', d:'todo' },
+                { id:'p7_1', label:'Loyalty points + tier system (auto-member at 3+ orders)', d:'progress' },
                 { id:'p7_2', label:'Auto re-engage (WhatsApp/email)', d:'todo' },
                 { id:'p7_3', label:'Promo engine (rules-based)', d:'todo' },
                 { id:'p7_4', label:'Customer segment analytics', d:'todo' },
-                { id:'p7_5', label:'Festival promo templates (Raya/CNY/Deepavali)', d:'todo' }
+                { id:'p7_5', label:'Festival promo templates (Raya/CNY/Deepavali)', d:'todo' },
+                { id:'p7_6', label:'Shopify catalogue + sales + customer migration (May 2024–Mar 2026 → POS DB)', d:'done' },
+                { id:'p7_7', label:'Customer DB enrichment (email + marketing consent + address + tags)', d:'done' },
+                { id:'p7_8', label:'CRM enhancement: filter by consent, tags, VIP, total spent', d:'done' },
+                { id:'p7_9', label:'Email blast generator (mailto fallback)', d:'done' },
+                { id:'p7_10', label:'VIP auto-discount at checkout (3+ order members)', d:'done' }
               ]},
             { id:'p8', num:'PHASE 8', name:'Intelligence', status:'future', goal:'AI assistant & predictive ops', eta:'2028 H2 · Vision',
               desc:'Layer AI atas data yang dah accumulate. Demand forecast, smart re-order, anomaly detection dalam audit, natural-language query untuk owner.',
@@ -3059,7 +3149,8 @@
                 { id:'p8_1', label:'Demand forecasting per SKU', d:'todo' },
                 { id:'p8_2', label:'Auto-reorder threshold tuning', d:'todo' },
                 { id:'p8_3', label:'"Tanya 10 CAMP" NL query', d:'todo' },
-                { id:'p8_4', label:'Audit anomaly alerts', d:'todo' }
+                { id:'p8_4', label:'Audit anomaly alerts', d:'todo' },
+                { id:'p8_5', label:'Velocity-based reorder auto-suggest (script-based, 22mo Shopify data)', d:'done' }
               ]}
         ]
     };
@@ -5472,6 +5563,20 @@
                     <button class="compl-btn primary" onclick="window.__saveShopInfo()" style="margin-top:10px;">💾 Save Shop Info</button>
                     <span id="shopInfoSaved" style="display:none; margin-left:10px; color:var(--success); font-size:12px; font-weight:600;">✓ Saved</span>
                 </div>
+
+                <!-- VIP discount config -->
+                <div class="compl-card" style="margin-top:14px;">
+                    <h3>⭐ VIP Member Auto-Discount</h3>
+                    <p class="sub">Customer dengan 3+ orders auto-tagged sebagai VIP. Bila phone/nama mereka match di checkout, sistem auto-apply diskaun ni. Set 0 untuk disable.</p>
+                    <div class="field-row">
+                        <div class="field"><label>VIP Discount %</label><input type="number" id="vipDiscountPct" step="0.5" min="0" max="50" placeholder="5"></div>
+                        <div class="field" style="display:flex; align-items:center;">
+                            <button class="compl-btn primary" onclick="window.__saveVipDiscount()" style="margin-top:18px;">💾 Save</button>
+                            <span id="vipDiscountSaved" style="display:none; margin-left:10px; color:var(--success); font-size:12px; font-weight:600;">✓ Saved</span>
+                        </div>
+                    </div>
+                    <p style="font-size:11px; color:#9CA3AF; margin-top:6px;">Sekarang ada <strong id="vipMemberCount">-</strong> customer yang qualify sebagai VIP (auto-tag dari Shopify migration).</p>
+                </div>
             </div>
 
             <!-- TAB 1 — SST & Tax -->
@@ -5831,6 +5936,26 @@
         if (typeof window.showToast === 'function') window.showToast('Shop info saved — receipt akan guna info baru.', 'success');
     };
 
+    window.__saveVipDiscount = function() {
+        const s = loadSettings();
+        const pct = parseFloat(document.getElementById('vipDiscountPct').value) || 0;
+        s.vip = { discountPercent: pct };
+        saveSettings(s);
+        flashStatus('vipDiscountSaved');
+        if (typeof window.showToast === 'function') window.showToast(`VIP discount set to ${pct}%`, 'success');
+    };
+
+    function hydrateVipDiscount() {
+        const s = loadSettings();
+        const pct = (s.vip && s.vip.discountPercent != null) ? s.vip.discountPercent : 5;
+        const el = document.getElementById('vipDiscountPct');
+        if (el) el.value = pct;
+        const cntEl = document.getElementById('vipMemberCount');
+        if (cntEl && typeof customersData !== 'undefined') {
+            cntEl.textContent = customersData.filter(c => c.is_member).length;
+        }
+    }
+
     // Hydrate shop fields on first render
     function hydrateShopFields(){
         const s = loadSettings().shop || {};
@@ -5839,7 +5964,7 @@
             if (el) el.value = s[k] || '';
         });
     }
-    document.addEventListener('DOMContentLoaded', hydrateShopFields);
+    document.addEventListener('DOMContentLoaded', () => { hydrateShopFields(); hydrateVipDiscount(); });
 
     // ===== SST =====
     window.__saveSstSettings = function(){
@@ -6781,7 +6906,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=69"></script>
+    <script src="app.js?v=70"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

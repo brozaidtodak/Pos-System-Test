@@ -268,7 +268,7 @@ async function initApp() {
         if(sales) salesHistory = [...salesHistory, ...sales];
 
         let { data: custs } = await db.from('customers').select('*');
-        if(custs) customersData = [...customersData, ...custs];
+        if(custs) customersData = custs;
         
         let { data: fin } = await db.from('finance_records').select('*').order('year', {ascending: false});
         if(fin) financeRecords = fin;
@@ -1392,6 +1392,12 @@ window.openPaymentModal = function() {
     let total = round2(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0));
     document.getElementById('paymentTotalDisplay').textContent = total.toFixed(2);
     document.getElementById('checkoutPaymentModal').style.display = 'flex';
+    // Reset VIP state from any previous session
+    window.__currentCheckoutVip = null;
+    const vb = document.getElementById('checkoutVipBadge'); if(vb) vb.style.display = 'none';
+    const vl = document.getElementById('checkoutVipDiscountLine'); if(vl) vl.remove();
+    // Auto-lookup if customer name/phone already filled
+    if(typeof checkoutVipLookup === 'function') checkoutVipLookup();
 }
 
 window.setPaymentMethod = function(method, btnElement) {
@@ -1517,11 +1523,37 @@ window.processNewCheckout = async function() {
              }
         }
 
+        // VIP auto-discount: apply if window.__currentCheckoutVip is set
+        let vipDiscountAmt = 0;
+        let finalTotal = totalVal;
+        const vip = window.__currentCheckoutVip;
+        if(vip && vip.discount_pct > 0) {
+            vipDiscountAmt = round2(totalVal * vip.discount_pct / 100);
+            finalTotal = round2(totalVal - vipDiscountAmt);
+        }
+
+        const saleMeta = {};
+        if(ewalletProvider) {
+            saleMeta.ewallet_provider = ewalletProvider;
+            saleMeta.ewallet_ref = ewalletRef;
+        }
+        if(vip) {
+            saleMeta.vip_discount_applied = true;
+            saleMeta.vip_discount_pct = vip.discount_pct;
+            saleMeta.vip_discount_amount = vipDiscountAmt;
+            saleMeta.vip_subtotal_before_discount = totalVal;
+            saleMeta.vip_customer_id = vip.customer_id;
+        }
+
         await db.from('sales_history').insert([{
-            customer_name: custNameText, customer_phone: custPhoneText, payment_method: pm, channel: cn, status: cst, total: totalVal, total_amount: totalVal, items: cart, staff_name: currentUser ? currentUser.name : 'Unknown',
+            customer_name: custNameText, customer_phone: custPhoneText, payment_method: pm, channel: cn, status: cst,
+            total: finalTotal, total_amount: finalTotal, items: cart,
+            staff_name: currentUser ? currentUser.name : 'Unknown',
             buyer_tin: buyerTin || null,
-            metadata: ewalletProvider ? { ewallet_provider: ewalletProvider, ewallet_ref: ewalletRef } : null
+            metadata: Object.keys(saleMeta).length ? saleMeta : null
         }]);
+        // Use finalTotal downstream
+        totalVal = finalTotal;
 
         const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
         const email = document.getElementById("customerEmail").value.trim();
@@ -1593,19 +1625,12 @@ window.viewCustomerHistory = function(cName) {
 };
 
 function renderCustomers() {
+    // Delegate to v2 if it exists (post Shopify migration enrichment)
+    if(typeof renderCustomersV2 === 'function') return renderCustomersV2();
+    // Fallback: old shape
     const tbody = document.getElementById("customersTableBody");
     if(!tbody) return;
-    tbody.innerHTML = "";
-    if(customersData.length === 0) { tbody.innerHTML = '<tr><td colspan="5">Tiada pelanggan berdaftar.</td></tr>'; return; }
-    customersData.forEach(c => {
-        tbody.innerHTML += `<tr>
-            <td><strong>${c.name}</strong></td>
-            <td>${c.phone || '-'}</td>
-            <td style="color:#F59E0B; font-weight:bold;">${c.points || 0} pts</td>
-            <td>${c.is_member ? '<span style="color:#10B981; font-weight:bold;">VIP </span>' : '<span style="color:#aaa;">Non-Member</span>'}</td>
-            <td><button onclick="viewCustomerHistory('${c.name}')" style="background:var(--bg-color); border:1px solid var(--border-color); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Lihat Rekod</button></td>
-        </tr>`;
-    });
+    tbody.innerHTML = '<tr><td colspan="9">Loading...</td></tr>';
 }
 
 // ===================================
@@ -7446,4 +7471,310 @@ window.exportProductSalesCsv = function() {
     link.download = `product_sales_summary_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
     showToast(`Exported ${all.length} rows`, 'success');
+};
+
+// ===================================
+// CRM V2 — enriched customers + segments
+// ===================================
+window.renderCustomersV2 = function() {
+    const tbody = document.getElementById('customersTableBody');
+    if(!tbody) return;
+    if(typeof customersData === 'undefined' || !Array.isArray(customersData)) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Loading customer data...</td></tr>';
+        return;
+    }
+
+    const all = customersData;
+    const q = (document.getElementById('crmSearch')?.value || '').trim().toLowerCase();
+    const segment = document.getElementById('crmSegment')?.value || '';
+    const sortMode = document.getElementById('crmSort')?.value || 'spent_desc';
+    const pageSize = parseInt(document.getElementById('crmPageSize')?.value) || 50;
+
+    let filtered = all.filter(c => {
+        if(q) {
+            const hay = `${c.name||''} ${c.phone||''} ${c.email||''} ${c.tags||''}`.toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        switch(segment) {
+            case 'vip':            if(!c.is_member) return false; break;
+            case 'email_consent':  if(!c.accepts_email_marketing) return false; break;
+            case 'sms_consent':    if(!c.accepts_sms_marketing) return false; break;
+            case 'tiktok':         if(!(c.tags||'').toLowerCase().includes('tiktok')) return false; break;
+            case 'shopee':         if(!(c.tags||'').toLowerCase().includes('shopee')) return false; break;
+            case 'never_bought':   if((c.total_orders||0) > 0) return false; break;
+            case 'big_spender':    if((c.total_spent||0) < 1000) return false; break;
+        }
+        return true;
+    });
+
+    filtered.sort((a, b) => {
+        switch(sortMode) {
+            case 'spent_desc':  return (b.total_spent||0) - (a.total_spent||0);
+            case 'orders_desc': return (b.total_orders||0) - (a.total_orders||0);
+            case 'recent':      return (b.created_at||'').localeCompare(a.created_at||'');
+            case 'name':        return (a.name||'').localeCompare(b.name||'');
+        }
+        return 0;
+    });
+
+    const totalSpent = filtered.reduce((s, c) => s + (c.total_spent||0), 0);
+    const totalOrders = filtered.reduce((s, c) => s + (c.total_orders||0), 0);
+    const vipCount = filtered.filter(c => c.is_member).length;
+    const emailConsent = filtered.filter(c => c.accepts_email_marketing).length;
+
+    document.getElementById('crmStats').innerHTML = `
+        <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Match</div><div style="font-size:18px; font-weight:bold;">${filtered.length}</div></div>
+        <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Total Spent</div><div style="font-size:18px; font-weight:bold;">RM ${totalSpent.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+        <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Total Orders</div><div style="font-size:18px; font-weight:bold;">${totalOrders}</div></div>
+        <div style="background:#FAF5FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#6B21A8;">VIP Members</div><div style="font-size:18px; font-weight:bold;">${vipCount}</div></div>
+        <div style="background:#FEE2E2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">Email Consent</div><div style="font-size:18px; font-weight:bold;">${emailConsent}</div></div>
+    `;
+
+    const slice = filtered.slice(0, pageSize);
+    document.getElementById('crmSummaryLine').innerHTML =
+        `Match: <strong>${filtered.length}</strong> · Show: <strong>${slice.length}</strong>`;
+
+    if(slice.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Tiada customer match filter.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = slice.map(c => {
+        const consent = [];
+        if(c.accepts_email_marketing) consent.push('<span title="Email consent" style="color:#10B981;">📧</span>');
+        if(c.accepts_sms_marketing) consent.push('<span title="SMS consent" style="color:#10B981;">📱</span>');
+        const tags = (c.tags || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 3);
+        const tagBadges = tags.map(t => `<span style="background:#E0E7FF; color:#3730A3; padding:1px 6px; border-radius:3px; font-size:9px; margin-right:2px;">${t}</span>`).join('');
+        const memberBadge = c.is_member
+            ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">⭐ VIP</span>'
+            : '<span style="color:#999; font-size:11px;">-</span>';
+        return `
+            <tr>
+                <td><strong>${(c.name||'').slice(0, 50)}</strong></td>
+                <td style="font-family:monospace; font-size:11px;">${c.phone || '-'}</td>
+                <td style="font-size:11px;">${c.email || '-'}</td>
+                <td style="text-align:right; font-weight:bold; color:${(c.total_spent||0) > 1000 ? '#10B981' : '#111'};">${(c.total_spent||0).toFixed(2)}</td>
+                <td style="text-align:right;">${c.total_orders || 0}</td>
+                <td style="text-align:right; color:#F59E0B; font-weight:bold;">${c.points || 0}</td>
+                <td style="text-align:center;">${memberBadge}</td>
+                <td style="text-align:center; font-size:14px;">${consent.join(' ') || '<span style="color:#999;">-</span>'}</td>
+                <td>${tagBadges || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.exportCustomersCsv = function() {
+    if(typeof customersData === 'undefined') return showToast('No data', 'warn');
+    const q = (document.getElementById('crmSearch')?.value || '').trim().toLowerCase();
+    const segment = document.getElementById('crmSegment')?.value || '';
+    const all = customersData.filter(c => {
+        if(q) {
+            const hay = `${c.name||''} ${c.phone||''} ${c.email||''}`.toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        switch(segment) {
+            case 'vip':            return c.is_member;
+            case 'email_consent':  return c.accepts_email_marketing;
+            case 'sms_consent':    return c.accepts_sms_marketing;
+            case 'tiktok':         return (c.tags||'').toLowerCase().includes('tiktok');
+            case 'shopee':         return (c.tags||'').toLowerCase().includes('shopee');
+            case 'never_bought':   return (c.total_orders||0) === 0;
+            case 'big_spender':    return (c.total_spent||0) >= 1000;
+        }
+        return true;
+    });
+
+    const header = ['Name','Phone','Email','Total_Spent_RM','Total_Orders','Points','Is_Member','Email_Consent','SMS_Consent','Tags','Address_City','Address_State'];
+    const csv = [header.join(',')].concat(all.map(c => {
+        const addr = c.address || {};
+        return [
+            `"${(c.name||'').replace(/"/g, '""')}"`,
+            c.phone || '',
+            c.email || '',
+            (c.total_spent||0).toFixed(2),
+            c.total_orders || 0,
+            c.points || 0,
+            c.is_member ? 'yes' : 'no',
+            c.accepts_email_marketing ? 'yes' : 'no',
+            c.accepts_sms_marketing ? 'yes' : 'no',
+            `"${(c.tags||'').replace(/"/g, '""')}"`,
+            `"${addr.city || ''}"`,
+            `"${addr.state || ''}"`
+        ].join(',');
+    })).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `customers_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast(`Exported ${all.length} customers`, 'success');
+};
+
+// ===================================
+// EMAIL BLAST GENERATOR (mailto fallback)
+// ===================================
+window.openEmailBlast = function() {
+    if(typeof customersData === 'undefined') return showToast('No customer data', 'warn');
+    const segment = document.getElementById('crmSegment')?.value || '';
+    // Auto-suggest: if user already filtered email_consent, use that. Else default to consent-only.
+    const eligible = customersData.filter(c => c.email && c.accepts_email_marketing);
+    document.getElementById('emailBlastRecipients').innerHTML =
+        `<strong>${eligible.length}</strong> customers dengan email consent · ${customersData.filter(c => c.accepts_sms_marketing).length} dengan SMS consent.<br>` +
+        `<span style="color:#666;">Email blast ni ambik HANYA yang ada email + accepts_email_marketing=true (compliance).</span>`;
+    document.getElementById('emailBlastOverlay').style.display = 'flex';
+};
+
+window.generateEmailBlast = function() {
+    const subject = (document.getElementById('emailBlastSubject').value || '').trim();
+    const body = (document.getElementById('emailBlastBody').value || '').trim();
+    if(!subject || !body) return showToast('Subject + body wajib diisi.', 'warn');
+
+    const eligible = customersData.filter(c => c.email && c.accepts_email_marketing);
+    if(eligible.length === 0) return showToast('Tiada customer dengan email consent.', 'warn');
+
+    const bccList = eligible.map(c => c.email).join(', ');
+    const fileContent =
+        `EMAIL BLAST PACKAGE — Generated ${new Date().toISOString()}\n` +
+        `Total recipients: ${eligible.length}\n` +
+        `=====================================\n\n` +
+        `SUBJECT:\n${subject}\n\n` +
+        `BODY:\n${body}\n\n` +
+        `=====================================\n` +
+        `BCC LIST (${eligible.length} addresses, comma-separated):\n${bccList}\n\n` +
+        `=====================================\n` +
+        `BCC LIST (one per line):\n${eligible.map(c => c.email).join('\n')}\n`;
+
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `email_blast_${new Date().toISOString().slice(0,16).replace(':','')}.txt`;
+    link.click();
+
+    // Audit log
+    try {
+        db.from('audit_logs').insert([{
+            action_type: 'email_blast_generated',
+            actor_name: currentUser ? currentUser.name : 'System',
+            details: JSON.stringify({ subject, recipient_count: eligible.length, segment: 'email_consent' }),
+            created_at: new Date().toISOString()
+        }]).then(() => {});
+    } catch(_){}
+
+    showToast(`Email package generated for ${eligible.length} recipients`, 'success');
+    document.getElementById('emailBlastOverlay').style.display = 'none';
+};
+
+// ===================================
+// VIP AUTO-DISCOUNT
+// ===================================
+window.__currentCheckoutVip = null;
+
+function getVipDiscountPercent() {
+    try {
+        const s = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}');
+        return parseFloat(s?.vip?.discountPercent) || 5;  // default 5%
+    } catch(e) { return 5; }
+}
+
+function normalisePhoneForMatch(raw) {
+    if(!raw) return null;
+    const digits = String(raw).replace(/\D/g, '');
+    if(!digits || digits.length < 7) return null;
+    if(digits.startsWith('60')) return digits;
+    if(digits.startsWith('0')) return '60' + digits.slice(1);
+    return digits;
+}
+
+window.checkoutVipLookup = function() {
+    const nameEl = document.getElementById('customerName');
+    const phoneEl = document.getElementById('customerPhone');
+    const badge = document.getElementById('checkoutVipBadge');
+    const totalDisplay = document.getElementById('paymentTotalDisplay');
+    if(!badge) return;
+
+    const name = (nameEl?.value || '').trim().toLowerCase();
+    const phoneRaw = (phoneEl?.value || '').trim();
+    const phone = normalisePhoneForMatch(phoneRaw);
+
+    let match = null;
+    if(typeof customersData !== 'undefined' && Array.isArray(customersData)) {
+        if(phone) {
+            match = customersData.find(c => c.phone === phone);
+        }
+        if(!match && name && name.length >= 3) {
+            match = customersData.find(c => (c.name || '').toLowerCase() === name);
+        }
+    }
+
+    window.__currentCheckoutVip = null;
+    if(!match) {
+        badge.style.display = 'none';
+        recomputeCheckoutTotal();
+        return;
+    }
+
+    if(match.is_member) {
+        const pct = getVipDiscountPercent();
+        window.__currentCheckoutVip = {
+            customer_id: match.id,
+            customer_name: match.name,
+            customer_phone: match.phone,
+            discount_pct: pct,
+            total_orders: match.total_orders || 0,
+            total_spent: match.total_spent || 0
+        };
+        badge.style.background = '#FEF3C7';
+        badge.style.color = '#92400E';
+        badge.style.border = '2px solid #FCD34D';
+        badge.style.display = 'block';
+        badge.innerHTML = `⭐ <strong>VIP MEMBER</strong> · ${match.name} · ${match.total_orders} orders · RM${(match.total_spent||0).toFixed(0)} spent — auto-discount <strong>${pct}%</strong> applied`;
+    } else {
+        badge.style.background = '#EFF6FF';
+        badge.style.color = '#1E40AF';
+        badge.style.border = '1px solid #BFDBFE';
+        badge.style.display = 'block';
+        badge.innerHTML = `👤 Customer found · ${match.name} · ${match.total_orders||0} order(s) · RM${(match.total_spent||0).toFixed(0)} spent — needs ${3 - (match.total_orders||0)} more order to unlock VIP`;
+    }
+    recomputeCheckoutTotal();
+};
+
+window.recomputeCheckoutTotal = function() {
+    const totalEl = document.getElementById('paymentTotalDisplay');
+    if(!totalEl) return;
+    // Read raw cart total
+    const cart = (typeof window.cart !== 'undefined' && Array.isArray(window.cart)) ? window.cart : (typeof cart !== 'undefined' ? cart : []);
+    let raw = 0;
+    cart.forEach(it => { raw += (it.qty || 1) * (parseFloat(it.price) || 0); });
+    let final = raw;
+    let discountAmt = 0;
+    if(window.__currentCheckoutVip) {
+        discountAmt = round2(raw * window.__currentCheckoutVip.discount_pct / 100);
+        final = round2(raw - discountAmt);
+    }
+    totalEl.textContent = final.toFixed(2);
+    // Tag in DOM as data-attrs for downstream
+    totalEl.setAttribute('data-raw', raw.toFixed(2));
+    totalEl.setAttribute('data-discount', discountAmt.toFixed(2));
+    totalEl.setAttribute('data-final', final.toFixed(2));
+
+    // Update line if exists
+    let vipLine = document.getElementById('checkoutVipDiscountLine');
+    if(window.__currentCheckoutVip && discountAmt > 0) {
+        if(!vipLine) {
+            const parent = totalEl.closest('p, div');
+            if(parent) {
+                parent.insertAdjacentHTML('afterend',
+                    `<p id="checkoutVipDiscountLine" style="font-size:12px; color:#92400E; margin:-12px 0 12px 0;">⭐ VIP discount: −RM <strong>${discountAmt.toFixed(2)}</strong> (${window.__currentCheckoutVip.discount_pct}% off RM ${raw.toFixed(2)})</p>`);
+            }
+        } else {
+            vipLine.innerHTML = `⭐ VIP discount: −RM <strong>${discountAmt.toFixed(2)}</strong> (${window.__currentCheckoutVip.discount_pct}% off RM ${raw.toFixed(2)})`;
+            vipLine.style.display = 'block';
+        }
+    } else if(vipLine) {
+        vipLine.style.display = 'none';
+    }
 };
