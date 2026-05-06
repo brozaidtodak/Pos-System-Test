@@ -13,6 +13,85 @@ try {
 }
 
 
+// Money helper: avoid float-drift accumulation. Use after every += / arithmetic
+// that contributes to a money total. Display layers can still toFixed(2).
+window.round2 = function(n) { return Math.round((parseFloat(n) || 0) * 100) / 100; };
+const round2 = window.round2;
+
+// Loading overlay: full-screen translucent block during long ops.
+window.showLoading = function(msg) {
+    let el = document.getElementById('__globalLoadingOverlay');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = '__globalLoadingOverlay';
+        el.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:9998; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);';
+        el.innerHTML = '<div style="background:#fff; padding:24px 32px; border-radius:12px; display:flex; align-items:center; gap:14px; box-shadow:0 8px 32px rgba(0,0,0,.2); min-width:240px;"><div style="width:24px; height:24px; border:3px solid #e5e7eb; border-top-color:#CD7C32; border-radius:50%; animation:spin 0.8s linear infinite;"></div><div id="__globalLoadingMsg" style="font-weight:600; color:#111; font-size:14px;">Loading...</div></div>';
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+        el.appendChild(style);
+        document.body.appendChild(el);
+    }
+    document.getElementById('__globalLoadingMsg').textContent = msg || 'Loading...';
+    el.style.display = 'flex';
+};
+window.hideLoading = function() {
+    const el = document.getElementById('__globalLoadingOverlay');
+    if (el) el.style.display = 'none';
+};
+
+// Toast: non-blocking notification. Replaces alert() for soft messages.
+window.showToast = function(msg, type) {
+    type = type || 'info';
+    const colors = {
+        info:    { bg:'#3b82f6', icon:'i' },
+        success: { bg:'#10b981', icon:'✓' },
+        warning: { bg:'#f59e0b', icon:'⚠' },
+        error:   { bg:'#dc2626', icon:'✕' }
+    };
+    const c = colors[type] || colors.info;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed; top:20px; right:20px; background:'+c.bg+'; color:#fff; padding:12px 18px; border-radius:8px; z-index:9999; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.2); max-width:340px; font-size:13.5px; display:flex; gap:10px; align-items:center; opacity:0; transform:translateX(20px); transition:opacity .25s, transform .25s;';
+    el.innerHTML = '<span style="font-size:16px;">'+c.icon+'</span><span>'+String(msg).replace(/</g,'&lt;')+'</span>';
+    document.body.appendChild(el);
+    requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(0)'; });
+    setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(20px)'; setTimeout(()=>el.remove(), 280); }, type==='error' ? 4500 : 2800);
+};
+
+// Global ESC handler: close any visible modal/overlay.
+document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    // Find topmost visible modal-like overlay
+    const candidates = document.querySelectorAll([
+        '#pinLoginOverlay', '#staffWelcomeModal', '#receiptModal',
+        '#customerLoginGate', '#smModalOverlay.active', '.sh-modal-overlay.active',
+        '.sy-conflict-modal-overlay.sy-modal-active'
+    ].join(','));
+    for (let i = candidates.length - 1; i >= 0; i--) {
+        const el = candidates[i];
+        const cs = window.getComputedStyle(el);
+        if (cs.display !== 'none' && cs.visibility !== 'hidden') {
+            if (el.classList.contains('active')) el.classList.remove('active');
+            else el.style.display = 'none';
+            return;
+        }
+    }
+});
+
+// Shop info — used in receipt header, defaults if not configured.
+window.getShopInfo = function() {
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem('complianceSettings_v1')) || {}; } catch(e){}
+    const defaults = {
+        name: '10 CAMP',
+        address: '',
+        phone: '',
+        email: 'zaid@10camp.com',
+        ssm: '',
+        footer: 'THANK YOU FOR SHOPPING AT 10 CAMP'
+    };
+    return Object.assign({}, defaults, (s && s.shop) || {});
+};
+
 // Pagination Defaults
 let publicCurrentPage = 1;
 let posCurrentPage = 1;
@@ -151,7 +230,11 @@ window.toggleMobileCartSheet = function() {
 
 
 
+let __initAppCount = 0;
 async function initApp() {
+    __initAppCount++;
+    const isFirstLoad = __initAppCount === 1;
+    if (isFirstLoad && typeof showLoading === 'function') showLoading('Memuatkan data dari awan...');
     try {
         console.log("Loading Cloud Omnichannel Data...");
         let { data: master } = await db.from('products_master').select('*');
@@ -258,31 +341,97 @@ async function initApp() {
         if(typeof renderMgmtInventory === 'function') renderMgmtInventory();
         autoClockOutUnclosed();
         if(typeof renderPersonalCommission === "function") renderPersonalCommission();
+        if (isFirstLoad) handleReorderParam();
     } catch(e) {
-        alert("Server Error: " + e.message);
+        if (typeof showToast === 'function') showToast('Server Error: ' + e.message, 'error'); else alert('Server Error: ' + e.message);
+    } finally {
+        if (isFirstLoad && typeof hideLoading === 'function') hideLoading();
+    }
+}
+
+// p3_2 Reorder: parse ?reorder=<base64> and pre-fill cart with matching SKUs
+function handleReorderParam() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const b64 = params.get('reorder');
+        if (!b64) return;
+        const minimal = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(b64)))));
+        if (!Array.isArray(minimal) || !minimal.length) return;
+
+        let added = 0; let missing = [];
+        minimal.forEach(it => {
+            const sku = it.s; const qty = parseInt(it.q)||1;
+            const product = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.find(p => p.sku === sku) : null;
+            if (!product) { missing.push(sku); return; }
+            const existing = cart.find(c => c.sku === sku);
+            if (existing) existing.quantity += qty;
+            else cart.push({ sku, name: product.name, price: parseFloat(product.price)||0, quantity: qty });
+            added++;
+        });
+
+        if (typeof renderCart === 'function') renderCart();
+
+        const msg = added > 0
+            ? `✓ ${added} item dari reorder link ditambah ke troli`+(missing.length?` (${missing.length} SKU dah tak wujud)`:'')
+            : 'Reorder link rosak atau semua item dah tak available.';
+        if (typeof showToast === 'function') showToast(msg, added>0?'success':'warning');
+
+        // Clean URL so refresh tak re-trigger
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    } catch(e) {
+        console.warn('[reorder] parse failed:', e);
+        if (typeof showToast === 'function') showToast('Reorder link rosak (decode gagal).', 'error');
     }
 }
 
 // ===================================
 // ANALYTICS DASHBOARD (FASA 4)
 // ===================================
+// Dashboard date range state — default Today
+window.__dashRange = window.__dashRange || 'today';
+window.__setDashRange = function(range, btn) {
+    window.__dashRange = range;
+    document.querySelectorAll('.dash-pill').forEach(p => p.classList.toggle('active', p === btn));
+    const customWrap = document.getElementById('dashCustomWrap');
+    if (customWrap) customWrap.classList.toggle('active', range === 'custom');
+    if (range !== 'custom') renderDashboard();
+};
+window.__dashGoto = function(tab) {
+    const item = document.querySelector('.menu-item[data-tab="'+tab+'"]');
+    if (item) item.click();
+    else if (typeof showToast === 'function') showToast('Menu "'+tab+'" tak dijumpai', 'warning');
+};
+function __getDashDateRange() {
+    const r = window.__dashRange || 'today';
+    const now = new Date();
+    const startOf = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+    const endOf   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+    if (r === 'today')     return { start: startOf(now), end: endOf(now), label: 'Today' };
+    if (r === 'yesterday') { const y = new Date(now); y.setDate(y.getDate()-1); return { start: startOf(y), end: endOf(y), label: 'Yesterday' }; }
+    if (r === '7d')        { const s = new Date(now); s.setDate(s.getDate()-6); return { start: startOf(s), end: endOf(now), label: 'Last 7 days' }; }
+    if (r === '30d')       { const s = new Date(now); s.setDate(s.getDate()-29); return { start: startOf(s), end: endOf(now), label: 'Last 30 days' }; }
+    if (r === 'mtd')       { const s = new Date(now.getFullYear(), now.getMonth(), 1); return { start: startOf(s), end: endOf(now), label: 'Month-to-date' }; }
+    if (r === 'all')       return { start: null, end: null, label: 'All time' };
+    if (r === 'custom')    {
+        const ss = document.getElementById('dashStartDate')?.value;
+        const ee = document.getElementById('dashEndDate')?.value;
+        return { start: ss ? startOf(new Date(ss)) : null, end: ee ? endOf(new Date(ee)) : null, label: (ss||'?')+' → '+(ee||'?') };
+    }
+    return { start: null, end: null, label: '—' };
+}
+
 window.renderDashboard = function() {
-    const startStr = document.getElementById('dashStartDate').value;
-    const endStr = document.getElementById('dashEndDate').value;
-    
-    // 1. Array Filtering by Date
+    const range = __getDashDateRange();
     let filteredSales = salesHistory;
-    if(startStr && endStr) {
-        const dStart = new Date(startStr);  
-        dStart.setHours(0,0,0,0);
-        const dEnd = new Date(endStr);      
-        dEnd.setHours(23,59,59,999);
-        
+    if (range.start && range.end) {
         filteredSales = salesHistory.filter(s => {
             const sd = new Date(s.created_at);
-            return sd >= dStart && sd <= dEnd;
+            return sd >= range.start && sd <= range.end;
         });
     }
+    const rangeLabelEl = document.getElementById('dashRangeLabel');
+    if (rangeLabelEl) rangeLabelEl.textContent = '— ' + range.label;
 
     // 2. Compute Core Metrics
     let totalSales = 0;
@@ -293,7 +442,7 @@ window.renderDashboard = function() {
 
     filteredSales.forEach(sale => {
         let rev = Number(sale.total || sale.total_amount || 0);
-        totalSales += rev;
+        totalSales = round2(totalSales + rev);
         
         // Channels
         let ch = sale.channel || 'In-Store';
@@ -313,18 +462,31 @@ window.renderDashboard = function() {
                 let sKey = item.sku;
                 if(!itemCounts[sKey]) itemCounts[sKey] = { name: item.name, qty: 0, revenue: 0 };
                 itemCounts[sKey].qty += Number(item.quantity);
-                itemCounts[sKey].revenue += (Number(item.price) * Number(item.quantity));
+                itemCounts[sKey].revenue = round2(itemCounts[sKey].revenue + Number(item.price) * Number(item.quantity));
             });
         }
     });
 
-    document.getElementById("dashTotalSales").textContent = totalSales.toFixed(2);
+    const fmtMoney = (n) => Number(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById("dashTotalSales").textContent = fmtMoney(totalSales);
     document.getElementById("dashTotalOrders").textContent = filteredSales.length;
 
-    // Top Channel logic
-    let tChannel = "None"; let tVal = -1;
-    for (let k in channelFreq) { if(channelFreq[k] > tVal) { tChannel = k; tVal = channelFreq[k]; } }
+    // Average Order Value
+    const aov = filteredSales.length ? round2(totalSales / filteredSales.length) : 0;
+    const aovEl = document.getElementById("dashAOV");
+    if (aovEl) aovEl.textContent = 'RM ' + fmtMoney(aov);
+
+    // Top Channel + share %
+    let tChannel = "—"; let tVal = -1; let totalChVal = 0;
+    for (let k in channelFreq) { totalChVal += channelFreq[k]; if(channelFreq[k] > tVal) { tChannel = k; tVal = channelFreq[k]; } }
     document.getElementById("dashTopChannel").textContent = tChannel;
+    const shareEl = document.getElementById("dashTopChannelShare");
+    if (shareEl) {
+        if (totalChVal > 0 && tVal > 0) {
+            const pct = Math.round((tVal / totalChVal) * 100);
+            shareEl.textContent = pct + '% of revenue · RM ' + fmtMoney(tVal);
+        } else { shareEl.textContent = 'No sales in range'; }
+    }
 
     // Status Board Update
     document.getElementById("badgeToFulfil").textContent = statusToFulfil;
@@ -363,20 +525,24 @@ window.renderDashboard = function() {
     tbodyLines.innerHTML = "";
     if(topArr.length === 0) tbodyLines.innerHTML = "<tr><td>No sales data</td></tr>";
     
-    topArr.forEach((o, i) => {
-        tbodyLines.innerHTML += `<tr>
-            <td style="width:20px; font-weight:bold; color:#888;">#${i+1}</td>
-            <td><strong>${o.name}</strong></td>
-            <td style="color:#000000; font-weight:bold;">${o.qty} Sold</td>
-            <td style="text-align:right;">RM${o.revenue.toFixed(2)}</td>
-        </tr>`;
-    });
+    if (topArr.length === 0) {
+        tbodyLines.innerHTML = '<tr><td colspan="4" style="padding:18px; text-align:center; color:var(--text-muted); font-size:12.5px;">Belum ada sales dalam range ni. Pilih range lebih luas atau buat sale pertama.</td></tr>';
+    } else {
+        topArr.forEach((o, i) => {
+            tbodyLines.innerHTML += `<tr style="cursor:pointer;" onclick="window.__dashGoto('inv_mapping')">
+                <td style="width:24px; font-weight:bold; color:#888;">#${i+1}</td>
+                <td><strong>${o.name}</strong></td>
+                <td style="color:#10b981; font-weight:700;">${o.qty} sold</td>
+                <td style="text-align:right; font-weight:600;">RM ${fmtMoney(o.revenue)}</td>
+            </tr>`;
+        });
+    }
 
     // 6. Draw Chart.js (Daily Sales)
     let dailyMap = {};
     filteredSales.forEach(s => {
         let dStr = new Date(s.created_at).toLocaleDateString('en-GB'); 
-        dailyMap[dStr] = (dailyMap[dStr] || 0) + Number(s.total || s.total_amount || 0);
+        dailyMap[dStr] = round2((dailyMap[dStr] || 0) + Number(s.total || s.total_amount || 0));
     });
     // Sort chronological
     let sortedDates = Object.keys(dailyMap).sort((a,b)=> new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')));
@@ -392,18 +558,28 @@ window.renderDashboard = function() {
         data: {
             labels: gLabels,
             datasets: [{
-                label: 'Gross Sales (RM)',
+                label: 'RM',
                 data: gData,
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                borderColor: '#000000',
+                backgroundColor: 'rgba(205, 124, 50, 0.12)',
+                borderColor: '#CD7C32',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.3,
-                pointRadius: 4
+                tension: 0.35,
+                pointRadius: gData.length > 14 ? 0 : 2,
+                pointHoverRadius: 4
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => 'RM ' + Number(c.parsed.y).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) } } },
+            scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+        }
     });
+
+    // Freshness timestamp
+    const stamp = document.getElementById('dashFreshStamp');
+    if (stamp) stamp.textContent = new Date().toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
 }
 
 function renderHistory() {
@@ -867,7 +1043,7 @@ window.processBarcodeAudit = function() {
     let today = new Date();
     auditTimestamps[sku] = today.toLocaleString('en-MY', { weekday:'short', day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
     
-    alert(`Kiraan fizikal untuk ${sku} disahkan!`);
+    if (typeof showToast==='function') showToast(`Kiraan fizikal untuk ${sku} disahkan`, 'success'); else alert(`Kiraan fizikal untuk ${sku} disahkan!`);
     
     if (document.getElementById("auditCardsContainer").innerHTML !== "") {
         renderStockTake();
@@ -1145,7 +1321,7 @@ window.addToCart = function(sku) {
     const totalAvail = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).reduce((s, b) => s + b.qty_remaining, 0);
     const cartItem = cart.find(c => c.sku === sku);
     
-    if(cartItem) { if (cartItem.quantity < totalAvail) cartItem.quantity++; else alert("Limits reached!"); } 
+    if(cartItem) { if (cartItem.quantity < totalAvail) cartItem.quantity++; else (typeof showToast==='function'?showToast('Stok tak cukup','warning'):alert('Limits reached!')); }
     else { if (totalAvail > 0) cart.push({ sku: sku, name: p.name, price: parseFloat(p.price), quantity: 1 }); }
     renderCart();
 }
@@ -1182,7 +1358,7 @@ function renderCart() {
     }
 
     cart.forEach(item => {
-        total += item.price * item.quantity;
+        total = round2(total + item.price * item.quantity);
         totalItems += item.quantity;
         container.innerHTML += `
             <div class="cart-item">
@@ -1204,7 +1380,7 @@ function renderCart() {
 // Payment Modal Logics
 window.openPaymentModal = function() {
     if(cart.length === 0) return;
-    let total = cart.reduce((sum, c) => sum + (c.price * c.quantity), 0);
+    let total = round2(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0));
     document.getElementById('paymentTotalDisplay').textContent = total.toFixed(2);
     document.getElementById('checkoutPaymentModal').style.display = 'flex';
 }
@@ -1222,6 +1398,47 @@ window.setPaymentMethod = function(method, btnElement) {
     btnElement.style.border = "2px solid var(--primary)";
     btnElement.style.background = "#FFF5eb";
     btnElement.style.color = "var(--text-main)";
+
+    // E-Wallet sub-panel: show & populate dropdown of enabled wallets
+    const sub = document.getElementById('ewalletSubPanel');
+    if (sub) {
+        if (method === 'E-Wallet') {
+            sub.style.display = 'block';
+            const sel = document.getElementById('ewalletProvider');
+            const emptyMsg = document.getElementById('ewalletEmptyMsg');
+            if (sel) {
+                let settings = {};
+                try { settings = JSON.parse(localStorage.getItem('complianceSettings_v1')) || {}; } catch(e){}
+                const ew = (settings && settings.ewallet) || {};
+                const wallets = [
+                    { id:'tng', name:'Touch \'n Go eWallet', refPattern: /^\d{16,20}$/, refHint:'16-20 digit' },
+                    { id:'boost', name:'Boost', refPattern: /^[A-Za-z0-9]{8,}$/, refHint:'min 8 alphanumeric' },
+                    { id:'grabpay', name:'GrabPay', refPattern: /^[A-Z0-9]{10,}$/i, refHint:'min 10 alphanumeric' },
+                    { id:'shopeepay', name:'ShopeePay', refPattern: /^[A-Z0-9-]{10,}$/i, refHint:'min 10 alphanumeric' },
+                    { id:'mae', name:'MAE by Maybank', refPattern: /^\d{6,}$/, refHint:'min 6 digit' }
+                ];
+                const enabled = wallets.filter(w => ew[w.id] && ew[w.id].enabled);
+                if (enabled.length === 0) {
+                    // B12: show empty state instead of fallback
+                    sel.innerHTML = '<option value="">— Configure e-wallets dulu di Compliance —</option>';
+                    sel.disabled = true;
+                    if (emptyMsg) emptyMsg.style.display = 'block';
+                    window.__ewalletPatterns = {};
+                } else {
+                    sel.disabled = false;
+                    if (emptyMsg) emptyMsg.style.display = 'none';
+                    sel.innerHTML = '<option value="">— Pilih e-wallet —</option>'
+                        + enabled.map(w => '<option value="'+w.name+'" data-pattern="'+w.refPattern.source+'" data-hint="'+w.refHint+'">'+w.name+'</option>').join('');
+                    // Stash patterns for validation in checkout
+                    window.__ewalletPatterns = {};
+                    enabled.forEach(w => { window.__ewalletPatterns[w.name] = { pattern: w.refPattern, hint: w.refHint }; });
+                }
+            }
+            const ref = document.getElementById('ewalletRef'); if (ref) ref.value = '';
+        } else {
+            sub.style.display = 'none';
+        }
+    }
 }
 
 window.clearCart = function() {
@@ -1230,7 +1447,7 @@ window.clearCart = function() {
 }
 
 window.processNewCheckout = async function() {
-    if(cart.length === 0) return alert("Empty Cart!");
+    if(cart.length === 0) { if (typeof showToast==='function') showToast('Troli kosong — scan barang dulu','warning'); else alert('Empty Cart!'); return; }
     const btn = document.getElementById("checkoutBtn");
     btn.disabled = true; 
     btn.textContent = "Processing Omnichannel FIFO...";
@@ -1239,21 +1456,42 @@ window.processNewCheckout = async function() {
         let transactionsPayload = []; let totalVal = 0;
         const cn = document.getElementById("checkoutChannel").value;
         const cst = document.getElementById("checkoutStatus").value;
-        const pm = document.getElementById("paymentMethod").value;
+        let pm = document.getElementById("paymentMethod").value;
         const custNameText = document.getElementById("customerName").value.trim() || 'Walk-In';
         const custPhoneText = document.getElementById("customerPhone").value.trim();
 
+        // E-Wallet manual-confirm: require provider + ref number with format validation (B11)
+        let ewalletRef = null, ewalletProvider = null;
+        if (pm === 'E-Wallet') {
+            ewalletProvider = document.getElementById("ewalletProvider").value;
+            ewalletRef = document.getElementById("ewalletRef").value.trim();
+            const fail = (msg) => {
+                btn.disabled=false; btn.textContent="PENGESAHAN BAYARAN";
+                if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+            };
+            if (!ewalletProvider) { fail('Pilih e-wallet provider.'); return; }
+            if (!ewalletRef) { fail('Ref # dari customer\'s confirmation screen wajib.'); return; }
+            const patterns = window.__ewalletPatterns || {};
+            const meta = patterns[ewalletProvider];
+            if (meta && !meta.pattern.test(ewalletRef)) { fail('Ref # format tak match '+ewalletProvider+' ('+meta.hint+'). Verify dengan customer.'); return; }
+            pm = ewalletProvider + ' (Ref: ' + ewalletRef + ')';
+        }
+        // B14: optional buyer TIN for e-Invoice
+        const buyerTin = (document.getElementById("customerBuyerTin")?.value || '').trim();
+
         for (const item of cart) {
-            totalVal += item.price * item.quantity;
+            totalVal = round2(totalVal + item.price * item.quantity);
             let needed = item.quantity;
             let batches = inventoryBatches.filter(b => b.sku===item.sku && b.qty_remaining>0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
-            
+            // Track exact batch allocation per item (B7 perfect fix — refund can restock to same batches)
+            item.batch_alloc = [];
             for (let batch of batches) {
                 if (needed <= 0) break;
                 let deduct = Math.min(needed, batch.qty_remaining);
                 needed -= deduct;
                 await db.from('inventory_batches').update({qty_remaining: batch.qty_remaining - deduct}).eq('id', batch.id);
                 transactionsPayload.push({sku: item.sku, batch_id: batch.id, transaction_type: 'OUTBOUND_SALE', qty_change: -deduct});
+                item.batch_alloc.push({ batch_id: batch.id, qty: deduct });
             }
         }
 
@@ -1271,21 +1509,27 @@ window.processNewCheckout = async function() {
         }
 
         await db.from('sales_history').insert([{
-            customer_name: custNameText, customer_phone: custPhoneText, payment_method: pm, channel: cn, status: cst, total_amount: totalVal, items: cart, staff_name: currentUser ? currentUser.name : 'Unknown'
+            customer_name: custNameText, customer_phone: custPhoneText, payment_method: pm, channel: cn, status: cst, total: totalVal, total_amount: totalVal, items: cart, staff_name: currentUser ? currentUser.name : 'Unknown',
+            buyer_tin: buyerTin || null,
+            metadata: ewalletProvider ? { ewallet_provider: ewalletProvider, ewallet_ref: ewalletRef } : null
         }]);
 
         const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
         const email = document.getElementById("customerEmail").value.trim();
         showReceiptModal(invId, custNameText, email, totalVal, [...cart]);
 
-        cart = []; 
+        cart = [];
         document.getElementById("customerName").value = "";
         document.getElementById("customerPhone").value = "";
         document.getElementById("customerEmail").value = "";
+        const tinEl = document.getElementById("customerBuyerTin"); if (tinEl) tinEl.value = "";
+        const ewRefEl = document.getElementById("ewalletRef"); if (ewRefEl) ewRefEl.value = "";
+        const ewProvEl = document.getElementById("ewalletProvider"); if (ewProvEl) ewProvEl.value = "";
+        const ewSub = document.getElementById("ewalletSubPanel"); if (ewSub) ewSub.style.display = "none";
         document.getElementById('checkoutPaymentModal').style.display = 'none';
         await initApp(); 
         renderCart();
-    } catch (e) { alert("Fatal Error: " + e.message); }
+    } catch (e) { console.error(e); if (typeof showToast==='function') showToast('Fatal Error: ' + e.message, 'error'); else alert('Fatal Error: ' + e.message); }
     
     if(btn) { btn.disabled = false; btn.textContent = "PENGESAHAN BAYARAN"; }
 }
@@ -1379,15 +1623,23 @@ function renderPromotions() {
 // AUTHENTICATION LOGIC (MULTI-USER)
 // ===================================
 
+// Salt format: <staff_id>:<pin>:10camp_salt_v1, SHA-256 hex
+async function hashPin(staffId, pin) {
+    const text = `${staffId}:${pin}:10camp_salt_v1`;
+    const buf = new TextEncoder().encode(text);
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 const authUsers = [
-    { name: 'brozaidtodak', role: 'superior', pin: '1999', dept: 'Managing Director', email: 'zaid@10camp.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
-    { name: 'Aliff', role: 'mgmt', pin: '1111', dept: 'Administrative Department', email: 'aliff@10camp.com', staff_id: 'CMP008', full_name: 'Muhammad Aliff Ashraf Bin Johar', join_date: '2024-07-01' },
-    { name: 'Farhan Moyy', role: 'mgmt', pin: '2222', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com', staff_id: 'CMP010', full_name: 'Mohamad Farhan Bin Wakiman', join_date: '2025-09-01' },
-    { name: 'Zack', role: 'mgmt', pin: '3333', dept: 'System Manager Department', email: 'zack@10camp.com', staff_id: 'CMP005', full_name: 'Muhammad Nur Zakwan Bin Md Mahalli', join_date: '2024-07-01' },
-    { name: 'Ariff', role: 'sales', pin: '4444', dept: 'Sales & Product Department', email: 'ariff@10camp.com', staff_id: 'CMP006', full_name: 'Muhammad Zaimuddin Ariff Bin Zainal Ariffin', join_date: '2024-07-01' },
-    { name: 'Irfan', role: 'sales', pin: '5555', dept: 'Marketing Interim', email: 'irfan@10camp.com', staff_id: 'CMP003', full_name: 'Muhammad Irfansyah Bin Abd Fattah', join_date: '2024-07-01' },
-    { name: 'Tarmizi Kael', role: 'inventory', pin: '6666', dept: 'Chief Inventory', email: 'tarmizi@10camp.com', staff_id: 'CMP011', full_name: 'Tarmizi bin Rusli', join_date: '2025-08-11' },
-    { name: 'Fahmi', role: 'inventory', pin: '7777', dept: 'Inventory Assistance', email: 'fahmi@10camp.com', staff_id: 'CMP009', full_name: 'Shahrul Fahmi Bin Ramlee', join_date: '2024-07-01' }
+    { name: 'brozaidtodak', role: 'superior', pin_hash: '50d1e0682d0e472acc6a9dc109911c4703ddb14ebfa90c3b051f541111626343', dept: 'Managing Director', email: 'zaid@10camp.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
+    { name: 'Aliff', role: 'mgmt', pin_hash: '33ffc079d45afe132295ee5e09980e872c3be2334df23aeb1ee52d0c7c9cfcec', dept: 'Administrative Department', email: 'aliff@10camp.com', staff_id: 'CMP008', full_name: 'Muhammad Aliff Ashraf Bin Johar', join_date: '2024-07-01' },
+    { name: 'Farhan Moyy', role: 'mgmt', pin_hash: 'bed579f196a5bbb1ffbf1ba2b3c9bdd754a28680861ce96103794e25527d914e', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com', staff_id: 'CMP010', full_name: 'Mohamad Farhan Bin Wakiman', join_date: '2025-09-01' },
+    { name: 'Zack', role: 'mgmt', pin_hash: 'e5f99d4a4886603bb5c9dd78b4c529ee3657dcf6818a93aff697f7436eef36ca', dept: 'System Manager Department', email: 'zack@10camp.com', staff_id: 'CMP005', full_name: 'Muhammad Nur Zakwan Bin Md Mahalli', join_date: '2024-07-01' },
+    { name: 'Ariff', role: 'sales', pin_hash: '3392222a8b235180e57307768e7f2200e8ca4ae32ea6cd065572d22f5a7923d7', dept: 'Sales & Product Department', email: 'ariff@10camp.com', staff_id: 'CMP006', full_name: 'Muhammad Zaimuddin Ariff Bin Zainal Ariffin', join_date: '2024-07-01' },
+    { name: 'Irfan', role: 'sales', pin_hash: '1ac46628226b2db70ab61adf7e7912aa6456b7c703c1b922a9a5bba78d16396c', dept: 'Marketing Interim', email: 'irfan@10camp.com', staff_id: 'CMP003', full_name: 'Muhammad Irfansyah Bin Abd Fattah', join_date: '2024-07-01' },
+    { name: 'Tarmizi Kael', role: 'inventory', pin_hash: '4c3c39d9b9cd41540b359ffed45b97d5b76b04a6461d1cdedb79eb4003727779', dept: 'Chief Inventory', email: 'tarmizi@10camp.com', staff_id: 'CMP011', full_name: 'Tarmizi bin Rusli', join_date: '2025-08-11' },
+    { name: 'Fahmi', role: 'inventory', pin_hash: '1eeab06ad295d2d41259419cb3a5d1d914ddd9c9e70c66e658042341986c91de', dept: 'Inventory Assistance', email: 'fahmi@10camp.com', staff_id: 'CMP009', full_name: 'Shahrul Fahmi Bin Ramlee', join_date: '2024-07-01' }
 ];
 
 
@@ -1426,17 +1678,253 @@ window.handleCustomerLogin = async function() {
         btn.textContent = `Hi, ${existing.name.split(' ')[0]} (Pts: ${existing.points || 0})`;
     }
     
-    alert(`Berjaya Log Masuk. Anda kini mempunyai ${existing.points || 0} Points.`);
+    if (typeof showToast==='function') showToast(`Berjaya Log Masuk · ${existing.points || 0} Points`, 'success'); else alert(`Berjaya Log Masuk. Anda kini mempunyai ${existing.points || 0} Points.`);
 };
 
+// Open the PIN login overlay; populate the staff dropdown (active only).
 function handleLogin() {
-    // Automatically default to superior admin access
-    const user = authUsers.find(u => u.name === 'brozaidtodak');
+    const overlay = document.getElementById('pinLoginOverlay');
+    if(!overlay) {
+        console.error('pinLoginOverlay not found in DOM');
+        return;
+    }
+    let inactive = [];
+    try { inactive = JSON.parse(localStorage.getItem('staffInactive_v1') || '[]'); } catch(e){}
+    const sel = document.getElementById('pinLoginStaff');
+    if(sel) {
+        sel.innerHTML = authUsers
+            .filter(u => !inactive.includes(u.staff_id))
+            .map(u => `<option value="${u.staff_id}">${u.name} — ${u.dept}</option>`)
+            .join('');
+    }
+    const pinInput = document.getElementById('pinLoginInput');
+    if(pinInput) pinInput.value = '';
+    const errEl = document.getElementById('pinLoginError');
+    if(errEl) errEl.textContent = '';
+    overlay.style.display = 'flex';
+    // Refresh lockout state for whoever is currently selected
+    if(typeof refreshPinLockoutMsg === 'function') refreshPinLockoutMsg();
+    setTimeout(() => { if(pinInput) pinInput.focus(); }, 50);
+}
+
+// Per-staff lockout: 5 wrong attempts -> locked for 5 minutes.
+const PIN_LOCKOUT_KEY = 'pinLockout_v1';
+const PIN_MAX_ATTEMPTS = 5;
+const PIN_LOCKOUT_MS = 5 * 60 * 1000;
+
+function getPinLockoutState() {
+    try { return JSON.parse(localStorage.getItem(PIN_LOCKOUT_KEY) || '{}'); }
+    catch(e) { return {}; }
+}
+function setPinLockoutState(state) {
+    localStorage.setItem(PIN_LOCKOUT_KEY, JSON.stringify(state));
+}
+function refreshPinLockoutMsg() {
+    const sel = document.getElementById('pinLoginStaff');
+    const errEl = document.getElementById('pinLoginError');
+    if(!sel || !errEl) return;
+    const staffId = sel.value;
+    const state = getPinLockoutState();
+    const rec = state[staffId];
+    if(rec && rec.lockedUntil && rec.lockedUntil > Date.now()) {
+        const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+        errEl.textContent = `Akaun terkunci. Cuba semula dalam ~${mins} minit.`;
+        errEl.style.color = '#dc2626';
+    } else {
+        errEl.textContent = '';
+    }
+}
+
+window.handleLogin = handleLogin;
+window.refreshPinLockoutMsg = refreshPinLockoutMsg;
+
+window.submitPinLogin = async function() {
+    const sel = document.getElementById('pinLoginStaff');
+    const pinInput = document.getElementById('pinLoginInput');
+    const errEl = document.getElementById('pinLoginError');
+    if(!sel || !pinInput || !errEl) return;
+
+    const staffId = sel.value;
+    const pin = (pinInput.value || '').trim();
+    const user = authUsers.find(u => u.staff_id === staffId);
+    if(!user) { errEl.textContent = 'Staff tidak dijumpai.'; errEl.style.color = '#dc2626'; return; }
+    if(!/^\d{4,8}$/.test(pin)) { errEl.textContent = 'PIN mesti 4-8 digit nombor.'; errEl.style.color = '#dc2626'; return; }
+
+    const state = getPinLockoutState();
+    const rec = state[staffId] || { attempts: 0, lockedUntil: 0 };
+    if(rec.lockedUntil && rec.lockedUntil > Date.now()) {
+        const mins = Math.ceil((rec.lockedUntil - Date.now()) / 60000);
+        errEl.textContent = `Akaun terkunci. Cuba semula dalam ~${mins} minit.`;
+        errEl.style.color = '#dc2626';
+        return;
+    }
+
+    const computed = await hashPin(staffId, pin);
+    if(computed !== user.pin_hash) {
+        rec.attempts = (rec.attempts || 0) + 1;
+        if(rec.attempts >= PIN_MAX_ATTEMPTS) {
+            rec.lockedUntil = Date.now() + PIN_LOCKOUT_MS;
+            rec.attempts = 0;
+            errEl.textContent = `Salah PIN ${PIN_MAX_ATTEMPTS} kali. Akaun dikunci 5 minit.`;
+        } else {
+            const left = PIN_MAX_ATTEMPTS - rec.attempts;
+            errEl.textContent = `PIN salah. Tinggal ${left} cubaan.`;
+        }
+        errEl.style.color = '#dc2626';
+        state[staffId] = rec;
+        setPinLockoutState(state);
+        pinInput.value = '';
+        return;
+    }
+
+    // Success — clear lockout, close overlay, boot session
+    delete state[staffId];
+    setPinLockoutState(state);
+    pinInput.value = '';
+    const overlay = document.getElementById('pinLoginOverlay');
+    if(overlay) overlay.style.display = 'none';
+    loginAs(user);
+};
+
+// Onboarding wizard state — first-run setup for superior on fresh install.
+const ONBOARDING_KEY = 'onboardingCompleted_v1';
+let __obwStep = 1;
+const __obwTotalSteps = 4;
+
+function obwShowStep(n) {
+    __obwStep = Math.max(1, Math.min(__obwTotalSteps, n));
+    document.querySelectorAll('#onboardingOverlay .obw-step').forEach(el => {
+        el.style.display = (parseInt(el.getAttribute('data-step')) === __obwStep) ? 'block' : 'none';
+    });
+    const stepNumEl = document.getElementById('obwStepNum'); if (stepNumEl) stepNumEl.textContent = __obwStep;
+    const prog = document.getElementById('obwProgress'); if (prog) prog.style.width = (__obwStep * 100 / __obwTotalSteps) + '%';
+    const back = document.getElementById('obwBackBtn'); if (back) back.style.display = (__obwStep === 1) ? 'none' : 'block';
+    const next = document.getElementById('obwNextBtn'); if (next) next.textContent = (__obwStep === __obwTotalSteps) ? '✓ Finish' : 'Next →';
+    const err = document.getElementById('obwError'); if (err) err.textContent = '';
+}
+
+window.__obwBack = function() { obwShowStep(__obwStep - 1); };
+
+window.__obwSkip = function() {
+    if (!confirm('Skip semua wizard? Boleh setup manual lepas ni di Compliance section.')) return;
+    localStorage.setItem(ONBOARDING_KEY, 'skipped');
+    document.getElementById('onboardingOverlay').style.display = 'none';
+};
+
+window.__obwNext = async function() {
+    const errEl = document.getElementById('obwError');
+    if (errEl) errEl.textContent = '';
+
+    // Step 1: validate + save shop info
+    if (__obwStep === 1) {
+        const name = document.getElementById('obwShopName').value.trim();
+        if (!name) { if(errEl) errEl.textContent = 'Nama kedai wajib.'; return; }
+        let s = {};
+        try { s = JSON.parse(localStorage.getItem('complianceSettings_v1')) || {}; } catch(e){}
+        s.shop = Object.assign({}, s.shop || {}, {
+            name,
+            phone: document.getElementById('obwShopPhone').value.trim(),
+            email: document.getElementById('obwShopEmail').value.trim(),
+            address: document.getElementById('obwShopAddress').value.trim(),
+            footer: 'THANK YOU FOR SHOPPING AT ' + name.toUpperCase()
+        });
+        localStorage.setItem('complianceSettings_v1', JSON.stringify(s));
+    }
+
+    // Step 2: SST
+    if (__obwStep === 2) {
+        const reg = document.getElementById('obwSstRegistered').checked;
+        let s = {};
+        try { s = JSON.parse(localStorage.getItem('complianceSettings_v1')) || {}; } catch(e){}
+        s.sst = {
+            registered: reg,
+            number: reg ? document.getElementById('obwSstNumber').value.trim() : '',
+            rate: parseFloat(document.getElementById('obwSstRate').value) || 6,
+            inclusive: document.getElementById('obwSstInclusive').checked
+        };
+        localStorage.setItem('complianceSettings_v1', JSON.stringify(s));
+    }
+
+    // Step 3: optional sample product
+    if (__obwStep === 3) {
+        const sku = document.getElementById('obwProdSku').value.trim();
+        const pName = document.getElementById('obwProdName').value.trim();
+        const pPrice = parseFloat(document.getElementById('obwProdPrice').value);
+        const pQty = parseInt(document.getElementById('obwProdQty').value);
+        if (sku || pName || !isNaN(pPrice) || !isNaN(pQty)) {
+            // User filled at least one field — require all
+            if (!sku || !pName || isNaN(pPrice) || isNaN(pQty)) {
+                if(errEl) errEl.textContent = 'Isi SEMUA field, atau kosongkan SEMUA untuk skip step ni.';
+                return;
+            }
+            try {
+                if (typeof db !== 'undefined' && db) {
+                    const { error: e1 } = await db.from('products_master').insert([{ sku, name: pName, price: pPrice, is_published: true }]);
+                    if (e1 && !String(e1.message||'').toLowerCase().includes('duplicate')) throw e1;
+                    const { error: e2 } = await db.from('inventory_batches').insert([{ sku, qty_remaining: pQty, qty_initial: pQty, inbound_date: new Date().toISOString().slice(0,10), cost_price: pPrice * 0.6 }]);
+                    if (e2) console.warn('[obw] batch insert warn:', e2);
+                }
+            } catch(e) {
+                console.error('[obw] sample insert failed:', e);
+                if(errEl) errEl.textContent = 'Gagal save produk: '+(e.message||e);
+                return;
+            }
+        }
+    }
+
+    // Step 4: finish
+    if (__obwStep === __obwTotalSteps) {
+        localStorage.setItem(ONBOARDING_KEY, 'completed');
+        document.getElementById('onboardingOverlay').style.display = 'none';
+        if (typeof showToast === 'function') showToast('Setup siap. Selamat berniaga!', 'success');
+        if (typeof initApp === 'function') { try { await initApp(); } catch(e){} }
+        if (typeof renderCompliancePanel === 'function') renderCompliancePanel();
+        return;
+    }
+
+    obwShowStep(__obwStep + 1);
+};
+
+function maybeShowOnboarding(user) {
+    if (!user || user.role !== 'superior') return;
+    const status = localStorage.getItem(ONBOARDING_KEY);
+    if (status) return; // already completed or skipped
+    const overlay = document.getElementById('onboardingOverlay');
+    if (!overlay) return;
+    // Pre-fill from existing settings if any (re-running scenario)
+    try {
+        const s = JSON.parse(localStorage.getItem('complianceSettings_v1')) || {};
+        const shop = s.shop || {}; const sst = s.sst || {};
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+        setVal('obwShopName', shop.name);
+        setVal('obwShopPhone', shop.phone);
+        setVal('obwShopEmail', shop.email);
+        setVal('obwShopAddress', shop.address);
+        const sstReg = document.getElementById('obwSstRegistered'); if (sstReg) { sstReg.checked = !!sst.registered; }
+        const sstFields = document.getElementById('obwSstFields'); if (sstFields) sstFields.style.display = sst.registered ? 'block' : 'none';
+        setVal('obwSstNumber', sst.number);
+        setVal('obwSstRate', sst.rate || 6);
+        const sstIncl = document.getElementById('obwSstInclusive'); if (sstIncl) sstIncl.checked = sst.inclusive !== false;
+    } catch(e){}
+    // Wire SST checkbox toggle inside wizard
+    const sstCb = document.getElementById('obwSstRegistered');
+    if (sstCb && !sstCb.dataset.bound) {
+        sstCb.addEventListener('change', () => {
+            document.getElementById('obwSstFields').style.display = sstCb.checked ? 'block' : 'none';
+        });
+        sstCb.dataset.bound = '1';
+    }
+    obwShowStep(1);
+    overlay.style.display = 'flex';
+}
+
+// Boot a session for the given user (was the body of handleLogin).
+function loginAs(user) {
     if(!user) return;
-    
     currentUser = user;
     currentUserRole = user.role;
-    
+    setTimeout(() => maybeShowOnboarding(user), 600); // run after welcome modal closes
+
 
     checkMyAttendanceStatus();
     if(typeof renderPersonalCommission === "function") renderPersonalCommission();
@@ -1589,11 +2077,11 @@ window.addToPublicCart = function(sku) {
     const totalAvail = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).reduce((s, b) => s + b.qty_remaining, 0);
     const cartItem = publicCart.find(c => c.sku === sku);
     
-    if(cartItem) { if (cartItem.quantity < totalAvail) cartItem.quantity++; else alert("Limits reached!"); } 
+    if(cartItem) { if (cartItem.quantity < totalAvail) cartItem.quantity++; else (typeof showToast==='function'?showToast('Stok tak cukup','warning'):alert('Limits reached!')); }
     else { if (totalAvail > 0) publicCart.push({ sku: sku, name: p.name, price: parseFloat(p.price), quantity: 1 }); }
     
     document.getElementById("btnPublicCartCount").textContent = `Cart (${publicCart.reduce((s, c) => s + c.quantity, 0)})`;
-    alert("Ditambah ke troli!");
+    if (typeof showToast==='function') showToast('Ditambah ke troli', 'success'); else alert('Ditambah ke troli!');
 }
 
 window.decreasePublicQty = function(sku) {
@@ -1627,7 +2115,7 @@ function renderPublicCart() {
     if(publicCart.length === 0) { container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding-top:20px;">Your cart is empty.</p>'; label.textContent = "0.00"; return; }
 
     publicCart.forEach(item => {
-        total += item.price * item.quantity;
+        total = round2(total + item.price * item.quantity);
         container.innerHTML += `
             <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #f9f9f9; padding-bottom:10px;">
                 <div>
@@ -1661,7 +2149,7 @@ window.processPublicCheckout = async function() {
         let transactionsPayload = []; let totalVal = 0;
 
         for (const item of publicCart) {
-            totalVal += item.price * item.quantity;
+            totalVal = round2(totalVal + item.price * item.quantity);
             let needed = item.quantity;
             let batches = inventoryBatches.filter(b => b.sku===item.sku && b.qty_remaining>0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
             
@@ -1714,7 +2202,7 @@ window.processPublicCheckout = async function() {
         alert(`Pembayaran Berjaya! Nombor Resit: ${invStr}.\nTerima kasih kerana membeli bersama 10camp.`);
         
         await initApp(); // refresh background dashboard data
-    } catch (e) { alert("Fatal Error: " + e.message); }
+    } catch (e) { console.error(e); if (typeof showToast==='function') showToast('Fatal Error: ' + e.message, 'error'); else alert('Fatal Error: ' + e.message); }
     
     btn.disabled = false; btn.textContent = "Confirm Order";
 }
@@ -1727,12 +2215,20 @@ let currentReceiptContext = null;
 function showReceiptModal(invId, custName, email, total, cartData) {
     const rc = document.getElementById("receiptContent");
     const d = new Date().toLocaleString('en-GB');
+    const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name:'10 CAMP', footer:'THANK YOU FOR SHOPPING AT 10 CAMP' };
     let itemsHtml = "";
     cartData.forEach(c => {
         itemsHtml += `<div style="margin-bottom:5px;">${c.quantity}x ${c.name} <span style="float:right">RM ${(c.price * c.quantity).toFixed(2)}</span></div>`;
     });
 
+    let header = `<div style="text-align:center; font-size:16px; font-weight:900; letter-spacing:1px;">${shop.name}</div>`;
+    if (shop.address) header += `<div style="text-align:center; font-size:11px; color:var(--text-muted);">${shop.address}</div>`;
+    if (shop.phone)   header += `<div style="text-align:center; font-size:11px; color:var(--text-muted);">Tel: ${shop.phone}</div>`;
+    if (shop.ssm)     header += `<div style="text-align:center; font-size:10.5px; color:var(--text-muted);">SSM: ${shop.ssm}</div>`;
+
     rc.innerHTML = `
+        ${header}
+        <hr style="border-top:1px dashed #ccc; margin:10px 0;">
         <div style="font-weight:bold; margin-bottom:10px;">INVOICE: ${invId}</div>
         <div style="color:var(--text-muted);">Date: ${d}</div>
         <div style="color:var(--text-muted);">Customer: ${custName}</div>
@@ -1741,12 +2237,68 @@ function showReceiptModal(invId, custName, email, total, cartData) {
         ${itemsHtml}
         <hr style="border-top:1px dashed #ccc; margin:10px 0;">
         <div style="font-size:16px; font-weight:bold;">TOTAL <span style="float:right">RM ${total.toFixed(2)}</span></div>
-        <div style="text-align:center; margin-top:30px; font-weight:bold; font-size:11px; color:var(--text-muted);">THANK YOU FOR SHOPPING AT 10CAMP</div>
+        <div style="text-align:center; margin-top:30px; font-weight:bold; font-size:11px; color:var(--text-muted);">${shop.footer || 'THANK YOU'}</div>
     `;
     
-    currentReceiptContext = { invId, custName, email, total, itemsText: cartData.map(c => `${c.quantity}x ${c.name} - RM ${(c.price * c.quantity).toFixed(2)}`).join('%0D%0A') };
+    const phone = (document.getElementById("customerPhone")?.value || '').trim();
+    currentReceiptContext = {
+        invId, custName, email, phone, total,
+        itemsText: cartData.map(c => `${c.quantity}x ${c.name} - RM ${(c.price * c.quantity).toFixed(2)}`).join('%0D%0A'),
+        cartData: cartData.map(c => ({ sku:c.sku, name:c.name, price:c.price, quantity:c.quantity }))
+    };
     document.getElementById("receiptModal").style.display = "flex";
 }
+
+// Build reorder deep-link: same site + ?reorder=<base64 JSON>
+function buildReorderLink(cartItems) {
+    try {
+        const minimal = (cartItems||[]).map(c => ({ s:c.sku, q:c.quantity }));
+        const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(minimal))));
+        const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+        return base + 'index.html?reorder=' + encodeURIComponent(b64);
+    } catch(e) { return ''; }
+}
+
+// Send receipt via WhatsApp using wa.me link (opens user's WhatsApp app)
+window.dispatchWhatsAppReceipt = function() {
+    if (!currentReceiptContext) return;
+    const { invId, custName, phone, total, cartData } = currentReceiptContext;
+    let target = (phone||'').replace(/[^\d+]/g, '');
+    // Normalize to international format. Default MY +60 if local.
+    if (target.startsWith('0')) target = '60' + target.slice(1);
+    else if (target.startsWith('+')) target = target.slice(1);
+
+    const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name:'10 CAMP' };
+    const itemsList = (cartData||[]).map(c => `• ${c.quantity}x ${c.name} — RM ${(c.price*c.quantity).toFixed(2)}`).join('\n');
+    const reorderUrl = buildReorderLink(cartData);
+
+    const lines = [
+        `Hi ${custName||'there'},`,
+        ``,
+        `Terima kasih beli barang dari *${shop.name}*!`,
+        ``,
+        `📄 Receipt: *${invId}*`,
+        `📅 ${new Date().toLocaleString('en-MY')}`,
+        ``,
+        `*Items:*`,
+        itemsList,
+        ``,
+        `*TOTAL: RM ${total.toFixed(2)}*`,
+        ``
+    ];
+    if (reorderUrl) {
+        lines.push(`🔁 Reorder semua benda ni: ${reorderUrl}`);
+        lines.push('');
+    }
+    lines.push(shop.footer || 'Hope to see you again!');
+    const text = lines.join('\n');
+
+    // wa.me opens WhatsApp Web/app with pre-filled message. Phone target optional.
+    const url = target
+        ? `https://wa.me/${target}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+};
 
 window.closeReceipt = function() {
     document.getElementById("receiptModal").style.display = "none";
@@ -1775,7 +2327,7 @@ function renderFinance() {
     let html = "";
     let totalExp = 0;
     financeRecords.forEach(f => {
-        totalExp += parseFloat(f.amount || 0);
+        totalExp = round2(totalExp + parseFloat(f.amount || 0));
         html += `
             <tr>
                 <td>${f.month} ${f.year}</td>
@@ -1790,7 +2342,7 @@ function renderFinance() {
 
     // 2. Calculate Gross Revenue from Sales History
     let totalRev = 0;
-    salesHistory.forEach(s => totalRev += parseFloat(s.amount || 0));
+    salesHistory.forEach(s => { totalRev = round2(totalRev + parseFloat(s.amount || 0)); });
 
     // 3. Update P&L KPI Widgets
     document.getElementById("financeGrossRev").textContent = `RM ${totalRev.toFixed(2)}`;
@@ -1996,14 +2548,14 @@ function renderSalesMgmtTarget() {
     salesHistory.forEach(sale => {
         let amt = parseFloat(sale.total_amount || sale.total || 0);
         
-        if(sale.staff_name === 'Ariff') ariffTotal += amt;
-        if(sale.staff_name === 'Irfan') irfanTotal += amt;
+        if(sale.staff_name === 'Ariff') ariffTotal = round2(ariffTotal + amt);
+        if(sale.staff_name === 'Irfan') irfanTotal = round2(irfanTotal + amt);
         
         // Taburan Omnichannel
         let ch = sale.channel || 'Lain-Lain';
         if(!channels[ch]) channels[ch] = 0;
         channels[ch] += amt;
-        totalSalesSystem += amt;
+        totalSalesSystem = round2(totalSalesSystem + amt);
     });
     
     // 2. Render Target & Commission
@@ -2660,8 +3212,8 @@ function renderPettyCash() {
     const sorted = [...pettyCashLedger].sort((a,b) => new Date(a.date) - new Date(b.date));
     
     sorted.forEach(p => {
-        if(p.type === 'IN') runningBalance += p.amount;
-        else runningBalance -= p.amount;
+        if(p.type === 'IN') runningBalance = round2(runningBalance + p.amount);
+        else runningBalance = round2(runningBalance - p.amount);
         
         let color = p.type === 'IN' ? 'green' : 'red';
         let op = p.type === 'IN' ? '+' : '-';
@@ -2827,7 +3379,7 @@ window.renderSalesGraph = function(mode = window.currentGraphMode) {
         }
         
         if(dailyTotals[key] !== undefined) {
-            dailyTotals[key] += parseFloat(sale.total_amount || sale.total || 0);
+            dailyTotals[key] = round2((dailyTotals[key] || 0) + parseFloat(sale.total_amount || sale.total || 0));
             dailyTx[key]++;
         } else if (mode === '7days') {
             // Out of 7 days scope, safely ignore
@@ -2893,7 +3445,7 @@ function renderMgmtStaffSales() {
         let name = sale.staff_name;
         if(name && performance[name]) {
             performance[name].txCount++;
-            performance[name].gross += parseFloat(sale.total || 0);
+            performance[name].gross = round2(performance[name].gross + parseFloat(sale.total || 0));
         }
     });
     
@@ -3174,34 +3726,142 @@ window.loadAdminAttendance = async function() {
     tbody.innerHTML = html;
 }
 
-window.renderPersonalCommission = function() {
-    const tbody = document.getElementById("myCommissionTbody");
-    const domSales = document.getElementById("myCommissionSalesTotal");
-    const domEst = document.getElementById("myCommissionEstTotal");
-
-    if(!tbody || !currentUser) return;
-    
-    let mySales = salesHistory.filter(s => s.staff_name === currentUser.name);
-    let totalSale = 0;
-    
-    let html = "";
-    if(mySales.length === 0) {
-        html = `<tr><td colspan="4" style="text-align:center;">Tiada rekod jualan peribadi untuk ditunjukkan.</td></tr>`;
-    } else {
-        mySales.forEach(s => {
-            let amt = parseFloat(s.total_amount || 0);
-            totalSale += amt;
-            let dateStr = new Date(s.created_at).toLocaleDateString('ms-MY', {day:'numeric', month:'short', year:'numeric'});
-            let ref = s.id ? ("INV-10C-" + s.id) : "-";
-            let comm = (amt * (moyySettings.commRate / 100)).toFixed(2);
-            html += `<tr><td>${dateStr}</td><td>${ref}</td><td style="color:#059669; font-weight:bold;">RM ${amt.toFixed(2)}</td><td>RM ${comm}</td></tr>`;
-        });
-    }
-    
-    tbody.innerHTML = html;
-    if(domSales) domSales.textContent = `RM ${totalSale.toFixed(2)}`;
-    if(domEst) domEst.textContent = `RM ${(totalSale * (moyySettings.commRate / 100)).toFixed(2)}`;
+// p4_1: per-staff commission rate lookup with fallback chain
+function __getCommissionRate(staffName) {
+    let rates = {}; try { rates = JSON.parse(localStorage.getItem('staffCommissionRates_v1')||'{}'); } catch(e){}
+    const u = (typeof authUsers !== 'undefined' && Array.isArray(authUsers))
+        ? authUsers.find(a => a.name === staffName) : null;
+    if (u && rates[u.staff_id] !== undefined) return parseFloat(rates[u.staff_id])||0;
+    if (u && u.commission_rate !== undefined) return parseFloat(u.commission_rate)||0;
+    // Legacy fallback to moyySettings if defined
+    if (typeof moyySettings !== 'undefined' && moyySettings.commRate !== undefined) return parseFloat(moyySettings.commRate)||0;
+    return 5; // sensible default
 }
+
+// Commission period state
+window.__cmRange = window.__cmRange || 'month';
+window.__cmSetRange = function(range, btn) {
+    window.__cmRange = range;
+    document.querySelectorAll('.cm-pill').forEach(p => p.classList.toggle('active', p === btn));
+    renderPersonalCommission();
+};
+
+function __cmGetDateRange() {
+    const now = new Date();
+    const startOf = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+    const endOf   = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+    const r = window.__cmRange || 'month';
+    if (r === 'month') { const s = new Date(now.getFullYear(), now.getMonth(), 1); return { start:startOf(s), end:endOf(now), label: now.toLocaleDateString('en-MY', {month:'long', year:'numeric'}) }; }
+    if (r === 'lastmonth') { const s = new Date(now.getFullYear(), now.getMonth()-1, 1); const e = new Date(now.getFullYear(), now.getMonth(), 0); return { start:startOf(s), end:endOf(e), label: s.toLocaleDateString('en-MY', {month:'long', year:'numeric'}) }; }
+    if (r === 'week') { const s = new Date(now); s.setDate(s.getDate() - s.getDay()); return { start:startOf(s), end:endOf(now), label: 'This week' }; }
+    if (r === 'ytd') { const s = new Date(now.getFullYear(), 0, 1); return { start:startOf(s), end:endOf(now), label: now.getFullYear() + ' YTD' }; }
+    return { start: null, end: null, label: 'All time' };
+}
+
+window.renderPersonalCommission = function() {
+    if (!currentUser) return;
+    const isManager = currentUser.role === 'mgmt' || currentUser.role === 'superior';
+    const range = __cmGetDateRange();
+
+    // Filter sales by date range
+    const sales = (Array.isArray(salesHistory) ? salesHistory : []).filter(s => {
+        if (!range.start || !range.end) return true;
+        const t = s.created_at ? new Date(s.created_at).getTime() : 0;
+        return t >= range.start.getTime() && t <= range.end.getTime();
+    });
+
+    // Header label + badge
+    const lbl = document.getElementById('cmRangeLabel'); if (lbl) lbl.textContent = '· ' + range.label;
+    const badge = document.getElementById('cmHeaderBadge');
+    if (badge) badge.textContent = isManager ? 'Manager view · all staff' : ('Personal view · ' + currentUser.name);
+
+    // Per-staff aggregator
+    function aggregateForStaff(staffName) {
+        const own = sales.filter(s => s.staff_name === staffName);
+        let gross = 0, refunds = 0, txCount = 0, refundCount = 0;
+        own.forEach(s => {
+            const amt = parseFloat(s.total_amount || s.total || 0);
+            if (amt < 0) { refunds = round2(refunds + Math.abs(amt)); refundCount++; }
+            else { gross = round2(gross + amt); txCount++; }
+        });
+        const net = round2(gross - refunds);
+        const rate = __getCommissionRate(staffName);
+        const earned = round2(net * rate / 100);
+        return { staffName, gross, refunds, net, rate, earned, txCount, refundCount, sales: own };
+    }
+
+    // === Personal stats (always show for current user) ===
+    const personal = aggregateForStaff(currentUser.name);
+    const fmt = (n) => 'RM ' + Number(n).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
+    document.getElementById('cmGross').textContent = fmt(personal.gross);
+    document.getElementById('cmRefunds').textContent = '−' + fmt(personal.refunds);
+    document.getElementById('cmNet').textContent = fmt(personal.net);
+    document.getElementById('cmCommission').textContent = fmt(personal.earned);
+    document.getElementById('cmTxCount').textContent = personal.txCount;
+    document.getElementById('cmRefundCount').textContent = personal.refundCount;
+    document.getElementById('cmRateInfo').textContent = 'at ' + personal.rate + '%';
+
+    // === Manager view: all staff ===
+    const mgrWrap = document.getElementById('cmManagerWrap');
+    if (mgrWrap) mgrWrap.style.display = isManager ? 'block' : 'none';
+    if (isManager) {
+        const mgrTbody = document.getElementById('cmManagerTbody');
+        if (mgrTbody) {
+            const allStaff = (typeof authUsers !== 'undefined') ? authUsers : [];
+            let inactive = []; try { inactive = JSON.parse(localStorage.getItem('staffInactive_v1')||'[]'); } catch(e){}
+            const rows = allStaff
+                .filter(u => !inactive.includes(u.staff_id))
+                .map(u => aggregateForStaff(u.name))
+                .sort((a,b) => b.earned - a.earned);
+            mgrTbody.innerHTML = rows.length ? rows.map(r => {
+                const u = allStaff.find(a => a.name === r.staffName) || {};
+                const isMe = r.staffName === currentUser.name;
+                const rowStyle = isMe ? ' style="background:#fffbeb;"' : '';
+                return '<tr'+rowStyle+'>'
+                    + '<td style="padding:8px 10px;"><strong>'+r.staffName+'</strong>'+(isMe?' <span style="font-size:10px; color:var(--primary);">(you)</span>':'')+'</td>'
+                    + '<td style="padding:8px 10px;"><span style="font-size:10.5px; padding:2px 7px; background:#e5e7eb; border-radius:10px; font-weight:700;">'+(u.role||'—')+'</span></td>'
+                    + '<td style="padding:8px 10px;">'+r.txCount+(r.refundCount?' <span style="color:#dc2626; font-size:11px;">/'+r.refundCount+'rf</span>':'')+'</td>'
+                    + '<td style="padding:8px 10px; text-align:right;">'+fmt(r.gross)+'</td>'
+                    + '<td style="padding:8px 10px; text-align:right; color:#dc2626;">'+(r.refunds>0?'−'+fmt(r.refunds):'—')+'</td>'
+                    + '<td style="padding:8px 10px; text-align:right; font-weight:700;">'+fmt(r.net)+'</td>'
+                    + '<td style="padding:8px 10px; text-align:right;">'+r.rate+'%</td>'
+                    + '<td style="padding:8px 10px; text-align:right; color:var(--primary); font-weight:800;">'+fmt(r.earned)+'</td>'
+                    + '</tr>';
+            }).join('') : '<tr><td colspan="8" style="text-align:center; padding:18px; color:var(--text-muted);">No staff data in range.</td></tr>';
+        }
+    }
+
+    // === Detail table for current user ===
+    const tbody = document.getElementById("myCommissionTbody");
+    if (tbody) {
+        if (personal.sales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:18px; color:var(--text-muted);">Tiada rekod dalam '+range.label+'.</td></tr>';
+        } else {
+            const rate = personal.rate;
+            tbody.innerHTML = personal.sales
+                .slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+                .map(s => {
+                    const amt = parseFloat(s.total_amount || s.total || 0);
+                    const dateStr = new Date(s.created_at).toLocaleDateString('en-MY', {day:'numeric', month:'short', year:'numeric'});
+                    const ref = s.id ? '#'+s.id : '—';
+                    const isRefund = amt < 0;
+                    const comm = round2(amt * rate / 100);
+                    const amtCol = isRefund ? '#dc2626' : '#059669';
+                    return '<tr>'
+                        + '<td>'+dateStr+'</td>'
+                        + '<td>'+ref+(isRefund?' <span style="font-size:10px; color:#dc2626; font-weight:700;">REFUND</span>':'')+'</td>'
+                        + '<td>'+(s.customer_name||'Walk-in')+'</td>'
+                        + '<td style="text-align:right; color:'+amtCol+'; font-weight:bold;">'+(isRefund?'−':'')+'RM '+Math.abs(amt).toFixed(2)+'</td>'
+                        + '<td style="text-align:right; color:'+amtCol+'; font-weight:bold;">'+(isRefund?'−':'')+'RM '+Math.abs(comm).toFixed(2)+'</td>'
+                        + '</tr>';
+                }).join('');
+        }
+    }
+
+    // Backwards-compat hidden spans
+    const domSales = document.getElementById("myCommissionSalesTotal"); if (domSales) domSales.textContent = fmt(personal.gross);
+    const domEst = document.getElementById("myCommissionEstTotal"); if (domEst) domEst.textContent = fmt(personal.earned);
+};
 
 // Auto Clock Out Check Function
 async function autoClockOutUnclosed() {
@@ -3325,8 +3985,8 @@ window.renderQuoteCart = function() {
     }
 
     quoteCart.forEach(item => {
-        let lineTotal = item.price * item.qty;
-        total += lineTotal;
+        let lineTotal = round2(item.price * item.qty);
+        total = round2(total + lineTotal);
         const div = document.createElement('div');
         div.className = "cart-item";
         div.style.display = "flex";
@@ -3445,23 +4105,23 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
     // Rental UI now just uses the deposit row
     let depositBlock = document.getElementById("quoteDepositRowUI");
     
-    let grandTotal = subtotal;
+    let grandTotal = round2(subtotal);
     let deposit = 0;
     let rentalData = null;
-    
+
     if (type === "Rental") {
         const sStr = document.getElementById("quoteStartDate").value;
         const eStr = document.getElementById("quoteEndDate").value;
         const dur = parseInt(document.getElementById("quoteDuration").value) || 1;
         deposit = parseFloat(document.getElementById("quoteDeposit").value) || 0;
-        
+
         // Rental meta added to project name
         document.getElementById("quoteValProjectName").innerText = `Rental: ${sStr||"TBD"} - ${eStr||"TBD"} (${dur} Hari)`;
-        
+
         document.getElementById("quotePreviewValDeposit").innerText = deposit.toFixed(2);
         depositBlock.style.display = "flex";
-        
-        grandTotal = subtotal + deposit;
+
+        grandTotal = round2(subtotal + deposit);
         rentalData = { startDate: sStr, endDate: eStr, duration: dur, deposit: deposit };
     } else {
         // no rental container anymore
@@ -3484,8 +4144,8 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
     subtotal = 0;
     let rowCount = 0;
     workingCart.forEach((item, index) => {
-        let line = item.price * item.qty;
-        subtotal += line;
+        let line = round2(item.price * item.qty);
+        subtotal = round2(subtotal + line);
         let bg = rowCount % 2 === 0 ? "#F8F8F8" : "#FFFFFF";
         tbody.innerHTML += `
             <tr class="editable-row" style="background-color: ${bg}; border-bottom:1px solid #f1f1f1;">
@@ -3506,8 +4166,8 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
         rowCount++;
     });
     
-    if (type === "Rental") grandTotal = subtotal + deposit;
-    else grandTotal = subtotal;
+    if (type === "Rental") grandTotal = round2(subtotal + deposit);
+    else grandTotal = round2(subtotal);
 
     document.getElementById("quotePreviewGrandTotal").innerText = grandTotal.toFixed(2);
     document.getElementById("quoteSubtotal").innerText = "RM " + subtotal.toFixed(2);
@@ -3787,8 +4447,8 @@ window.calculateEditableTotal = function() {
         if(qtyEl && priceEl && rowTotalEl) {
             let q = parseFloat(qtyEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
             let p = parseFloat(priceEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-            let lineTotal = q * p;
-            subtotal += lineTotal;
+            let lineTotal = round2(q * p);
+            subtotal = round2(subtotal + lineTotal);
             rowTotalEl.innerText = lineTotal.toFixed(2);
         }
     });
@@ -3796,12 +4456,12 @@ window.calculateEditableTotal = function() {
     let depositEl = document.getElementById("quotePreviewValDeposit");
     let deposit = 0;
     if(depositEl) deposit = parseFloat(depositEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-    
+
     let discountEl = document.getElementById("quoteValDiscount");
     let discount = 0;
     if(discountEl) discount = parseFloat(discountEl.innerText.replace(/[^0-9.-]+/g,"")) || 0;
-    
-    let grandTotal = subtotal + deposit - discount;
+
+    let grandTotal = round2(subtotal + deposit - discount);
     let gtEl = document.getElementById("quotePreviewGrandTotal");
     if(gtEl) gtEl.innerText = grandTotal.toFixed(2);
     
@@ -4629,7 +5289,7 @@ window.renderPoDraftTable = function() {
     let grandTotal = 0;
     
     poDraftItems.forEach((item, index) => {
-        grandTotal += item.total;
+        grandTotal = round2(grandTotal + item.total);
         html += `
             <tr>
                 <td style="font-weight:bold;">${item.sku}</td>
@@ -4944,8 +5604,8 @@ window.renderValuationSection = function() {
             const totalCost = cost * stockQty;
             const totalRetail = retail * stockQty;
 
-            totalCostAsset += totalCost;
-            totalRetailAsset += totalRetail;
+            totalCostAsset = round2(totalCostAsset + totalCost);
+            totalRetailAsset = round2(totalRetailAsset + totalRetail);
 
             assetsData.push({
                 sku: p.sku,
