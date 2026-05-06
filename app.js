@@ -1980,82 +1980,125 @@ function maybeShowOnboarding(user) {
 }
 
 // Boot a session for the given user (was the body of handleLogin).
+// Capability matrix — each role gets a SET of mode tabs they can access.
+// Capability-based (additive) instead of exclusive lanes.
+// ALL ROLES see Cashier (everyone needs to ring up customers).
+// Sales/Inventory ALSO see Operations (check stock during sale, manage inventory).
+// Mgmt+Superior see Manager (dashboards + admin).
+const ROLE_CAPS = {
+    superior:  { modes: ['cashier', 'operations', 'manager'], home: 'overview',          label: 'Superior',   emoji: '👑' },
+    mgmt:      { modes: ['cashier', 'operations', 'manager'], home: 'overview',          label: 'Manager',    emoji: '🎯' },
+    inventory: { modes: ['cashier', 'operations'],            home: 'inv_database',      label: 'Inventory',  emoji: '📦' },
+    sales:     { modes: ['cashier', 'operations'],            home: 'sales_cashier',     label: 'Sales',      emoji: '🛒' },
+};
+
 function loginAs(user) {
     if(!user) return;
     currentUser = user;
     currentUserRole = user.role;
-    setTimeout(() => maybeShowOnboarding(user), 600); // run after welcome modal closes
+    const cap = ROLE_CAPS[user.role] || ROLE_CAPS.sales;
 
+    // Boot side-effects (deferred: don't block UI thread on these)
+    queueMicrotask(() => { try { checkMyAttendanceStatus(); } catch(e){} });
+    queueMicrotask(() => { try { typeof renderPersonalCommission === "function" && renderPersonalCommission(); } catch(e){} });
+    setTimeout(() => maybeShowOnboarding(user), 1800);  // after welcome auto-dismiss
 
-    checkMyAttendanceStatus();
-    if(typeof renderPersonalCommission === "function") renderPersonalCommission();
-    
-    // Popup Greeting Staff
-    if(globalMemo.active) {
-        alert(" PENGUMUMAN DARI PENGURUSAN:\n\n" + globalMemo.text);
-    }
-
+    // Welcome modal — show actual role badge + auto-dismiss
+    const welcomeModal = document.getElementById("staffWelcomeModal");
     const modalName = document.getElementById("welcomeStaffName");
     const modalDept = document.getElementById("welcomeStaffDept");
-    if(modalName) modalName.textContent = `Staff Mode Diaktifkan`;
-    if(modalDept) modalDept.textContent = `Akses Penuh: System Admin`;
-    
-    const welcomeModal = document.getElementById("staffWelcomeModal");
-    if(welcomeModal) welcomeModal.style.display = "flex";
-    
+    const modalIcon = document.getElementById("welcomeIcon");
+    const modalBadge = document.getElementById("welcomeRoleBadge");
+    if(modalName) modalName.textContent = `Hi, ${user.name}`;
+    if(modalDept) modalDept.textContent = user.dept || '-';
+    if(modalIcon) modalIcon.textContent = cap.emoji;
+    if(modalBadge) {
+        const tierClass = { superior:'badge--accent', mgmt:'badge--info', inventory:'badge--warning', sales:'badge--success' }[user.role] || 'badge--neutral';
+        modalBadge.className = `badge ${tierClass}`;
+        modalBadge.textContent = `${cap.emoji} ${cap.label}`;
+    }
+    if(welcomeModal) {
+        welcomeModal.style.display = "flex";
+        setTimeout(() => { welcomeModal.style.display = "none"; }, 1500);  // auto-dismiss
+    }
+
+    // Global memo as toast (not blocking alert)
+    if(globalMemo.active && typeof showToast === 'function') {
+        setTimeout(() => showToast(`📢 PENGUMUMAN: ${globalMemo.text}`, 'warn'), 800);
+    }
+
     document.getElementById("shopAppLayout").style.display = "none";
     document.getElementById("posAppLayout").style.display = "block";
-    
-    // Crown indicator for top tiers
-    let displayCrown = ['superior', 'mgmt', 'inventory'].includes(user.role) ? ' ' : '';
-    document.getElementById("sessionUsername").textContent = "Hi, " + (user.name.split(' ')[1] || user.name) + displayCrown;
-    
-    const salesMenus = document.querySelectorAll(".sales-only");
-    const invMenus = document.querySelectorAll(".inv-only");
-    const mgmtMenus = document.querySelectorAll(".mgmt-only");
-    const superiorMenus = document.querySelectorAll(".superior-only");
-    
-    // Hide all restricted menus initially
-    salesMenus.forEach(el => el.style.display = "none");
-    invMenus.forEach(el => el.style.display = "none");
-    mgmtMenus.forEach(el => el.style.display = "none");
-    superiorMenus.forEach(el => el.style.display = "none");
 
-    if (user.role === 'superior') {
-        // Superior sees everything
-        salesMenus.forEach(el => el.style.display = "block");
-        invMenus.forEach(el => el.style.display = "block");
-        mgmtMenus.forEach(el => el.style.display = "block");
-        superiorMenus.forEach(el => el.style.display = "block");
-        switchHub(['homeSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
-    } else if (user.role === 'mgmt') {
-        // Management sees Mgmt, Sales, Inv, but NOT superior
-        salesMenus.forEach(el => el.style.display = "block");
-        invMenus.forEach(el => el.style.display = "block");
-        mgmtMenus.forEach(el => el.style.display = "block");
-        switchHub(['homeSection'], 'Overview', document.querySelector('.menu-item[data-tab="overview"]'));
-    } else if (user.role === 'inventory') {
-        // Inventory team rules
-        invMenus.forEach(el => el.style.display = "block");
-        switchHub(['inventorySection'], 'Product Mapping', document.querySelector('.menu-item[data-tab="inv_mapping"]'));
-    } else if (user.role === 'sales') {
-        // Sales team rules
-        salesMenus.forEach(el => el.style.display = "block");
-        switchHub(['commissionSection'], 'Personal Sales & Commission', document.querySelector('.menu-item[data-tab="sales_commission"]'));
+    // Header — "Hi, name · Role"
+    const sessEl = document.getElementById("sessionUsername");
+    if(sessEl) sessEl.innerHTML = `Hi, ${(user.name.split(' ')[0])} <span class="badge badge--neutral" style="margin-left:6px; font-size:9px; vertical-align:middle;">${cap.emoji} ${cap.label}</span>`;
+
+    // Capability-based visibility — clear all role-style hides, then only show what role allows
+    document.querySelectorAll(".sales-only, .inv-only, .mgmt-only, .superior-only")
+        .forEach(el => el.style.display = "");  // reset inline (let CSS class system take over)
+
+    // Use mode-bar capabilities to control what user sees
+    if(typeof window.applyRoleCapabilities === 'function') {
+        window.applyRoleCapabilities(cap.modes);
     }
+
+    // Set initial mode + home
+    const defaultMode = cap.modes[0] || 'cashier';
+    if(typeof window.setMode === 'function') {
+        window.__modeJumping = true;  // suppress auto-jump
+        window.setMode(defaultMode);
+        window.__modeJumping = false;
+    }
+    // Switch to role's home tab
+    setTimeout(() => {
+        const homeBtn = document.querySelector(`.menu-item[data-tab="${cap.home}"]`);
+        if(homeBtn) homeBtn.click();
+        else {
+            // fallback: just open Overview
+            const overviewBtn = document.querySelector('.menu-item[data-tab="overview"]');
+            if(overviewBtn) overviewBtn.click();
+        }
+    }, 200);
 }
+
+// Apply capability-based mode tab visibility
+window.applyRoleCapabilities = function(allowedModes) {
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+        const m = tab.getAttribute('data-mode-set');
+        const allowed = !allowedModes || allowedModes.includes(m);
+        tab.style.display = allowed ? '' : 'none';
+        tab.disabled = !allowed;
+    });
+};
 
 function handleLogout() {
     currentUser = null;
     currentUserRole = null;
     document.getElementById("shopAppLayout").style.display = "block";
     document.getElementById("posAppLayout").style.display = "none";
-    document.getElementById("sessionUsername").textContent = "EasyPOS PRO";
-    document.getElementById("appSidebar").classList.remove('open');
-    document.getElementById("sidebarOverlay").classList.remove('active');
-    
-    const allSections = document.querySelectorAll(".tab-section");
-    allSections.forEach(el => el.style.display = "none");
+    const sessEl = document.getElementById("sessionUsername");
+    if(sessEl) sessEl.textContent = "10 CAMP POS";
+    document.getElementById("appSidebar")?.classList.remove('open');
+    document.getElementById("sidebarOverlay")?.classList.remove('active');
+
+    document.querySelectorAll(".tab-section").forEach(el => el.style.display = "none");
+
+    // Reset all role-style inline hides (next login starts fresh)
+    document.querySelectorAll(".sales-only, .inv-only, .mgmt-only, .superior-only")
+        .forEach(el => el.style.display = "");
+
+    // Reset mode-tab capability gating
+    document.querySelectorAll('.mode-tab').forEach(tab => { tab.style.display = ''; tab.disabled = false; });
+
+    // Close panels/modals that may be lingering
+    ['checkoutPanel','staffWelcomeModal','cmdkOverlay','onboardingOverlay','pinLoginOverlay']
+        .forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+    document.getElementById('checkoutPanelOverlay')?.classList.remove('is-open');
+    document.getElementById('checkoutPanel')?.classList.remove('is-open');
+
+    // Reset cart
+    if(typeof cart !== 'undefined') { cart.length = 0; if(typeof renderCart === 'function') renderCart(); }
 }
 
 setTimeout(() => {
