@@ -5,7 +5,7 @@
     <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=33">
-    <link rel="stylesheet" href="design-tokens.css?v=1">
+    <link rel="stylesheet" href="design-tokens.css?v=2">
     <!-- Supabase Core -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
@@ -273,6 +273,125 @@
             <button id="checkoutBtn" onclick="window.processNewCheckout()" class="login-btn" style="background:#10B981; width:100%; padding:16px; font-size:15px; margin-top:5px; box-shadow:0 4px 15px rgba(16,185,129,0.3);">PENGESAHAN BAYARAN</button>
         </div>
     </div>
+
+    <!-- =====================================================
+         UX-3 CHECKOUT SIDE PANEL — replaces modal as default
+         Cart remains visible on the left, panel slides in right
+         ===================================================== -->
+    <div id="checkoutPanelOverlay" class="checkout-panel-overlay" onclick="window.closeCheckoutPanel()"></div>
+
+    <aside id="checkoutPanel" class="checkout-panel" aria-hidden="true">
+        <header class="checkout-panel__header">
+            <h2 class="checkout-panel__title">Checkout</h2>
+            <button class="checkout-panel__close" onclick="window.closeCheckoutPanel()" aria-label="Close">
+                <i data-lucide="x" style="width:18px; height:18px;"></i>
+            </button>
+        </header>
+
+        <div class="checkout-panel__body" id="cpFormView">
+            <!-- Total card (always visible top) -->
+            <div class="cp-total">
+                <div class="cp-total__label">Jumlah Bayar</div>
+                <div class="cp-total__value">
+                    <span class="cp-total__rm-prefix">RM</span><span id="cpTotalDisplay">0.00</span>
+                </div>
+                <div class="cp-total__discount" id="cpDiscountLine" style="display:none;"></div>
+            </div>
+
+            <!-- VIP banner (auto-shown when matched) -->
+            <div id="cpVipBanner" class="cp-vip-banner"></div>
+
+            <!-- Customer section -->
+            <div class="cp-section">
+                <p class="cp-section__title">Customer</p>
+                <div class="cp-autocomplete-wrap">
+                    <input type="text" id="cpCustName" class="cp-input" placeholder="Nama pelanggan (taip untuk cari)" autocomplete="off"
+                        oninput="window.cpCustAutocomplete()" onfocus="window.cpCustAutocomplete()" onblur="setTimeout(window.cpCustAutocompleteClose, 180)">
+                    <div id="cpCustAcDropdown" class="cp-autocomplete"></div>
+                </div>
+                <div class="cp-input--inline-row" style="margin-top:8px;">
+                    <input type="tel" id="cpCustPhone" class="cp-input" placeholder="Phone (auto)" autocomplete="off"
+                        oninput="window.cpVipLookup()" onblur="window.cpVipLookup()">
+                    <input type="email" id="cpCustEmail" class="cp-input" placeholder="Email (auto-resit)" autocomplete="off">
+                </div>
+                <input type="text" id="cpBuyerTin" class="cp-input" placeholder="Buyer TIN (B2B sahaja)" autocomplete="off" style="margin-top:8px;">
+            </div>
+
+            <!-- Channel + Status -->
+            <div class="cp-section">
+                <p class="cp-section__title">Channel &amp; Status</p>
+                <div class="cp-input--inline-row">
+                    <select id="cpChannel" class="cp-input">
+                        <option value="In-Store">In-Store (POS)</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Shopee">Shopee</option>
+                        <option value="TikTok">TikTok</option>
+                        <option value="TikTok/Shopee">TikTok/Shopee</option>
+                        <option value="Web">Web</option>
+                    </select>
+                    <select id="cpStatus" class="cp-input">
+                        <option value="Completed">Bawa Balik (selesai)</option>
+                        <option value="To Fulfil">To Fulfil (ship)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Payment pills (UX-3.3) -->
+            <div class="cp-section">
+                <p class="cp-section__title">Cara Bayar</p>
+                <div class="cp-payment-grid" id="cpPayPills">
+                    <button type="button" class="cp-pay-pill is-active" data-method="Cash" onclick="window.cpSetPayment('Cash')">
+                        <span class="cp-pay-pill__icon">💵</span><span>Tunai</span>
+                    </button>
+                    <button type="button" class="cp-pay-pill" data-method="QR Pay" onclick="window.cpSetPayment('QR Pay')">
+                        <span class="cp-pay-pill__icon">📱</span><span>QR Pay</span>
+                    </button>
+                    <button type="button" class="cp-pay-pill" data-method="Card" onclick="window.cpSetPayment('Card')">
+                        <span class="cp-pay-pill__icon">💳</span><span>Kad/Bank</span>
+                    </button>
+                    <button type="button" class="cp-pay-pill" data-method="E-Wallet" onclick="window.cpSetPayment('E-Wallet')">
+                        <span class="cp-pay-pill__icon">📲</span><span>E-Wallet</span>
+                    </button>
+                </div>
+                <input type="hidden" id="cpPaymentMethod" value="Cash">
+                <!-- E-wallet inline (only shows when E-Wallet pill active) -->
+                <div id="cpEwalletInline" class="is-hidden" style="margin-top:10px; padding:10px; background:var(--warning-50); border:1px solid var(--warning-200); border-radius:var(--radius-md);">
+                    <div style="font-size:11px; font-weight:700; color:var(--warning-900); margin-bottom:6px;">⚠ Manual Confirm — minta customer scan + tunjuk confirmation</div>
+                    <div id="cpEwalletEmptyMsg" class="is-hidden" style="padding:6px 10px; background:var(--danger-50); border-radius:var(--radius-sm); color:var(--danger-700); font-size:12px; margin-bottom:6px;">
+                        Tiada e-wallet enabled. Pergi <strong>Compliance → E-Wallets</strong> untuk setup.
+                    </div>
+                    <div class="cp-input--inline-row">
+                        <select id="cpEwalletProvider" class="cp-input">
+                            <option value="">— Pilih e-wallet —</option>
+                        </select>
+                        <input type="text" id="cpEwalletRef" class="cp-input" placeholder="Ref # confirmation">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success state — hidden by default, replaces form view -->
+        <div class="checkout-panel__body cp-success is-hidden" id="cpSuccessView">
+            <div class="cp-success__icon">✓</div>
+            <div class="cp-success__title">Bayaran Berjaya!</div>
+            <div class="cp-success__amount">RM <span id="cpSuccessAmount">0.00</span></div>
+            <div class="cp-success__sub" id="cpSuccessSub">Resit dah disimpan dalam sistem.</div>
+            <div class="cp-success-actions">
+                <button class="btn btn--secondary" onclick="window.cpReceiptPrint()"><i data-lucide="printer" style="width:14px; height:14px;"></i> Print</button>
+                <button class="btn btn--secondary" onclick="window.cpReceiptWhatsApp()"><i data-lucide="message-circle" style="width:14px; height:14px;"></i> WhatsApp</button>
+                <button class="btn btn--secondary" onclick="window.cpReceiptEmail()"><i data-lucide="mail" style="width:14px; height:14px;"></i> Email</button>
+                <button class="btn btn--primary" onclick="window.closeCheckoutPanel()"><i data-lucide="check" style="width:14px; height:14px;"></i> Selesai</button>
+            </div>
+            <div style="margin-top:24px; font-size:11px; color:var(--neutral-500);">⌘+N untuk new sale · Esc untuk tutup</div>
+        </div>
+
+        <footer class="checkout-panel__footer" id="cpFooter">
+            <button id="cpConfirmBtn" class="btn btn--success btn--lg btn--block" onclick="window.cpConfirmSale()">
+                <i data-lucide="check-circle" style="width:18px; height:18px;"></i>
+                Sahkan Bayaran (RM <span id="cpConfirmAmount">0.00</span>)
+            </button>
+        </footer>
+    </aside>
 
     <!-- 0.2 CUSTOMER HISTORY MODAL (STAFF ONLY) -->
     <div id="staffCustomerHistoryModal" class="login-overlay" style="display:none; z-index:3000;">
@@ -7212,7 +7331,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=72"></script>
+    <script src="app.js?v=73"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -9060,3 +9060,363 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply persisted mode at boot — defer so sidebar items rendered
     setTimeout(() => { if(typeof __initMode === 'function') __initMode(); }, 300);
 });
+
+// =============================================================
+// SPRINT UX-3 — CHECKOUT SIDE PANEL (replaces modal flow)
+// =============================================================
+
+let __cpLastSale = null;        // last successful sale info — for receipt/WA/email
+let __cpAcCursor = 0;
+let __cpAcResults = [];
+
+window.openCheckoutPanel = function() {
+    if(typeof cart === 'undefined' || cart.length === 0) {
+        return showToast('Cart kosong.', 'warn');
+    }
+    // Hide success view, show form view
+    document.getElementById('cpFormView').classList.remove('is-hidden');
+    document.getElementById('cpSuccessView').classList.add('is-hidden');
+    document.getElementById('cpFooter').classList.remove('is-hidden');
+
+    // Reset VIP state
+    window.__currentCheckoutVip = null;
+    const banner = document.getElementById('cpVipBanner');
+    if(banner) { banner.classList.remove('is-shown'); banner.innerHTML = ''; }
+    document.getElementById('cpDiscountLine').style.display = 'none';
+
+    // Reset form
+    ['cpCustName','cpCustPhone','cpCustEmail','cpBuyerTin','cpEwalletRef'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('cpChannel').value = 'In-Store';
+    document.getElementById('cpStatus').value = 'Completed';
+    cpSetPayment('Cash');
+
+    // Compute & show total
+    cpRecomputeTotal();
+
+    // Open
+    document.getElementById('checkoutPanelOverlay').classList.add('is-open');
+    const panel = document.getElementById('checkoutPanel');
+    panel.classList.add('is-open');
+    panel.setAttribute('aria-hidden', 'false');
+
+    // Populate e-wallet dropdown if applicable
+    cpPopulateEwallets();
+
+    // Focus customer name
+    setTimeout(() => document.getElementById('cpCustName').focus(), 320);
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+window.closeCheckoutPanel = function() {
+    document.getElementById('checkoutPanelOverlay').classList.remove('is-open');
+    const panel = document.getElementById('checkoutPanel');
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden', 'true');
+};
+
+window.cpSetPayment = function(method) {
+    document.getElementById('cpPaymentMethod').value = method;
+    document.querySelectorAll('#cpPayPills .cp-pay-pill').forEach(b => {
+        b.classList.toggle('is-active', b.dataset.method === method);
+    });
+    const ewl = document.getElementById('cpEwalletInline');
+    if(method === 'E-Wallet') {
+        ewl.classList.remove('is-hidden');
+        cpPopulateEwallets();
+    } else {
+        ewl.classList.add('is-hidden');
+    }
+};
+
+window.cpPopulateEwallets = function() {
+    const sel = document.getElementById('cpEwalletProvider');
+    const empty = document.getElementById('cpEwalletEmptyMsg');
+    if(!sel) return;
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}'); } catch(e){}
+    const wallets = s.ewallets || {};
+    const enabled = Object.entries(wallets).filter(([_, v]) => v && v.enabled);
+    sel.innerHTML = '<option value="">— Pilih e-wallet —</option>' +
+        enabled.map(([k, _]) => `<option value="${k}">${k}</option>`).join('');
+    if(empty) empty.classList.toggle('is-hidden', enabled.length > 0);
+};
+
+window.cpRecomputeTotal = function() {
+    let raw = 0;
+    (typeof cart !== 'undefined' ? cart : []).forEach(it => {
+        raw += (it.quantity || it.qty || 1) * (parseFloat(it.price) || 0);
+    });
+    raw = round2(raw);
+    let final = raw;
+    let discount = 0;
+    if(window.__currentCheckoutVip && window.__currentCheckoutVip.discount_pct) {
+        discount = round2(raw * window.__currentCheckoutVip.discount_pct / 100);
+        final = round2(raw - discount);
+    }
+    document.getElementById('cpTotalDisplay').textContent = final.toFixed(2);
+    document.getElementById('cpConfirmAmount').textContent = final.toFixed(2);
+    const discLine = document.getElementById('cpDiscountLine');
+    if(discount > 0 && window.__currentCheckoutVip) {
+        discLine.style.display = 'block';
+        discLine.innerHTML = `${window.__currentCheckoutVip.tier} discount −RM ${discount.toFixed(2)} (subtotal RM ${raw.toFixed(2)})`;
+    } else {
+        discLine.style.display = 'none';
+    }
+    // Also keep legacy modal display in sync (in case modal opened too)
+    const legacy = document.getElementById('paymentTotalDisplay');
+    if(legacy) legacy.textContent = final.toFixed(2);
+};
+
+// VIP lookup integrated with new panel
+window.cpVipLookup = function() {
+    const name = (document.getElementById('cpCustName').value || '').trim().toLowerCase();
+    const phoneRaw = (document.getElementById('cpCustPhone').value || '').trim();
+    const phone = (typeof normalisePhoneForMatch === 'function') ? normalisePhoneForMatch(phoneRaw) : phoneRaw;
+
+    let match = null;
+    if(typeof customersData !== 'undefined') {
+        if(phone) match = customersData.find(c => c.phone === phone);
+        if(!match && name && name.length >= 3) match = customersData.find(c => (c.name || '').toLowerCase() === name);
+    }
+
+    window.__currentCheckoutVip = null;
+    const banner = document.getElementById('cpVipBanner');
+    if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; cpRecomputeTotal(); return; }
+
+    const tier = (typeof getCustomerTier === 'function') ? getCustomerTier(match) : null;
+    if(tier) {
+        const pct = (typeof getTierDiscount === 'function') ? getTierDiscount(tier) : 0;
+        window.__currentCheckoutVip = {
+            customer_id: match.id, customer_name: match.name, customer_phone: match.phone,
+            tier, discount_pct: pct,
+            total_orders: match.total_orders || 0, total_spent: match.total_spent || 0
+        };
+        const tierClass = tier.toLowerCase();
+        banner.className = `cp-vip-banner is-shown cp-vip-banner--${tierClass}`;
+        const emoji = (typeof getTierColor === 'function') ? getTierColor(tier).emoji : '⭐';
+        banner.innerHTML = `${emoji} <strong>${tier} TIER</strong> · ${match.name} · ${match.total_orders} orders · RM${(match.total_spent||0).toFixed(0)} spent → auto-discount <strong>${pct}% applied</strong>`;
+        // auto-fill email if empty
+        if(match.email && !document.getElementById('cpCustEmail').value) {
+            document.getElementById('cpCustEmail').value = match.email;
+        }
+        if(match.phone && !document.getElementById('cpCustPhone').value) {
+            document.getElementById('cpCustPhone').value = match.phone;
+        }
+    } else {
+        const orders = match.total_orders || 0;
+        const need = Math.max(0, 3 - orders);
+        banner.className = 'cp-vip-banner is-shown cp-vip-banner--info';
+        banner.innerHTML = `👤 ${match.name} · ${orders} order${orders===1?'':'s'} ${need > 0 ? '· '+need+' more order to unlock 🥉 Bronze' : '· qualifies next checkout'}`;
+        if(match.phone && !document.getElementById('cpCustPhone').value) {
+            document.getElementById('cpCustPhone').value = match.phone;
+        }
+        if(match.email && !document.getElementById('cpCustEmail').value) {
+            document.getElementById('cpCustEmail').value = match.email;
+        }
+    }
+    cpRecomputeTotal();
+};
+
+// Customer autocomplete (UX-3.2)
+window.cpCustAutocomplete = function() {
+    const q = (document.getElementById('cpCustName').value || '').trim().toLowerCase();
+    const dd = document.getElementById('cpCustAcDropdown');
+    if(typeof customersData === 'undefined' || customersData.length === 0) { dd.classList.remove('is-open'); return; }
+
+    let results;
+    if(!q) {
+        // Show top spenders when input empty
+        results = [...customersData].sort((a,b) => (b.total_spent||0) - (a.total_spent||0)).slice(0, 8);
+    } else {
+        results = customersData.filter(c => {
+            const hay = `${c.name||''} ${c.phone||''} ${c.email||''}`.toLowerCase();
+            return hay.includes(q);
+        }).slice(0, 8);
+    }
+    __cpAcResults = results;
+    __cpAcCursor = 0;
+
+    if(results.length === 0) {
+        dd.innerHTML = '<div class="cp-autocomplete-item" style="cursor:default; color:var(--neutral-500); font-size:12px;">Tiada match — taip nama untuk customer baru</div>';
+        dd.classList.add('is-open');
+        return;
+    }
+    dd.innerHTML = results.map((c, i) => {
+        const tier = (typeof getCustomerTier === 'function') ? getCustomerTier(c) : null;
+        const tierColor = tier ? (typeof getTierColor === 'function' ? getTierColor(tier) : null) : null;
+        const tierBadge = tier && tierColor ?
+            `<span class="badge badge--${tier.toLowerCase()}">${tierColor.emoji} ${tier}</span>` : '';
+        return `
+            <div class="cp-autocomplete-item ${i === __cpAcCursor ? 'is-active' : ''}" data-idx="${i}" onmousedown="window.cpCustPick(${i})">
+                <div class="cp-ac-main">
+                    <div class="cp-ac-name">${(c.name||'').slice(0, 50)}</div>
+                    <div class="cp-ac-meta">${c.phone || '-'} ${c.email ? '· '+c.email.slice(0,30) : ''} · ${c.total_orders||0} orders · RM${(c.total_spent||0).toFixed(0)}</div>
+                </div>
+                ${tierBadge}
+            </div>
+        `;
+    }).join('');
+    dd.classList.add('is-open');
+};
+
+window.cpCustAutocompleteClose = function() {
+    document.getElementById('cpCustAcDropdown').classList.remove('is-open');
+};
+
+window.cpCustPick = function(i) {
+    const c = __cpAcResults[i];
+    if(!c) return;
+    document.getElementById('cpCustName').value = c.name || '';
+    document.getElementById('cpCustPhone').value = c.phone || '';
+    if(c.email) document.getElementById('cpCustEmail').value = c.email;
+    cpCustAutocompleteClose();
+    cpVipLookup();
+};
+
+// Confirm sale — re-uses processNewCheckout logic by syncing fields back to legacy modal IDs first
+window.cpConfirmSale = async function() {
+    // Validate
+    const name = (document.getElementById('cpCustName').value || '').trim();
+    if(!name) {
+        // Auto-fill Walk-In
+        document.getElementById('cpCustName').value = 'Walk-In';
+    }
+    const pm = document.getElementById('cpPaymentMethod').value;
+    if(pm === 'E-Wallet') {
+        const provider = document.getElementById('cpEwalletProvider').value;
+        const ref = document.getElementById('cpEwalletRef').value.trim();
+        if(!provider) return showToast('Pilih e-wallet provider.', 'warn');
+        if(!ref) return showToast('Ref # e-wallet wajib.', 'warn');
+    }
+
+    // Sync to legacy modal IDs (so processNewCheckout can read same fields)
+    const sync = (cpId, legacyId) => {
+        const cp = document.getElementById(cpId), leg = document.getElementById(legacyId);
+        if(cp && leg) leg.value = cp.value;
+    };
+    sync('cpCustName', 'customerName');
+    sync('cpCustPhone', 'customerPhone');
+    sync('cpCustEmail', 'customerEmail');
+    sync('cpBuyerTin', 'customerBuyerTin');
+    sync('cpChannel', 'checkoutChannel');
+    sync('cpStatus', 'checkoutStatus');
+    sync('cpPaymentMethod', 'paymentMethod');
+    sync('cpEwalletProvider', 'ewalletProvider');
+    sync('cpEwalletRef', 'ewalletRef');
+
+    // Disable button while processing
+    const btn = document.getElementById('cpConfirmBtn');
+    btn.disabled = true; btn.classList.add('is-disabled');
+    btn.innerHTML = '<i data-lucide="loader" style="width:16px; height:16px;"></i> Processing…';
+
+    // Capture sale info for receipt
+    const finalTotal = parseFloat(document.getElementById('cpTotalDisplay').textContent) || 0;
+    const itemSnapshot = [...cart];
+
+    // Hijack alert/showToast to capture invoice ID etc — actually existing processNewCheckout opens
+    // its own receipt modal at the end. Block that by stubbing showReceiptModal temporarily.
+    const origShow = window.showReceiptModal;
+    let invIdCaptured = null;
+    window.showReceiptModal = function(invId, custName, email, total, items) {
+        invIdCaptured = invId;
+        // Don't open the legacy modal — UX-3 success state replaces it
+    };
+
+    try {
+        await window.processNewCheckout();
+    } catch(e) {
+        showToast('Ralat checkout: ' + e.message, 'error');
+        btn.disabled = false; btn.classList.remove('is-disabled');
+        btn.innerHTML = '<i data-lucide="check-circle" style="width:18px; height:18px;"></i> Sahkan Bayaran (RM ' + finalTotal.toFixed(2) + ')';
+        window.showReceiptModal = origShow;
+        return;
+    }
+    window.showReceiptModal = origShow;
+
+    // Save last sale for receipt actions
+    __cpLastSale = {
+        invId: invIdCaptured || ('INV-' + Date.now().toString(36).toUpperCase()),
+        customer_name: document.getElementById('cpCustName').value || 'Walk-In',
+        customer_phone: document.getElementById('cpCustPhone').value || '',
+        customer_email: document.getElementById('cpCustEmail').value || '',
+        total: finalTotal,
+        items: itemSnapshot,
+        payment_method: pm,
+        timestamp: new Date().toISOString()
+    };
+
+    // Show success state
+    document.getElementById('cpFormView').classList.add('is-hidden');
+    document.getElementById('cpSuccessView').classList.remove('is-hidden');
+    document.getElementById('cpFooter').classList.add('is-hidden');
+    document.getElementById('cpSuccessAmount').textContent = finalTotal.toFixed(2);
+    document.getElementById('cpSuccessSub').innerHTML =
+        `Resit <strong>${__cpLastSale.invId}</strong> dah disimpan. ${__cpLastSale.customer_email ? 'Email-resit boleh dihantar.' : 'Walk-in customer.'}`;
+
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+window.cpReceiptPrint = function() {
+    if(!__cpLastSale) return;
+    if(typeof window.showReceiptModal === 'function') {
+        showReceiptModal(__cpLastSale.invId, __cpLastSale.customer_name, __cpLastSale.customer_email, __cpLastSale.total, __cpLastSale.items);
+    } else {
+        showToast('Resit handler missing', 'warn');
+    }
+};
+
+window.cpReceiptWhatsApp = function() {
+    if(!__cpLastSale) return;
+    const phone = __cpLastSale.customer_phone || '';
+    if(!phone) return showToast('Tiada phone number untuk WhatsApp.', 'warn');
+    const phoneNorm = phone.replace(/\D/g, '').replace(/^0/, '60');
+    const settings = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop || {};
+    const shopName = settings.name || '10 CAMP';
+    const itemList = __cpLastSale.items.map(it => `• ${it.name||it.sku} x${it.quantity||1} = RM${((it.quantity||1)*(it.price||0)).toFixed(2)}`).join('\n');
+    const msg = `Salam dari *${shopName}*!\n\nResit: ${__cpLastSale.invId}\n${itemList}\n\n*Total: RM ${__cpLastSale.total.toFixed(2)}*\n\nTerima kasih atas pembelian!`;
+    const url = `https://wa.me/${phoneNorm}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+};
+
+window.cpReceiptEmail = function() {
+    if(!__cpLastSale) return;
+    const email = __cpLastSale.customer_email || '';
+    if(!email) return showToast('Tiada email untuk hantar.', 'warn');
+    const settings = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop || {};
+    const shopName = settings.name || '10 CAMP';
+    const itemList = __cpLastSale.items.map(it => `${it.name||it.sku} x${it.quantity||1} - RM${((it.quantity||1)*(it.price||0)).toFixed(2)}`).join('%0D%0A');
+    const subject = encodeURIComponent(`E-Resit ${__cpLastSale.invId} dari ${shopName}`);
+    const body = encodeURIComponent(`Salam,\n\nResit: ${__cpLastSale.invId}\n\n`) + itemList + encodeURIComponent(`\n\nTotal: RM ${__cpLastSale.total.toFixed(2)}\n\nTerima kasih!`);
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+};
+
+// Hijack openPaymentModal → openCheckoutPanel (the new flow becomes default)
+window.__originalOpenPaymentModal = window.openPaymentModal;
+window.openPaymentModal = function() {
+    return window.openCheckoutPanel();
+};
+
+// Keyboard shortcuts within panel
+document.addEventListener('keydown', e => {
+    const panel = document.getElementById('checkoutPanel');
+    if(!panel || !panel.classList.contains('is-open')) return;
+    if(e.key === 'Escape') { closeCheckoutPanel(); return; }
+    // Customer autocomplete arrow nav
+    const dd = document.getElementById('cpCustAcDropdown');
+    if(dd && dd.classList.contains('is-open') && document.activeElement.id === 'cpCustName') {
+        if(e.key === 'ArrowDown') {
+            e.preventDefault();
+            __cpAcCursor = Math.min(__cpAcCursor + 1, __cpAcResults.length - 1);
+            cpCustAutocomplete();
+        } else if(e.key === 'ArrowUp') {
+            e.preventDefault();
+            __cpAcCursor = Math.max(__cpAcCursor - 1, 0);
+            cpCustAutocomplete();
+        } else if(e.key === 'Enter' && __cpAcResults.length) {
+            e.preventDefault();
+            cpCustPick(__cpAcCursor);
+        }
+    }
+});
