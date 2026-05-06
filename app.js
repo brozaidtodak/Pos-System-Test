@@ -10254,3 +10254,78 @@ window.renderDataBackup = function() {
         }
     }
 };
+
+// =============================================================
+// p3_5 — Light i18n (BM ↔ EN)
+// =============================================================
+window.I18N = {
+    lang: localStorage.getItem('lang_v1') || 'bm',
+    dict: {
+        // Mode bar
+        mode_cashier:     { bm: 'Kaunter',     en: 'Cashier' },
+        mode_operations:  { bm: 'Operasi',     en: 'Operations' },
+        mode_manager:     { bm: 'Pengurus',    en: 'Manager' },
+
+        // Sidebar groups
+        dept_sales:       { bm: 'Jabatan Jualan',     en: 'Sales Department' },
+        dept_inventory:   { bm: 'Jabatan Stok',       en: 'Inventory Department' },
+        dept_admin:       { bm: 'Jabatan Admin',      en: 'Admin Department' },
+        dept_finance:     { bm: 'Jabatan Kewangan',   en: 'Finance Department' },
+        dept_hr:          { bm: 'Jabatan HR',         en: 'HR Department' },
+
+        // Common buttons
+        btn_save:         { bm: 'Simpan',   en: 'Save' },
+        btn_cancel:       { bm: 'Batal',    en: 'Cancel' },
+        btn_delete:       { bm: 'Padam',    en: 'Delete' },
+        btn_edit:         { bm: 'Edit',     en: 'Edit' },
+        btn_add:          { bm: 'Tambah',   en: 'Add' },
+        btn_search:       { bm: 'Cari',     en: 'Search' },
+        btn_close:        { bm: 'Tutup',    en: 'Close' },
+        btn_release:      { bm: 'Lepaskan', en: 'Release' },
+
+        // Status / labels
+        status_active:    { bm: 'Aktif',    en: 'Active' },
+        status_inactive:  { bm: 'Tak aktif',en: 'Inactive' },
+        status_completed: { bm: 'Selesai',  en: 'Completed' },
+        status_pending:   { bm: 'Menunggu', en: 'Pending' },
+        label_loading:    { bm: 'Loading…', en: 'Loading…' },
+        label_total:      { bm: 'Jumlah',   en: 'Total' }
+    }
+};
+
+window.t = function(key) {
+    const e = window.I18N.dict[key];
+    if(!e) return key;
+    return e[window.I18N.lang] || e.en || key;
+};
+
+window.applyI18N = function() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const val = window.t(key);
+        if(val) el.textContent = val;
+    });
+    // Update lang button label
+    const lbl = document.getElementById('langLabel');
+    if(lbl) lbl.textContent = window.I18N.lang.toUpperCase();
+    document.documentElement.setAttribute('lang', window.I18N.lang === 'bm' ? 'ms' : 'en');
+};
+
+window.setLang = function(lang) {
+    if(!['bm','en'].includes(lang)) return;
+    window.I18N.lang = lang;
+    try { localStorage.setItem('lang_v1', lang); } catch(e){}
+    window.applyI18N();
+    if(typeof showToast === 'function') {
+        showToast(lang === 'bm' ? 'Bahasa: Bahasa Malaysia ✓' : 'Language: English ✓', 'success');
+    }
+};
+
+window.toggleLang = function() {
+    window.setLang(window.I18N.lang === 'bm' ? 'en' : 'bm');
+};
+
+// Boot — apply on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => { try { window.applyI18N(); } catch(e){} }, 100);
+});

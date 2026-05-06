@@ -904,7 +904,7 @@
             </div>
             <!-- SALES DEPARTMENT HUB & SUB-MENUS -->
             <div class="menu-item sales-only" data-group-toggle="sales" onclick="toggleSidebarGroup('sales')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>Sales Department</span>
+                <span data-i18n="dept_sales">Sales Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
             <!-- Daily-essential items only — kept lean for cashier focus -->
@@ -925,7 +925,7 @@
             <!-- END SALES DEPT -->
             <!-- INVENTORY DEPARTMENT HUB & SUB-MENUS -->
             <div class="menu-item inv-only" data-group-toggle="inv" onclick="toggleSidebarGroup('inv')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>Inventory Department</span>
+                <span data-i18n="dept_inventory">Inventory Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
             <!-- Daily ops (most-clicked first) -->
@@ -974,7 +974,7 @@
             
             <!-- HR DEPARTMENT (people-related) -->
             <div class="menu-item" data-group-toggle="hr" onclick="toggleSidebarGroup('hr')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>HR Department</span>
+                <span data-i18n="dept_hr">HR Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
             <div class="menu-item" data-group="hr" data-tab="hr_staff" onclick="switchHub(['staffMgmtSection'], 'Staff Management', this); if(typeof renderStaffMgmt==='function') renderStaffMgmt();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
@@ -989,7 +989,7 @@
 
             <!-- ADMIN DEPARTMENT — manager tools, ops, system -->
             <div class="menu-item" data-group-toggle="admin" onclick="toggleSidebarGroup('admin')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>Admin Department</span>
+                <span data-i18n="dept_admin">Admin Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
             <div class="menu-item" data-group="admin" data-tab="admin_dashboard" onclick="switchHub(['managerDashboardSection'], 'Manager Dashboard', this); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
@@ -1022,7 +1022,7 @@
 
             <!-- FINANCE DEPARTMENT — money/accounting/tax -->
             <div class="menu-item" data-group-toggle="finance" onclick="toggleSidebarGroup('finance')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
-                <span>Finance Department</span>
+                <span data-i18n="dept_finance">Finance Department</span>
                 <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
             </div>
             <div class="menu-item" data-group="finance" data-tab="finance_main" onclick="switchHub(['financeSection'], 'Finance &amp; Memo', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
@@ -1069,6 +1069,9 @@
                 <span style="font-size:11px;">Search</span>
                 <kbd style="background:rgba(0,0,0,0.4); padding:1px 6px; border-radius:3px; font-size:10px; font-family:monospace;">⌘K</kbd>
             </button>
+            <button id="langToggle" class="theme-toggle" onclick="window.toggleLang()" title="Toggle language (BM/EN)" aria-label="Toggle language" style="font-size:12px; font-weight:700; min-width:44px;">
+                <span id="langLabel">BM</span>
+            </button>
             <button id="themeToggle" class="theme-toggle" onclick="window.toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
                 <i id="themeIcon" data-lucide="moon" style="width:16px; height:16px;" aria-hidden="true"></i>
             </button>
@@ -1079,15 +1082,15 @@
     <div id="modeBar" class="mode-bar" role="tablist" aria-label="Mode selector">
         <button class="mode-tab is-active" data-mode-set="cashier" onclick="window.setMode('cashier')" role="tab" aria-selected="true">
             <i data-lucide="shopping-cart" class="mode-tab__icon" style="width:16px; height:16px;"></i>
-            <span>Cashier</span>
+            <span data-i18n="mode_cashier">Kaunter</span>
         </button>
         <button class="mode-tab" data-mode-set="operations" onclick="window.setMode('operations')" role="tab" aria-selected="false">
             <i data-lucide="package" class="mode-tab__icon" style="width:16px; height:16px;"></i>
-            <span>Operations</span>
+            <span data-i18n="mode_operations">Operasi</span>
         </button>
         <button class="mode-tab" data-mode-set="manager" onclick="window.setMode('manager')" role="tab" aria-selected="false">
             <i data-lucide="layout-dashboard" class="mode-tab__icon" style="width:16px; height:16px;"></i>
-            <span>Manager</span>
+            <span data-i18n="mode_manager">Pengurus</span>
         </button>
         <div style="margin-left:auto; display:flex; align-items:center; padding:4px 12px; font-size:11px; color:var(--neutral-500);" id="modeHint">
             Ctrl/⌘+K untuk quick search
@@ -3722,7 +3725,7 @@
                 { id:'p3_2', label:'WhatsApp Commerce (receipt + reorder + broadcast)', d:'progress' },
                 { id:'p3_3', label:'Native mobile app (iOS + Android)', d:'todo' },
                 { id:'p3_4', label:'5-min onboarding wizard', d:'done' },
-                { id:'p3_5', label:'Multi-language UI (BM/EN/中文/தமிழ்)', d:'todo' },
+                { id:'p3_5', label:'Multi-language UI BM/EN toggle (light i18n with t() helper, header switcher; mode bar + dept groups + common buttons covered. 中文/தமிழ் pickup later)', d:'progress' },
                 { id:'p3_6', label:'Public API + webhooks', d:'todo' },
                 { id:'p3_7', label:'EasyStore live API integration (one-time sync 432 orders + real-time webhooks)', d:'done' },
                 { id:'p3_8', label:'Shopify CSV migration (22 months · 4,083 orders · 2,881 customers)', d:'done' }
@@ -7665,7 +7668,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=87"></script>
+    <script src="app.js?v=88"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
