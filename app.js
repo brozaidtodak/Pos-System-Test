@@ -7835,56 +7835,184 @@ function dashGetCutoff() {
     return now - 30 * day;
 }
 
+// ===== Helpers (sparkline, donut, comparison) =====
+function fmtCurrency(n) { return Number(n||0).toLocaleString('en-MY', { maximumFractionDigits: 0 }); }
+function fmtCompact(n) {
+    if(n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if(n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return Math.round(n);
+}
+function dashCompareLabel(curr, prev) {
+    if(prev === 0 && curr === 0) return '—';
+    if(prev === 0) return `<span class="up">+∞</span> vs prev period`;
+    const diff = curr - prev;
+    const pct = (diff / prev * 100);
+    const sign = pct >= 0 ? 'up' : 'down';
+    const arrow = pct >= 0 ? '↑' : '↓';
+    return `<span class="${sign}">${arrow} ${Math.abs(pct).toFixed(1)}%</span> vs prev period`;
+}
+function dashSparkline(svgEl, values, opts) {
+    if(!svgEl || values.length === 0) return;
+    const o = opts || {};
+    const W = svgEl.viewBox.baseVal.width || 240;
+    const H = svgEl.viewBox.baseVal.height || 50;
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const range = max - min || 1;
+    const stepX = values.length > 1 ? W / (values.length - 1) : 0;
+    const points = values.map((v, i) => `${(i*stepX).toFixed(2)},${(H - ((v - min)/range)*(H-4) - 2).toFixed(2)}`);
+    const path = points.join(' L ');
+    const fillPath = `M 0,${H} L ${points.join(' L ')} L ${W},${H} Z`;
+    const stroke = o.stroke || '#FFF';
+    const fill = o.fill || 'rgba(255,255,255,0.18)';
+    const strokeWidth = o.strokeWidth || 2;
+    svgEl.innerHTML = `
+        <path d="${fillPath}" fill="${fill}" stroke="none"/>
+        <path d="M ${path}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round" stroke-linecap="round"/>
+    `;
+}
+function dashDonut(slices) {
+    if(!slices.length) return '<svg class="dash-donut__svg" viewBox="0 0 130 130"><circle cx="65" cy="65" r="50" fill="none" stroke="#E5E7EB" stroke-width="20"/></svg>';
+    const total = slices.reduce((s, x) => s + x.value, 0) || 1;
+    const palette = ['#CD7C32', '#3B82F6', '#10B981', '#A855F7', '#F59E0B', '#EF4444', '#6B7280'];
+    const C = 2 * Math.PI * 50;
+    let offset = 0;
+    let segs = '';
+    slices.forEach((sl, i) => {
+        const frac = sl.value / total;
+        const dash = C * frac;
+        const color = palette[i % palette.length];
+        sl._color = color;
+        segs += `<circle cx="65" cy="65" r="50" fill="none" stroke="${color}" stroke-width="20"
+            stroke-dasharray="${dash.toFixed(2)} ${(C-dash).toFixed(2)}"
+            stroke-dashoffset="${(-offset).toFixed(2)}"
+            transform="rotate(-90 65 65)"/>`;
+        offset += dash;
+    });
+    return `
+        <svg class="dash-donut__svg" viewBox="0 0 130 130">
+            ${segs}
+            <text x="65" y="62" text-anchor="middle" font-size="11" fill="#6B7280" font-weight="600">Total</text>
+            <text x="65" y="78" text-anchor="middle" font-size="14" fill="#111" font-weight="800">RM ${fmtCompact(total)}</text>
+        </svg>
+    `;
+}
+function dashAvatarColor(name) {
+    let hash = 0;
+    for(let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    const palette = ['#CD7C32', '#3B82F6', '#10B981', '#A855F7', '#F59E0B', '#EF4444', '#0EA5E9', '#EC4899'];
+    return palette[Math.abs(hash) % palette.length];
+}
+function dashInitials(name) {
+    return (name||'?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+}
+
 window.renderManagerDashboard = function() {
     if(typeof salesHistory === 'undefined') return;
+
     const cutoff = dashGetCutoff();
+    const periodMs = (Date.now() - cutoff) || (1000 * 60 * 60 * 24 * 30);
+    const prevCutoff = cutoff - periodMs;
+
     const sales = salesHistory.filter(s => {
         const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
         return dt >= cutoff;
     });
+    const prevSales = salesHistory.filter(s => {
+        const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+        return dt >= prevCutoff && dt < cutoff;
+    });
     const positives = sales.filter(s => (s.total||0) > 0);
     const refunds = sales.filter(s => (s.total||0) < 0);
+    const prevPositives = prevSales.filter(s => (s.total||0) > 0);
+    const prevRefunds = prevSales.filter(s => (s.total||0) < 0);
 
     const totalRev = positives.reduce((s, x) => s + (x.total||0), 0);
     const refundTotal = Math.abs(refunds.reduce((s, x) => s + (x.total||0), 0));
     const netRev = totalRev - refundTotal;
+    const prevNetRev = prevPositives.reduce((s, x) => s + (x.total||0), 0) - Math.abs(prevRefunds.reduce((s, x) => s + (x.total||0), 0));
+
     const orderCount = positives.length;
+    const prevOrders = prevPositives.length;
     const aov = orderCount > 0 ? totalRev / orderCount : 0;
+    const prevAov = prevOrders > 0 ? prevPositives.reduce((s, x) => s + (x.total||0), 0) / prevOrders : 0;
 
-    // Unique customers in period
     const periodCustomers = new Set(positives.map(s => s.customer_phone || s.customer_name).filter(Boolean));
+    const prevCustomers = new Set(prevPositives.map(s => s.customer_phone || s.customer_name).filter(Boolean));
 
-    // Period label
-    const labelMap = { '7d':'Last 7 days', '30d':'Last 30 days', '90d':'Last 90 days', 'ytd':'Year-to-date', 'all':'All-time' };
-    document.getElementById('dashPeriodLabel').textContent = `${labelMap[__dashPeriod]} · ${sales.length} orders`;
+    // Period label with date range
+    const periodNames = { '7d':'last 7 days', '30d':'last 30 days', '90d':'last 90 days', 'ytd':'year-to-date', 'all':'all time' };
+    const startD = new Date(cutoff);
+    const endD = new Date();
+    const dateRange = __dashPeriod === 'all'
+        ? `${sales.length} orders ever`
+        : `${startD.toLocaleDateString('en-MY',{day:'numeric',month:'short'})} → ${endD.toLocaleDateString('en-MY',{day:'numeric',month:'short'})}`;
+    const lbl = document.getElementById('dashPeriodLabel');
+    if(lbl) lbl.textContent = `${periodNames[__dashPeriod]} · ${dateRange}`;
 
-    // KPI cards
-    document.getElementById('dashKpiCards').innerHTML = `
-        <div style="background:#F0FDF4; padding:12px; border-radius:8px; border-left:4px solid #10B981;"><div style="font-size:10px; color:#166534; font-weight:700; text-transform:uppercase;">Revenue</div><div style="font-size:20px; font-weight:800;">RM ${totalRev.toFixed(2)}</div><div style="font-size:10px; color:#666;">Net: RM ${netRev.toFixed(2)}</div></div>
-        <div style="background:#EFF6FF; padding:12px; border-radius:8px; border-left:4px solid #2563EB;"><div style="font-size:10px; color:#1E40AF; font-weight:700; text-transform:uppercase;">Orders</div><div style="font-size:20px; font-weight:800;">${orderCount}</div><div style="font-size:10px; color:#666;">+${refunds.length} refunds</div></div>
-        <div style="background:#FAF5FF; padding:12px; border-radius:8px; border-left:4px solid #A855F7;"><div style="font-size:10px; color:#6B21A8; font-weight:700; text-transform:uppercase;">AOV</div><div style="font-size:20px; font-weight:800;">RM ${aov.toFixed(2)}</div></div>
-        <div style="background:#FEF3C7; padding:12px; border-radius:8px; border-left:4px solid #F59E0B;"><div style="font-size:10px; color:#92400E; font-weight:700; text-transform:uppercase;">Customers</div><div style="font-size:20px; font-weight:800;">${periodCustomers.size}</div></div>
-        <div style="background:#FEE2E2; padding:12px; border-radius:8px; border-left:4px solid #DC2626;"><div style="font-size:10px; color:#991B1B; font-weight:700; text-transform:uppercase;">Refund Rate</div><div style="font-size:20px; font-weight:800;">${orderCount ? (refunds.length*100/orderCount).toFixed(1) : '0.0'}%</div></div>
-    `;
+    // ---------- HERO ----------
+    document.getElementById('heroRevValue').textContent = fmtCurrency(netRev);
+    document.getElementById('heroRevCompare').innerHTML = dashCompareLabel(netRev, prevNetRev);
 
-    // Revenue trend chart (canvas)
+    // Hero sparkline — daily revenue
+    const dayMap = {};
+    positives.forEach(s => {
+        const d = (s.created_at||'').slice(0, 10);
+        if(d) dayMap[d] = (dayMap[d] || 0) + (s.total||0);
+    });
+    const sortedDays = Object.keys(dayMap).sort();
+    const sparkVals = sortedDays.map(d => dayMap[d]);
+    if(sparkVals.length > 0) dashSparkline(document.getElementById('heroSparkline'), sparkVals, {});
+
+    // ---------- SECONDARY STATS ----------
+    document.getElementById('statOrdersValue').textContent = orderCount;
+    document.getElementById('statOrdersCompare').innerHTML = dashCompareLabel(orderCount, prevOrders);
+
+    // Orders sparkline (count per day)
+    const dayCountMap = {};
+    positives.forEach(s => {
+        const d = (s.created_at||'').slice(0, 10);
+        if(d) dayCountMap[d] = (dayCountMap[d] || 0) + 1;
+    });
+    const orderSparkVals = sortedDays.map(d => dayCountMap[d] || 0);
+    if(orderSparkVals.length > 0) dashSparkline(document.getElementById('statOrdersSpark'), orderSparkVals, { stroke:'#CD7C32', fill:'rgba(205,124,50,0.18)', strokeWidth:1.5 });
+
+    document.getElementById('statAovValue').textContent = aov.toFixed(2);
+    document.getElementById('statAovCompare').innerHTML = dashCompareLabel(aov, prevAov);
+
+    document.getElementById('statCustValue').textContent = periodCustomers.size;
+    document.getElementById('statCustCompare').innerHTML = dashCompareLabel(periodCustomers.size, prevCustomers.size);
+
+    // ---------- REVENUE TREND ----------
     const canvas = document.getElementById('dashRevenueChart');
     if(canvas) drawRevenueChart(canvas, positives, cutoff);
 
-    // Channel mix
+    // ---------- CHANNEL DONUT ----------
     const channelTotals = {};
     positives.forEach(s => {
         const ch = s.channel || 'Unknown';
         channelTotals[ch] = (channelTotals[ch] || 0) + (s.total||0);
     });
-    const sortedCh = Object.entries(channelTotals).sort((a,b) => b[1] - a[1]);
-    const grandCh = sortedCh.reduce((s, [_,v]) => s+v, 0) || 1;
-    document.getElementById('dashChannelMix').innerHTML = sortedCh.map(([ch, v]) => {
-        const pct = (v/grandCh*100);
-        return `<div style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;"><strong>${ch}</strong><span>RM ${v.toFixed(0)} · ${pct.toFixed(1)}%</span></div><div style="background:#E5E7EB; height:6px; border-radius:3px;"><div style="background:var(--primary); height:6px; border-radius:3px; width:${pct}%;"></div></div></div>`;
-    }).join('') || '<p style="color:#999; font-size:12px;">No data.</p>';
+    const slices = Object.entries(channelTotals).sort((a,b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+    const donutContainer = document.getElementById('dashChannelDonut');
+    if(donutContainer) {
+        const grandCh = slices.reduce((s, x) => s + x.value, 0) || 1;
+        donutContainer.innerHTML = `
+            ${dashDonut(slices)}
+            <div class="dash-donut__legend">
+                ${slices.length === 0 ? '<span style="color:var(--neutral-500); font-size:12px;">Tiada data.</span>' :
+                  slices.slice(0, 6).map(sl => `
+                    <div class="dash-donut__legend-item">
+                        <span class="dash-donut__legend-swatch" style="background:${sl._color};"></span>
+                        <span class="dash-donut__legend-name">${sl.name}</span>
+                        <span class="dash-donut__legend-val">${(sl.value/grandCh*100).toFixed(0)}%</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
 
-    // Top 10 SKUs
+    // ---------- TOP 10 SKUs ----------
     const skuQty = {}; const skuRev = {};
     positives.forEach(s => (s.items||[]).forEach(it => {
         const sku = (it.sku || 'NO_SKU').toUpperCase();
@@ -7892,14 +8020,29 @@ window.renderManagerDashboard = function() {
         skuQty[sku] = (skuQty[sku] || 0) + qty;
         skuRev[sku] = (skuRev[sku] || 0) + qty * (parseFloat(it.price)||0);
     }));
-    const topSku = Object.entries(skuQty).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    document.getElementById('dashTopSkus').innerHTML = topSku.map(([sku, qty], i) => {
-        const p = masterProducts.find(p => p.sku === sku);
-        const name = p ? (p.name || '').slice(0, 35) : '-';
-        return `<tr><td style="font-weight:bold; color:#666;">#${i+1}</td><td style="font-family:monospace; font-size:10px;">${sku}</td><td>${name}</td><td style="text-align:right; font-weight:bold;">${qty}</td><td style="text-align:right; color:#666;">${(skuRev[sku]||0).toFixed(0)}</td></tr>`;
-    }).join('') || '<tr><td colspan="5" style="text-align:center; color:#999;">No sales.</td></tr>';
+    const topSku = Object.entries(skuQty).sort((a,b) => b[1] - a[1]).slice(0, 8);
+    const maxSku = topSku[0]?.[1] || 1;
+    document.getElementById('dashTopSkus').innerHTML = topSku.length === 0
+        ? '<div class="empty-state" style="padding:20px;"><div class="empty-state__icon" style="font-size:32px;">📊</div><div class="empty-state__desc">Tiada sales dalam period ini.</div></div>'
+        : topSku.map(([sku, qty], i) => {
+            const p = masterProducts.find(p => p.sku === sku);
+            const name = p ? (p.name || '').slice(0, 40) : sku;
+            const rankCls = i === 0 ? 'dash-rank-badge--gold' : i === 1 ? 'dash-rank-badge--silver' : i === 2 ? 'dash-rank-badge--bronze' : '';
+            const widthPct = (qty / maxSku * 100);
+            return `
+                <div class="dash-ranked-item">
+                    <div class="dash-rank-badge ${rankCls}">${i+1}</div>
+                    <div class="dash-ranked-item__main">
+                        <div class="dash-ranked-item__title">${name}</div>
+                        <div class="dash-ranked-item__sub">${sku} · RM ${(skuRev[sku]||0).toFixed(0)}</div>
+                    </div>
+                    <div class="dash-ranked-item__share"><div class="dash-ranked-item__share-fill" style="width:${widthPct}%;"></div></div>
+                    <div class="dash-ranked-item__value">${qty}</div>
+                </div>
+            `;
+        }).join('');
 
-    // Top staff
+    // ---------- TOP STAFF ----------
     const staffStats = {};
     positives.forEach(s => {
         const sn = s.staff_name || '(Unassigned)';
@@ -7908,37 +8051,84 @@ window.renderManagerDashboard = function() {
         staffStats[sn].orders++;
     });
     const topStaff = Object.entries(staffStats).sort((a,b) => b[1].rev - a[1].rev).slice(0, 8);
-    document.getElementById('dashTopStaff').innerHTML = topStaff.map(([name, st], i) =>
-        `<tr><td style="font-weight:bold; color:#666;">#${i+1}</td><td>${name}</td><td style="text-align:right;">${st.orders}</td><td style="text-align:right; font-weight:bold;">${st.rev.toFixed(0)}</td></tr>`
-    ).join('') || '<tr><td colspan="4" style="text-align:center; color:#999;">No sales.</td></tr>';
+    const maxStaff = topStaff[0]?.[1].rev || 1;
+    document.getElementById('dashTopStaff').innerHTML = topStaff.length === 0
+        ? '<div class="empty-state" style="padding:20px;"><div class="empty-state__icon" style="font-size:32px;">👥</div><div class="empty-state__desc">Tiada attribution.</div></div>'
+        : topStaff.map(([name, st], i) => {
+            const widthPct = (st.rev / maxStaff * 100);
+            const initials = dashInitials(name);
+            const color = dashAvatarColor(name);
+            return `
+                <div class="dash-ranked-item">
+                    <div class="dash-avatar" style="background:${color};">${initials}</div>
+                    <div class="dash-ranked-item__main">
+                        <div class="dash-ranked-item__title">${name}</div>
+                        <div class="dash-ranked-item__sub">${st.orders} orders</div>
+                    </div>
+                    <div class="dash-ranked-item__share"><div class="dash-ranked-item__share-fill" style="width:${widthPct}%;"></div></div>
+                    <div class="dash-ranked-item__value">RM ${fmtCompact(st.rev)}</div>
+                </div>
+            `;
+        }).join('');
 
-    // Low stock
+    // ---------- LOW STOCK ALERTS ----------
     const low = [];
     masterProducts.forEach(p => {
         const stock = inventoryBatches.filter(b => b.sku === p.sku).reduce((s, b) => s + (b.qty_remaining||0), 0);
         const rp = p.reorder_point || 10;
-        if(stock < rp && skuQty[p.sku]) low.push({ sku:p.sku, name:p.name, stock, rp, recent:skuQty[p.sku] });
+        if(stock < rp && skuQty[p.sku]) low.push({ sku:p.sku, name:p.name, stock, rp, recent:skuQty[p.sku], brand:p.brand });
     });
     low.sort((a,b) => b.recent - a.recent);
-    document.getElementById('dashLowStock').innerHTML = low.slice(0, 8).map(it =>
-        `<tr><td style="font-family:monospace; font-size:10px;">${it.sku}</td><td>${(it.name||'').slice(0, 28)}</td><td style="text-align:right; color:#DC2626; font-weight:bold;">${it.stock}/${it.rp}</td></tr>`
-    ).join('') || '<tr><td colspan="3" style="text-align:center; color:#10B981;">✓ Semua healthy.</td></tr>';
+    document.getElementById('dashLowStock').innerHTML = low.length === 0
+        ? '<div class="empty-state" style="padding:20px;"><div class="empty-state__icon" style="font-size:32px; color:var(--success-500); opacity:1;">✓</div><div class="empty-state__title" style="color:var(--success-700);">All healthy</div><div class="empty-state__desc">Semua SKU di atas reorder point.</div></div>'
+        : low.slice(0, 8).map(it => {
+            const isMed = it.stock > 0;
+            return `
+                <div class="dash-lowstock-item ${isMed ? 'dash-lowstock-item--med' : ''}">
+                    <div class="dash-lowstock-item__main">
+                        <div class="dash-lowstock-item__sku">${it.sku} <span style="color:var(--neutral-500); font-weight:normal;">${it.brand||''}</span></div>
+                        <div class="dash-lowstock-item__name">${(it.name||'').slice(0, 50)}</div>
+                    </div>
+                    <div class="dash-lowstock-item__stock">${it.stock}/${it.rp}</div>
+                </div>
+            `;
+        }).join('');
 
-    // Top customers
+    // ---------- TOP CUSTOMERS ----------
     const custStats = {};
     positives.forEach(s => {
         const key = s.customer_phone || s.customer_name;
         if(!key || key === 'Walk-In') return;
-        if(!custStats[key]) custStats[key] = { name:s.customer_name||'Unknown', spend:0, orders:0 };
+        if(!custStats[key]) custStats[key] = { name:s.customer_name||'Unknown', spend:0, orders:0, phone:s.customer_phone };
         custStats[key].spend += (s.total||0);
         custStats[key].orders++;
     });
-    const topCust = Object.values(custStats).sort((a,b) => b.spend - a.spend).slice(0, 10);
-    document.getElementById('dashTopCustomers').innerHTML = topCust.map((c, i) =>
-        `<tr><td style="font-weight:bold; color:#666;">#${i+1}</td><td>${(c.name||'').slice(0, 30)}</td><td style="text-align:right;">${c.orders}</td><td style="text-align:right; font-weight:bold;">${c.spend.toFixed(0)}</td></tr>`
-    ).join('') || '<tr><td colspan="4" style="text-align:center; color:#999;">No data.</td></tr>';
+    const topCust = Object.values(custStats).sort((a,b) => b.spend - a.spend).slice(0, 8);
+    const maxCust = topCust[0]?.spend || 1;
+    document.getElementById('dashTopCustomers').innerHTML = topCust.length === 0
+        ? '<div class="empty-state" style="padding:20px;"><div class="empty-state__icon" style="font-size:32px;">💎</div><div class="empty-state__desc">Tiada customer dalam period.</div></div>'
+        : topCust.map((c, i) => {
+            const widthPct = (c.spend / maxCust * 100);
+            const initials = dashInitials(c.name);
+            const color = dashAvatarColor(c.name);
+            // Look up tier from customersData
+            const cust = (customersData||[]).find(x => x.phone === c.phone || x.name === c.name);
+            const tier = cust && typeof getCustomerTier === 'function' ? getCustomerTier(cust) : null;
+            const tierBadge = tier ? `<span class="badge badge--${tier.toLowerCase()}" style="margin-left:6px;">${(typeof getTierColor === 'function' ? getTierColor(tier).emoji : '')} ${tier}</span>` : '';
+            return `
+                <div class="dash-ranked-item">
+                    <div class="dash-avatar" style="background:${color};">${initials}</div>
+                    <div class="dash-ranked-item__main">
+                        <div class="dash-ranked-item__title">${(c.name||'').slice(0, 30)}${tierBadge}</div>
+                        <div class="dash-ranked-item__sub">${c.orders} orders</div>
+                    </div>
+                    <div class="dash-ranked-item__share"><div class="dash-ranked-item__share-fill" style="width:${widthPct}%;"></div></div>
+                    <div class="dash-ranked-item__value">RM ${fmtCompact(c.spend)}</div>
+                </div>
+            `;
+        }).join('');
 
-    // Cohort: new customers per month
+    // ---------- COHORT BAR CHART ----------
     const monthSet = {};
     if(typeof customersData !== 'undefined') {
         customersData.forEach(c => {
@@ -7947,10 +8137,33 @@ window.renderManagerDashboard = function() {
             monthSet[m] = (monthSet[m] || 0) + 1;
         });
     }
-    const sortedMonths = Object.entries(monthSet).sort((a,b) => b[0].localeCompare(a[0])).slice(0, 8);
-    document.getElementById('dashCohort').innerHTML = sortedMonths.map(([m, n]) =>
-        `<tr><td>${m}</td><td style="text-align:right; font-weight:bold;">${n} new</td></tr>`
-    ).join('') || '<tr><td colspan="2" style="text-align:center; color:#999;">No data.</td></tr>';
+    const sortedMonthsAsc = Object.entries(monthSet).sort((a,b) => a[0].localeCompare(b[0])).slice(-12);
+    const maxMonth = Math.max(...sortedMonthsAsc.map(([_, n]) => n), 1);
+    const totalCohort = sortedMonthsAsc.reduce((s, [_, n]) => s + n, 0);
+    const cohortTotal = document.getElementById('dashCohortTotal');
+    if(cohortTotal) cohortTotal.textContent = `${totalCohort} new`;
+    document.getElementById('dashCohortBars').innerHTML = sortedMonthsAsc.length === 0
+        ? '<div style="color:var(--neutral-500); font-size:12px; padding:20px; text-align:center; flex:1;">No cohort data.</div>'
+        : sortedMonthsAsc.map(([m, n]) => `
+            <div class="dash-cohort-bar" style="height:${(n/maxMonth*100).toFixed(0)}%;" data-tooltip="${m}: ${n} new"></div>
+        `).join('');
+    document.getElementById('dashCohortLabels').innerHTML = sortedMonthsAsc.length === 0 ? ''
+        : sortedMonthsAsc.map(([m]) => {
+            const dt = new Date(m + '-01');
+            return `<span>${dt.toLocaleDateString('en-MY', { month: 'short' })}</span>`;
+        }).join('');
+
+    if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+};
+
+// dashSetPeriod uses .is-active class (new); keep .active for backward compat too
+const __originalDashSetPeriod = window.dashSetPeriod;
+window.dashSetPeriod = function(p) {
+    __dashPeriod = p;
+    document.querySelectorAll('.dash-period-bar button').forEach(b => b.classList.toggle('is-active', b.dataset.period === p));
+    // Keep legacy class working too
+    document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === p));
+    renderManagerDashboard();
 };
 
 function drawRevenueChart(canvas, sales, cutoff) {
