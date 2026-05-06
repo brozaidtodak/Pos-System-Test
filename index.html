@@ -800,6 +800,9 @@
             <div class="menu-item sales-only" data-group="sales" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_analytics" onclick="switchHub(['salesAnalyticsSection', 'salesMgmtSection'], 'Prestasi Jualan', this)">
                 <i data-lucide="bar-chart" style="width:16px; height:16px;"></i> Prestasi Jualan
             </div>
+            <div class="menu-item sales-only" data-group="sales" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="sales_ledger" onclick="switchHub(['salesLedgerSection'], 'Sales Ledger', this); if(typeof renderSalesLedger==='function') renderSalesLedger();">
+                <i data-lucide="scroll-text" style="width:16px; height:16px;"></i> Sales Ledger (History)
+            </div>
             <div class="menu-item sales-only" data-group="sales" data-tab="sales_shift" onclick="switchHub(['shiftSection'], 'Shift Close &amp; Reconciliation', this); if(typeof renderShiftSection==='function') renderShiftSection();" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
                 <i data-lucide="lock-keyhole" style="width:16px; height:16px;"></i> Shift Close
                 <span id="sidebarShiftStatusDot" style="margin-left:auto; width:8px; height:8px; border-radius:50%; background:#9CA3AF; box-shadow:0 0 0 2px rgba(156,163,175,.2);" title="No active shift"></span>
@@ -834,6 +837,9 @@
             </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_bulk" onclick="switchHub(['bulkOpsSection'], 'Bulk Operations', this); if(typeof renderBulkOps === 'function') renderBulkOps();">
                 <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Publish &amp; Edit
+            </div>
+            <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_product_sales" onclick="switchHub(['productSalesSection'], 'Product Sales Summary', this); if(typeof renderProductSales==='function') renderProductSales();">
+                <i data-lucide="trending-up" style="width:16px; height:16px;"></i> Product Sales Summary
             </div>
             <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_aging" onclick="switchHub(['agingSection'], 'Stock Aging Report', this); if(typeof renderInventoryAging==='function') renderInventoryAging();">
                 <i data-lucide="hourglass" style="width:16px; height:16px;"></i> Stock Aging
@@ -1408,6 +1414,161 @@
             <!-- PRINTABLE AREA (Only visible during print via CSS) -->
             <div id="printLabelArea" style="background:#FFF; padding:20px; min-height:200px; border:2px dashed #CCC; border-radius:8px; display:flex; flex-direction:column; gap:20px; align-items:center;">
                 <p style="color:#999; text-align:center;">Prebiu label akan dipaparkan di sini.</p>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SECTION: SALES LEDGER (full history)           -->
+        <!-- ============================================== -->
+        <div id="salesLedgerSection" class="tab-section" style="display:none;">
+            <h2 class="section-title" style="margin-top:20px;"><i data-lucide="scroll-text" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Sales Ledger — Sejarah Jualan Penuh</h2>
+            <p style="font-size:13px; color:#666; margin-bottom:18px;">Semua jualan dalam DB, susun dari yang paling terkini. Klik mana-mana baris untuk lihat line items.</p>
+
+            <!-- Summary cards -->
+            <div id="ledgerSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+            <!-- Filter bar -->
+            <div class="admin-card" style="padding:14px; margin-bottom:14px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+                    <div>
+                        <label class="small-lbl">Cari (customer/order/SKU)</label>
+                        <input type="text" id="ledgerSearch" class="login-input" placeholder="zaid / 10COS123 / NH061" style="margin:0;" oninput="renderSalesLedger()">
+                    </div>
+                    <div>
+                        <label class="small-lbl">Channel</label>
+                        <select id="ledgerChannel" class="login-input" style="margin:0;" onchange="renderSalesLedger()">
+                            <option value="">Semua Channel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="small-lbl">Staff</label>
+                        <select id="ledgerStaff" class="login-input" style="margin:0;" onchange="renderSalesLedger()">
+                            <option value="">Semua</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="small-lbl">Status</label>
+                        <select id="ledgerStatus" class="login-input" style="margin:0;" onchange="renderSalesLedger()">
+                            <option value="">Semua</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Refunded">Refunded</option>
+                            <option value="Refund">Refund (-)</option>
+                            <option value="Voided">Voided</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="small-lbl">Per Halaman</label>
+                        <select id="ledgerPageSize" class="login-input" style="margin:0;" onchange="renderSalesLedger()">
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:10px;">
+                    <div><label class="small-lbl">Dari Tarikh</label><input type="date" id="ledgerDateFrom" class="login-input" style="margin:0;" onchange="renderSalesLedger()"></div>
+                    <div><label class="small-lbl">Hingga Tarikh</label><input type="date" id="ledgerDateTo" class="login-input" style="margin:0;" onchange="renderSalesLedger()"></div>
+                    <div style="display:flex; align-items:end;">
+                        <button class="btn-success" onclick="window.exportSalesLedgerCsv()" style="width:100%; background:#0EA5E9; border-color:#0EA5E9;">📥 Export CSV (filter)</button>
+                    </div>
+                </div>
+                <p id="ledgerSummaryLine" style="font-size:12px; color:#666; margin-top:10px;"></p>
+            </div>
+
+            <!-- Pagination top -->
+            <div id="ledgerPagination" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"></div>
+
+            <!-- Table -->
+            <div class="admin-card" style="padding:0;">
+                <div class="table-responsive">
+                    <table class="data-table" style="font-size:12px;">
+                        <thead style="position:sticky; top:0; background:#FAFAFA; z-index:5;"><tr>
+                            <th style="width:36px;"></th>
+                            <th>Tarikh</th>
+                            <th>Order</th>
+                            <th>Customer</th>
+                            <th style="text-align:center;">Items</th>
+                            <th style="text-align:right;">Total (RM)</th>
+                            <th>Channel</th>
+                            <th>Staff</th>
+                            <th style="text-align:center;">Status</th>
+                        </tr></thead>
+                        <tbody id="ledgerTbody">
+                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SECTION: PRODUCT SALES SUMMARY                 -->
+        <!-- ============================================== -->
+        <div id="productSalesSection" class="tab-section" style="display:none;">
+            <h2 class="section-title" style="margin-top:20px;"><i data-lucide="trending-up" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Product Sales Summary</h2>
+            <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                Jualan semua produk sepanjang sejarah. <strong>Balance</strong> = Stock Sekarang − Total Sold. Kalau jualan melebihi stok terkini, baki akan jadi <strong style="color:#DC2626;">negative</strong> — bermakna SKU tu high-velocity dan kemungkinan ada activity dalam EasyStore.
+            </p>
+
+            <div id="prodSalesSummaryStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+
+            <div class="admin-card" style="padding:14px; margin-bottom:14px;">
+                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+                    <div><label class="small-lbl">Cari (SKU/Nama/Brand)</label><input type="text" id="prodSalesSearch" class="login-input" placeholder="naturehike / NH061" style="margin:0;" oninput="renderProductSales()"></div>
+                    <div><label class="small-lbl">Brand</label><select id="prodSalesBrand" class="login-input" style="margin:0;" onchange="renderProductSales()"><option value="">Semua</option></select></div>
+                    <div><label class="small-lbl">Filter</label>
+                        <select id="prodSalesFilter" class="login-input" style="margin:0;" onchange="renderProductSales()">
+                            <option value="all">Semua produk</option>
+                            <option value="negative" selected>Hanya yang baki NEGATIVE</option>
+                            <option value="zero_stock">Stock = 0 sahaja</option>
+                            <option value="movers">Yang ada jualan</option>
+                            <option value="dead">Tak pernah dijual</option>
+                        </select>
+                    </div>
+                    <div><label class="small-lbl">Susun ikut</label>
+                        <select id="prodSalesSort" class="login-input" style="margin:0;" onchange="renderProductSales()">
+                            <option value="balance_asc" selected>Balance (paling negative dulu)</option>
+                            <option value="sold_desc">Total Sold (banyak ke sikit)</option>
+                            <option value="recent_desc">Last 6mo Sold</option>
+                            <option value="stock_asc">Stock (rendah ke tinggi)</option>
+                            <option value="sku">SKU (A-Z)</option>
+                        </select>
+                    </div>
+                    <div><label class="small-lbl">Per Halaman</label>
+                        <select id="prodSalesPageSize" class="login-input" style="margin:0;" onchange="renderProductSales()">
+                            <option value="100" selected>100</option>
+                            <option value="250">250</option>
+                            <option value="500">500</option>
+                            <option value="9999">Semua</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:10px; align-items:end;">
+                    <button class="btn-success" onclick="window.exportProductSalesCsv()" style="background:#0EA5E9; border-color:#0EA5E9;">📥 Export CSV</button>
+                    <p id="prodSalesSummaryLine" style="font-size:12px; color:#666; margin:0;"></p>
+                </div>
+            </div>
+
+            <div class="admin-card" style="padding:0;">
+                <div class="table-responsive">
+                    <table class="data-table" style="font-size:12px;">
+                        <thead style="position:sticky; top:0; background:#FAFAFA; z-index:5;"><tr>
+                            <th>SKU</th>
+                            <th>Nama / Brand</th>
+                            <th style="text-align:right;">Total Sold (Lifetime)</th>
+                            <th style="text-align:right;">Last 6mo</th>
+                            <th style="text-align:right;">Stock Sekarang</th>
+                            <th style="text-align:right;">Balance</th>
+                            <th style="text-align:right;">Reorder Point</th>
+                            <th style="text-align:right;">Revenue (RM)</th>
+                            <th style="text-align:center;">Last Sale</th>
+                        </tr></thead>
+                        <tbody id="prodSalesTbody">
+                            <tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -6620,7 +6781,7 @@
         </div>
     </div>
     <!-- JS Core -->
-    <script src="app.js?v=68"></script>
+    <script src="app.js?v=69"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

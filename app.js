@@ -7059,3 +7059,391 @@ window.exportInventorySnapshot = async function() {
         showToast('Ralat: ' + e.message, 'error');
     }
 };
+
+// ===================================
+// SALES LEDGER + PRODUCT SALES SUMMARY (post-Shopify migration)
+// ===================================
+let __ledgerPage = 1;
+let __prodSalesCache = null;   // memoised (sku → stats) — invalidated when sales/products reload
+
+window.renderSalesLedger = function() {
+    const tbody = document.getElementById('ledgerTbody');
+    if(!tbody) return;
+    if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">No sales history loaded yet.</td></tr>';
+        return;
+    }
+
+    // Populate filter dropdowns lazily
+    const channels = [...new Set(salesHistory.map(s => s.channel).filter(Boolean))].sort();
+    const staff = [...new Set(salesHistory.map(s => s.staff_name).filter(Boolean))].sort();
+    const chSel = document.getElementById('ledgerChannel');
+    const stSel = document.getElementById('ledgerStaff');
+    if(chSel && chSel.options.length <= 1) {
+        chSel.innerHTML = '<option value="">Semua Channel</option>' + channels.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+    if(stSel && stSel.options.length <= 1) {
+        stSel.innerHTML = '<option value="">Semua</option>' + staff.map(s => `<option value="${s}">${s}</option>`).join('') + '<option value="__null__">(Pending Backfill)</option>';
+    }
+
+    // Read filters
+    const q = (document.getElementById('ledgerSearch').value || '').trim().toLowerCase();
+    const filterCh = document.getElementById('ledgerChannel').value;
+    const filterStaff = document.getElementById('ledgerStaff').value;
+    const filterStatus = document.getElementById('ledgerStatus').value;
+    const dateFrom = document.getElementById('ledgerDateFrom').value;
+    const dateTo = document.getElementById('ledgerDateTo').value;
+    const pageSize = parseInt(document.getElementById('ledgerPageSize').value) || 50;
+
+    let filtered = salesHistory.filter(s => {
+        if(filterCh && s.channel !== filterCh) return false;
+        if(filterStaff === '__null__') {
+            if(s.staff_name) return false;
+        } else if(filterStaff && s.staff_name !== filterStaff) return false;
+        if(filterStatus && s.status !== filterStatus) return false;
+        if(dateFrom && s.created_at && s.created_at.slice(0, 10) < dateFrom) return false;
+        if(dateTo && s.created_at && s.created_at.slice(0, 10) > dateTo) return false;
+        if(q) {
+            const orderRef = (s.metadata?.shopify_order_name || s.id || '').toString().toLowerCase();
+            const cust = (s.customer_name || '').toLowerCase();
+            const items = (s.items || []).map(i => `${i.sku||''} ${i.name||''}`).join(' ').toLowerCase();
+            if(!orderRef.includes(q) && !cust.includes(q) && !items.includes(q)) return false;
+        }
+        return true;
+    });
+
+    // Sort by date desc
+    filtered.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+    // Stats summary
+    const totalRev = filtered.filter(s => s.total > 0).reduce((sum, s) => sum + (s.total || 0), 0);
+    const refundTotal = filtered.filter(s => s.total < 0).reduce((sum, s) => sum + (s.total || 0), 0);
+    const summaryEl = document.getElementById('ledgerSummary');
+    if(summaryEl) {
+        summaryEl.innerHTML = `
+            <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Match</div><div style="font-size:18px; font-weight:bold;">${filtered.length} orders</div></div>
+            <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Revenue</div><div style="font-size:18px; font-weight:bold;">RM ${totalRev.toFixed(2)}</div></div>
+            <div style="background:#FEF2F2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">Refunds</div><div style="font-size:18px; font-weight:bold;">RM ${refundTotal.toFixed(2)}</div></div>
+            <div style="background:#FAF5FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#6B21A8;">Net</div><div style="font-size:18px; font-weight:bold;">RM ${(totalRev + refundTotal).toFixed(2)}</div></div>
+        `;
+    }
+
+    document.getElementById('ledgerSummaryLine').innerHTML =
+        `Match: <strong>${filtered.length}</strong> · sorted by date (newest first) · page ${__ledgerPage} of ${Math.max(1, Math.ceil(filtered.length / pageSize))}`;
+
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if(__ledgerPage > totalPages) __ledgerPage = totalPages;
+    const start = (__ledgerPage - 1) * pageSize;
+    const slice = filtered.slice(start, start + pageSize);
+
+    const pagEl = document.getElementById('ledgerPagination');
+    if(pagEl) {
+        pagEl.innerHTML = `
+            <div style="font-size:12px; color:#666;">Showing ${start + 1}–${Math.min(start + pageSize, filtered.length)} of ${filtered.length}</div>
+            <div style="display:flex; gap:6px;">
+                <button class="btn-primary" style="padding:4px 10px; font-size:12px; margin:0;" onclick="window.ledgerGoPage(1)" ${__ledgerPage <= 1 ? 'disabled' : ''}>« First</button>
+                <button class="btn-primary" style="padding:4px 10px; font-size:12px; margin:0;" onclick="window.ledgerGoPage(${__ledgerPage - 1})" ${__ledgerPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
+                <span style="padding:4px 10px; font-size:12px;">${__ledgerPage} / ${totalPages}</span>
+                <button class="btn-primary" style="padding:4px 10px; font-size:12px; margin:0;" onclick="window.ledgerGoPage(${__ledgerPage + 1})" ${__ledgerPage >= totalPages ? 'disabled' : ''}>Next ›</button>
+                <button class="btn-primary" style="padding:4px 10px; font-size:12px; margin:0;" onclick="window.ledgerGoPage(${totalPages})" ${__ledgerPage >= totalPages ? 'disabled' : ''}>Last »</button>
+            </div>
+        `;
+    }
+
+    if(slice.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">Tiada baris match filter.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = slice.map((s, i) => {
+        const dateStr = (s.created_at || '').replace('T', ' ').slice(0, 16);
+        const orderRef = s.metadata?.shopify_order_name || `#${s.id}`;
+        const items = s.items || [];
+        const itemCount = items.reduce((n, it) => n + (it.qty || 1), 0);
+        const cust = s.customer_name || '<span style="color:#999;">-</span>';
+        const total = (s.total || 0);
+        const channel = s.channel || '-';
+        const staff = s.staff_name || (s.metadata?.pending_staff_backfill ? '<span style="color:#D97706; font-style:italic;">⏳ Pending</span>' : '-');
+        const totalColor = total < 0 ? '#DC2626' : '#111';
+        const statusColor = {
+            'Completed': { bg:'#D1FAE5', fg:'#065F46' },
+            'Refunded':  { bg:'#FEE2E2', fg:'#991B1B' },
+            'Refund':    { bg:'#FEE2E2', fg:'#991B1B' },
+            'Voided':    { bg:'#F3F4F6', fg:'#6B7280' },
+            'Pending':   { bg:'#FEF3C7', fg:'#92400E' },
+        }[s.status] || { bg:'#F3F4F6', fg:'#374151' };
+        const rowId = `ledger_row_${start + i}`;
+        return `
+            <tr style="cursor:pointer;" onclick="window.ledgerToggleExpand('${rowId}', ${start + i})">
+                <td>▸</td>
+                <td style="white-space:nowrap;">${dateStr}</td>
+                <td style="font-family:monospace; font-size:11px;">${orderRef}</td>
+                <td>${cust}</td>
+                <td style="text-align:center;">${itemCount} <span style="color:#999;">(${items.length} sku)</span></td>
+                <td style="text-align:right; font-weight:bold; color:${totalColor};">${total < 0 ? '−' : ''}${Math.abs(total).toFixed(2)}</td>
+                <td><span style="background:#E0E7FF; color:#3730A3; padding:2px 6px; border-radius:4px; font-size:10px;">${channel}</span></td>
+                <td>${staff}</td>
+                <td style="text-align:center;"><span style="background:${statusColor.bg}; color:${statusColor.fg}; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">${s.status || 'Completed'}</span></td>
+            </tr>
+            <tr id="${rowId}_detail" style="display:none; background:#F9FAFB;">
+                <td colspan="9" style="padding:12px 20px;">
+                    <strong>Line items:</strong>
+                    <table style="width:100%; font-size:11px; margin-top:6px;">
+                        <thead><tr style="border-bottom:1px solid #ddd;"><th style="text-align:left;">SKU</th><th style="text-align:left;">Name</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Subtotal</th></tr></thead>
+                        <tbody>
+                            ${items.map(it => `<tr><td style="font-family:monospace;">${it.sku||'-'}</td><td>${(it.name||'').slice(0, 80)}</td><td style="text-align:right;">${it.qty||1}</td><td style="text-align:right;">RM ${(it.price||0).toFixed(2)}</td><td style="text-align:right;">RM ${((it.qty||1) * (it.price||0)).toFixed(2)}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                    ${s.payment_method ? `<p style="font-size:11px; color:#666; margin-top:6px;">💳 Payment: ${s.payment_method}</p>` : ''}
+                    ${s.metadata?.shopify_order_id ? `<p style="font-size:11px; color:#666;">Shopify ID: ${s.metadata.shopify_order_id}</p>` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.ledgerGoPage = function(n) {
+    __ledgerPage = Math.max(1, n);
+    renderSalesLedger();
+};
+
+window.ledgerToggleExpand = function(rowId, idx) {
+    const detail = document.getElementById(rowId + '_detail');
+    if(!detail) return;
+    detail.style.display = detail.style.display === 'none' ? 'table-row' : 'none';
+};
+
+window.exportSalesLedgerCsv = function() {
+    if(typeof salesHistory === 'undefined') return showToast('No data', 'warn');
+    const q = (document.getElementById('ledgerSearch').value || '').trim().toLowerCase();
+    const filterCh = document.getElementById('ledgerChannel').value;
+    const filterStaff = document.getElementById('ledgerStaff').value;
+    const filterStatus = document.getElementById('ledgerStatus').value;
+    const dateFrom = document.getElementById('ledgerDateFrom').value;
+    const dateTo = document.getElementById('ledgerDateTo').value;
+
+    const filtered = salesHistory.filter(s => {
+        if(filterCh && s.channel !== filterCh) return false;
+        if(filterStaff === '__null__') { if(s.staff_name) return false; }
+        else if(filterStaff && s.staff_name !== filterStaff) return false;
+        if(filterStatus && s.status !== filterStatus) return false;
+        if(dateFrom && (s.created_at || '').slice(0, 10) < dateFrom) return false;
+        if(dateTo && (s.created_at || '').slice(0, 10) > dateTo) return false;
+        if(q) {
+            const orderRef = (s.metadata?.shopify_order_name || s.id || '').toString().toLowerCase();
+            const cust = (s.customer_name || '').toLowerCase();
+            if(!orderRef.includes(q) && !cust.includes(q)) return false;
+        }
+        return true;
+    }).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+    const header = ['Date','Order','Customer','Phone','Items_Count','Total_RM','Channel','Staff','Status','Payment','SKUs'];
+    const csv = [header.join(',')].concat(filtered.map(s => {
+        const items = s.items || [];
+        const skus = items.map(i => `${i.sku||'?'} x${i.qty||1}`).join('; ');
+        return [
+            (s.created_at || '').replace('T', ' ').slice(0, 19),
+            s.metadata?.shopify_order_name || s.id || '',
+            `"${(s.customer_name || '').replace(/"/g, '""')}"`,
+            s.customer_phone || '',
+            items.reduce((n, it) => n + (it.qty || 1), 0),
+            (s.total || 0).toFixed(2),
+            s.channel || '',
+            `"${s.staff_name || ''}"`,
+            s.status || 'Completed',
+            `"${s.payment_method || ''}"`,
+            `"${skus.replace(/"/g, '""')}"`
+        ].join(',');
+    })).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sales_ledger_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast(`Exported ${filtered.length} rows`, 'success');
+};
+
+// ===================================
+// PRODUCT SALES SUMMARY (with negative balance flag)
+// ===================================
+function __computeProductSales() {
+    if(__prodSalesCache) return __prodSalesCache;
+    const cutoff6mo = Date.now() - 180 * 24 * 60 * 60 * 1000;
+    const stats = new Map();
+    masterProducts.forEach(p => {
+        stats.set(p.sku, {
+            sku: p.sku, name: p.name, brand: p.brand, category: p.category,
+            price: parseFloat(p.price) || 0,
+            cost: parseFloat(p.cost_price) || 0,
+            reorder_point: p.reorder_point,
+            stock: 0, totalSold: 0, recentSold: 0, revenue: 0, lastSale: null
+        });
+    });
+    // Compute current stock
+    inventoryBatches.forEach(b => {
+        const st = stats.get(b.sku);
+        if(st) st.stock += (b.qty_remaining || 0);
+    });
+    // Walk sales_history
+    (salesHistory || []).forEach(s => {
+        if(s.total <= 0) return;  // skip refunds for "sold" tally — they reduce gross but separate count
+        const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+        (s.items || []).forEach(it => {
+            const sku = (it.sku || '').toUpperCase();
+            const qty = parseFloat(it.qty) || 0;
+            const price = parseFloat(it.price) || 0;
+            const st = stats.get(sku);
+            if(!st || qty <= 0) return;
+            st.totalSold += qty;
+            st.revenue += qty * price;
+            if(dt >= cutoff6mo) st.recentSold += qty;
+            if(!st.lastSale || dt > new Date(st.lastSale).getTime()) st.lastSale = s.created_at;
+        });
+    });
+    // Subtract refunds from totalSold
+    (salesHistory || []).forEach(s => {
+        if(s.total >= 0) return;
+        (s.items || []).forEach(it => {
+            const sku = (it.sku || '').toUpperCase();
+            const qty = parseFloat(it.qty) || 0;
+            const st = stats.get(sku);
+            if(st && qty > 0) {
+                st.totalSold = Math.max(0, st.totalSold - qty);
+                st.revenue -= qty * (parseFloat(it.price) || 0);
+            }
+        });
+    });
+    __prodSalesCache = stats;
+    return stats;
+}
+
+window.invalidateProductSalesCache = function() { __prodSalesCache = null; };
+
+window.renderProductSales = function() {
+    const tbody = document.getElementById('prodSalesTbody');
+    if(!tbody) return;
+
+    const stats = __computeProductSales();
+    const all = [...stats.values()];
+
+    // Populate brand filter
+    const brandSel = document.getElementById('prodSalesBrand');
+    if(brandSel && brandSel.options.length <= 1) {
+        const brands = [...new Set(all.map(s => s.brand).filter(Boolean))].sort();
+        brandSel.innerHTML = '<option value="">Semua</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+
+    const q = (document.getElementById('prodSalesSearch').value || '').trim().toLowerCase();
+    const filterBrand = document.getElementById('prodSalesBrand').value;
+    const filterMode = document.getElementById('prodSalesFilter').value;
+    const sortMode = document.getElementById('prodSalesSort').value;
+    const pageSize = parseInt(document.getElementById('prodSalesPageSize').value) || 100;
+
+    // Compute balance
+    all.forEach(r => {
+        r.balance = r.stock - r.totalSold;
+    });
+
+    let filtered = all.filter(r => {
+        if(filterBrand && r.brand !== filterBrand) return false;
+        if(filterMode === 'negative' && r.balance >= 0) return false;
+        if(filterMode === 'zero_stock' && r.stock !== 0) return false;
+        if(filterMode === 'movers' && r.totalSold === 0) return false;
+        if(filterMode === 'dead' && r.totalSold > 0) return false;
+        if(q) {
+            const hay = `${r.sku} ${r.name||''} ${r.brand||''}`.toLowerCase();
+            if(!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+        switch(sortMode) {
+            case 'balance_asc':  return a.balance - b.balance;
+            case 'sold_desc':    return b.totalSold - a.totalSold;
+            case 'recent_desc':  return b.recentSold - a.recentSold;
+            case 'stock_asc':    return a.stock - b.stock;
+            case 'sku':          return a.sku.localeCompare(b.sku);
+            default:             return a.balance - b.balance;
+        }
+    });
+
+    const total = filtered.length;
+    const slice = filtered.slice(0, pageSize);
+
+    // Stats cards
+    const totalSold = all.reduce((s, r) => s + r.totalSold, 0);
+    const totalRevenue = all.reduce((s, r) => s + r.revenue, 0);
+    const negativeBalance = all.filter(r => r.balance < 0).length;
+    const zeroStock = all.filter(r => r.stock === 0).length;
+    document.getElementById('prodSalesSummaryStats').innerHTML = `
+        <div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Total Unit Sold</div><div style="font-size:18px; font-weight:bold;">${totalSold.toLocaleString()}</div></div>
+        <div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Total Revenue</div><div style="font-size:18px; font-weight:bold;">RM ${totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+        <div style="background:#FEF2F2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">Negative Balance</div><div style="font-size:18px; font-weight:bold;">${negativeBalance} SKU</div></div>
+        <div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Zero Stock</div><div style="font-size:18px; font-weight:bold;">${zeroStock} SKU</div></div>
+    `;
+
+    document.getElementById('prodSalesSummaryLine').innerHTML =
+        `Match: <strong>${total}</strong> · Show: <strong>${slice.length}</strong>${total > slice.length ? ` <span style="color:#DC2626;">(turunkan saiz halaman / tightenkan filter untuk lihat semua)</span>` : ''}`;
+
+    if(slice.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:#999;">Tiada produk match filter.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = slice.map(r => {
+        const balanceColor = r.balance < 0 ? '#DC2626' : (r.balance < 5 ? '#D97706' : '#10B981');
+        const balanceText = r.balance < 0 ? `−${Math.abs(r.balance).toFixed(0)}` : r.balance.toFixed(0);
+        const lastSaleStr = r.lastSale ? new Date(r.lastSale).toISOString().slice(0,10) : '-';
+        const lastSaleColor = r.lastSale && (Date.now() - new Date(r.lastSale).getTime()) < 90*86400000 ? '#10B981' : '#9CA3AF';
+        const stockColor = r.stock === 0 ? '#DC2626' : (r.stock < (r.reorder_point || 5) ? '#D97706' : '#111');
+        const recentBadge = r.recentSold > 0 ? `<span style="background:#D1FAE5; color:#065F46; padding:1px 5px; border-radius:3px; font-size:10px; margin-left:4px;">🔥</span>` : '';
+        return `
+            <tr>
+                <td style="font-family:monospace; font-size:11px;"><strong>${r.sku}</strong></td>
+                <td style="max-width:280px;"><div>${(r.name || '').slice(0, 70)}</div><span style="color:#888; font-size:10px;">${r.brand || '-'} · ${r.category || '-'}</span></td>
+                <td style="text-align:right; font-weight:bold;">${r.totalSold.toFixed(0)}</td>
+                <td style="text-align:right;">${r.recentSold.toFixed(0)}${recentBadge}</td>
+                <td style="text-align:right; color:${stockColor}; font-weight:bold;">${r.stock}</td>
+                <td style="text-align:right; color:${balanceColor}; font-weight:bold; font-size:14px;">${balanceText}</td>
+                <td style="text-align:right; color:#666;">${r.reorder_point ?? '-'}</td>
+                <td style="text-align:right; color:#666;">${r.revenue.toFixed(2)}</td>
+                <td style="text-align:center; color:${lastSaleColor}; font-size:11px;">${lastSaleStr}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.exportProductSalesCsv = function() {
+    const stats = __computeProductSales();
+    const all = [...stats.values()];
+    all.forEach(r => r.balance = r.stock - r.totalSold);
+    all.sort((a, b) => a.balance - b.balance);
+
+    const header = ['SKU','Name','Brand','Category','Total_Sold_Lifetime','Last_6mo_Sold','Stock_Now','Balance','Reorder_Point','Revenue_RM','Last_Sale_Date'];
+    const csv = [header.join(',')].concat(all.map(r => [
+        r.sku,
+        `"${(r.name || '').replace(/"/g, '""')}"`,
+        `"${r.brand || ''}"`,
+        `"${r.category || ''}"`,
+        r.totalSold.toFixed(0),
+        r.recentSold.toFixed(0),
+        r.stock,
+        r.balance.toFixed(0),
+        r.reorder_point ?? '',
+        r.revenue.toFixed(2),
+        r.lastSale ? new Date(r.lastSale).toISOString().slice(0,10) : ''
+    ].join(','))).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `product_sales_summary_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast(`Exported ${all.length} rows`, 'success');
+};
