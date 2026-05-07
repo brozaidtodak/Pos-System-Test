@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=33">
- <link rel="stylesheet" href="design-tokens.css?v=15">
+ <link rel="stylesheet" href="design-tokens.css?v=16">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -154,15 +154,28 @@
  </div>
  </div>
 
- <!-- 0.01 INTERNAL MODE WELCOME POPUP — auto-dismiss 1.5s -->
- <div id="staffWelcomeModal" class="login-overlay" style="display:none; z-index:3500; animation: fadeIn 0.3s;">
- <div class="login-box" style="transform: scale(0.9); animation: popIn 0.3s forwards; text-align:center; padding:32px 28px;">
- <div id="welcomeIcon" style="font-size:56px; margin-bottom:6px; line-height:1;"></div>
- <h2 id="welcomeStaffName" style="font-weight:900; font-size:22px; margin-bottom:4px; color:var(--primary); letter-spacing:-0.5px;">Selamat Datang</h2>
- <p id="welcomeStaffDept" style="color:var(--text-muted); margin-bottom:6px; font-weight:600; font-size:13px;">-</p>
- <span id="welcomeRoleBadge" class="badge" style="display:inline-block; margin-bottom:16px;"></span>
- <p style="font-size:11px; color:#9CA3AF; margin-bottom:4px;">Sistem dimuatkan...</p>
- <button onclick="document.getElementById('staffWelcomeModal').style.display='none'" class="btn btn--ghost btn--sm" style="margin-top:8px;">Skip →</button>
+ <!-- p1_26: Redesigned welcome screen — full-bleed brand-aware overlay -->
+ <div id="staffWelcomeModal" class="welcome-overlay" style="display:none;">
+ <div class="welcome-bg"></div>
+ <button class="welcome-skip" onclick="window.dismissWelcome && window.dismissWelcome()" aria-label="Skip welcome">
+ Skip <span style="font-size:14px;">›</span>
+ </button>
+ <div class="welcome-card">
+ <div class="welcome-card__avatar" id="welcomeAvatar">
+ <i id="welcomeAvatarIcon" data-lucide="user" style="width:38px; height:38px;"></i>
+ </div>
+ <p class="welcome-greeting" id="welcomeGreeting">Selamat datang</p>
+ <h1 class="welcome-name" id="welcomeStaffName">—</h1>
+ <p class="welcome-tagline" id="welcomeTagline">Setting up your workspace…</p>
+ <div class="welcome-mode-chip" id="welcomeModeChip">
+ <i data-lucide="arrow-right" style="width:13px; height:13px;"></i>
+ <span id="welcomeModeText">Heading to your dashboard</span>
+ </div>
+ <div class="welcome-stats" id="welcomeStats"></div>
+ <p id="welcomeStaffDept" style="display:none;">-</p>
+ <span id="welcomeRoleBadge" style="display:none;"></span>
+ <div id="welcomeIcon" style="display:none;"></div>
+ <div class="welcome-progress" id="welcomeProgress"><div class="welcome-progress__bar"></div></div>
  </div>
  </div>
 
@@ -4400,7 +4413,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (25/25)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (26/26)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -4427,7 +4440,8 @@
  { id:'p1_22', label:'PIN-only login (no staff dropdown): __detectUserByPin() iterates active staff hashes, auto-detects user. Visual PIN dots feedback (4-6 digit), auto-submit on 4-digit fill (400ms debounce) or Enter. Global device lockout (10 wrong attempts in 5min → 5min lock) layered on top of existing per-staff lockout. PIN uniqueness check at staff save warns Bos before saving collision. Generic error message prevents staff enumeration. Hashes still per-user salted (staff_id+pin+salt) so no cryptographic collision', d:'done' },
  { id:'p1_23', label:'Public landing page redesign (Phase A+B+C shipped) — Phase A: logo image header (10camp-logo-color.png replaces text), navigation (Shop/Brands/About/Contact), cart icon with red badge counter, search icon button, repositioned Staff Login. Phase B: hero with hikers-1500x600.png background + dark gradient overlay + tagline "Healing in style with 10 CAMP" + dual CTA, trust row (4 stats: 2800 customers / 10K products / 11 brands / Cyberjaya store), brands marquee with 11 retail logos auto-scrolling, 3-card featured collections (UNITY apparel / Naturehike / Festival Sale), about section with storefront photo, newsletter signup (saves to localStorage). Phase C: search filter (name/sku/brand), top-10 category pills, sale badge with -% off, soldout badge, skeleton loaders during load, lazy loading on all images, dynamic promo banner from active promotions, dark footer with shop info + payment methods. Tech: lp-* CSS namespace, all 11 inline-styled colors replaced with --primary-* design tokens, full meta tags (description, OG image, JSON-LD Store schema for SEO, theme-color, Twitter card)', d:'done' },
  { id:'p1_24', label:'POS Cashier Product Detail Modal — click product image or name in POS to open modal (max-width 920px, grid columns minmax(0,5fr) minmax(0,6fr) for gallery|info split). Features: image gallery (main + thumbnails strip with horizontal scroll, ‹/› nav buttons, counter "2/5", keyboard ESC + arrow nav), auto-cleaned title (strip leading "SKU |" / "CODE _" prefix that pollutes EasyStore name field, replace _ separator with em-dash), 3-line clamp on title, full description (auto-strip [EASYSTORE-ID:...] / [STOK BELUM DISAHKAN] migration prefixes + duplicate "Product name:" lines + redundant "MID-FAMILY TENT" header from EasyStore), 2-column specs grid card style (brand, weight, dimensions, L×W×H, barcode, bin location), variant pills (siblings via parent_sku or SKU prefix detection, out-of-stock disabled with strikethrough, click to switch variant), stock pill with bg color (green / amber low / red out) + nowrap, batch breakdown only when >1 batch, qty stepper + gradient Add to Cart button with nowrap (icon flex-shrink + text in span). Bug fix: PD modal grid was overridden by older .pd-grid CSS rule for product database cards (auto-fill columns) causing 40% empty whitespace; resolved by renaming all 24 modal classes from pd-* → pdm-* prefix to avoid namespace collision with existing pd-card / pd-grid / pd-row /  pd-table ecosystem. EasyStore sync enhanced (p3_7+): now updates existing products price/images/is_published + refreshes customer total_spent/total_orders (was insert-only). Live sync ran: 663 products updated, 1768 customers refreshed, 18 new orders inserted (total 450 EasyStore orders synced, RM 85,955 revenue tracked)', d:'done' },
- { id:'p1_25', label:'External tester persona + staff list obscurity layer — added Tester (TST001 / role: sales) safe to share with external testers/demo viewers (cashier mode only, no Pengurusan/Investor access). Staff list expanded with additional entries under neutral "// Additional staff" comment to populate authUsers without exposing structure of which entries are real-authenticatable accounts. Some new entries have placeholder pin_hash values that do not derive from any working PIN+staff_id+salt combination — they will never match in __detectUserByPin and naturally fail authentication. This way, screenshots of source code or staff dropdown lists do not reveal which positions hold the real authenticatable accounts. Configuration of which staff_ids are decoys vs real is kept in operator memory only (not in source comments)', d:'done' }
+ { id:'p1_25', label:'External tester persona + staff list obscurity layer — added Tester (TST001 / role: sales) safe to share with external testers/demo viewers (cashier mode only, no Pengurusan/Investor access). Staff list expanded with additional entries under neutral "// Additional staff" comment to populate authUsers without exposing structure of which entries are real-authenticatable accounts. Some new entries have placeholder pin_hash values that do not derive from any working PIN+staff_id+salt combination — they will never match in __detectUserByPin and naturally fail authentication. This way, screenshots of source code or staff dropdown lists do not reveal which positions hold the real authenticatable accounts. Configuration of which staff_ids are decoys vs real is kept in operator memory only (not in source comments)', d:'done' },
+ { id:'p1_26', label:'Welcome screen redesign — replaced plain white modal with full-bleed brand-themed overlay: navy/orange radial gradient bg with subtle dot pattern; tier-coloured avatar circle with role icon (gold superior / navy investor / purple mgmt / blue inventory / green sales); time-aware Malay greeting ("Selamat pagi/tengahari/petang/malam" + late-night "Malam tenang"); randomised role tagline (e.g. "Trail awaits, boss." / "Boardroom standing by." / "Stok dikira, jiran."); mode destination chip ("Heading to Pengurusan mode"); dynamic stats grid showing only what user can access (Sales today, Revenue, Pending memos for Bos, Low stock alerts for ops); animated avatar pulse + ripple ring; progress bar drains 100→0% over 2.4s; smooth scale+fade enter/exit transitions. Skip pill top-right anytime. Backwards-compatible — kept legacy hidden welcomeStaffName/Dept/Icon/RoleBadge IDs', d:'done' }
 ]},
  { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · Mostly Done',
  desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -8692,7 +8706,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=105"></script>
+ <script src="app.js?v=106"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

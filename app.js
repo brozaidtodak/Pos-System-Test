@@ -2268,26 +2268,121 @@ function loginAs(user) {
  // Boot side-effects (deferred: don't block UI thread on these)
  queueMicrotask(() => { try { checkMyAttendanceStatus(); } catch(e){} });
  queueMicrotask(() => { try { typeof renderPersonalCommission === "function" && renderPersonalCommission(); } catch(e){} });
- setTimeout(() => maybeShowOnboarding(user), 1800); // after welcome auto-dismiss
+ setTimeout(() => maybeShowOnboarding(user), 2700); // after welcome auto-dismiss (2.4s + 0.3s buffer)
 
- // Welcome modal — show actual role badge + auto-dismiss
+ // p1_26: redesigned welcome screen with personality
+ (function showWelcome() {
  const welcomeModal = document.getElementById("staffWelcomeModal");
- const modalName = document.getElementById("welcomeStaffName");
- const modalDept = document.getElementById("welcomeStaffDept");
- const modalIcon = document.getElementById("welcomeIcon");
- const modalBadge = document.getElementById("welcomeRoleBadge");
- if(modalName) modalName.textContent = `Hi, ${user.name}`;
- if(modalDept) modalDept.textContent = user.dept || '-';
- if(modalIcon) modalIcon.textContent = cap.emoji;
- if(modalBadge) {
- const tierClass = { superior:'badge--accent', mgmt:'badge--info', inventory:'badge--warning', sales:'badge--success' }[user.role] || 'badge--neutral';
- modalBadge.className = `badge ${tierClass}`;
- modalBadge.textContent = `${cap.emoji} ${cap.label}`;
+ if(!welcomeModal) return;
+
+ // Time-aware greeting (BM)
+ const hr = new Date().getHours();
+ const greeting = hr < 5  ? 'Malam tenang' :
+                  hr < 12 ? 'Selamat pagi' :
+                  hr < 15 ? 'Selamat tengahari' :
+                  hr < 19 ? 'Selamat petang' :
+                            'Selamat malam';
+
+ // Role-based tagline + mode chip text
+ const taglines = {
+   superior:  ['Trail awaits, boss.', 'Komand penuh, boss.', 'Kerajaan tahan, boss.'],
+   investor:  ['Boardroom standing by.', 'Cap table refreshed.', 'Numbers ready for review.'],
+   mgmt:      ['Operations command, ready.', 'Tim awak menunggu.', 'Mari pacu hari ni.'],
+   inventory: ['Stok dikira, jiran.', 'Warehouse on standby.', 'Mari uruskan inventori.'],
+   sales:     ['Counter ready. Layan campers!', 'Mari layan pelanggan.', 'Sales tracker on.']
+ };
+ const lineSet = taglines[user.role] || ['Workspace ready.'];
+ const tagline = lineSet[Math.floor(Math.random() * lineSet.length)];
+
+ // Mode destination (uses pickDefaultMode if available)
+ const modeLabels = { cashier:'Kaunter', operations:'Operasi', manager:'Pengurus', management:'Pengurusan', investor:'Investor' };
+ let destMode = (typeof window.pickDefaultMode === 'function') ? window.pickDefaultMode(user) : (cap.defaultMode || 'cashier');
+ const modeText = 'Heading to ' + (modeLabels[destMode] || 'workspace') + ' mode';
+
+ // Avatar icon by role
+ const iconByRole = { superior:'crown', investor:'trending-up', mgmt:'briefcase', inventory:'package', sales:'shopping-cart' };
+ const avatarIcon = iconByRole[user.role] || 'user';
+
+ // Compute relevant stats based on access
+ const access = (typeof window.getModesAccess === 'function') ? window.getModesAccess(user) : {};
+ const stats = [];
+ // Sales today (if has cashier or manager access, or is investor/superior)
+ try {
+   const today = new Date(); today.setHours(0,0,0,0);
+   const todaySales = (typeof salesHistory !== 'undefined' ? salesHistory : []).filter(s => {
+     const d = new Date(s.created_at || s.timestamp);
+     const amt = parseFloat(s.amount || s.total || 0);
+     return amt > 0 && d >= today;
+   });
+   if(access.cashier || access.manager || access.management || access.investor) {
+     const total = todaySales.reduce((sum, s) => sum + parseFloat(s.amount || s.total || 0), 0);
+     stats.push({ value: todaySales.length, label: 'Sales today' });
+     if(total > 0 && (access.management || access.investor || user.role === 'superior')) {
+       const fmt = window.formatRMShort || (n => 'RM ' + Math.round(n));
+       stats.push({ value: fmt(total), label: 'Revenue' });
+     }
+   }
+ } catch(e) {}
+ // Pending memos for superior
+ try {
+   if(user.role === 'superior' && typeof window.memoGetPendingCount === 'function') {
+     const pending = window.memoGetPendingCount();
+     if(pending > 0) stats.push({ value: pending, label: 'Pending memos' });
+   }
+ } catch(e) {}
+ // Low stock alerts (operations/management/superior)
+ try {
+   if((access.operations || access.management || user.role === 'superior') && typeof masterProducts !== 'undefined') {
+     let lowCount = 0;
+     masterProducts.forEach(p => {
+       if(!p.is_published && !p.published_at) return;
+       const stock = (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).filter(b => b.sku === p.sku && b.qty_remaining > 0).reduce((s,b) => s+(b.qty_remaining||0), 0);
+       const reorder = parseInt(p.reorder_point || 5);
+       if(stock > 0 && stock <= reorder) lowCount++;
+     });
+     if(lowCount > 0) stats.push({ value: lowCount, label: 'Low stock' });
+   }
+ } catch(e) {}
+ stats.length = Math.min(stats.length, 3); // max 3
+
+ // Populate
+ const greetEl = document.getElementById('welcomeGreeting');
+ const nameEl = document.getElementById('welcomeStaffName');
+ const tagEl = document.getElementById('welcomeTagline');
+ const modeChipText = document.getElementById('welcomeModeText');
+ const avatarEl = document.getElementById('welcomeAvatar');
+ const avatarIconEl = document.getElementById('welcomeAvatarIcon');
+ const statsEl = document.getElementById('welcomeStats');
+ if(greetEl) greetEl.textContent = greeting;
+ if(nameEl)  nameEl.textContent = user.name;
+ if(tagEl)   tagEl.textContent = tagline + ' · ' + (user.dept || cap.label);
+ if(modeChipText) modeChipText.textContent = modeText;
+ if(avatarEl) avatarEl.setAttribute('data-tier', user.role);
+ if(avatarIconEl) avatarIconEl.setAttribute('data-lucide', avatarIcon);
+ if(statsEl) {
+   statsEl.innerHTML = stats.map(s => `<div class="welcome-stat"><strong>${s.value}</strong><span>${s.label}</span></div>`).join('');
  }
- if(welcomeModal) {
- welcomeModal.style.display = "flex";
- setTimeout(() => { welcomeModal.style.display = "none"; }, 1500); // auto-dismiss
+
+ welcomeModal.style.display = 'flex';
+ if(window.lucide && lucide.createIcons) setTimeout(() => lucide.createIcons(), 50);
+
+ // Restart progress bar animation by re-inserting node
+ const progressBar = welcomeModal.querySelector('.welcome-progress__bar');
+ if(progressBar) {
+   const fresh = progressBar.cloneNode(true);
+   progressBar.parentNode.replaceChild(fresh, progressBar);
  }
+
+ const dismissTimer = setTimeout(() => window.dismissWelcome(), 2400);
+ window.dismissWelcome = function() {
+   clearTimeout(dismissTimer);
+   welcomeModal.classList.add('is-leaving');
+   setTimeout(() => {
+     welcomeModal.style.display = 'none';
+     welcomeModal.classList.remove('is-leaving');
+   }, 380);
+ };
+ })();
 
  // Global memo as toast (legacy globalMemo — keep for back-compat with old data)
  if(globalMemo.active && typeof showToast === 'function') {

@@ -875,6 +875,166 @@
 [data-theme="dark"] .pdm-desc { background: #111827; color: #D1D5DB; border-color: #374151; }
 [data-theme="dark"] .pdm-price { color: #F9FAFB; }
 
+/* ============================================================
+   p1_26 — Welcome screen redesign
+   ============================================================ */
+.welcome-overlay {
+    position: fixed; inset: 0; z-index: 4800;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    animation: welcomeOverlayIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.welcome-overlay.is-leaving { animation: welcomeOverlayOut 0.4s ease forwards; }
+
+.welcome-bg {
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(ellipse at top right, rgba(245, 158, 11, 0.18), transparent 60%),
+        radial-gradient(ellipse at bottom left, rgba(180, 83, 9, 0.22), transparent 65%),
+        linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+}
+.welcome-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.04) 1px, transparent 1px),
+        radial-gradient(circle at 60% 70%, rgba(255,255,255,0.03) 1px, transparent 1px),
+        radial-gradient(circle at 80% 20%, rgba(205,124,50,0.08) 2px, transparent 2px);
+    background-size: 80px 80px, 50px 50px, 120px 120px;
+    opacity: 0.7;
+}
+
+.welcome-skip {
+    position: absolute; top: 24px; right: 24px;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: 0.18s; z-index: 2;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.welcome-skip:hover { background: rgba(255,255,255,0.18); transform: translateX(2px); }
+
+.welcome-card {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 460px; padding: 48px 44px 28px;
+    text-align: center;
+    color: #FFF;
+    animation: welcomeCardIn 0.55s 0.1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.welcome-card__avatar {
+    width: 92px; height: 92px;
+    margin: 0 auto 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+    display: flex; align-items: center; justify-content: center;
+    color: #FFF;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 12px 32px rgba(205, 124, 50, 0.4);
+    position: relative;
+    animation: welcomeAvatarPulse 2.4s ease-in-out infinite;
+}
+.welcome-card__avatar::before {
+    content: ''; position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.12);
+    animation: welcomeAvatarRing 2s ease-in-out infinite;
+}
+/* Tier-specific avatar tints */
+.welcome-card__avatar[data-tier="superior"]   { background: linear-gradient(135deg, #F59E0B, #B45309); box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 12px 36px rgba(245,158,11,0.5); }
+.welcome-card__avatar[data-tier="investor"]   { background: linear-gradient(135deg, #1E40AF, #0F172A); box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 12px 36px rgba(30,64,175,0.5); }
+.welcome-card__avatar[data-tier="mgmt"]       { background: linear-gradient(135deg, #8B5CF6, #6D28D9); box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 12px 36px rgba(139,92,246,0.4); }
+.welcome-card__avatar[data-tier="inventory"]  { background: linear-gradient(135deg, #3B82F6, #1D4ED8); box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 12px 36px rgba(59,130,246,0.4); }
+.welcome-card__avatar[data-tier="sales"]      { background: linear-gradient(135deg, #10B981, #047857); box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 12px 36px rgba(16,185,129,0.4); }
+
+.welcome-greeting {
+    font-size: 13px; font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase; letter-spacing: 2px;
+    margin: 0 0 6px;
+}
+.welcome-name {
+    font-size: 32px; font-weight: 900;
+    color: #FFF; letter-spacing: -1px; line-height: 1.1;
+    margin: 0 0 10px;
+}
+.welcome-tagline {
+    font-size: 14px; color: rgba(255,255,255,0.65);
+    margin: 0 0 20px; line-height: 1.5;
+    min-height: 21px;
+}
+
+.welcome-mode-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.85);
+    font-size: 12px; font-weight: 600;
+    margin-bottom: 22px;
+    backdrop-filter: blur(8px);
+}
+
+.welcome-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px; margin-bottom: 22px;
+    min-height: 0;
+}
+.welcome-stats:empty { display: none; }
+.welcome-stat {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 10px 8px;
+    backdrop-filter: blur(4px);
+}
+.welcome-stat strong {
+    display: block; font-size: 18px; font-weight: 900;
+    color: #FFF; line-height: 1; letter-spacing: -0.5px;
+    margin-bottom: 4px;
+}
+.welcome-stat span {
+    font-size: 10px; font-weight: 600;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.welcome-progress {
+    height: 3px; background: rgba(255,255,255,0.08);
+    border-radius: 999px; overflow: hidden;
+    margin-top: 6px;
+}
+.welcome-progress__bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--primary-400), var(--primary-500));
+    border-radius: inherit;
+    animation: welcomeProgressDrain 2.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+@keyframes welcomeOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes welcomeOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes welcomeCardIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes welcomeAvatarPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+}
+@keyframes welcomeAvatarRing {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.12); opacity: 0; }
+}
+@keyframes welcomeProgressDrain { from { width: 100%; } to { width: 0%; } }
+
+@media (max-width: 480px) {
+    .welcome-card { padding: 40px 28px 24px; }
+    .welcome-name { font-size: 26px; }
+    .welcome-card__avatar { width: 76px; height: 76px; }
+    .welcome-skip { top: 16px; right: 16px; }
+}
+
 /* p1_22 — PIN-only login: visual dots */
 .pin-dot {
  width: 14px; height: 14px; border-radius: 50%;
