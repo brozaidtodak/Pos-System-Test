@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=33">
- <link rel="stylesheet" href="design-tokens.css?v=19">
+ <link rel="stylesheet" href="design-tokens.css?v=20">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -1258,6 +1258,13 @@
  <div class="menu-item" data-group-toggle="admin" onclick="toggleSidebarGroup('admin')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
  <span data-i18n="dept_admin">Admin Department</span>
  <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
+ </div>
+ <!-- p8_4: Audit Anomaly Alerts -->
+ <div class="menu-item mgmt-only" data-group="admin" data-tab="admin_audit_alerts" onclick="switchHub(['auditAlertsSection'], 'Audit Alerts', this); if(typeof renderAuditAlerts==='function') renderAuditAlerts();" style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding-left:35px; font-size:13px;">
+ <span style="display:flex; align-items:center; gap:8px;">
+ <i data-lucide="shield-alert" style="width:16px; height:16px;"></i> Audit Alerts
+ </span>
+ <span id="auditAlertBadge" style="display:none; background:#EF4444; color:#FFF; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; min-width:18px; text-align:center;">0</span>
  </div>
  <div class="menu-item" data-group="admin" data-tab="admin_dashboard" onclick="switchHub(['managerDashboardSection'], 'Manager Dashboard', this); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="layout-dashboard" style="width:16px; height:16px;"></i> Manager Dashboard
@@ -3910,6 +3917,44 @@
  <!-- ============================================== -->
  <!-- p4_3 MANAGER DASHBOARD -->
  <!-- ============================================== -->
+ <!-- ============================================== -->
+ <!-- p8_4 — AUDIT ANOMALY ALERTS (rule-based detector) -->
+ <!-- ============================================== -->
+ <div id="auditAlertsSection" class="tab-section aa-root" style="display:none;">
+ <div class="aa-header">
+ <div>
+ <h2>Audit Alerts</h2>
+ <p class="aa-sub">Auto-detect suspicious patterns: refund spikes, after-hours voids, large discount tanpa approval, sales by deactivated staff. Rule-based, ran on-demand. Mark as reviewed bila dah investigate.</p>
+ </div>
+ <div class="aa-summary" id="aaSummary"></div>
+ </div>
+
+ <div class="aa-toolbar">
+ <div class="aa-period-pills">
+ <button class="aa-pill aa-pill--active" data-period="7d" onclick="window.aaSetPeriod('7d', this)">Last 7 days</button>
+ <button class="aa-pill" data-period="30d" onclick="window.aaSetPeriod('30d', this)">Last 30 days</button>
+ <button class="aa-pill" data-period="today" onclick="window.aaSetPeriod('today', this)">Today only</button>
+ </div>
+ <div class="aa-actions">
+ <button class="aa-btn aa-btn--ghost" onclick="window.renderAuditAlerts()">
+ <i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> Re-scan
+ </button>
+ <button class="aa-btn aa-btn--ghost" onclick="window.aaShowReviewed()" id="aaToggleReviewed">Show reviewed</button>
+ <button class="aa-btn aa-btn--ghost" onclick="window.aaClearReviewed()">Clear reviewed</button>
+ </div>
+ </div>
+
+ <!-- Detection rules info -->
+ <div class="aa-rules-info" id="aaRulesInfo">
+ <strong>Active detection rules (7):</strong>
+ Refund spike · Void luar jam · Large discount no approval · Inactive staff sale · Multi-refund same staff · High-value cash · Post-EOD sale
+ </div>
+
+ <!-- Anomaly cards -->
+ <div id="aaAlertsList" class="aa-list"></div>
+
+ </div>
+
  <div id="managerDashboardSection" class="tab-section" style="display:none;">
  <!-- Header -->
  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:var(--space-4); flex-wrap:wrap; gap:var(--space-3);">
@@ -4686,7 +4731,7 @@
  { id:'p8_1', label:'Demand forecasting per SKU (in-app velocity analysis)', d:'done' },
  { id:'p8_2', label:'Auto-reorder threshold tuning (one-click apply)', d:'done' },
  { id:'p8_3', label:'"Tanya 10 CAMP" NL query (Netlify Function proxy → Claude Haiku 4.5; chat UI in Admin Dept; auto-builds context: sales 7d/30d, top products, low stock, top customers, staff perf). Needs ANTHROPIC_API_KEY env var', d:'progress' },
- { id:'p8_4', label:'Audit anomaly alerts', d:'todo' },
+ { id:'p8_4', label:'Audit Anomaly Alerts — rule-based detector for fraud + risk patterns. New section under Admin Dept (admin_audit_alerts), mgmt+ access, sidebar entry with red badge for critical+warning count. 7 active detection rules: (1) Refund spike — single day with refunds ≥ 2× daily average (critical); (2) After-hours voids/refunds — processed before 9am or after 9pm (critical if ≥3, else warning); (3) Large discount no approval — sale with > RM50 discount but no approver_id in metadata (warning); (4) Inactive staff sales — sales by staff in staffInactive_v1 list (critical); (5) Multi-refund same staff/day — staff with ≥3 refunds in single day (warning); (6) High-value cash — cash transactions > RM500 (info); (7) Post-EOD sale — transactions between 11pm–6am (warning). Each anomaly card: severity pill (critical/warning/info colored), description, count badge, expandable detail rows (date/staff/info/amount), auto-suggestion text, mark-reviewed button. Filter by period (Today / 7 days / 30 days). Reviewed anomalies hidden by default, toggle "Show reviewed" to see all. Reviewed state in auditAlertsReviewed_v1 localStorage. Re-scan button on demand. Sidebar badge auto-updates (critical+warning total)', d:'done' },
  { id:'p8_5', label:'Velocity-based reorder auto-suggest (script-based, 22mo Shopify data)', d:'done' }
 ]}
 ]
@@ -8877,7 +8922,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=111"></script>
+ <script src="app.js?v=112"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

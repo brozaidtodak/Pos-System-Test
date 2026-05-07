@@ -12129,6 +12129,397 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =============================================================
+// p8_4 — Audit Anomaly Alerts (rule-based fraud/risk detector)
+// =============================================================
+window.AA_REVIEWED_KEY = 'auditAlertsReviewed_v1';
+window.__aaPeriod = '7d';
+window.__aaShowReviewed = false;
+
+function __aaPeriodCutoff() {
+    const now = new Date();
+    if(window.__aaPeriod === 'today') {
+        const d = new Date(now); d.setHours(0,0,0,0); return d;
+    }
+    const days = window.__aaPeriod === '30d' ? 30 : 7;
+    return new Date(now.getTime() - days * 24 * 3600 * 1000);
+}
+
+function __aaLoadReviewed() {
+    try { return new Set(JSON.parse(localStorage.getItem(window.AA_REVIEWED_KEY) || '[]')); }
+    catch(e) { return new Set(); }
+}
+function __aaSaveReviewed(set) {
+    try { localStorage.setItem(window.AA_REVIEWED_KEY, JSON.stringify(Array.from(set))); } catch(e){}
+}
+
+window.aaSetPeriod = function(p, btn) {
+    window.__aaPeriod = p;
+    document.querySelectorAll('.aa-pill').forEach(b => b.classList.toggle('aa-pill--active', b === btn));
+    window.renderAuditAlerts();
+};
+window.aaShowReviewed = function() {
+    window.__aaShowReviewed = !window.__aaShowReviewed;
+    const btn = document.getElementById('aaToggleReviewed');
+    if(btn) btn.textContent = window.__aaShowReviewed ? 'Hide reviewed' : 'Show reviewed';
+    window.renderAuditAlerts();
+};
+window.aaClearReviewed = function() {
+    if(!confirm('Clear all reviewed flags? Anomaly cards yang dah marked as reviewed akan re-appear.')) return;
+    localStorage.removeItem(window.AA_REVIEWED_KEY);
+    window.renderAuditAlerts();
+};
+window.aaToggleCard = function(anomalyId) {
+    const el = document.querySelector('[data-aa-id="' + anomalyId + '"]');
+    if(el) el.classList.toggle('is-open');
+};
+window.aaMarkReviewed = function(anomalyId, reviewed) {
+    const set = __aaLoadReviewed();
+    if(reviewed) set.add(anomalyId);
+    else set.delete(anomalyId);
+    __aaSaveReviewed(set);
+    window.renderAuditAlerts();
+};
+
+// === DETECTION RULES ===
+function __aaComputeAnomalies() {
+    const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+    const cutoff = __aaPeriodCutoff();
+    const inWindow = sales.filter(s => {
+        const d = new Date(s.created_at || s.timestamp || s.sale_date);
+        return !isNaN(d) && d >= cutoff;
+    });
+
+    const anomalies = [];
+
+    // === RULE 1: Refund spike (single day > 2x daily avg) ===
+    try {
+        const refundsByDay = {};
+        sales.forEach(s => {
+            const total = parseFloat(s.total || s.amount || s.total_amount || 0);
+            if(total >= 0) return;
+            const d = new Date(s.created_at || s.timestamp);
+            if(isNaN(d)) return;
+            const key = d.toISOString().slice(0,10);
+            refundsByDay[key] = (refundsByDay[key] || 0) + 1;
+        });
+        const days = Object.keys(refundsByDay);
+        if(days.length >= 7) {
+            const avg = days.reduce((s,k) => s + refundsByDay[k], 0) / days.length;
+            const spikeThreshold = Math.max(avg * 2, 3); // at least 3
+            const spikes = days.filter(k => {
+                const ts = new Date(k).getTime();
+                return refundsByDay[k] >= spikeThreshold && ts >= cutoff.getTime();
+            });
+            if(spikes.length > 0) {
+                const items = spikes.map(date => ({
+                    date,
+                    staff: '—',
+                    info: refundsByDay[date] + ' refunds (avg ' + avg.toFixed(1) + '/day)',
+                    amount: 0
+                }));
+                anomalies.push({
+                    id: 'refund_spike',
+                    severity: 'critical',
+                    title: 'Refund spike day(s) detected',
+                    desc: spikes.length + ' day' + (spikes.length>1?'s':'') + ' with refunds ≥ 2× daily average. Possible fraud or product issue.',
+                    icon: 'trending-down',
+                    iconBg: '#DC2626',
+                    count: spikes.length,
+                    items,
+                    suggestion: 'Review refund reasons — high concentration on single day suggests batch-fraud or systemic product defect.'
+                });
+            }
+        }
+    } catch(e) {}
+
+    // === RULE 2: Void/Refund luar jam (outside 9am-9pm) ===
+    try {
+        const afterHours = inWindow.filter(s => {
+            const total = parseFloat(s.total || s.amount || 0);
+            const status = String(s.status || '').toLowerCase();
+            const isVoidOrRefund = total < 0 || status === 'voided' || status === 'refunded';
+            if(!isVoidOrRefund) return false;
+            const d = new Date(s.created_at);
+            const h = d.getHours();
+            return h < 9 || h >= 21;
+        });
+        if(afterHours.length > 0) {
+            const items = afterHours.slice(0, 50).map(s => ({
+                date: new Date(s.created_at).toLocaleString('en-MY', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }),
+                staff: s.staff_name || '?',
+                info: 'Status: ' + (s.status || 'refund') + ' · Receipt: ' + (s.id || s.invoice_id || '?'),
+                amount: parseFloat(s.total || s.amount || 0)
+            }));
+            anomalies.push({
+                id: 'after_hours_refund',
+                severity: afterHours.length >= 3 ? 'critical' : 'warning',
+                title: 'Voids / refunds outside business hours',
+                desc: afterHours.length + ' transaction' + (afterHours.length>1?'s':'') + ' processed before 9am or after 9pm. Verify legitimate.',
+                icon: 'clock-alert',
+                iconBg: '#F59E0B',
+                count: afterHours.length,
+                items,
+                suggestion: 'Cross-check shift roster — staff yang process refund luar jam patut ada attendance log untuk masa tu.'
+            });
+        }
+    } catch(e) {}
+
+    // === RULE 3: Large discount no approval ===
+    try {
+        const flagged = inWindow.filter(s => {
+            const meta = s.metadata || {};
+            const discount = parseFloat(meta.discount || meta.vip_discount_amount || 0);
+            const hasApprover = !!(meta.approved_by_id || meta.approver_name);
+            return discount > 50 && !hasApprover;
+        });
+        if(flagged.length > 0) {
+            const items = flagged.slice(0, 50).map(s => {
+                const meta = s.metadata || {};
+                return {
+                    date: new Date(s.created_at).toLocaleString('en-MY', { day:'2-digit', month:'short', hour:'2-digit' }),
+                    staff: s.staff_name || '?',
+                    info: 'Discount RM ' + parseFloat(meta.discount || meta.vip_discount_amount || 0).toFixed(2) + ' · No approver logged',
+                    amount: parseFloat(s.total || 0)
+                };
+            });
+            anomalies.push({
+                id: 'discount_no_approval',
+                severity: 'warning',
+                title: 'Large discount without approval',
+                desc: flagged.length + ' sale' + (flagged.length>1?'s':'') + ' with > RM 50 discount but no approver_id in metadata.',
+                icon: 'percent',
+                iconBg: '#F59E0B',
+                count: flagged.length,
+                items,
+                suggestion: 'Set discount threshold rule — anything above RM 50 should require Manager PIN approval going forward.'
+            });
+        }
+    } catch(e) {}
+
+    // === RULE 4: Inactive staff sale ===
+    try {
+        let inactive = [];
+        try { inactive = JSON.parse(localStorage.getItem('staffInactive_v1') || '[]'); } catch(e){}
+        const inactiveNames = new Set();
+        if(typeof authUsers !== 'undefined') {
+            authUsers.forEach(u => {
+                if(inactive.includes(u.staff_id)) inactiveNames.add(u.name);
+            });
+        }
+        if(inactiveNames.size > 0) {
+            const flagged = inWindow.filter(s => s.staff_name && inactiveNames.has(s.staff_name));
+            if(flagged.length > 0) {
+                const items = flagged.slice(0, 50).map(s => ({
+                    date: new Date(s.created_at).toLocaleString('en-MY', { day:'2-digit', month:'short', hour:'2-digit' }),
+                    staff: s.staff_name + ' (DEACTIVATED)',
+                    info: 'Status: ' + (s.status || 'completed'),
+                    amount: parseFloat(s.total || 0)
+                }));
+                anomalies.push({
+                    id: 'inactive_staff_sale',
+                    severity: 'critical',
+                    title: 'Sales by deactivated staff',
+                    desc: flagged.length + ' sale' + (flagged.length>1?'s':'') + ' processed under deactivated staff name. Should not happen.',
+                    icon: 'user-x',
+                    iconBg: '#DC2626',
+                    count: flagged.length,
+                    items,
+                    suggestion: 'Investigate — either deactivation belum effective in POS, atau someone else is using ex-staff credentials.'
+                });
+            }
+        }
+    } catch(e) {}
+
+    // === RULE 5: Multi-refund same staff same day (>3) ===
+    try {
+        const refundsByStaffDay = {};
+        inWindow.forEach(s => {
+            const total = parseFloat(s.total || s.amount || 0);
+            if(total >= 0) return;
+            const d = new Date(s.created_at);
+            const key = (s.staff_name || '?') + '|' + d.toISOString().slice(0,10);
+            refundsByStaffDay[key] = (refundsByStaffDay[key] || []).concat([s]);
+        });
+        const flagged = Object.keys(refundsByStaffDay).filter(k => refundsByStaffDay[k].length >= 3);
+        if(flagged.length > 0) {
+            const items = flagged.flatMap(k => {
+                const [staff, day] = k.split('|');
+                const list = refundsByStaffDay[k];
+                return [{
+                    date: day,
+                    staff: staff,
+                    info: list.length + ' refunds in single day',
+                    amount: list.reduce((sum, s) => sum + parseFloat(s.total || 0), 0)
+                }];
+            });
+            anomalies.push({
+                id: 'multi_refund_staff',
+                severity: 'warning',
+                title: 'Multiple refunds by same staff in single day',
+                desc: flagged.length + ' staff-day combination' + (flagged.length>1?'s':'') + ' with ≥ 3 refunds. Possible refund fraud pattern.',
+                icon: 'refresh-ccw',
+                iconBg: '#F59E0B',
+                count: flagged.length,
+                items,
+                suggestion: 'Audit each staff-day combo — confirm legitimate (e.g. customer return event) vs suspicious (single staff refunding to associate).'
+            });
+        }
+    } catch(e) {}
+
+    // === RULE 6: High-value cash sale (> RM 500) ===
+    try {
+        const flagged = inWindow.filter(s => {
+            const pm = String(s.payment_method || '').toLowerCase();
+            const total = parseFloat(s.total || s.amount || 0);
+            return total > 500 && pm.includes('cash');
+        });
+        if(flagged.length > 0) {
+            const items = flagged.slice(0, 50).map(s => ({
+                date: new Date(s.created_at).toLocaleString('en-MY', { day:'2-digit', month:'short', hour:'2-digit' }),
+                staff: s.staff_name || '?',
+                info: 'Cash · ' + (s.customer_name || 'Walk-in'),
+                amount: parseFloat(s.total || 0)
+            }));
+            anomalies.push({
+                id: 'high_value_cash',
+                severity: 'info',
+                title: 'High-value cash sales (> RM 500)',
+                desc: flagged.length + ' cash transaction' + (flagged.length>1?'s':'') + ' above RM 500. Bank deposit needed; risk of staff carrying large cash.',
+                icon: 'banknote',
+                iconBg: '#3B82F6',
+                count: flagged.length,
+                items,
+                suggestion: 'Encourage card/QR for high-value sales. Bank deposit large cash same-day untuk reduce safe risk.'
+            });
+        }
+    } catch(e) {}
+
+    // === RULE 7: Post-EOD sale (created after EOD lock) ===
+    try {
+        const eodLocks = []; // future: read from finance_records or audit_logs
+        // For now just check if sale created at unusual hour (>10pm)
+        const veryLate = inWindow.filter(s => {
+            const d = new Date(s.created_at);
+            return d.getHours() >= 23 || d.getHours() < 6;
+        });
+        if(veryLate.length >= 2) {
+            const items = veryLate.slice(0, 50).map(s => ({
+                date: new Date(s.created_at).toLocaleString('en-MY', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }),
+                staff: s.staff_name || '?',
+                info: 'Possible after-EOD entry',
+                amount: parseFloat(s.total || 0)
+            }));
+            anomalies.push({
+                id: 'post_eod_sale',
+                severity: 'warning',
+                title: 'Sales between 11pm–6am',
+                desc: veryLate.length + ' transaction' + (veryLate.length>1?'s':'') + ' very late or very early. Verify if backfill or unauthorised.',
+                icon: 'moon',
+                iconBg: '#F59E0B',
+                count: veryLate.length,
+                items,
+                suggestion: 'Lock POS sales after EOD close. Backfill should require Manager PIN with reason.'
+            });
+        }
+    } catch(e) {}
+
+    return anomalies;
+}
+
+window.renderAuditAlerts = function() {
+    const wrap = document.getElementById('auditAlertsSection');
+    if(!wrap) return;
+    const anomalies = __aaComputeAnomalies();
+    const reviewed = __aaLoadReviewed();
+
+    // Summary
+    let crit = 0, warn = 0, info = 0;
+    anomalies.forEach(a => {
+        if(reviewed.has(a.id) && !window.__aaShowReviewed) return;
+        if(a.severity === 'critical') crit++;
+        else if(a.severity === 'warning') warn++;
+        else info++;
+    });
+    const sumEl = document.getElementById('aaSummary');
+    if(sumEl) {
+        if(crit + warn + info === 0) {
+            sumEl.innerHTML = '<span class="aa-sum-clean">All clean — no anomalies in this window</span>';
+        } else {
+            sumEl.innerHTML = (crit ? `<span class="aa-sum-critical">${crit} critical</span>` : '')
+                + (warn ? `<span class="aa-sum-warning">${warn} warning</span>` : '')
+                + (info ? `<span class="aa-sum-info">${info} info</span>` : '');
+        }
+    }
+
+    // Update sidebar badge (only critical + warning)
+    const badge = document.getElementById('auditAlertBadge');
+    if(badge) {
+        const total = crit + warn;
+        if(total > 0) { badge.style.display = 'inline-block'; badge.textContent = total; }
+        else { badge.style.display = 'none'; }
+    }
+
+    // Filter
+    const visible = anomalies.filter(a => window.__aaShowReviewed || !reviewed.has(a.id));
+
+    const listEl = document.getElementById('aaAlertsList');
+    if(!listEl) return;
+    if(!visible.length) {
+        const period = window.__aaPeriod === 'today' ? 'today' : window.__aaPeriod === '30d' ? 'last 30 days' : 'last 7 days';
+        listEl.innerHTML = '<div class="aa-empty"><strong>All clean</strong>No anomalies detected for ' + period + '. Either operations are smooth or rules need tuning for your scale.</div>';
+        if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        return;
+    }
+
+    // Sort by severity (critical first)
+    const sevOrder = { critical: 0, warning: 1, info: 2 };
+    visible.sort((a, b) => (sevOrder[a.severity] || 9) - (sevOrder[b.severity] || 9));
+
+    listEl.innerHTML = visible.map(a => {
+        const isRev = reviewed.has(a.id);
+        const fmtRM = window.formatRM || (n => 'RM ' + (parseFloat(n)||0).toFixed(2));
+        const itemsHtml = (a.items || []).map(it => `
+            <div class="aa-detail-row">
+                <span class="aa-detail-row__date">${it.date}</span>
+                <span class="aa-detail-row__staff">${it.staff}</span>
+                <span class="aa-detail-row__info">${it.info || ''}</span>
+                <span class="aa-detail-row__amt ${(it.amount||0) < 0 ? 'aa-detail-row__amt--neg' : ''}">${(it.amount||0) !== 0 ? fmtRM(it.amount) : '—'}</span>
+            </div>
+        `).join('');
+        return `<div class="aa-card ${isRev ? 'is-reviewed' : ''}" data-aa-id="${a.id}">
+            <div class="aa-card__head" onclick="window.aaToggleCard('${a.id}')">
+                <div class="aa-card__icon" style="background:${a.iconBg};">
+                    <i data-lucide="${a.icon}" style="width:18px; height:18px;"></i>
+                </div>
+                <div class="aa-card__main">
+                    <div class="aa-card__title">${a.title}<span class="aa-card__sev aa-card__sev--${a.severity}">${a.severity}</span></div>
+                    <div class="aa-card__desc">${a.desc}</div>
+                </div>
+                <div class="aa-card__count">${a.count}</div>
+                <button class="aa-card__expand">▾</button>
+            </div>
+            <div class="aa-card__body">
+                <div class="aa-card__details">${itemsHtml || '<div style="padding:14px; text-align:center; color:#9CA3AF; font-size:12px;">No detail rows.</div>'}</div>
+                <div class="aa-card__footer">
+                    <div class="aa-suggestion">${a.suggestion}</div>
+                    ${isRev
+                        ? `<button class="aa-card__act aa-card__act--unreview" onclick="window.aaMarkReviewed('${a.id}', false)">Unmark</button>`
+                        : `<button class="aa-card__act aa-card__act--review" onclick="window.aaMarkReviewed('${a.id}', true)">✓ Mark reviewed</button>`}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('[data-tab="admin_audit_alerts"]');
+    if(btn) btn.addEventListener('click', () => setTimeout(window.renderAuditAlerts, 100));
+    // Initial badge update on app boot
+    setTimeout(() => { try { window.renderAuditAlerts(); } catch(e){} }, 3000);
+});
+
+// =============================================================
 // p1_30 — System Test Guide (QA checklist for shipped features)
 // =============================================================
 window.TG_KEY = 'testGuideStatus_v1';
