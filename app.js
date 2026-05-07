@@ -1460,7 +1460,7 @@ window.posOpenProductDetail = function(sku) {
     document.getElementById('pdProdName').textContent = cleanName || (p.name || 'Untitled');
     document.getElementById('pdSku').textContent = 'SKU ' + (p.sku || '—');
     document.getElementById('pdCat').textContent = p.category || 'Uncategorized';
-    document.getElementById('pdBrand').textContent = p.brand ? 'by ' + p.brand : '';
+    document.getElementById('pdmBrandText').textContent = p.brand ? 'by ' + p.brand : '';
     document.getElementById('pdPrice').textContent = (typeof formatRM === 'function') ? formatRM(p.price) : 'RM ' + parseFloat(p.price || 0).toFixed(2);
 
     // Stock pill
