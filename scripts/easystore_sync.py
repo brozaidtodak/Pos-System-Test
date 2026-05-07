@@ -221,13 +221,14 @@ def migrate_products(products, dry_run=False):
             for r in new_rows[:3]: print(f"    {r['sku']:<25} {r.get('name','')[:50]} · {r.get('brand','-')}")
         return
 
-    # === UPDATE EXISTING (p1_24): refresh price/images/is_published from EasyStore ===
+    # === UPDATE EXISTING (p1_24+, enhanced p1_29): refresh price/images/is_published + IDs ===
     # EasyStore is source of truth for online catalogue. Don't touch cost_price/batch.
+    # p1_29: store easystore_variant_id + easystore_product_id in metadata so POS can push
+    # inventory deductions back to EasyStore on sale.
     if existing_rows:
         print(f"  Updating {len(existing_rows)} existing products from EasyStore...")
         updated = 0
         for chunk in chunked(existing_rows, 50):
-            # Build VALUES clause for batch update
             vals = []
             for r in chunk:
                 sku = js(r['sku'])
@@ -235,15 +236,22 @@ def migrate_products(products, dry_run=False):
                 images_json = json.dumps(r.get('images') or [], ensure_ascii=False).replace("'", "''")
                 is_pub = 'true' if r.get('is_published') else 'false'
                 es_qty = int(r.get('easystore_qty') or 0)
-                vals.append(f"('{sku}', {price}, '{images_json}'::jsonb, {is_pub}, {es_qty})")
+                es_variant_id = js(r.get('easystore_variant_id') or '')
+                es_product_id = js(r.get('easystore_product_id') or '')
+                vals.append(f"('{sku}', {price}, '{images_json}'::jsonb, {is_pub}, {es_qty}, '{es_variant_id}', '{es_product_id}')")
             values_sql = ",".join(vals)
             sql = f"""
             UPDATE public.products_master pm
             SET price = u.price,
                 images = CASE WHEN jsonb_array_length(u.images) > 0 THEN u.images ELSE pm.images END,
                 is_published = u.is_published,
-                metadata = COALESCE(pm.metadata, '{{}}'::jsonb) || jsonb_build_object('easystore_qty', u.es_qty, 'easystore_synced_at', '{datetime.utcnow().isoformat()}')
-            FROM (VALUES {values_sql}) AS u(sku, price, images, is_published, es_qty)
+                metadata = COALESCE(pm.metadata, '{{}}'::jsonb) || jsonb_build_object(
+                    'easystore_qty', u.es_qty,
+                    'easystore_variant_id', NULLIF(u.es_variant_id, ''),
+                    'easystore_product_id', NULLIF(u.es_product_id, ''),
+                    'easystore_synced_at', '{datetime.utcnow().isoformat()}'
+                )
+            FROM (VALUES {values_sql}) AS u(sku, price, images, is_published, es_qty, es_variant_id, es_product_id)
             WHERE upper(pm.sku) = upper(u.sku);
             """
             try:

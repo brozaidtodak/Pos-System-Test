@@ -12,6 +12,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/easystore-push"
+  to = "/.netlify/functions/easystore-push"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/ask"
   to = "/.netlify/functions/claude-ask"
   status = 200

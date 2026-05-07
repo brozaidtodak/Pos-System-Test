@@ -39,6 +39,66 @@ window.hideLoading = function() {
  if (el) el.style.display = 'none';
 };
 
+// =============================================================
+// p1_29 — EasyStore push (POS sale → online inventory decrement)
+// Best-effort: queue failed pushes in localStorage, retry on next call
+// =============================================================
+window.EASYSTORE_PUSH_URL = '/api/easystore-push';
+window.EASYSTORE_RETRY_KEY = 'easystorePushQueue_v1';
+
+window.easystorePushSale = async function(items, delta) {
+    delta = delta || 'subtract';
+    if(!Array.isArray(items) || !items.length) return;
+    // Drain retry queue alongside new items
+    let queue = [];
+    try { queue = JSON.parse(localStorage.getItem(window.EASYSTORE_RETRY_KEY) || '[]'); } catch(e){}
+    const allItems = [...queue, ...items.map(i => ({ sku: i.sku, qty: i.qty, delta }))];
+    // Group by delta direction
+    const grouped = { subtract: [], add: [] };
+    allItems.forEach(i => { (grouped[i.delta || 'subtract'] = grouped[i.delta || 'subtract'] || []).push({ sku: i.sku, qty: i.qty }); });
+
+    const failedItems = [];
+    for(const dir of ['subtract', 'add']) {
+        const group = grouped[dir];
+        if(!group || !group.length) continue;
+        try {
+            const r = await fetch(window.EASYSTORE_PUSH_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: group, delta: dir })
+            });
+            if(!r.ok) throw new Error('http_' + r.status);
+            const data = await r.json();
+            // Track per-SKU failures (e.g. no_easystore_mapping → don't retry)
+            (data.results || []).forEach(res => {
+                if(!res.ok && res.reason === 'api_error') {
+                    failedItems.push({ sku: res.sku, qty: group.find(g => g.sku === res.sku)?.qty || 0, delta: dir });
+                }
+            });
+            if(typeof showToast === 'function' && data.succeeded > 0) {
+                console.log('[EasyStore push]', data.succeeded + '/' + data.processed + ' synced');
+            }
+        } catch(e) {
+            console.warn('[EasyStore push] failed, queueing:', e.message);
+            // Network error → retry whole group
+            failedItems.push(...group.map(g => ({ sku: g.sku, qty: g.qty, delta: dir })));
+        }
+    }
+
+    // Persist failures for next attempt
+    try {
+        if(failedItems.length > 0) {
+            localStorage.setItem(window.EASYSTORE_RETRY_KEY, JSON.stringify(failedItems.slice(0, 100)));
+            // Show subtle warning if many fails
+            if(failedItems.length >= 3 && typeof showToast === 'function') {
+                showToast('EasyStore sync delayed — ' + failedItems.length + ' items queued for retry', 'warn');
+            }
+        } else {
+            localStorage.removeItem(window.EASYSTORE_RETRY_KEY);
+        }
+    } catch(e){}
+};
+
 // Toast: non-blocking notification. Replaces alert() for soft messages.
 window.showToast = function(msg, type) {
  type = type || 'info';
@@ -1773,6 +1833,11 @@ window.processNewCheckout = async function() {
  }]);
  // Use finalTotal downstream
  totalVal = finalTotal;
+ // p1_29: Push inventory deduction to EasyStore (best-effort, async, non-blocking)
+ if(typeof window.easystorePushSale === 'function') {
+   const pushItems = cart.map(c => ({ sku: c.sku, qty: parseInt(c.quantity) || 0 })).filter(x => x.qty > 0);
+   if(pushItems.length) window.easystorePushSale(pushItems, 'subtract');
+ }
 
  const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
  const email = document.getElementById("customerEmail").value.trim();
