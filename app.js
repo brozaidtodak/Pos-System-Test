@@ -9706,6 +9706,38 @@ function dashInitials(name) {
  return (name||'?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
 }
 
+// Target editor modal (p1_31)
+window.dashOpenTargetEditor = function() {
+    const current = parseFloat(localStorage.getItem('dashMonthlyTarget_v1') || '0');
+    const overlay = document.createElement('div');
+    overlay.className = 'dash-target-modal';
+    overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="dash-target-modal__inner">
+            <h3>Set Monthly Revenue Target</h3>
+            <p>Track progress vs target throughout the month. Used in dashboard hero. Set realistic — based on last 3 months avg + growth ambition.</p>
+            <label>Monthly target (RM)</label>
+            <input type="number" id="dashTargetInput" min="0" step="100" placeholder="30000" value="${current || ''}">
+            <p style="font-size:11px; color:#9CA3AF; margin-top:8px;">Stored locally. Adjust anytime — affects dashboard view only.</p>
+            <div class="dash-target-modal__actions">
+                <button class="dash-icon-btn" style="padding:8px 14px; font-size:12px; font-weight:700;" onclick="this.closest('.dash-target-modal').remove()">Cancel</button>
+                <button style="padding:8px 16px; background:var(--primary-500); color:#FFF; border:none; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;" onclick="window.dashSaveTarget()">Save Target</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('dashTargetInput')?.focus(), 100);
+};
+window.dashSaveTarget = function() {
+    const v = parseFloat(document.getElementById('dashTargetInput').value || '0');
+    if(v < 0) return;
+    if(v === 0) localStorage.removeItem('dashMonthlyTarget_v1');
+    else localStorage.setItem('dashMonthlyTarget_v1', String(v));
+    document.querySelector('.dash-target-modal')?.remove();
+    if(typeof showToast === 'function') showToast(v > 0 ? 'Target saved: RM ' + v.toLocaleString() : 'Target cleared', 'success');
+    window.renderManagerDashboard();
+};
+
 window.renderManagerDashboard = function() {
  if(typeof salesHistory === 'undefined') return;
 
@@ -9781,6 +9813,176 @@ window.renderManagerDashboard = function() {
 
  document.getElementById('statCustValue').textContent = periodCustomers.size;
  document.getElementById('statCustCompare').innerHTML = dashCompareLabel(periodCustomers.size, prevCustomers.size);
+
+ // ---------- p1_31: GM enhancements ----------
+ // (a) Last refreshed timestamp
+ const refEl = document.getElementById('dashLastRefresh');
+ if(refEl) refEl.textContent = new Date().toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
+
+ // (b) Gross Margin — uses financeRecords COGS for period (or proportion estimate)
+ try {
+   const fin = (typeof financeRecords !== 'undefined' && Array.isArray(financeRecords)) ? financeRecords : [];
+   // Period bounds for COGS: only count finance_records dated within selected window
+   const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+   let cogsTotal = 0;
+   fin.forEach(f => {
+     if(f.category !== 'COGS') return;
+     const idx = M.indexOf(f.month);
+     if(idx < 0) return;
+     const d = new Date(parseInt(f.year), idx, 15).getTime();
+     if(d >= cutoff && d <= Date.now()) cogsTotal += parseFloat(f.amount || 0);
+   });
+   const gmEl = document.getElementById('heroMarginValue');
+   if(gmEl) {
+     if(totalRev > 0) {
+       const gmPct = ((totalRev - cogsTotal) / totalRev) * 100;
+       gmEl.textContent = gmPct.toFixed(1) + '%';
+       gmEl.style.color = gmPct >= 30 ? '#86EFAC' : gmPct >= 15 ? '#FCD34D' : '#FCA5A5';
+     } else {
+       gmEl.textContent = '—';
+     }
+   }
+ } catch(e){}
+
+ // (c) Repeat purchase rate (within period)
+ try {
+   const orderCountByCust = {};
+   positives.forEach(s => {
+     const k = s.customer_phone || s.customer_name;
+     if(!k) return;
+     orderCountByCust[k] = (orderCountByCust[k] || 0) + 1;
+   });
+   const repeaters = Object.values(orderCountByCust).filter(c => c >= 2).length;
+   const total = Object.keys(orderCountByCust).length;
+   const repeatRate = total > 0 ? (repeaters / total) * 100 : 0;
+   const rrEl = document.getElementById('statRepeatRate');
+   if(rrEl) rrEl.textContent = repeatRate.toFixed(0) + '%';
+ } catch(e){}
+
+ // (d) Money at risk = (low-stock SKU value at retail) + (AR > 30 days)
+ try {
+   const stockMap = {};
+   (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+     stockMap[b.sku] = (stockMap[b.sku] || 0) + (parseFloat(b.qty_remaining) || 0);
+   });
+   let lowStockValue = 0, lowStockCount = 0;
+   (typeof masterProducts !== 'undefined' ? masterProducts : []).forEach(p => {
+     if(!p.is_published && !p.published_at) return;
+     const stock = stockMap[p.sku] || 0;
+     const reorder = parseInt(p.reorder_point) || 5;
+     if(stock <= reorder) {
+       lowStockCount++;
+       lowStockValue += (parseFloat(p.price) || 0) * Math.max(0, reorder - stock);
+     }
+   });
+   // AR > 30 days from quotationsLog (invoices unpaid)
+   let arOverdueValue = 0, arOverdueCount = 0;
+   const now30 = Date.now() - 30 * 24 * 3600 * 1000;
+   (typeof window.quotationsLog !== 'undefined' ? window.quotationsLog : []).forEach(q => {
+     if(q.status === 'paid' || q.status === 'cancelled' || q.status === 'voided') return;
+     if(q.doc_type !== 'invoice' && q.type !== 'invoice') return;
+     const d = new Date(q.created_at || q.date || q.generated_date).getTime();
+     if(isNaN(d) || d > now30) return;
+     const amt = parseFloat(q.grand_total || q.total || 0);
+     if(amt > 0) { arOverdueValue += amt; arOverdueCount++; }
+   });
+   const totalRisk = lowStockValue + arOverdueValue;
+   const rEl = document.getElementById('statRiskValue');
+   if(rEl) rEl.textContent = (window.formatRMShort ? window.formatRMShort(totalRisk).replace('RM ', '') : Math.round(totalRisk).toLocaleString());
+   const rbEl = document.getElementById('statRiskBreakdown');
+   if(rbEl) rbEl.innerHTML = `${lowStockCount} low-stock · ${arOverdueCount} AR overdue`;
+ } catch(e){}
+
+ // (e) Anomaly alert banner — pull top critical/warning from p8_4 detector
+ try {
+   if(typeof __aaComputeAnomalies === 'function') {
+     // Temporarily set to 7d for banner detection
+     const prevPeriod = window.__aaPeriod;
+     window.__aaPeriod = '7d';
+     const anomalies = __aaComputeAnomalies();
+     window.__aaPeriod = prevPeriod;
+     const reviewed = (typeof __aaLoadReviewed === 'function') ? __aaLoadReviewed() : new Set();
+     const top = anomalies.filter(a => !reviewed.has(a.id) && (a.severity === 'critical' || a.severity === 'warning'))[0];
+     const bannerEl = document.getElementById('dashAlertBanner');
+     if(bannerEl) {
+       if(top) {
+         bannerEl.style.display = 'flex';
+         bannerEl.className = 'dash-alert-banner dash-alert-banner--' + top.severity;
+         bannerEl.innerHTML = `
+           <i data-lucide="${top.icon || 'alert-triangle'}" class="dash-alert-banner__icon"></i>
+           <div class="dash-alert-banner__text">
+             <strong>${top.title}</strong> — ${top.desc}
+           </div>
+           <a class="dash-alert-banner__cta" onclick="document.querySelector('[data-tab=&quot;admin_audit_alerts&quot;]')?.click()">Investigate →</a>
+         `;
+       } else {
+         bannerEl.style.display = 'none';
+       }
+     }
+   }
+ } catch(e){}
+
+ // (f) Monthly target progress bar
+ try {
+   const targetMonthly = parseFloat(localStorage.getItem('dashMonthlyTarget_v1') || '0');
+   const targetEl = document.getElementById('dashTargetBar');
+   const fillEl = document.getElementById('dashTargetFill');
+   const pctEl = document.getElementById('dashTargetPct');
+   const curEl = document.getElementById('dashTargetCurrent');
+   const goalEl = document.getElementById('dashTargetGoal');
+   const statusEl = document.getElementById('dashTargetStatus');
+   const footEl = document.getElementById('dashTargetFoot');
+
+   if(!targetMonthly || targetMonthly <= 0) {
+     if(curEl) curEl.textContent = 'RM —';
+     if(goalEl) goalEl.textContent = 'set target';
+     if(pctEl) pctEl.textContent = '—';
+     if(fillEl) fillEl.style.width = '0%';
+     if(statusEl) { statusEl.textContent = 'Not Set'; statusEl.className = 'dash-target-bar__status dash-target-bar__status--unset'; }
+     if(footEl) footEl.textContent = 'Click target icon to set monthly revenue target.';
+   } else {
+     // Calc month-to-date revenue
+     const now = new Date();
+     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+     const daysIntoMonth = Math.ceil((Date.now() - monthStart) / (24*3600*1000));
+     const totalDaysInMonth = Math.ceil((monthEnd - monthStart) / (24*3600*1000));
+     const expectedAtThisPoint = targetMonthly * (daysIntoMonth / totalDaysInMonth);
+     let mtdRev = 0;
+     salesHistory.forEach(s => {
+       const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+       const t = parseFloat(s.total || 0);
+       if(dt >= monthStart && t > 0) mtdRev += t;
+     });
+     const pct = (mtdRev / targetMonthly) * 100;
+     const fmt = (n) => 'RM ' + Math.round(n).toLocaleString();
+     if(curEl) curEl.textContent = fmt(mtdRev);
+     if(goalEl) goalEl.textContent = fmt(targetMonthly);
+     if(pctEl) pctEl.textContent = pct.toFixed(0) + '%';
+     if(fillEl) {
+       fillEl.style.width = Math.min(100, pct) + '%';
+       fillEl.className = 'dash-target-bar__fill' + (pct >= 100 ? ' dash-target-bar__fill--complete' : (mtdRev < expectedAtThisPoint * 0.85 ? ' dash-target-bar__fill--behind' : ''));
+     }
+     // Status pill
+     let status = 'On Track';
+     let statusClass = 'ontrack';
+     if(pct >= 100) { status = 'Target Hit'; statusClass = 'ahead'; }
+     else if(mtdRev > expectedAtThisPoint * 1.05) { status = 'Ahead'; statusClass = 'ahead'; }
+     else if(mtdRev < expectedAtThisPoint * 0.85) { status = 'Behind'; statusClass = 'behind'; }
+     if(statusEl) { statusEl.textContent = status; statusEl.className = 'dash-target-bar__status dash-target-bar__status--' + statusClass; }
+     // Foot — pace info
+     const remainingDays = totalDaysInMonth - daysIntoMonth;
+     const remainingTarget = Math.max(0, targetMonthly - mtdRev);
+     const dailyNeeded = remainingDays > 0 ? remainingTarget / remainingDays : 0;
+     if(footEl) {
+       if(pct >= 100) footEl.textContent = `Target hit. ${remainingDays} days left in month — every ringgit beyond is bonus.`;
+       else footEl.textContent = `${remainingDays} day(s) left · need RM ${Math.round(dailyNeeded).toLocaleString()}/day to hit target · expected by today: RM ${Math.round(expectedAtThisPoint).toLocaleString()}`;
+     }
+   }
+ } catch(e) { console.warn('[dashboard] target bar fail', e); }
+
+ // re-render lucide icons (banner uses dynamic icon)
+ if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
 
  // ---------- REVENUE TREND ----------
  const canvas = document.getElementById('dashRevenueChart');

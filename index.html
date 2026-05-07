@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=34">
- <link rel="stylesheet" href="design-tokens.css?v=20">
+ <link rel="stylesheet" href="design-tokens.css?v=21">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -3956,12 +3956,19 @@
  </div>
 
  <div id="managerDashboardSection" class="tab-section" style="display:none;">
- <!-- Header -->
- <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:var(--space-4); flex-wrap:wrap; gap:var(--space-3);">
+ <!-- Header (p8_4+ enhanced) -->
+ <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:var(--space-3); flex-wrap:wrap; gap:var(--space-3);">
  <div>
  <h2 style="font-size:var(--text-2xl); font-weight:var(--weight-extra); margin:0 0 4px; letter-spacing:-0.5px;">Manager Dashboard</h2>
- <p style="font-size:var(--text-sm); color:var(--neutral-600); margin:0;" id="dashSubtitle">Snapshot operasi 10 CAMP — period <strong id="dashPeriodLabel">last 30 days</strong></p>
+ <p style="font-size:var(--text-sm); color:var(--neutral-600); margin:0;" id="dashSubtitle">Snapshot 10 CAMP · period <strong id="dashPeriodLabel">last 30 days</strong> · last refreshed <span id="dashLastRefresh" style="font-weight:600;">—</span></p>
  </div>
+ <div style="display:flex; gap:8px; align-items:center;">
+ <button class="dash-icon-btn" onclick="renderManagerDashboard()" title="Refresh data">
+ <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+ </button>
+ <button class="dash-icon-btn" onclick="window.dashOpenTargetEditor()" title="Set monthly target">
+ <i data-lucide="target" style="width:14px;height:14px;"></i>
+ </button>
  <div class="dash-period-bar" role="group" aria-label="Period selector">
  <button data-period="7d" onclick="dashSetPeriod('7d')">7d</button>
  <button data-period="30d" class="is-active" onclick="dashSetPeriod('30d')">30d</button>
@@ -3970,14 +3977,43 @@
  <button data-period="all" onclick="dashSetPeriod('all')">All</button>
  </div>
  </div>
+ </div>
 
- <!-- Hero + 3 secondary stats -->
+ <!-- Anomaly alerts banner (auto-show kalau ada critical/warning) -->
+ <div id="dashAlertBanner" style="display:none;"></div>
+
+ <!-- Monthly target progress bar -->
+ <div id="dashTargetBar" class="dash-target-bar">
+ <div class="dash-target-bar__top">
+ <div>
+ <span class="dash-target-bar__label">Monthly Target Progress</span>
+ <span id="dashTargetStatus" class="dash-target-bar__status">—</span>
+ </div>
+ <div class="dash-target-bar__numbers">
+ <strong id="dashTargetCurrent">RM 0</strong>
+ <span> / </span>
+ <span id="dashTargetGoal">RM 0</span>
+ <span class="dash-target-bar__pct" id="dashTargetPct">0%</span>
+ </div>
+ </div>
+ <div class="dash-target-bar__track"><div class="dash-target-bar__fill" id="dashTargetFill"></div></div>
+ <div class="dash-target-bar__foot" id="dashTargetFoot">Set monthly target to enable progress tracking.</div>
+ </div>
+
+ <!-- Hero + secondary stats — now with Gross Margin + Repeat Rate -->
  <div class="dash-hero-row">
- <!-- Hero: Net Revenue with sparkline + trend % -->
+ <!-- Hero: Net Revenue with sparkline + trend + GM% -->
  <div class="dash-hero">
- <div class="dash-hero__label">Net Revenue</div>
+ <div class="dash-hero__label">
+ <span>Net Revenue</span>
+ <span class="dash-hero__sublabel" title="After refunds, before tax">after refunds</span>
+ </div>
  <div class="dash-hero__value">RM <span id="heroRevValue">0</span></div>
  <div class="dash-hero__compare" id="heroRevCompare">—</div>
+ <div class="dash-hero__margin">
+ <span class="dash-hero__margin-label">Gross Margin</span>
+ <span class="dash-hero__margin-value" id="heroMarginValue">—</span>
+ </div>
  <svg id="heroSparkline" class="dash-hero__sparkline" viewBox="0 0 240 50" preserveAspectRatio="none"></svg>
  </div>
 
@@ -3991,16 +4027,23 @@
 
  <!-- Secondary: AOV -->
  <div class="dash-stat">
- <div class="dash-stat__label">AOV</div>
+ <div class="dash-stat__label">Avg Order Value</div>
  <div class="dash-stat__value">RM <span id="statAovValue">0</span></div>
  <div class="dash-stat__compare" id="statAovCompare">—</div>
  </div>
 
- <!-- Secondary: Customers -->
+ <!-- Secondary: Customers + Repeat rate -->
  <div class="dash-stat">
- <div class="dash-stat__label">Customers</div>
+ <div class="dash-stat__label">Customers · <span id="statRepeatRate" style="color:var(--success-700); font-weight:700;">—</span> repeat</div>
  <div class="dash-stat__value" id="statCustValue">0</div>
  <div class="dash-stat__compare" id="statCustCompare">—</div>
+ </div>
+
+ <!-- NEW: Money at risk -->
+ <div class="dash-stat dash-stat--risk">
+ <div class="dash-stat__label" style="color:var(--danger-700);">Money at Risk</div>
+ <div class="dash-stat__value">RM <span id="statRiskValue">0</span></div>
+ <div class="dash-stat__compare" id="statRiskBreakdown" style="font-size:11px; color:var(--neutral-600);">—</div>
  </div>
  </div>
 
@@ -4032,7 +4075,7 @@
  </div>
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"> Top Staff</h3>
+ <h3 class="dash-card__title">Top Staff <span style="font-size:10px; color:var(--neutral-500); font-weight:500; margin-left:6px;">by Net Sales</span></h3>
  <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;sales_analytics&quot;]')?.click()">View all →</a>
  </div>
  <div class="dash-ranked" id="dashTopStaff"></div>
@@ -8922,7 +8965,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=113"></script>
+ <script src="app.js?v=114"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -1339,6 +1339,79 @@
 .aa-card__act--unreview { background: #FFF; color: #6B7280; border-color: #E5E7EB; }
 .aa-card__act--unreview:hover { background: #F3F4F6; color: #111827; }
 
+/* ============================================================
+   Manager Dashboard polish (p1_31 GM upgrade)
+   ============================================================ */
+
+.dash-icon-btn {
+    background: #FFF; border: 1px solid #E5E7EB; padding: 7px 9px;
+    border-radius: 8px; cursor: pointer; color: #4B5563; transition: 0.15s;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.dash-icon-btn:hover { border-color: var(--primary-500); color: var(--primary-700); }
+
+/* Anomaly alerts banner */
+.dash-alert-banner {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px; margin-bottom: 14px;
+    font-size: 13px; font-weight: 600;
+    border-left: 4px solid;
+}
+.dash-alert-banner--critical { background: #FEE2E2; color: #991B1B; border-left-color: #DC2626; }
+.dash-alert-banner--warning  { background: #FEF3C7; color: #92400E; border-left-color: #F59E0B; }
+.dash-alert-banner__icon { width: 22px; height: 22px; flex-shrink: 0; }
+.dash-alert-banner__text { flex: 1; }
+.dash-alert-banner__cta { font-size: 12px; font-weight: 700; padding: 6px 12px; background: rgba(255,255,255,0.6); border-radius: 6px; text-decoration: none; color: inherit; transition: 0.15s; }
+.dash-alert-banner__cta:hover { background: rgba(255,255,255,0.9); }
+
+/* Monthly target bar */
+.dash-target-bar {
+    background: #FFF; border: 1px solid #E5E7EB; border-radius: 12px;
+    padding: 14px 18px; margin-bottom: 14px;
+}
+.dash-target-bar__top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.dash-target-bar__label { font-size: 12px; font-weight: 700; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px; }
+.dash-target-bar__status {
+    display: inline-block; margin-left: 10px;
+    font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.dash-target-bar__status--ahead { background: #D1FAE5; color: #065F46; }
+.dash-target-bar__status--ontrack { background: #DBEAFE; color: #1E40AF; }
+.dash-target-bar__status--behind { background: #FEE2E2; color: #991B1B; }
+.dash-target-bar__status--unset { background: #F3F4F6; color: #6B7280; }
+.dash-target-bar__numbers { font-size: 14px; color: #6B7280; }
+.dash-target-bar__numbers strong { font-size: 18px; color: #111827; font-weight: 800; letter-spacing: -0.3px; }
+.dash-target-bar__pct { font-size: 14px; font-weight: 800; margin-left: 12px; padding: 3px 10px; border-radius: 6px; background: #F3F4F6; color: #111827; }
+.dash-target-bar__track { height: 10px; background: #F3F4F6; border-radius: 999px; overflow: hidden; margin-bottom: 6px; }
+.dash-target-bar__fill { height: 100%; background: linear-gradient(90deg, var(--primary-400), var(--primary-600)); border-radius: inherit; transition: width 0.5s ease; min-width: 4px; }
+.dash-target-bar__fill--complete { background: linear-gradient(90deg, #10B981, #059669); }
+.dash-target-bar__fill--behind { background: linear-gradient(90deg, #F59E0B, #DC2626); }
+.dash-target-bar__foot { font-size: 11px; color: #9CA3AF; }
+
+/* Hero margin section */
+.dash-hero__sublabel { font-size: 10px; color: rgba(255,255,255,0.6); font-weight: 500; margin-left: 8px; padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 4px; }
+.dash-hero__margin { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); }
+.dash-hero__margin-label { font-size: 11px; color: rgba(255,255,255,0.7); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.dash-hero__margin-value { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+
+/* Risk stat card */
+.dash-stat--risk { border-left: 3px solid var(--danger-500, #EF4444); }
+
+/* Trend color coding — span.up/.down nested INSIDE compare div (innerHTML wraps) */
+.dash-stat__compare .up, .dash-hero__compare .up { color: var(--success-700); font-weight: 700; }
+.dash-stat__compare .down, .dash-hero__compare .down { color: var(--danger-700); font-weight: 700; }
+
+/* Target editor modal */
+.dash-target-modal { position: fixed; inset: 0; background: rgba(15,23,42,0.7); display: flex; align-items: center; justify-content: center; z-index: 5000; backdrop-filter: blur(4px); }
+.dash-target-modal__inner { background: #FFF; border-radius: 14px; padding: 24px 28px; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.dash-target-modal__inner h3 { font-size: 18px; font-weight: 800; color: #111827; margin: 0 0 6px; }
+.dash-target-modal__inner p { font-size: 13px; color: #6B7280; margin: 0 0 16px; line-height: 1.5; }
+.dash-target-modal__inner label { display: block; font-size: 11px; font-weight: 700; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.dash-target-modal__inner input[type="number"] { width: 100%; padding: 10px 14px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 16px; font-weight: 700; outline: none; }
+.dash-target-modal__inner input[type="number"]:focus { border-color: var(--primary-500); }
+.dash-target-modal__actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
 /* p1_22 — PIN-only login: visual dots */
 .pin-dot {
  width: 14px; height: 14px; border-radius: 50%;
