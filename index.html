@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=33">
- <link rel="stylesheet" href="design-tokens.css?v=16">
+ <link rel="stylesheet" href="design-tokens.css?v=17">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -2986,82 +2986,97 @@
  </div>
  </div>
  </div>
- </div><div id="databaseSection" class="tab-section" style="display: none;">
- <!-- Page header (UX-6 redesign) -->
- <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:var(--space-4); flex-wrap:wrap; gap:var(--space-3);">
- <div>
- <h2 style="font-size:var(--text-2xl); font-weight:var(--weight-extra); margin:0 0 4px; letter-spacing:-0.5px;">Database Produk</h2>
- <p style="font-size:var(--text-sm); color:var(--neutral-600); margin:0;">Browse, edit, dan urus semua master products. <span id="pdGrandCount" style="font-weight:var(--weight-bold); color:var(--primary-700);">…</span> products in catalog.</p>
+ </div><div id="databaseSection" class="tab-section pdb-root" style="display: none;">
+
+ <!-- Page header -->
+ <div class="pdb-header">
+ <div class="pdb-header__title">
+ <h2>Product Database</h2>
+ <p class="pdb-header__sub">
+ <strong id="pdGrandCount">…</strong> products
+ <span class="pdb-header__sep">·</span>
+ <span class="pdb-header__live"><strong id="pdbLiveCount">0</strong> live</span>
+ <span class="pdb-header__sep">·</span>
+ <span class="pdb-header__draft"><strong id="pdbDraftCount">0</strong> draft</span>
+ </p>
  </div>
- <div class="pd-view-toggle" role="group" aria-label="View mode">
- <button class="is-active" data-view="grid" onclick="window.pdSetView('grid')" aria-label="Grid view">
- <i data-lucide="layout-grid" style="width:14px; height:14px;" aria-hidden="true"></i> Grid
+ <div class="pdb-header__actions">
+ <button class="pdb-btn pdb-btn--ghost" onclick="window.openPdpModal('')" title="Add new product">
+ <i data-lucide="plus" style="width:14px; height:14px;"></i> New
  </button>
- <button data-view="table" onclick="window.pdSetView('table')" aria-label="Table view">
- <i data-lucide="list" style="width:14px; height:14px;" aria-hidden="true"></i> Table
+ <div class="pdb-view-toggle" role="group" aria-label="View mode">
+ <button class="is-active" data-view="grid" onclick="window.pdSetView('grid')" title="Grid view">
+ <i data-lucide="layout-grid" style="width:14px; height:14px;"></i>
  </button>
+ <button data-view="table" onclick="window.pdSetView('table')" title="Table view">
+ <i data-lucide="list" style="width:14px; height:14px;"></i>
+ </button>
+ </div>
  </div>
  </div>
 
- <!-- Stats cards -->
- <div id="pdStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--space-2); margin-bottom:var(--space-4);"></div>
+ <!-- Smart filter bar -->
+ <div class="pdb-filter-bar">
+ <div class="pdb-search-wrap">
+ <i data-lucide="search" class="pdb-search-icon" style="width:16px; height:16px;"></i>
+ <input type="text" id="pdSearch" class="pdb-search" placeholder="Cari nama, SKU, brand, atau barcode…" oninput="window.renderProductDatabase()">
+ </div>
+ <select id="pdBrand" class="pdb-select" onchange="window.renderProductDatabase()" aria-label="Filter brand">
+ <option value="">All brands</option>
+ </select>
+ <select id="pdCategory" class="pdb-select" onchange="window.renderProductDatabase()" aria-label="Filter category">
+ <option value="">All categories</option>
+ </select>
+ <select id="pdSort" class="pdb-select" onchange="window.renderProductDatabase()" aria-label="Sort">
+ <option value="name">Sort: Name (A-Z)</option>
+ <option value="price-desc">Sort: Price ↓</option>
+ <option value="price-asc">Sort: Price ↑</option>
+ <option value="stock-desc">Sort: Stock ↓</option>
+ <option value="brand">Sort: Brand</option>
+ </select>
+ <select id="pdPerPage" class="pdb-select" onchange="window.renderProductDatabase()" aria-label="Per page">
+ <option value="24">24/page</option>
+ <option value="48" selected>48/page</option>
+ <option value="96">96/page</option>
+ <option value="200">200/page</option>
+ </select>
+ </div>
 
- <!-- Quick edit by SKU -->
- <div class="card" style="margin-bottom:var(--space-4); padding:var(--space-3) var(--space-4);">
- <div style="display:flex; gap:var(--space-2); align-items:center; flex-wrap:wrap;">
- <span style="font-size:var(--text-sm); font-weight:var(--weight-semibold); color:var(--neutral-700);"> Quick edit by SKU:</span>
- <input type="text" id="editSkuSearch" class="cp-input" style="flex:1; min-width:200px; max-width:300px;" placeholder="Taip atau pilih SKU..." list="editSkuList" onchange="window.openPdpModal(this.value)">
+ <!-- Status pills -->
+ <div class="pdb-pills" id="pdbStatusPills">
+ <button class="pdb-pill pdb-pill--active" data-status="" onclick="window.pdbSetStatus('', this)">All</button>
+ <button class="pdb-pill" data-status="published" onclick="window.pdbSetStatus('published', this)">
+ <span class="pdb-dot pdb-dot--green"></span> Live
+ </button>
+ <button class="pdb-pill" data-status="draft" onclick="window.pdbSetStatus('draft', this)">
+ <span class="pdb-dot pdb-dot--amber"></span> Draft
+ </button>
+ <button class="pdb-pill" data-status="oos" onclick="window.pdbSetStatus('oos', this)">
+ <span class="pdb-dot pdb-dot--red"></span> Out of Stock
+ </button>
+ <button class="pdb-pill" data-status="low" onclick="window.pdbSetStatus('low', this)">
+ <span class="pdb-dot pdb-dot--orange"></span> Low Stock
+ </button>
+ <button class="pdb-pill" data-status="noimage" onclick="window.pdbSetStatus('noimage', this)">
+ <i data-lucide="image-off" style="width:12px; height:12px;"></i> No Image
+ </button>
+ <input type="hidden" id="pdStatus" value="">
+ </div>
+
+ <!-- Active filter chips -->
+ <div class="pdb-active-chips" id="pdbActiveChips" style="display:none;"></div>
+
+ <!-- Stats compact -->
+ <div id="pdStats" class="pdb-stats"></div>
+
+ <!-- Summary line -->
+ <div class="pdb-summary-row">
+ <p id="pdSummary" class="pdb-summary"></p>
+ <div class="pdb-quick-edit">
+ <input type="text" id="editSkuSearch" class="pdb-quick-edit__input" placeholder="Buka SKU →" list="editSkuList" onchange="window.openPdpModal(this.value)">
  <datalist id="editSkuList"></datalist>
- <button class="btn btn--primary btn--sm" onclick="window.openPdpModal(document.getElementById('editSkuSearch').value)">
- <i data-lucide="edit" style="width:14px; height:14px;" aria-hidden="true"></i> Buka Profil
- </button>
  </div>
  </div>
-
- <!-- Filter toolbar -->
- <div class="pd-toolbar">
- <div>
- <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">CARI</label>
- <input type="text" id="pdSearch" class="cp-input" placeholder="Nama / SKU / brand / barcode" oninput="window.renderProductDatabase()">
- </div>
- <div>
- <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">BRAND</label>
- <select id="pdBrand" class="cp-input" onchange="window.renderProductDatabase()"><option value="">Semua</option></select>
- </div>
- <div>
- <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">KATEGORI</label>
- <select id="pdCategory" class="cp-input" onchange="window.renderProductDatabase()"><option value="">Semua</option></select>
- </div>
- <div>
- <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">STATUS</label>
- <select id="pdStatus" class="cp-input" onchange="window.renderProductDatabase()">
- <option value="">Semua</option>
- <option value="published">Published</option>
- <option value="draft" selected>Draft sahaja</option>
- <option value="oos">Out-of-stock</option>
- </select>
- </div>
- <div>
- <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">SORT</label>
- <select id="pdSort" class="cp-input" onchange="window.renderProductDatabase()">
- <option value="name">Name (A-Z)</option>
- <option value="price-desc">Price (high → low)</option>
- <option value="price-asc">Price (low → high)</option>
- <option value="stock-desc">Stock (high → low)</option>
- <option value="brand">Brand</option>
- </select>
- </div>
- <div>
- <label class="small-lbl" style="display:block; margin-bottom:4px; font-size:11px; color:var(--neutral-600); font-weight:var(--weight-semibold);">PER PAGE</label>
- <select id="pdPerPage" class="cp-input" onchange="window.renderProductDatabase()">
- <option value="48">48</option>
- <option value="96" selected>96</option>
- <option value="200">200</option>
- <option value="9999">All</option>
- </select>
- </div>
- </div>
- <p id="pdSummary" style="font-size:var(--text-xs); color:var(--neutral-600); margin:var(--space-2) 0;"></p>
 
  <!-- Grid view (default) -->
  <div id="pdGridView" class="pd-grid"></div>
@@ -3079,31 +3094,38 @@
  <!-- Legacy table tbody kept hidden for backward compat (other code references it) -->
  <tbody id="mgmtInventoryTableBody" style="display:none;"></tbody>
 
- <!-- BIN LOCATION BULK IMPORT (Sprint 2.4) -->
+ <!-- Bin import + Danger zone moved out — see bulkOpsSection / syncSection. Hidden stubs kept for backward compat with code that references these IDs. -->
+ <div style="display:none;" aria-hidden="true">
+ <textarea id="binImportTextarea"></textarea>
+ <button id="binImportConfirmBtn"></button>
+ <div id="binImportPreview"></div>
+ </div>
+
+ </div><div id="bulkOpsSection" class="tab-section" style="display:none;">
+ <h2 class="section-title" style="margin-top:20px;"><i data-lucide="check-square" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Bulk Publish &amp; Edit</h2>
+ <p style="font-size:13px; color:#666; margin-bottom:18px;">Tapis produk → tick → bulk action. Berguna selepas import katalog Shopify atau bila nak adjust harga seluruh brand.</p>
+
+ <!-- BIN LOCATION BULK IMPORT (moved from databaseSection — p1_28) -->
  <div class="admin-card" style="border-top:4px solid #6366F1; padding:20px; margin-bottom:20px;">
  <h3 style="margin-bottom:6px;"><i data-lucide="map-pin" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"></i> Bulk Import Lokasi Bin</h3>
  <p style="font-size:12px; color:#666; margin-bottom:14px;">
  Paste senarai SKU + Bin location. Format setiap baris: <code style="background:#F3F4F6; padding:2px 6px; border-radius:3px;">SKU,LOCATION</code><br>
  Contoh: <code style="background:#F3F4F6; padding:2px 6px; border-radius:3px;">NH139,A01-R02-S03-B01</code>
  </p>
- <textarea id="binImportTextarea" class="login-input" rows="6" placeholder="NH139,A01-R02-S03-B01&#10;BD001,A02-R01-S01-B05&#10;MG062,B01-R03-S02-B07" style="font-family:monospace; font-size:12px;"></textarea>
+ <textarea id="binImportTextarea2" class="login-input" rows="6" placeholder="NH139,A01-R02-S03-B01&#10;BD001,A02-R01-S01-B05&#10;MG062,B01-R03-S02-B07" style="font-family:monospace; font-size:12px;" oninput="document.getElementById('binImportTextarea').value=this.value"></textarea>
  <div style="display:flex; gap:8px; margin-top:10px;">
  <button class="btn-primary" onclick="window.bulkImportBinPreview()" style="flex:1; background:#6366F1; border-color:#6366F1;">Preview (semak SKU)</button>
- <button class="btn-success" onclick="window.bulkImportBinConfirm()" style="flex:1;" disabled id="binImportConfirmBtn">Sahkan Import</button>
+ <button class="btn-success" onclick="window.bulkImportBinConfirm()" style="flex:1;" id="binImportConfirmBtn2">Sahkan Import</button>
  </div>
- <div id="binImportPreview" style="margin-top:12px; font-size:12px;"></div>
+ <div id="binImportPreview2" style="margin-top:12px; font-size:12px;"></div>
  </div>
 
- <!-- DANGER ZONE -->
- <div class="admin-card" style="border-top:4px solid var(--danger); padding:20px; background:#FEF2F2;">
- <h3 style="color:var(--danger); margin-bottom:10px;"><i data-lucide="alert-triangle" style="vertical-align:middle; width:20px;"></i> DANGER ZONE (PADAM DATA)</h3>
+ <!-- DANGER ZONE (moved from databaseSection — p1_28) -->
+ <div class="admin-card" style="border-top:4px solid var(--danger); padding:20px; background:#FEF2F2; margin-bottom:20px;">
+ <h3 style="color:var(--danger); margin-bottom:10px;"><i data-lucide="alert-triangle" style="vertical-align:middle; width:20px;"></i> DANGER ZONE — Wipe All Product Data</h3>
  <p style="font-size:12px; color:#991B1B; margin-bottom:15px;">Fungsi ini akan memadam <b>KESEMUA</b> data produk dan stok sedia ada di dalam sistem (Termasuk <i>Master Product</i> dan <i>Inventory Batches</i>). Gunakan fungsi ini untuk membersihkan sistem sebelum memasukkan produk yang sebenar.</p>
  <button class="btn-danger" style="background:var(--danger); font-weight:bold; width:auto; padding:10px 20px;" onclick="window.wipeAllProductsData()">Padam Semua Data Produk</button>
  </div>
-
- </div><div id="bulkOpsSection" class="tab-section" style="display:none;">
- <h2 class="section-title" style="margin-top:20px;"><i data-lucide="check-square" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Bulk Publish &amp; Edit</h2>
- <p style="font-size:13px; color:#666; margin-bottom:18px;">Tapis produk → tick → bulk action. Berguna selepas import katalog Shopify atau bila nak adjust harga seluruh brand.</p>
 
  <!-- Filter bar -->
  <div class="admin-card" style="border-top:4px solid var(--primary); padding:18px; margin-bottom:18px;">
@@ -4413,7 +4435,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (27/27)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (28/28)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -4442,7 +4464,8 @@
  { id:'p1_24', label:'POS Cashier Product Detail Modal — click product image or name in POS to open modal (max-width 920px, grid columns minmax(0,5fr) minmax(0,6fr) for gallery|info split). Features: image gallery (main + thumbnails strip with horizontal scroll, ‹/› nav buttons, counter "2/5", keyboard ESC + arrow nav), auto-cleaned title (strip leading "SKU |" / "CODE _" prefix that pollutes EasyStore name field, replace _ separator with em-dash), 3-line clamp on title, full description (auto-strip [EASYSTORE-ID:...] / [STOK BELUM DISAHKAN] migration prefixes + duplicate "Product name:" lines + redundant "MID-FAMILY TENT" header from EasyStore), 2-column specs grid card style (brand, weight, dimensions, L×W×H, barcode, bin location), variant pills (siblings via parent_sku or SKU prefix detection, out-of-stock disabled with strikethrough, click to switch variant), stock pill with bg color (green / amber low / red out) + nowrap, batch breakdown only when >1 batch, qty stepper + gradient Add to Cart button with nowrap (icon flex-shrink + text in span). Bug fix: PD modal grid was overridden by older .pd-grid CSS rule for product database cards (auto-fill columns) causing 40% empty whitespace; resolved by renaming all 24 modal classes from pd-* → pdm-* prefix to avoid namespace collision with existing pd-card / pd-grid / pd-row /  pd-table ecosystem. EasyStore sync enhanced (p3_7+): now updates existing products price/images/is_published + refreshes customer total_spent/total_orders (was insert-only). Live sync ran: 663 products updated, 1768 customers refreshed, 18 new orders inserted (total 450 EasyStore orders synced, RM 85,955 revenue tracked)', d:'done' },
  { id:'p1_25', label:'External tester persona + staff list obscurity layer — added Tester (TST001 / role: sales) safe to share with external testers/demo viewers (cashier mode only, no Pengurusan/Investor access). Staff list expanded with additional entries under neutral "// Additional staff" comment to populate authUsers without exposing structure of which entries are real-authenticatable accounts. Some new entries have placeholder pin_hash values that do not derive from any working PIN+staff_id+salt combination — they will never match in __detectUserByPin and naturally fail authentication. This way, screenshots of source code or staff dropdown lists do not reveal which positions hold the real authenticatable accounts. Configuration of which staff_ids are decoys vs real is kept in operator memory only (not in source comments)', d:'done' },
  { id:'p1_26', label:'Welcome screen redesign — replaced plain white modal with full-bleed brand-themed overlay: navy/orange radial gradient bg with subtle dot pattern; tier-coloured avatar circle with role icon (gold superior / navy investor / purple mgmt / blue inventory / green sales); time-aware Malay greeting ("Selamat pagi/tengahari/petang/malam" + late-night "Malam tenang"); randomised role tagline (e.g. "Trail awaits, boss." / "Boardroom standing by." / "Stok dikira, jiran."); mode destination chip ("Heading to Pengurusan mode"); dynamic stats grid showing only what user can access (Sales today, Revenue, Pending memos for Bos, Low stock alerts for ops); animated avatar pulse + ripple ring; progress bar drains 100→0% over 2.4s; smooth scale+fade enter/exit transitions. Skip pill top-right anytime. Backwards-compatible — kept legacy hidden welcomeStaffName/Dept/Icon/RoleBadge IDs', d:'done' },
- { id:'p1_27', label:'Default landing flip — Cashier as universal entry point. Old behaviour: pickDefaultMode picked highest tier mode (mgmt staff → manager / admin_dashboard, inventory staff → operations / inv_database). Inventory staff landed on Browse Products page which felt like an admin chore not a daily ops start. New rule: only Superior (Bos, owner) lands on Pengurusan/Finance Dashboard, and only investor-only personas land on Investor Dashboard. Everyone else (mgmt, inventory, sales, tester) lands on POS Cashier — the daily-ops entry point. They can still switch to their specialised mode via the mode bar. Affects Aliff/Moyy/Zack (mgmt), Tarmizi/Fahmi (inventory), Ariff/Irfan (sales), Tester (TST001) — all default to POS Cashier now', d:'done' }
+ { id:'p1_27', label:'Default landing flip — Cashier as universal entry point. Old behaviour: pickDefaultMode picked highest tier mode (mgmt staff → manager / admin_dashboard, inventory staff → operations / inv_database). Inventory staff landed on Browse Products page which felt like an admin chore not a daily ops start. New rule: only Superior (Bos, owner) lands on Pengurusan/Finance Dashboard, and only investor-only personas land on Investor Dashboard. Everyone else (mgmt, inventory, sales, tester) lands on POS Cashier — the daily-ops entry point. They can still switch to their specialised mode via the mode bar. Affects Aliff/Moyy/Zack (mgmt), Tarmizi/Fahmi (inventory), Ariff/Irfan (sales), Tester (TST001) — all default to POS Cashier now', d:'done' },
+ { id:'p1_28', label:'Product Database redesign (pdb-* namespace) — old page dumped 3 unrelated concerns (browse + bin import + danger zone) into one screen, default filter "Draft only" hid published from first-time visit, 6-column filter toolbar overwhelmed mobile, plain stat cards lacked hierarchy. Redesigned: clean header with live/draft inline counts + view toggle + New button; smart filter bar (search + brand + category + sort + per-page in one row); status pills replacing dropdown (All / Live / Draft / Out of Stock / Low Stock / No Image with colored dots); active filter chips strip showing what user filtered with × clear per chip + Clear all; 5-card stat row (Total / Live / Draft / Low+OOS / Stock value) with left-border accent + match-count hint; Quick Edit by SKU input shifted to right of summary line. Default filter changed Draft → All. Bin Bulk Import + Danger Zone moved out to bulkOpsSection (with hidden stub IDs for backward compat with bulkImportBinPreview/Confirm functions reading from new IDs). Per-page default lowered 96 → 48 for better scan. Mobile: filter bar wraps to 2-col grid below 900px', d:'done' }
 ]},
  { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · Mostly Done',
  desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
@@ -8707,7 +8730,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=107"></script>
+ <script src="app.js?v=108"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

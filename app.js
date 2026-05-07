@@ -8423,9 +8423,9 @@ window.confirmReceivePO = async function(poId) {
 let __binImportRows = []; // parsed + validated rows ready to commit
 
 window.bulkImportBinPreview = function() {
- const txt = (document.getElementById('binImportTextarea').value || '').trim();
- const preview = document.getElementById('binImportPreview');
- const confirmBtn = document.getElementById('binImportConfirmBtn');
+ const txt = ((document.getElementById('binImportTextarea2') || document.getElementById('binImportTextarea')).value || '').trim();
+ const preview = (document.getElementById('binImportPreview2') || document.getElementById('binImportPreview'));
+ const confirmBtn = (document.getElementById('binImportConfirmBtn2') || document.getElementById('binImportConfirmBtn'));
  if(!txt) { preview.innerHTML = ''; confirmBtn.disabled = true; return; }
 
  const lines = txt.split('\n').map(l => l.trim()).filter(Boolean);
@@ -8498,9 +8498,9 @@ window.bulkImportBinConfirm = async function() {
 
  showToast(`Bin import: ${ok} berjaya, ${fail} gagal`, fail ? 'warn' : 'success');
  __binImportRows = [];
- document.getElementById('binImportTextarea').value = '';
- document.getElementById('binImportPreview').innerHTML = '';
- document.getElementById('binImportConfirmBtn').disabled = true;
+ (document.getElementById('binImportTextarea2') || document.getElementById('binImportTextarea')).value = '';
+ (document.getElementById('binImportPreview2') || document.getElementById('binImportPreview')).innerHTML = '';
+ (document.getElementById('binImportConfirmBtn2') || document.getElementById('binImportConfirmBtn')).disabled = true;
 };
 
 // ===================================
@@ -11533,6 +11533,20 @@ window.pdSetView = function(v) {
  renderProductDatabase();
 };
 
+// p1_28: Status pill setter + active filter chips
+window.pdbSetStatus = function(status, btn) {
+ const hidden = document.getElementById('pdStatus');
+ if(hidden) hidden.value = status;
+ document.querySelectorAll('#pdbStatusPills .pdb-pill').forEach(b => b.classList.toggle('pdb-pill--active', b === btn));
+ window.renderProductDatabase();
+};
+window.pdbClearFilters = function() {
+ ['pdSearch','pdBrand','pdCategory'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+ const allPill = document.querySelector('#pdbStatusPills .pdb-pill[data-status=""]');
+ if(allPill) window.pdbSetStatus('', allPill);
+ else window.renderProductDatabase();
+};
+
 window.renderProductDatabase = function() {
  const gridEl = document.getElementById('pdGridView');
  const tableBody = document.getElementById('pdTableBody');
@@ -11543,11 +11557,11 @@ window.renderProductDatabase = function() {
  const catSel = document.getElementById('pdCategory');
  if(brandSel && brandSel.options.length <= 1) {
  const brands = [...new Set(masterProducts.map(p => p.brand).filter(Boolean))].sort();
- brandSel.innerHTML = '<option value="">Semua</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+ brandSel.innerHTML = '<option value="">All brands</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
  }
  if(catSel && catSel.options.length <= 1) {
  const cats = [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort();
- catSel.innerHTML = '<option value="">Semua</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+ catSel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
  }
 
  // Read filters
@@ -11556,7 +11570,7 @@ window.renderProductDatabase = function() {
  const fCat = document.getElementById('pdCategory')?.value || '';
  const fStatus = document.getElementById('pdStatus')?.value || '';
  const sort = document.getElementById('pdSort')?.value || 'name';
- const perPage = parseInt(document.getElementById('pdPerPage')?.value) || 96;
+ const perPage = parseInt(document.getElementById('pdPerPage')?.value) || 48;
 
  // Stock map
  const stockMap = new Map();
@@ -11569,9 +11583,15 @@ window.renderProductDatabase = function() {
  if(fBrand && p.brand !== fBrand) return false;
  if(fCat && p.category !== fCat) return false;
  const stock = stockMap.get(p.sku) || 0;
+ const reorder = parseInt(p.reorder_point) || 5;
  if(fStatus === 'published' && !isPublished(p)) return false;
  if(fStatus === 'draft' && isPublished(p)) return false;
- if(fStatus === 'oos' && stock> 0) return false;
+ if(fStatus === 'oos' && stock > 0) return false;
+ if(fStatus === 'low' && (stock === 0 || stock > reorder)) return false;
+ if(fStatus === 'noimage') {
+   const hasImg = (Array.isArray(p.images) && p.images[0]) || (typeof p.images === 'string' && p.images);
+   if(hasImg) return false;
+ }
  if(q) {
  const hay = `${p.sku||''} ${p.name||''} ${p.brand||''} ${p.category||''} ${p.erp_barcode||''}`.toLowerCase();
  if(!hay.includes(q)) return false;
@@ -11593,18 +11613,53 @@ window.renderProductDatabase = function() {
  const totalProducts = masterProducts.length;
  const publishedCount = masterProducts.filter(p => isPublished(p)).length;
  const draftCount = totalProducts - publishedCount;
+ const lowStockCount = masterProducts.filter(p => {
+   const stk = stockMap.get(p.sku) || 0;
+   const ro = parseInt(p.reorder_point) || 5;
+   return stk > 0 && stk <= ro;
+ }).length;
+ const oosCount = masterProducts.filter(p => (stockMap.get(p.sku) || 0) === 0).length;
  const totalRetailValue = masterProducts.reduce((s, p) => s + (stockMap.get(p.sku)||0) * (p.price||0), 0);
 
+ // Update header sub counts
+ const grandEl = document.getElementById('pdGrandCount'); if(grandEl) grandEl.textContent = totalProducts.toLocaleString();
+ const liveEl = document.getElementById('pdbLiveCount'); if(liveEl) liveEl.textContent = publishedCount.toLocaleString();
+ const draftEl = document.getElementById('pdbDraftCount'); if(draftEl) draftEl.textContent = draftCount.toLocaleString();
+
+ // New stat cards (pdb-stat class)
  const statsEl = document.getElementById('pdStats');
  if(statsEl) {
  statsEl.innerHTML = `
- <div class="stat"><div class="stat__label">Total Products</div><div class="stat__value">${totalProducts.toLocaleString()}</div><div class="stat__hint">${list.length.toLocaleString()} match filter</div></div>
- <div class="stat stat--success"><div class="stat__label">Published</div><div class="stat__value">${publishedCount.toLocaleString()}</div><div class="stat__hint">Live di Cashier</div></div>
- <div class="stat stat--warning"><div class="stat__label">Draft</div><div class="stat__value">${draftCount.toLocaleString()}</div><div class="stat__hint">Belum live</div></div>
- <div class="stat stat--info"><div class="stat__label">Stok Bernilai</div><div class="stat__value">RM ${totalRetailValue.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="stat__hint">Retail-side</div></div>
+ <div class="pdb-stat"><div class="pdb-stat__label">Total catalog</div><div class="pdb-stat__value">${totalProducts.toLocaleString()}</div><div class="pdb-stat__hint">${list.length.toLocaleString()} match filter</div></div>
+ <div class="pdb-stat pdb-stat--success"><div class="pdb-stat__label">Live</div><div class="pdb-stat__value">${publishedCount.toLocaleString()}</div><div class="pdb-stat__hint">Visible in Cashier</div></div>
+ <div class="pdb-stat pdb-stat--warning"><div class="pdb-stat__label">Draft</div><div class="pdb-stat__value">${draftCount.toLocaleString()}</div><div class="pdb-stat__hint">Awaiting review</div></div>
+ <div class="pdb-stat pdb-stat--danger"><div class="pdb-stat__label">Low / OOS</div><div class="pdb-stat__value">${(lowStockCount + oosCount).toLocaleString()}</div><div class="pdb-stat__hint">${lowStockCount} low · ${oosCount} out</div></div>
+ <div class="pdb-stat pdb-stat--info"><div class="pdb-stat__label">Stock value</div><div class="pdb-stat__value">RM ${totalRetailValue.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="pdb-stat__hint">At retail price</div></div>
  `;
  }
- const grandEl = document.getElementById('pdGrandCount'); if(grandEl) grandEl.textContent = totalProducts.toLocaleString();
+
+ // Active filter chips
+ const chipsEl = document.getElementById('pdbActiveChips');
+ if(chipsEl) {
+ const chips = [];
+ if(q) chips.push({label: 'Search: "' + q + '"', clear: "document.getElementById('pdSearch').value=''; window.renderProductDatabase();"});
+ if(fBrand) chips.push({label: 'Brand: ' + fBrand, clear: "document.getElementById('pdBrand').value=''; window.renderProductDatabase();"});
+ if(fCat) chips.push({label: 'Category: ' + fCat, clear: "document.getElementById('pdCategory').value=''; window.renderProductDatabase();"});
+ if(fStatus) {
+   const map = { published:'Live', draft:'Draft', oos:'Out of Stock', low:'Low Stock', noimage:'No Image' };
+   const allPill = "document.querySelectorAll('#pdbStatusPills .pdb-pill').forEach(b=>b.classList.remove('pdb-pill--active'));document.querySelector('#pdbStatusPills .pdb-pill[data-status=\\\"\\\"]').classList.add('pdb-pill--active');document.getElementById('pdStatus').value='';window.renderProductDatabase();";
+   chips.push({label: 'Status: ' + (map[fStatus] || fStatus), clear: allPill});
+ }
+ if(chips.length > 0) {
+   chipsEl.innerHTML =
+     '<span class="pdb-active-chips__label">Filtering by:</span>' +
+     chips.map(c => `<span class="pdb-active-chip">${c.label}<button onclick="${c.clear.replace(/"/g, '&quot;')}" aria-label="Remove">×</button></span>`).join('') +
+     '<button class="pdb-active-clear" onclick="window.pdbClearFilters()">Clear all</button>';
+   chipsEl.style.display = 'flex';
+ } else {
+   chipsEl.style.display = 'none';
+ }
+ }
 
  // Summary line
  const summaryEl = document.getElementById('pdSummary');
