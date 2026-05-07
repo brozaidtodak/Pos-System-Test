@@ -11515,6 +11515,35 @@ window.cpRecomputeTotal = function() {
  if(legacy) legacy.textContent = final.toFixed(2);
 };
 
+// p1_33 — Walk-in quick toggle: skip customer info for fast counter sales
+window.cpToggleWalkin = function() {
+    const btn = document.getElementById('cpWalkinBtn');
+    const lbl = document.getElementById('cpWalkinBtnLabel');
+    const section = btn ? btn.closest('.cp-section') : null;
+    const fields = ['cpCustName', 'cpCustPhone', 'cpCustEmail', 'cpBuyerTin'].map(id => document.getElementById(id));
+    const isActive = btn.classList.toggle('is-active');
+    if(isActive) {
+        // Activate: fill Walk-in, clear others, lock fields
+        if(fields[0]) fields[0].value = 'Walk-in';
+        for(let i = 1; i < fields.length; i++) if(fields[i]) fields[i].value = '';
+        fields.forEach(f => f && (f.readOnly = true));
+        if(section) section.classList.add('is-walkin');
+        if(lbl) lbl.textContent = 'Walk-in ✓';
+        if(btn) btn.title = 'Klik untuk tukar ke registered customer';
+        // Clear VIP banner if any
+        const vipBanner = document.getElementById('cpVipBanner');
+        if(vipBanner) { vipBanner.style.display = 'none'; vipBanner.innerHTML = ''; }
+    } else {
+        // Deactivate: unlock fields, clear name back to placeholder
+        if(fields[0] && fields[0].value === 'Walk-in') fields[0].value = '';
+        fields.forEach(f => f && (f.readOnly = false));
+        if(section) section.classList.remove('is-walkin');
+        if(lbl) lbl.textContent = 'Walk-in';
+        if(btn) btn.title = 'Skip customer info untuk walk-in cepat';
+        if(fields[0]) fields[0].focus();
+    }
+};
+
 // VIP lookup integrated with new panel
 window.cpVipLookup = function() {
  const name = (document.getElementById('cpCustName').value || '').trim().toLowerCase();

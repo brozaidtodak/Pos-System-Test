@@ -1412,6 +1412,27 @@
 .dash-target-modal__inner input[type="number"]:focus { border-color: var(--primary-500); }
 .dash-target-modal__actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 
+/* p1_33 — Walk-in quick checkout button */
+.cp-walkin-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #F3F4F6; color: #4B5563;
+    border: 1px solid #E5E7EB; border-radius: 999px;
+    padding: 4px 10px; font-size: 11px; font-weight: 700;
+    cursor: pointer; transition: 0.15s; user-select: none;
+}
+.cp-walkin-btn:hover { background: #E5E7EB; color: #111827; }
+.cp-walkin-btn.is-active {
+    background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+    color: #FFF; border-color: var(--primary-700);
+    box-shadow: 0 2px 6px rgba(205,124,50,0.25);
+}
+.cp-walkin-btn.is-active:hover { filter: brightness(1.05); }
+/* When walk-in active, dim customer fields to show they're locked */
+.cp-section.is-walkin .cp-input,
+.cp-section.is-walkin .cp-autocomplete-wrap input {
+    background: #F9FAFB !important; color: #9CA3AF;
+}
+
 /* p1_22 — PIN-only login: visual dots */
 .pin-dot {
  width: 14px; height: 14px; border-radius: 50%;
