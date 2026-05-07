@@ -10795,17 +10795,23 @@ window.getModesAccess = function(user) {
  return out;
 };
 
-// Picks the highest-tier accessible mode (Investor> Pengurusan> Pengurus> Operasi> Kaunter)
-// Investor takes precedence ONLY if user has no other mode access (true investor persona).
-// Bos (Superior) has all 5 modes — defaults to Pengurusan, not Investor.
+// Default landing mode picker (p1_27).
+// Rule: Cashier is the universal entry point for daily ops. Only owner (Superior)
+// and pure investor personas get specialised landing.
+//   - brolantodak (investor-only)         → Investor mode
+//   - Superior (Bos with mgmt access)     → Pengurusan mode (Finance Dashboard)
+//   - Everyone else (mgmt/inv/sales/etc)  → Cashier mode (POS Cashier)
 window.pickDefaultMode = function(user) {
+ user = user || window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
  const access = window.getModesAccess(user);
  const onlyInvestor = access.investor && !access.cashier && !access.operations && !access.manager && !access.management;
  if(onlyInvestor) return 'investor';
+ if(user && user.role === 'superior' && access.management) return 'management';
+ if(access.cashier) return 'cashier';
+ // Fallbacks for users without cashier access
  if(access.management) return 'management';
  if(access.manager) return 'manager';
  if(access.operations) return 'operations';
- if(access.cashier) return 'cashier';
  if(access.investor) return 'investor';
  return 'cashier';
 };
