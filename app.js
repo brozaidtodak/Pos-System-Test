@@ -2503,9 +2503,10 @@ function loginAs(user) {
  let defaultMode = (typeof window.pickDefaultMode === 'function') ? window.pickDefaultMode(user) : (cap.defaultMode || 'cashier');
  // Home tab matches default mode landing
  let homeTab = cap.home;
- if(defaultMode === 'management') homeTab = 'finance_main';
- else if(defaultMode === 'manager') homeTab = cap.home || 'admin_dashboard';
- else if(defaultMode === 'operations') homeTab = 'inv_database';
+ // p1_32: Bos lands on Finance Dashboard when management access; otherwise admin_dashboard
+ if(defaultMode === 'manager') {
+   homeTab = (user && user.role === 'superior') ? 'finance_main' : (cap.home || 'admin_dashboard');
+ } else if(defaultMode === 'operations') homeTab = 'inv_database';
  else if(defaultMode === 'cashier') homeTab = 'sales_cashier';
  else if(defaultMode === 'investor') homeTab = 'investor_overview';
 
@@ -11078,22 +11079,19 @@ window.getModesAccess = function(user) {
  return out;
 };
 
-// Default landing mode picker (p1_27).
-// Rule: Cashier is the universal entry point for daily ops. Only owner (Superior)
-// and pure investor personas get specialised landing.
-//   - brolantodak (investor-only)         → Investor mode
-//   - Superior (Bos with mgmt access)     → Pengurusan mode (Finance Dashboard)
-//   - Everyone else (mgmt/inv/sales/etc)  → Cashier mode (POS Cashier)
+// Default landing mode picker (p1_32 — Pengurusan merged into Pengurus).
+// Rule: Cashier is universal entry point. Investor-only persona → Investor.
+// Bos (Superior) → Manager mode (now includes HR + Finance), lands on Finance Dashboard.
+// Everyone else → Cashier.
 window.pickDefaultMode = function(user) {
  user = user || window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
  const access = window.getModesAccess(user);
  const onlyInvestor = access.investor && !access.cashier && !access.operations && !access.manager && !access.management;
  if(onlyInvestor) return 'investor';
- if(user && user.role === 'superior' && access.management) return 'management';
+ if(user && user.role === 'superior') return 'manager'; // Bos lands on Manager (which now includes HR/Finance)
  if(access.cashier) return 'cashier';
  // Fallbacks for users without cashier access
- if(access.management) return 'management';
- if(access.manager) return 'manager';
+ if(access.manager || access.management) return 'manager';
  if(access.operations) return 'operations';
  if(access.investor) return 'investor';
  return 'cashier';
@@ -11104,12 +11102,14 @@ window.hasManagementAccess = function(user) {
  return window.getModesAccess(user).management;
 };
 
-// Refresh ALL 4 mode tabs visibility based on per-staff access overlay.
+// Refresh ALL mode tabs visibility based on per-staff access overlay.
 // Overrides applyRoleCapabilities() since access is per-staff, not just per-role.
+// p1_32: 'management' tab hidden permanently — merged into 'manager'.
 window.refreshAllModeTabsVisibility = function() {
  const access = window.getModesAccess();
  document.querySelectorAll('.mode-tab[data-mode-set]').forEach(tab => {
  const m = tab.dataset.modeSet;
+ if(m === 'management') { tab.style.display = 'none'; tab.disabled = true; return; }
  const allowed = !!access[m];
  tab.style.display = allowed ? '' : 'none';
  tab.disabled = !allowed;
@@ -11121,6 +11121,8 @@ window.refreshManagementTabVisibility = window.refreshAllModeTabsVisibility;
 // ============= UX-2.1 MODE BAR =============
 window.setMode = function(mode) {
  if(!['cashier','operations','manager','management','investor'].includes(mode)) return;
+ // p1_32: Pengurusan merged into Pengurus — redirect any 'management' calls
+ if(mode === 'management') mode = 'manager';
  // Guard: every mode now checked against per-staff access overlay (p1_20)
  const access = (typeof window.getModesAccess === 'function') ? window.getModesAccess() : null;
  if(access && !access[mode]) {
@@ -11151,17 +11153,21 @@ window.setMode = function(mode) {
  // Roadmap button + Memo Board — keep visible in all modes (p1_19)
  if(it.id === 'sidebarRoadmapBtn' || dataTab === 'memo_board') { it.classList.remove('mode-hidden'); return; }
 
+ // p1_32: Pengurusan merged into Pengurus — show owner-only items in manager mode for users with management access
+ const userHasMgmtAccess = (typeof window.getModesAccess === 'function')
+   ? !!window.getModesAccess().management : false;
  let show = false;
  if(mode === 'cashier') {
  show = isSales || (groupToggle === 'sales');
  } else if(mode === 'operations') {
  show = isInv || (groupToggle === 'inv');
- } else if(mode === 'management') {
- show = isOwner; // HR + Finance only
  } else if(mode === 'investor') {
  show = isInvestor; // Investor dashboard only — locked-down view
- } else { // manager — admin only (HR/Finance moved to Management; Investor moved out)
- show = !isSales && !isInv && !isOwner && !isInvestor;
+ } else { // manager (or legacy 'management' redirected): show admin items + owner items if user has access
+ if(isInvestor) show = false;
+ else if(isSales || isInv) show = false;
+ else if(isOwner) show = userHasMgmtAccess; // HR + Finance gated by per-staff access
+ else show = true;
  }
  it.classList.toggle('mode-hidden', !show);
  });
@@ -11171,7 +11177,7 @@ window.setMode = function(mode) {
  cashier: 'sales',
  operations: 'inv',
  manager: 'admin',
- management: 'hr' // HR opens first; Finance also visible
+ management: 'admin' // p1_32: management merged into manager
  };
  // Auto-expand the group for current mode (legacy applySidebarGroupState takes name+collapsed)
  if(groups[mode] && typeof window.applySidebarGroupState === 'function') {
@@ -11217,6 +11223,8 @@ window.setMode = function(mode) {
 // Apply persisted mode at boot — without auto-jumping (so user's last section restores)
 window.__initMode = function() {
  let saved = localStorage.getItem('uxMode_v1');
+ // p1_32: any saved 'management' → migrate to 'manager'
+ if(saved === 'management') { saved = 'manager'; localStorage.setItem('uxMode_v1', saved); }
  const MIGRATION_KEY = 'uxMode_p1_18_migrated';
  // One-time migration: pick highest-tier accessible mode for existing users
  if(!localStorage.getItem(MIGRATION_KEY)) {
