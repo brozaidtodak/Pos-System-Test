@@ -4737,16 +4737,16 @@
  { id:'p4_11', label:'Sales Ledger + Product Sales Summary (post-Shopify migration)', d:'done' },
  { id:'p4_12', label:'Stock reservation wired into quote/invoice flow (auto-reserve on save, release on void/supersede; reservations panel + Inventory tab)', d:'done' }
 ]},
- { id:'p5', num:'PHASE 5', name:'Vertical Specialization', status:'future', goal:'Pilih lane: F&B / Retail / Service', eta:'2027 H1 · Strategic',
- desc:'Generic POS = best at nothing. Kena pilih satu vertical dan double-down. F&B → Kitchen Display + table mgmt. Retail → variant matrix + bundle. Service → appointment booking. Plus advanced inventory: variant, bundle, batch/expiry, gift card, layaway.',
+ { id:'p5', num:'PHASE 5', name:'Retail Specialization', status:'active', goal:'10 CAMP = Retail-first POS (outdoor gear)', eta:'2026 Q3 · Decided: Retail',
+ desc:'Decided 2026-05-07: 10 CAMP fokus Retail (camping/outdoor gear). Build features yang most valuable for retail vertical: variant matrix (size/colour for apparel + tents), bundle SKU (camping starter packs), gift cards (Raya/CNY presents), size-grid module for apparel, layaway/Atome for big-ticket items (RM 2K+ tents). Drop: KDS (F&B), appointment booking (Service).',
  deliverables:[
- { id:'p5_1', label:'Vertical decision (F&B / Retail / Service)', d:'todo' },
- { id:'p5_2', label:'Variant matrix (size × colour × style)', d:'todo' },
- { id:'p5_3', label:'Bundle / kit / composite SKU', d:'todo' },
- { id:'p5_4', label:'Batch + expiry tracking', d:'todo' },
- { id:'p5_5', label:'Vertical module (KDS / size-grid / booking)', d:'todo' },
- { id:'p5_6', label:'Gift cards + store credit', d:'todo' },
- { id:'p5_7', label:'Layaway / installment (Atome/PayLater)', d:'todo' }
+ { id:'p5_1', label:'Vertical decision: RETAIL (camping & outdoor gear). Decided 2026-05-07. Drives feature priority for Phase 5+. F&B (KDS, table mgmt) and Service (booking) explicitly out of scope.', d:'done' },
+ { id:'p5_2', label:'Variant matrix (size × colour × style) — for apparel (UNITY jersey S/M/L/XL × black/orange) + tents (4-person/6-person × different brands). Group by parent_sku, single product page show all variants', d:'todo' },
+ { id:'p5_3', label:'Bundle / kit / composite SKU — "Camping Starter Pack" = tent + sleeping bag + lamp = 1 SKU. Auto-deduct child SKUs on sale. Discount vs sum of individual', d:'todo' },
+ { id:'p5_4', label:'Batch + expiry tracking — low priority for outdoor gear (no shelf life). Defer unless Bos starts selling consumables (food rations, propane, etc)', d:'todo' },
+ { id:'p5_5', label:'Size-grid module — apparel-specific UI: scan parent SKU, grid pops up with sizes × colours, click to add specific variant. Faster than scrolling variants list. Replaces generic KDS/booking concept since vertical is retail', d:'todo' },
+ { id:'p5_6', label:'Gift cards + store credit — common Raya/CNY/birthday gift. Customer beli RM 50/100/200 gift card → unique code → redeemable at POS. Credit balance per customer. Universal retail feature', d:'todo' },
+ { id:'p5_7', label:'Layaway / installment (Atome/PayLater) — for big-ticket items like premium tents RM 2K+. Increases conversion for high-value sales. Needs Atome merchant onboarding (external block)', d:'todo' }
 ]},
  { id:'p6', num:'PHASE 6', name:'Scale', status:'future', goal:'Multi-branch & central warehouse', eta:'2027 H2 · Tentative',
  desc:'Buka cawangan kedua tanpa kena pisahkan database. Stock transfer between locations, branch-level analytics, central buying.',
