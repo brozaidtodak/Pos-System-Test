@@ -6,3 +6,23 @@ check-db.js
 scripts/products_master.json
 scripts/inventory_batches.json
 scripts/unmatched_skus.txt
+
+# Raw 10 CAMP design source files (300+ MB each .afphoto/.afdesign — keep local only)
+assets/10camp-essentials-*/
+
+# Intermediate extracted previews from .afphoto (superseded by curated brand/)
+assets/brand/extracted-from-afphoto/
+
+# Large unused marketing flyers + signboard photos (multi-MB JPGs not referenced in landing)
+assets/brand/marketing/
+assets/brand/signboards/*
+!assets/brand/signboards/storefront-photo-512.png
+
+# Large product source images (only commit web-optimised used ones)
+assets/brand/products/*
+!assets/brand/products/jersey-unity-v3-front.png
+!assets/brand/products/jersey-unity-back.png
+
+# Heavy logo variants (commit only the canonical few)
+assets/brand/logo/10camp-logo-variations-v10-alt.jpg
+assets/brand/logo/10campers-unity-logo.png

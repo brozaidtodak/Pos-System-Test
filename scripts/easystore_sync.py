@@ -215,14 +215,46 @@ def migrate_products(products, dry_run=False):
     print(f"    NEW from EasyStore: {len(new_rows)}")
 
     if dry_run:
-        print("  [dry-run] would insert", len(new_rows), "products")
+        print(f"  [dry-run] would insert {len(new_rows)} new + UPDATE {len(existing_rows)} existing (price/images/is_published/easystore_qty)")
         if new_rows[:3]:
             print("  Sample of new:")
             for r in new_rows[:3]: print(f"    {r['sku']:<25} {r.get('name','')[:50]} · {r.get('brand','-')}")
         return
 
+    # === UPDATE EXISTING (p1_24): refresh price/images/is_published from EasyStore ===
+    # EasyStore is source of truth for online catalogue. Don't touch cost_price/batch.
+    if existing_rows:
+        print(f"  Updating {len(existing_rows)} existing products from EasyStore...")
+        updated = 0
+        for chunk in chunked(existing_rows, 50):
+            # Build VALUES clause for batch update
+            vals = []
+            for r in chunk:
+                sku = js(r['sku'])
+                price = float(r.get('price') or 0)
+                images_json = json.dumps(r.get('images') or [], ensure_ascii=False).replace("'", "''")
+                is_pub = 'true' if r.get('is_published') else 'false'
+                es_qty = int(r.get('easystore_qty') or 0)
+                vals.append(f"('{sku}', {price}, '{images_json}'::jsonb, {is_pub}, {es_qty})")
+            values_sql = ",".join(vals)
+            sql = f"""
+            UPDATE public.products_master pm
+            SET price = u.price,
+                images = CASE WHEN jsonb_array_length(u.images) > 0 THEN u.images ELSE pm.images END,
+                is_published = u.is_published,
+                metadata = COALESCE(pm.metadata, '{{}}'::jsonb) || jsonb_build_object('easystore_qty', u.es_qty, 'easystore_synced_at', '{datetime.utcnow().isoformat()}')
+            FROM (VALUES {values_sql}) AS u(sku, price, images, is_published, es_qty)
+            WHERE upper(pm.sku) = upper(u.sku);
+            """
+            try:
+                sb_sql(sql)
+                updated += len(chunk)
+            except Exception as e:
+                print(f"  update chunk failed: {e}")
+        print(f"  Updated {updated} existing products.")
+
     if not new_rows:
-        print("  Nothing new to insert.")
+        print("  No new products to insert.")
         return 0
 
     # Insert in chunks. Strip the easystore_* fields (not in schema).
@@ -266,12 +298,17 @@ def migrate_customers(customers, dry_run=False):
     print(f"  POS DB has {len(existing)} customers ({len(by_phone)} unique phone, {len(by_email)} unique email)")
 
     new_inserts = []
-    updates = []  # (id, easystore_customer_id) tuples to backfill
+    updates = []  # (id, easystore_customer_id, total_spent, total_orders) — backfill + refresh
+    refresh_only = []  # (es_id, total_spent, total_orders) — already linked, just refresh totals
     skipped = 0
 
     for c in customers:
         es_id = str(c.get('id'))
+        c_total_spent = float(c.get('total_spent') or 0)
+        c_total_orders = int(c.get('total_order') or c.get('orders_count') or 0)
         if es_id in by_es_id:
+            # Already linked — refresh totals (GREATEST)
+            refresh_only.append((es_id, c_total_spent, c_total_orders))
             skipped += 1
             continue
 
@@ -282,7 +319,7 @@ def migrate_customers(customers, dry_run=False):
         # Check existing
         match = (by_phone.get(phone) if phone else None) or (by_email.get(email) if email else None)
         if match:
-            updates.append((match['id'], es_id))
+            updates.append((match['id'], es_id, c_total_spent, c_total_orders))
             continue
 
         # New customer
@@ -312,21 +349,49 @@ def migrate_customers(customers, dry_run=False):
             'points': int(float(c.get('total_spent') or 0) / 10),
         })
 
-    print(f"  Already linked to EasyStore: {skipped}")
-    print(f"  Match existing (will update with easystore_id): {len(updates)}")
+    print(f"  Already linked to EasyStore: {skipped} (totals will refresh)")
+    print(f"  Match existing (will update with easystore_id + totals): {len(updates)}")
     print(f"  Brand new from EasyStore: {len(new_inserts)}")
 
     if dry_run:
-        print("  [dry-run] would insert", len(new_inserts), "and update", len(updates))
+        print(f"  [dry-run] would insert {len(new_inserts)}, link {len(updates)}, refresh totals on {len(refresh_only)}")
         return
 
-    # Bulk update easystore_customer_id for matched
+    # Bulk update easystore_customer_id for matched + set totals
     if updates:
-        # Build VALUES clause
-        vals = ",".join(f"({uid}, '{js(esid)}')" for uid, esid in updates)
-        sql = f"UPDATE customers SET easystore_customer_id = u.es_id FROM (VALUES {vals}) AS u(cust_id, es_id) WHERE customers.id = u.cust_id;"
-        try: sb_sql(sql); print(f"  Updated {len(updates)} existing customers with easystore_id.")
-        except Exception as e: print(f"  Update failed: {e}")
+        vals = ",".join(f"({uid}, '{js(esid)}', {ts}, {to})" for uid, esid, ts, to in updates)
+        sql = f"""
+        UPDATE customers
+        SET easystore_customer_id = u.es_id,
+            total_spent = GREATEST(COALESCE(customers.total_spent,0), u.ts),
+            total_orders = GREATEST(COALESCE(customers.total_orders,0), u.to_),
+            is_member = CASE WHEN GREATEST(COALESCE(customers.total_orders,0), u.to_) >= 3 THEN true ELSE COALESCE(customers.is_member,false) END
+        FROM (VALUES {vals}) AS u(cust_id, es_id, ts, to_)
+        WHERE customers.id = u.cust_id;
+        """
+        try: sb_sql(sql); print(f"  Linked + refreshed {len(updates)} existing customers.")
+        except Exception as e: print(f"  Link update failed: {e}")
+
+    # Refresh totals for already-linked customers (chunked to avoid huge SQL)
+    if refresh_only:
+        print(f"  Refreshing totals for {len(refresh_only)} already-linked customers...")
+        refreshed = 0
+        for chunk in chunked(refresh_only, 200):
+            vals = ",".join(f"('{js(esid)}', {ts}, {to})" for esid, ts, to in chunk)
+            sql = f"""
+            UPDATE customers
+            SET total_spent = GREATEST(COALESCE(customers.total_spent,0), u.ts),
+                total_orders = GREATEST(COALESCE(customers.total_orders,0), u.to_),
+                is_member = CASE WHEN GREATEST(COALESCE(customers.total_orders,0), u.to_) >= 3 THEN true ELSE COALESCE(customers.is_member,false) END
+            FROM (VALUES {vals}) AS u(es_id, ts, to_)
+            WHERE customers.easystore_customer_id = u.es_id;
+            """
+            try:
+                sb_sql(sql)
+                refreshed += len(chunk)
+            except Exception as e:
+                print(f"  refresh chunk failed: {e}")
+        print(f"  Refreshed {refreshed} customers' totals.")
 
     # Insert new
     if new_inserts:
