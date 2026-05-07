@@ -26,3 +26,6 @@ assets/brand/products/*
 # Heavy logo variants (commit only the canonical few)
 assets/brand/logo/10camp-logo-variations-v10-alt.jpg
 assets/brand/logo/10campers-unity-logo.png
+
+# Local Netlify folder
+.netlify
