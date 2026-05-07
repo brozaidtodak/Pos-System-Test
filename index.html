@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=33">
- <link rel="stylesheet" href="design-tokens.css?v=17">
+ <link rel="stylesheet" href="design-tokens.css?v=18">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -1276,6 +1276,10 @@
  </div>
  <div class="menu-item" data-group="admin" data-tab="admin_wa_broadcast" onclick="switchHub(['waBroadcastSection'], 'WhatsApp Broadcast', this); if(typeof renderWABroadcast==='function') renderWABroadcast();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="message-circle" style="width:16px; height:16px;"></i> WhatsApp Broadcast
+ </div>
+ <!-- p7_2: Auto re-engage dormant customers -->
+ <div class="menu-item" data-group="admin" data-tab="admin_reengage" onclick="switchHub(['reengageSection'], 'Re-engage Campaign', this); if(typeof renderReengage==='function') renderReengage();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="heart-handshake" style="width:16px; height:16px;"></i> Re-engage Campaign
  </div>
  <div class="menu-item" data-group="admin" data-tab="admin_invoice" onclick="switchHub(['invoiceSection'], 'Invoice &amp; Quotation', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="file-text" style="width:16px; height:16px;"></i> Invoice &amp; Quotation
@@ -4203,6 +4207,98 @@
  </div>
 
  <!-- ============================================== -->
+ <!-- p7_2 — RE-ENGAGE CAMPAIGN (auto-detect dormant + tier outreach) -->
+ <!-- ============================================== -->
+ <div id="reengageSection" class="tab-section re-root" style="display:none;">
+ <div class="re-header">
+ <div>
+ <h2>Re-engage Campaign</h2>
+ <p class="re-sub">Win back dormant customers via personalised WhatsApp outreach. Tier by days-since-last-order. Anti-spam: same customer skipped if messaged within last 30 days.</p>
+ </div>
+ <button class="re-btn re-btn--ghost" onclick="window.renderReengage()">
+ <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i> Refresh
+ </button>
+ </div>
+
+ <!-- 3 tier cards -->
+ <div class="re-tiers" id="reTiers">
+ <div class="re-tier re-tier--sleeping" data-tier="sleeping" onclick="window.reSelectTier('sleeping')">
+ <div class="re-tier__head">
+ <span class="re-tier__dot"></span>
+ <span class="re-tier__name">Sleeping</span>
+ <span class="re-tier__range">30–59 days</span>
+ </div>
+ <div class="re-tier__num" id="reCountSleeping">—</div>
+ <div class="re-tier__sub">customers · <strong id="reValueSleeping">RM 0</strong> historic value</div>
+ </div>
+ <div class="re-tier re-tier--cold" data-tier="cold" onclick="window.reSelectTier('cold')">
+ <div class="re-tier__head">
+ <span class="re-tier__dot"></span>
+ <span class="re-tier__name">Cold</span>
+ <span class="re-tier__range">60–89 days</span>
+ </div>
+ <div class="re-tier__num" id="reCountCold">—</div>
+ <div class="re-tier__sub">customers · <strong id="reValueCold">RM 0</strong> historic value</div>
+ </div>
+ <div class="re-tier re-tier--lost" data-tier="lost" onclick="window.reSelectTier('lost')">
+ <div class="re-tier__head">
+ <span class="re-tier__dot"></span>
+ <span class="re-tier__name">Lost</span>
+ <span class="re-tier__range">90+ days</span>
+ </div>
+ <div class="re-tier__num" id="reCountLost">—</div>
+ <div class="re-tier__sub">customers · <strong id="reValueLost">RM 0</strong> historic value</div>
+ </div>
+ </div>
+
+ <!-- Customer list for selected tier -->
+ <div class="re-detail" id="reDetail" style="display:none;">
+ <div class="re-detail__head">
+ <div>
+ <h3 id="reDetailTitle">Sleeping customers (30–59 days)</h3>
+ <p id="reDetailSub" class="re-sub">Showing <strong id="reEligibleCount">0</strong> eligible (after anti-spam filter). Tick to include in send.</p>
+ </div>
+ <div class="re-detail__actions">
+ <button class="re-btn re-btn--ghost" onclick="window.reSelectAllVisible()">Select all</button>
+ <button class="re-btn re-btn--ghost" onclick="window.reClearSelection()">Clear</button>
+ </div>
+ </div>
+
+ <!-- Template editor -->
+ <div class="re-template-block">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+ <strong style="font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;">Message template <span id="reTierLabel" style="color:#6B7280; font-weight:500; text-transform:none; letter-spacing:0;"></span></strong>
+ <span style="font-size:11px; color:#6B7280;">Vars: {name} · {last_order_days} · {total_spent} · {promo_code}</span>
+ </div>
+ <textarea id="reMessage" rows="6" class="re-textarea"></textarea>
+ <div style="display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap;">
+ <label style="font-size:12px; font-weight:600; color:#374151;">Promo code:</label>
+ <input type="text" id="rePromoCode" class="re-input" style="width:180px;" placeholder="WELCOME10">
+ <span id="rePreview" style="font-size:11px; color:#6B7280; margin-left:auto;"></span>
+ </div>
+ </div>
+
+ <div class="re-list" id="reList"></div>
+
+ <!-- Send bar -->
+ <div class="re-send-bar">
+ <div>
+ <strong id="reSelectedCount">0</strong> selected · est <strong id="reSelectedRev">RM 0</strong> historic value
+ </div>
+ <button class="re-btn re-btn--gold" onclick="window.reSendBatch()" id="reSendBtn">
+ <i data-lucide="send" style="width:14px; height:14px;"></i> Send next 10 via WhatsApp
+ </button>
+ </div>
+ </div>
+
+ <!-- History log -->
+ <div class="re-history">
+ <h3>Recent re-engagement activity</h3>
+ <div id="reHistoryList"><p class="re-empty">No re-engagement campaigns sent yet.</p></div>
+ </div>
+ </div>
+
+ <!-- ============================================== -->
  <!-- WHATSAPP BROADCAST (p3_2 expand) -->
  <!-- ============================================== -->
  <div id="waBroadcastSection" class="tab-section" style="display:none;">
@@ -4526,11 +4622,11 @@
  { id:'p6_3', label:'Consolidated reporting', d:'todo' },
  { id:'p6_4', label:'Per-branch pricing override', d:'todo' }
 ]},
- { id:'p7', num:'PHASE 7', name:'Growth & Loyalty', status:'future', goal:'CRM automation & repeat-purchase engine', eta:'2028 H1 · Tentative',
+ { id:'p7', num:'PHASE 7', name:'Growth & Loyalty', status:'active', goal:'CRM automation & repeat-purchase engine', eta:'Q2 2026 · 10/10 shipped (re-engage live)',
  desc:'Sistem dah ada CRM table tapi belum trigger campaign. Turn customer data jadi repeat-purchase engine. Festival promo template (Raya/CNY/Deepavali) untuk MY context.',
  deliverables:[
  { id:'p7_1', label:'Loyalty Tier system (Bronze/Silver/Gold) with per-tier discount', d:'done' },
- { id:'p7_2', label:'Auto re-engage (WhatsApp/email)', d:'todo' },
+ { id:'p7_2', label:'Auto re-engage Campaign — wins back dormant customers via tiered WhatsApp outreach. New section under Admin Dept (admin_reengage). 3-tier dashboard: Sleeping (30-59 days, amber), Cold (60-89 days, orange), Lost (90+ days, red) with count + historic value at risk per tier. Click tier → see ranked list (highest spender first) with per-row checkbox, days-since-last-order, total_spent. Tier-specific message templates in BM with variable substitution ({name}, {last_order_days}, {promo_code}) — gentle nudge for Sleeping, RM10 off for Cold, 20% off last-chance for Lost. Suggested promo codes per tier (COMEBACK / WELCOME10 / MISSYOU20). Anti-spam guard: skip customers messaged within last 30 days (RE_SPAM_GUARD_DAYS), shows red SENT-Nd-AGO tag and disables checkbox. Batched send via wa.me (10 per batch, 200ms stagger to avoid popup blocker). Activity log to localStorage reengageLog_v1 + audit_logs table. Reuses existing __waFillVars helper from p3_2', d:'done' },
  { id:'p7_3', label:'Promo engine (rules-based: scope/min-spend/tier/dates)', d:'done' },
  { id:'p7_4', label:'Customer segment analytics (RFM + cohort + top spenders)', d:'done' },
  { id:'p7_5', label:'Festival promo templates (Raya/CNY/Deepavali/Merdeka/+5 lagi)', d:'done' },
@@ -8737,7 +8833,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=109"></script>
+ <script src="app.js?v=110"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

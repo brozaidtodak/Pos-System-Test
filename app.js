@@ -12129,6 +12129,289 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =============================================================
+// p7_2 — Re-engage Campaign (auto-detect dormant + tier outreach)
+// =============================================================
+window.RE_LOG_KEY = 'reengageLog_v1';
+window.RE_SPAM_GUARD_DAYS = 30; // skip customer if messaged within this window
+window.__reCurrentTier = null;
+window.__reSelected = new Set();
+window.__reSendCursor = 0;
+
+window.RE_TEMPLATES = {
+    sleeping: 'Hi {name}, dah {last_order_days} hari tak nampak kat 10 CAMP! \n\nStok baru sampai — Naturehike, Mobi Garden, Chanodug. Mungkin ada gear baru yang sesuai untuk next adventure.\n\nSinggah online: 10camp.com\nAtau drop by kedai Cyberjaya.\n\nTeam 10 CAMP',
+    cold: 'Hi {name}, dah {last_order_days} hari tak ada update dari kami. Kami terlepas pandang ke?\n\nNak tarik balik perhatian — *RM10 off* untuk pembelian RM 100+.\nCode: *{promo_code}*\nValid 14 hari je.\n\nShop: 10camp.com\n\nNak tanya apa-apa, reply mesej ni.',
+    lost: 'Hi {name}, dah {last_order_days} hari... rindu sangat customer macam awak.\n\nSatu offer terakhir untuk welcome you back — *20% off* satu store, no minimum.\nCode: *{promo_code}*\nValid 7 hari sahaja, satu kali pakai.\n\nShop: 10camp.com\n\nKalau dah tak berminat, no hard feelings. Kalau still suka outdoor — adventure menunggu kat sini.\n\nTerima kasih atas semua memori dengan 10 CAMP.'
+};
+
+window.RE_SUGGESTED_PROMO = {
+    sleeping: 'COMEBACK',
+    cold: 'WELCOME10',
+    lost: 'MISSYOU20'
+};
+
+function __reLoadLog() {
+    try { return JSON.parse(localStorage.getItem(window.RE_LOG_KEY) || '[]'); }
+    catch(e) { return []; }
+}
+function __reSaveLog(arr) {
+    try { localStorage.setItem(window.RE_LOG_KEY, JSON.stringify(arr.slice(-200))); } catch(e){}
+}
+
+// Returns ms-since-last-engagement-message-to-this-customer, or Infinity if never
+function __reLastMessagedMs(customerKey) {
+    const log = __reLoadLog();
+    let mostRecent = 0;
+    log.forEach(entry => {
+        (entry.targets || []).forEach(t => {
+            if(t === customerKey) {
+                const ts = new Date(entry.ts).getTime();
+                if(ts > mostRecent) mostRecent = ts;
+            }
+        });
+    });
+    if(!mostRecent) return Infinity;
+    return Date.now() - mostRecent;
+}
+
+function __reCustomerKey(c) {
+    return c.phone || c.email || c.id || c.name;
+}
+
+// Tier customers by days since last_order_at
+window.reTierCustomers = function() {
+    const out = { sleeping: [], cold: [], lost: [] };
+    if(typeof customersData === 'undefined' || !Array.isArray(customersData)) return out;
+    const now = Date.now();
+    customersData.forEach(c => {
+        if(!c.phone) return; // can't message via wa.me
+        if(!c.last_order_at) return; // no purchase history
+        const days = (now - new Date(c.last_order_at).getTime()) / (24*3600*1000);
+        if(days >= 30 && days < 60) out.sleeping.push(c);
+        else if(days >= 60 && days < 90) out.cold.push(c);
+        else if(days >= 90) out.lost.push(c);
+    });
+    return out;
+};
+
+window.renderReengage = function() {
+    const tiers = window.reTierCustomers();
+    const fmt = window.formatRMShort || (n => 'RM ' + Math.round(n));
+    ['sleeping', 'cold', 'lost'].forEach(t => {
+        const list = tiers[t];
+        const cntEl = document.getElementById('reCount' + t.charAt(0).toUpperCase() + t.slice(1));
+        const valEl = document.getElementById('reValue' + t.charAt(0).toUpperCase() + t.slice(1));
+        if(cntEl) cntEl.textContent = list.length;
+        if(valEl) valEl.textContent = fmt(list.reduce((s, c) => s + (parseFloat(c.total_spent) || 0), 0));
+    });
+    // Render history
+    const histEl = document.getElementById('reHistoryList');
+    if(histEl) {
+        const log = __reLoadLog().slice(-10).reverse();
+        if(!log.length) {
+            histEl.innerHTML = '<p class="re-empty">No re-engagement campaigns sent yet.</p>';
+        } else {
+            histEl.innerHTML = log.map(e => `
+                <div class="re-history-row">
+                    <span>${new Date(e.ts).toLocaleString('en-MY', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
+                    <span style="font-weight:700; text-transform:uppercase; color:${e.tier==='sleeping'?'#B45309':e.tier==='cold'?'#C2410C':'#991B1B'};">${e.tier}</span>
+                    <span style="color:#6B7280;">to ${(e.targets||[]).length} customer${(e.targets||[]).length>1?'s':''} · code ${e.promo || '—'}</span>
+                    <span style="text-align:right; color:#9CA3AF;">${e.sender||'?'}</span>
+                </div>
+            `).join('');
+        }
+    }
+    // Re-render selected tier list if any
+    if(window.__reCurrentTier) window.reSelectTier(window.__reCurrentTier, true);
+    if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+window.reSelectTier = function(tier, suppressScroll) {
+    window.__reCurrentTier = tier;
+    window.__reSelected = new Set();
+    window.__reSendCursor = 0;
+    document.querySelectorAll('.re-tier').forEach(el => el.classList.toggle('is-active', el.dataset.tier === tier));
+    document.getElementById('reDetail').style.display = 'block';
+
+    const labels = {
+        sleeping: 'Sleeping customers (30–59 days)',
+        cold: 'Cold customers (60–89 days)',
+        lost: 'Lost customers (90+ days)'
+    };
+    document.getElementById('reDetailTitle').textContent = labels[tier];
+    document.getElementById('reTierLabel').textContent = '· ' + tier + ' tier';
+
+    const ta = document.getElementById('reMessage');
+    if(ta) ta.value = window.RE_TEMPLATES[tier] || '';
+    const promoEl = document.getElementById('rePromoCode');
+    if(promoEl) promoEl.value = window.RE_SUGGESTED_PROMO[tier] || '';
+
+    // Filter eligible (skip those messaged within spam guard window)
+    const tiers = window.reTierCustomers();
+    const list = tiers[tier] || [];
+    const guardMs = window.RE_SPAM_GUARD_DAYS * 24 * 3600 * 1000;
+    const annotated = list.map(c => {
+        const lastMs = __reLastMessagedMs(__reCustomerKey(c));
+        const daysSinceMsg = lastMs === Infinity ? null : Math.floor(lastMs / (24*3600*1000));
+        const skip = lastMs < guardMs;
+        return { c, lastMs, daysSinceMsg, skip };
+    });
+    const eligible = annotated.filter(x => !x.skip);
+    document.getElementById('reEligibleCount').textContent = eligible.length + ' of ' + list.length;
+
+    // Sort: highest spender first
+    annotated.sort((a, b) => (parseFloat(b.c.total_spent)||0) - (parseFloat(a.c.total_spent)||0));
+
+    const listEl = document.getElementById('reList');
+    const fmt = window.formatRMShort || (n => 'RM ' + Math.round(n));
+    if(!annotated.length) {
+        listEl.innerHTML = '<p class="re-empty">No customers in this tier. Excellent — no one falling through the cracks.</p>';
+    } else {
+        listEl.innerHTML = annotated.map(x => {
+            const c = x.c;
+            const days = Math.floor((Date.now() - new Date(c.last_order_at).getTime()) / (24*3600*1000));
+            const key = __reCustomerKey(c).replace(/'/g, "\\'");
+            const dayClass = tier === 'sleeping' ? 'sleeping' : tier === 'cold' ? 'cold' : 'lost';
+            const skipTag = x.skip ? `<span class="re-row__skip-tag">SENT ${x.daysSinceMsg}d AGO</span>` : '';
+            return `
+                <label class="re-row" data-key="${key}">
+                    <input type="checkbox" ${x.skip ? 'disabled' : ''} onchange="window.reToggleSelect('${key}', this.checked)">
+                    <div>
+                        <div class="re-row__name">${(c.name || '(no name)').slice(0, 40)}</div>
+                        <div class="re-row__phone">${c.phone || ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="re-row__days re-row__days--${dayClass}">${days}d ago</div>
+                        <div style="font-size:10px; color:#9CA3AF;">${c.total_orders || 0} order${(c.total_orders||0)>1?'s':''}</div>
+                    </div>
+                    <div class="re-row__spent">${fmt(c.total_spent || 0)}</div>
+                    ${skipTag || '<span></span>'}
+                </label>
+            `;
+        }).join('');
+    }
+    window.reUpdateSelectionUI();
+    if(!suppressScroll) document.getElementById('reDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.reToggleSelect = function(key, checked) {
+    if(checked) window.__reSelected.add(key);
+    else window.__reSelected.delete(key);
+    document.querySelectorAll('.re-row').forEach(r => r.classList.toggle('is-checked', window.__reSelected.has(r.dataset.key)));
+    window.reUpdateSelectionUI();
+};
+
+window.reSelectAllVisible = function() {
+    document.querySelectorAll('.re-row input[type="checkbox"]:not(:disabled)').forEach(cb => {
+        cb.checked = true;
+        const row = cb.closest('.re-row');
+        if(row) {
+            window.__reSelected.add(row.dataset.key);
+            row.classList.add('is-checked');
+        }
+    });
+    window.reUpdateSelectionUI();
+};
+
+window.reClearSelection = function() {
+    window.__reSelected = new Set();
+    window.__reSendCursor = 0;
+    document.querySelectorAll('.re-row input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.re-row').forEach(r => r.classList.remove('is-checked'));
+    window.reUpdateSelectionUI();
+};
+
+window.reUpdateSelectionUI = function() {
+    const cnt = window.__reSelected.size;
+    document.getElementById('reSelectedCount').textContent = cnt;
+    let totalRev = 0;
+    customersData.forEach(c => {
+        if(window.__reSelected.has(__reCustomerKey(c))) totalRev += parseFloat(c.total_spent) || 0;
+    });
+    const fmt = window.formatRMShort || (n => 'RM ' + Math.round(n));
+    document.getElementById('reSelectedRev').textContent = fmt(totalRev);
+    const btn = document.getElementById('reSendBtn');
+    if(btn) btn.disabled = cnt === 0;
+};
+
+window.reSendBatch = function() {
+    if(!window.__reSelected.size) return;
+    const tier = window.__reCurrentTier;
+    const tplText = document.getElementById('reMessage').value;
+    const promo = (document.getElementById('rePromoCode').value || 'PROMO').trim();
+    if(!tplText.trim()) {
+        if(typeof showToast === 'function') showToast('Tulis template message dulu', 'warn');
+        return;
+    }
+
+    // Build target list of customer objects
+    const selectedKeys = Array.from(window.__reSelected);
+    const targets = selectedKeys.map(k => customersData.find(c => __reCustomerKey(c) === k)).filter(Boolean);
+    if(!targets.length) return;
+
+    const start = window.__reSendCursor;
+    const end = Math.min(start + 10, targets.length);
+    const batch = targets.slice(start, end);
+
+    if(!batch.length) {
+        if(typeof showToast === 'function') showToast('Re-engage campaign complete', 'success');
+        return;
+    }
+
+    if(start === 0) {
+        if(!confirm(`Open ${batch.length} WhatsApp tabs untuk customer #1-${end}? (Total: ${targets.length})\n\nMessage tier: ${tier}\nPromo code: ${promo}`)) return;
+    }
+
+    batch.forEach((c, i) => {
+        const phoneNorm = String(c.phone).replace(/\D/g, '').replace(/^0/, '60');
+        const text = (typeof __waFillVars === 'function')
+            ? __waFillVars(tplText, c, promo)
+            : tplText.replace(/\{name\}/g, (c.name||'').split(' ')[0] || 'kawan').replace(/\{promo_code\}/g, promo);
+        const url = `https://wa.me/${phoneNorm}?text=${encodeURIComponent(text)}`;
+        setTimeout(() => window.open(url, '_blank'), i * 200);
+    });
+
+    // Log this batch
+    const log = __reLoadLog();
+    log.push({
+        ts: new Date().toISOString(),
+        tier,
+        promo,
+        targets: batch.map(c => __reCustomerKey(c)),
+        sender: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'unknown'
+    });
+    __reSaveLog(log);
+
+    window.__reSendCursor = end;
+    const remaining = targets.length - end;
+    if(typeof showToast === 'function') {
+        showToast('Sent batch ' + (start+1) + '–' + end + ' of ' + targets.length + (remaining > 0 ? ' (klik Send lagi untuk continue)' : ' — DONE'), 'success');
+    }
+
+    // Audit log to Supabase (best-effort)
+    try {
+        if(typeof db !== 'undefined' && db && db.from) {
+            db.from('audit_logs').insert([{
+                action_type: 'reengage_send',
+                actor_name: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'System',
+                details: JSON.stringify({ tier, promo, batch_size: batch.length, total_in_campaign: targets.length, batch_index: start+1 }),
+                created_at: new Date().toISOString()
+            }]).then(()=>{}).catch(()=>{});
+        }
+    } catch(e){}
+
+    if(remaining === 0) {
+        // Refresh tier view to reflect anti-spam tags
+        setTimeout(() => window.renderReengage(), 500);
+    }
+};
+
+// Initial render hook when section opens
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('[data-tab="admin_reengage"]');
+    if(btn) btn.addEventListener('click', () => setTimeout(window.renderReengage, 100));
+});
+
+// =============================================================
 // p3_2 — WhatsApp Broadcast (wa.me click-to-send · batched)
 // =============================================================
 const WA_TEMPLATES = {
