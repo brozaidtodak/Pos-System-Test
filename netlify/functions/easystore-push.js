@@ -20,7 +20,8 @@
  */
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
+// Fallback to anon public key (same as webhook function) so SUPABASE_KEY env var optional.
+const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZWhqZG5mem95cGJ3ZmVhenJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MjE2NjMsImV4cCI6MjA5MTE5NzY2M30.34nAhmcNO_xN73OdsyxayKl_jipIk-M8DIBgibAOdaI';
 const ES_TOKEN     = process.env.EASYSTORE_TOKEN || '';
 const ES_BASE      = 'https://www.10camp.com/api/3.0';
 
