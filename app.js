@@ -1369,14 +1369,30 @@ function renderPOS(searchTerm = "") {
  let thumb = p.images && p.images[0] ? p.images[0] : "https://placehold.co/300x200?text=No+Img";
  const skuEsc = String(p.sku).replace(/'/g, "\\'");
 
+ // Clean title — strip leading "SKU |" or "CODE _" prefix from EasyStore name pollution,
+ // and convert ALL CAPS to Title Case for readability.
+ let cleanName = (p.name || 'Untitled');
+ cleanName = cleanName.replace(/^[A-Z0-9-]+\s*[|_]\s*/i, '').trim();
+ cleanName = cleanName.replace(/\s*[_]\s*/g, ' — ').replace(/\s{2,}/g, ' ').trim();
+ // If name is mostly uppercase (>70% caps), title-case it
+ const letters = cleanName.replace(/[^A-Za-z]/g, '');
+ const upperRatio = letters.length ? (letters.match(/[A-Z]/g)||[]).length / letters.length : 0;
+ if(upperRatio > 0.7 && letters.length > 6) {
+   cleanName = cleanName.toLowerCase().replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
+ }
+ const safeName = cleanName.replace(/"/g, '&quot;');
+
  htmlBuf += `
  <div class="product-card">
  <img src="${thumb}" class="pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="Klik untuk detail">
- <span class="sku-badge">${p.sku}</span><span class="cat-badge">${p.category||'Uncat'}</span>
- <h3 class="pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="Klik untuk detail" style="margin-top:5px; font-size:14px; height:35px; overflow:hidden;">${p.name}</h3>
+ <div class="product-card__badges">
+ <span class="sku-badge">${p.sku}</span>
+ ${p.brand ? `<span class="cat-badge">${p.brand}</span>` : (p.category ? `<span class="cat-badge">${p.category}</span>` : '')}
+ </div>
+ <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="${safeName}">${cleanName}</h3>
  <p class="price">RM ${parseFloat(p.price).toFixed(2)}</p>
- <p style="font-size:12px; margin-bottom:8px;">Instock: ${totalStock} ${p.unit||''}</p>
- <button onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Out of Stock' : 'Add>'}</button>
+ <p class="product-card__stock">${totalStock <= 0 ? 'Out of stock' : `${totalStock} ${p.unit||'pcs'} in stock`}</p>
+ <button onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Out of Stock' : 'Add to Cart'}</button>
  </div>
  `;
  });
