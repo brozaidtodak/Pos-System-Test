@@ -12129,6 +12129,377 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // =============================================================
+// p1_30 — System Test Guide (QA checklist for shipped features)
+// =============================================================
+window.TG_KEY = 'testGuideStatus_v1';
+window.__tgFilter = 'all';
+
+window.TG_TESTS = [
+    { phase: 'Phase 1: Stabilize', id: 'p1_22', title: 'PIN-only login (auto-detect user)',
+      steps: [
+        'Logout dari mana-mana session',
+        'Klik butang "Internal Mode" / "Staff Login" kat header',
+        'Modal terbuka dengan PIN dots ●●●○○○',
+        'Type any valid PIN (cuba 1999 atau 8888)',
+        'Tunggu 400ms — auto-submit kena fire'
+      ],
+      expected: 'Welcome screen muncul dengan name yang betul; tak perlu pilih nama dari dropdown.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_22-fail', title: 'PIN-only login wrong PIN handling',
+      steps: [
+        'Buka login modal',
+        'Type random wrong PIN (e.g. 0000)',
+        'Tunggu auto-submit'
+      ],
+      expected: 'Error message generic "PIN salah. Cubaan tinggal: N". 10× wrong → device lock 5 min.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_25', title: 'Tester persona (PIN 8888)',
+      steps: [
+        'Login dengan PIN 8888',
+        'Welcome screen tunjuk "Tester · External Demo Account"',
+        'Lepas auto-dismiss, tengok mode bar'
+      ],
+      expected: 'Hanya tab "Kaunter" visible. Tab Pengurus/Pengurusan/Investor hidden. Landing kat POS Cashier.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_26', title: 'Welcome screen redesign',
+      steps: [
+        'Logout, login mana-mana role',
+        'Perhatikan welcome overlay',
+        'Tengok greeting (Selamat pagi/tengahari/petang/malam ikut waktu)',
+        'Tengok avatar warna ikut tier role',
+        'Tunggu progress bar drain (~2.4s)'
+      ],
+      expected: 'Navy/orange gradient bg + dot pattern; tier-coloured avatar dengan pulse + ring; tagline ikut role; mode chip; smooth fade in/out.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_27', title: 'Default landing flip',
+      steps: [
+        'Login Bos (1999) → check landing',
+        'Logout, login Aliff (1111) → check landing',
+        'Logout, login Tarmizi (6666) → check landing',
+        'Logout, login brolantodak (1102) → check landing'
+      ],
+      expected: 'Bos→Finance Dashboard, Aliff→POS Cashier, Tarmizi→POS Cashier (NOT Browse Products), brolantodak→Investor Dashboard.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_19', title: 'Memo Board with approval workflow',
+      steps: [
+        'Login any non-superior staff',
+        'Sidebar atas → Memo Board',
+        'Klik "Memo Baru" → tulis title + body → Submit',
+        'Tab "Memo Saya" tunjuk memo dengan status pending',
+        'Logout, login Bos',
+        'Memo Board → tab Pending Approval (red badge sidebar)',
+        'Klik Approve atau Reject (kalau reject, isi sebab)'
+      ],
+      expected: 'Memo workflow: pending → approved/rejected. Bos sahaja boleh approve. Rejected shows reason. Approved memos appear di tab Approved untuk semua orang nampak.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_18', title: 'Management mode (4th tab)',
+      steps: [
+        'Login Bos (1999)',
+        'Default landing kena di Pengurusan mode (gold tab dengan crown icon)',
+        'Sidebar tunjuk HR Department + Finance Department only',
+        'Klik tab "Pengurus" → sidebar tukar ke Admin Dept'
+      ],
+      expected: 'Mode bar ada 4-5 tabs (Kaunter/Operasi/Pengurus/Pengurusan + Investor untuk Bos). HR + Finance segregated dari operational Manager mode.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_20', title: 'Per-mode access checkbox',
+      steps: [
+        'Login Bos → Pengurusan → HR → Staff Management',
+        'Edit mana-mana staff (e.g. Aliff)',
+        'Scroll sampai jumpa "Mode Access" card kuning',
+        'Tengok 4-5 checkbox: Kaunter / Operasi / Pengurus / Pengurusan / Investor',
+        'Tick/untick → save'
+      ],
+      expected: 'Hanya Bos boleh ubah. Staff lain edit modal tunjuk checkbox disabled. Self-revoke trigger confirm dialog.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_21', title: 'Investor Mode dashboard',
+      steps: [
+        'Logout, login PIN 1102 (brolantodak)',
+        'Auto-landing kat Investor Dashboard'
+      ],
+      expected: 'Navy/gold hero dengan health score ring (grade A-F). Cap Table strip 51% brolantodak / 49% Zaid. 6 KPI cards (ARR, MTD, Margin, Burn, Runway). Growth + unit economics + inventory + risk radar sections. Strategic outlook auto-generated.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_23', title: 'Public landing page',
+      steps: [
+        'Logout sepenuhnya',
+        'Browse main page (https://pos-system-test.netlify.app/)',
+        'Scroll: header logo, hero hikers, brands marquee, collections, products, about, newsletter, footer'
+      ],
+      expected: 'Logo PNG kat header. Hero dengan hikers bg + tagline "Healing in style with 10 CAMP" + 2 CTA. Brands marquee auto-scroll 11 logo. Featured collections (UNITY apparel + Naturehike + Sale).'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_24', title: 'POS Product Detail Modal',
+      steps: [
+        'Login any cashier → POS Cashier',
+        'Klik gambar atau nama mana-mana produk',
+        'Modal terbuka — tengok gallery, description, variants, specs grid, add-to-cart'
+      ],
+      expected: 'Gallery dengan thumbnails strip + ‹/› nav + counter "n/m". Title clean (no SKU prefix). 2-col specs grid. Stock pill colored (green/amber/red). Variants pills kalau ada parent_sku siblings. ESC tutup, arrow keys cycle images.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_28', title: 'Product Database redesign',
+      steps: [
+        'Login Bos → Pengurus mode',
+        'Sidebar Inventory → Browse Products',
+        'Tengok header (live/draft inline counts)',
+        'Filter bar (search + brand + category + sort + per-page)',
+        'Status pills: All / Live / Draft / OOS / Low Stock / No Image',
+        'Klik mana-mana pill → list filter, active chips appear',
+        '5-stat row at top'
+      ],
+      expected: 'Bersih, scan-friendly. Default filter "All" (bukan Draft). Bin Import + Danger Zone TIADA dalam page ni (moved to Bulk Ops).'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_29-push', title: 'EasyStore push (POS sale → online stock)',
+      steps: [
+        'Login any cashier → POS',
+        'Add cheap item to cart (e.g. CD082 RM 8)',
+        'Open browser DevTools → Network tab',
+        'Checkout dengan Cash payment',
+        'Confirm sale',
+        'Cari POST /api/easystore-push dalam Network'
+      ],
+      expected: 'Response succeeded:1, before/after qty values shown. Login EasyStore admin → variant qty turun -1.'
+    },
+    { phase: 'Phase 1: Stabilize', id: 'p1_29-webhook', title: 'EasyStore webhook (online order → POS)',
+      steps: [
+        'Buka 10camp.com sebagai customer',
+        'Add cheap item to cart, checkout, pay',
+        'Tunggu ~5 saat',
+        'Login Bos → Tanya 10 CAMP AI tab',
+        'Tanya: "Latest order from website?"'
+      ],
+      expected: 'Order baru appear dalam sales_history dengan channel "EasyStore Online" + metadata.migrated_from = "easystore_webhook". Inventory_batches qty turun untuk SKU yang dibeli.'
+    },
+    { phase: 'Phase 4: Operations', id: 'p4_5', title: 'EOD Close / Z-Report',
+      steps: [
+        'Login Bos → Pengurusan',
+        'Finance Dashboard → "EOD Close" button',
+        'Manager PIN required',
+        'Z-Report generated'
+      ],
+      expected: 'Daily Z-report print window open dengan sales by payment/channel/staff. Persisted to finance_records + audit_logs.'
+    },
+    { phase: 'Phase 4: Operations', id: 'p4_3', title: 'Manager Dashboard',
+      steps: [
+        'Login Bos → Pengurus mode',
+        'Admin Dept → Manager Dashboard'
+      ],
+      expected: '5 KPI cards (revenue, orders, AOV, etc), period filter buttons, revenue chart, channel mix donut, top SKUs, top staff, low-stock alerts, top customers.'
+    },
+    { phase: 'Phase 7: Growth & Loyalty', id: 'p7_2', title: 'Re-engage Campaign',
+      steps: [
+        'Login Bos → Pengurus → Admin Dept → Re-engage Campaign',
+        '3 tier cards (Sleeping/Cold/Lost) tunjuk count + value',
+        'Klik mana-mana tier (e.g. Cold)',
+        'Tengok customer list with checkbox',
+        'Select 2-3 customers',
+        'Klik "Send next 10 via WhatsApp"'
+      ],
+      expected: 'Confirm dialog. Lepas confirm, batch WhatsApp tabs open (200ms stagger). Activity logged. Re-test selepas 1 min: customers yang dah dimessage akan tag SENT-Nd-AGO + checkbox disabled.'
+    },
+    { phase: 'Phase 7: Growth & Loyalty', id: 'p7_1', title: 'Loyalty tier auto-detect',
+      steps: [
+        'Login any cashier → POS',
+        'Customer search by phone (existing customer >3 orders = Bronze)',
+        'Add to cart, proceed to checkout',
+        'Tengok price modal'
+      ],
+      expected: 'Tier badge displayed (Bronze/Silver/Gold based on order count: 3-9/10-29/30+). Auto-discount applied per tier %.'
+    },
+    { phase: 'Phase 8: Intelligence', id: 'p8_3', title: 'Tanya 10 CAMP AI',
+      steps: [
+        'Login Bos → Pengurus → Admin Dept → Tanya 10 CAMP',
+        'Type question (e.g. "Top 5 SKU bulan ni?")',
+        'Send'
+      ],
+      expected: 'Response dari Claude Haiku 4.5 dengan answer berdasarkan auto-built context (sales 7d/30d, top products, low stock, top customers). Memerlukan ANTHROPIC_API_KEY env var di Netlify.'
+    },
+    { phase: 'Phase 2: Compliance', id: 'p2_2', title: 'DuitNow QR generator',
+      steps: [
+        'Login → POS → Add item to cart',
+        'Checkout → pilih DuitNow QR sebagai payment',
+        'QR code generate'
+      ],
+      expected: 'EMVCo TLV QR generated dengan CRC-16/CCITT. Customer scan dengan banking app, ref# entered untuk confirm.'
+    }
+];
+
+function __tgLoadStatus() {
+    try { return JSON.parse(localStorage.getItem(window.TG_KEY) || '{}'); }
+    catch(e) { return {}; }
+}
+function __tgSaveStatus(s) {
+    try { localStorage.setItem(window.TG_KEY, JSON.stringify(s)); } catch(e){}
+}
+
+window.tgFilter = function(f, btn) {
+    window.__tgFilter = f;
+    document.querySelectorAll('.tg-pill').forEach(b => b.classList.toggle('tg-pill--active', b === btn));
+    window.renderTestGuide();
+};
+
+window.tgSetStatus = function(testId, status) {
+    const all = __tgLoadStatus();
+    if(status === 'reset') delete all[testId];
+    else all[testId] = { status, ts: new Date().toISOString() };
+    __tgSaveStatus(all);
+    window.renderTestGuide();
+};
+
+window.tgSetNote = function(testId, note) {
+    const all = __tgLoadStatus();
+    all[testId] = Object.assign({}, all[testId] || {}, { note, ts: new Date().toISOString() });
+    __tgSaveStatus(all);
+};
+
+window.tgToggleTest = function(testId) {
+    const el = document.querySelector('[data-tg-id="' + testId + '"]');
+    if(el) el.classList.toggle('is-open');
+};
+
+window.tgExpandAll = function() {
+    document.querySelectorAll('.tg-test').forEach(el => el.classList.add('is-open'));
+};
+window.tgCollapseAll = function() {
+    document.querySelectorAll('.tg-test').forEach(el => el.classList.remove('is-open'));
+};
+
+window.tgResetAll = function() {
+    if(!confirm('Reset SEMUA test status (passed + failed + notes)? Tindakan ini tidak boleh dibatalkan.')) return;
+    localStorage.removeItem(window.TG_KEY);
+    if(typeof showToast === 'function') showToast('All test status cleared', 'success');
+    window.renderTestGuide();
+};
+
+window.tgExportReport = function() {
+    const status = __tgLoadStatus();
+    const lines = [];
+    lines.push('# 10 CAMP POS — System Test Report');
+    lines.push('Generated: ' + new Date().toLocaleString('en-MY'));
+    lines.push('Tester: ' + ((window.currentUser || {}).name || 'unknown'));
+    lines.push('');
+    const phases = {};
+    window.TG_TESTS.forEach(t => {
+        if(!phases[t.phase]) phases[t.phase] = [];
+        phases[t.phase].push(t);
+    });
+    Object.keys(phases).forEach(ph => {
+        lines.push('## ' + ph);
+        phases[ph].forEach(t => {
+            const s = status[t.id] || {};
+            const sym = s.status === 'passed' ? '[PASS]' : s.status === 'failed' ? '[FAIL]' : '[ ]';
+            lines.push(`${sym} ${t.id} — ${t.title}`);
+            if(s.note) lines.push(`     Note: ${s.note}`);
+        });
+        lines.push('');
+    });
+    const text = lines.join('\n');
+    if(navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            if(typeof showToast === 'function') showToast('Report copied to clipboard', 'success');
+        });
+    } else {
+        alert(text);
+    }
+};
+
+window.renderTestGuide = function() {
+    const status = __tgLoadStatus();
+    const total = window.TG_TESTS.length;
+    let passed = 0, failed = 0, untested = 0;
+    window.TG_TESTS.forEach(t => {
+        const s = (status[t.id] || {}).status;
+        if(s === 'passed') passed++;
+        else if(s === 'failed') failed++;
+        else untested++;
+    });
+
+    // Summary pills
+    const sumEl = document.getElementById('tgSummary');
+    if(sumEl) {
+        sumEl.innerHTML = `
+            <span class="tg-sum-pass">${passed} passed</span>
+            <span class="tg-sum-fail">${failed} failed</span>
+            <span class="tg-sum-untest">${untested} untested</span>
+        `;
+    }
+
+    // Progress bar
+    const tested = passed + failed;
+    const pct = total > 0 ? (tested / total) * 100 : 0;
+    const fill = document.getElementById('tgProgressFill');
+    if(fill) fill.style.width = pct + '%';
+    const lbl = document.getElementById('tgProgressLabel');
+    if(lbl) lbl.textContent = tested + ' / ' + total + ' tested (' + pct.toFixed(0) + '%)';
+
+    // Filter
+    let visible = window.TG_TESTS;
+    if(window.__tgFilter !== 'all') {
+        visible = visible.filter(t => {
+            const s = (status[t.id] || {}).status;
+            if(window.__tgFilter === 'untested') return !s;
+            return s === window.__tgFilter;
+        });
+    }
+
+    // Group by phase
+    const phases = {};
+    visible.forEach(t => {
+        if(!phases[t.phase]) phases[t.phase] = [];
+        phases[t.phase].push(t);
+    });
+
+    const listEl = document.getElementById('tgList');
+    if(!listEl) return;
+    if(!visible.length) {
+        listEl.innerHTML = '<div style="text-align:center; padding:40px; color:#9CA3AF; font-size:13px;">Tiada test match filter ni.</div>';
+        return;
+    }
+
+    listEl.innerHTML = Object.keys(phases).map(ph => {
+        const tests = phases[ph];
+        return `<div class="tg-phase">
+            <div class="tg-phase__head">
+                <span class="tg-phase__title">${ph}</span>
+                <span class="tg-phase__count">${tests.length} test${tests.length>1?'s':''}</span>
+            </div>
+            ${tests.map(t => {
+                const s = status[t.id] || {};
+                const cur = s.status;
+                const cls = cur === 'passed' ? 'tg-test--passed' : cur === 'failed' ? 'tg-test--failed' : '';
+                const statusBadge = cur ? `<span class="tg-test__status tg-test__status--${cur}">${cur}</span>` : `<span class="tg-test__status tg-test__status--untested">untested</span>`;
+                const stepsHtml = '<ol class="tg-test__steps">' + t.steps.map(s => '<li>' + s + '</li>').join('') + '</ol>';
+                return `<div class="tg-test ${cls}" data-tg-id="${t.id}">
+                    <div class="tg-test__head">
+                        <div>
+                            <span class="tg-test__id">${t.id}</span>
+                            <span class="tg-test__title">${t.title}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${statusBadge}
+                            <button class="tg-test__expand" onclick="window.tgToggleTest('${t.id}')">Expand ▾</button>
+                        </div>
+                    </div>
+                    <div class="tg-test__body">
+                        ${stepsHtml}
+                        <div class="tg-test__expected"><strong>Expected:</strong> ${t.expected}</div>
+                        <div class="tg-test__actions">
+                            <button class="tg-test__act tg-test__act--pass ${cur==='passed'?'is-current':''}" onclick="window.tgSetStatus('${t.id}', 'passed')">✓ Pass</button>
+                            <button class="tg-test__act tg-test__act--fail ${cur==='failed'?'is-current':''}" onclick="window.tgSetStatus('${t.id}', 'failed')">✗ Fail</button>
+                            ${cur ? `<button class="tg-test__act tg-test__act--reset" onclick="window.tgSetStatus('${t.id}', 'reset')">Reset</button>` : ''}
+                            ${s.ts ? `<span style="font-size:10px; color:#9CA3AF; margin-left:auto;">Last: ${new Date(s.ts).toLocaleString('en-MY', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
+                        </div>
+                        <input type="text" class="tg-test__note" placeholder="Note bug atau finding (optional)" value="${(s.note||'').replace(/"/g,'&quot;')}" oninput="window.tgSetNote('${t.id}', this.value)">
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }).join('');
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.querySelector('[data-tab="admin_test_guide"]');
+    if(btn) btn.addEventListener('click', () => setTimeout(window.renderTestGuide, 100));
+});
+
+// =============================================================
 // p7_2 — Re-engage Campaign (auto-detect dormant + tier outreach)
 // =============================================================
 window.RE_LOG_KEY = 'reengageLog_v1';

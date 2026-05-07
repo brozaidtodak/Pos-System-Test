@@ -1205,6 +1205,73 @@
 .re-history-row:last-child { border-bottom: none; }
 .re-empty { font-size: 12px; color: #9CA3AF; margin: 0; padding: 20px; text-align: center; }
 
+/* ============================================================
+   p1_30 — System Test Guide (tg-* namespace)
+   ============================================================ */
+.tg-root { padding: 18px; max-width: 1100px; margin: 0 auto; }
+.tg-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #E5E7EB; }
+.tg-header h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.6px; margin: 0 0 6px; color: #111827; }
+.tg-sub { font-size: 13px; color: #6B7280; margin: 0; max-width: 720px; line-height: 1.5; }
+.tg-summary { display: flex; gap: 8px; flex-wrap: wrap; }
+.tg-summary span { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.tg-summary .tg-sum-pass { background: #D1FAE5; color: #065F46; }
+.tg-summary .tg-sum-fail { background: #FEE2E2; color: #991B1B; }
+.tg-summary .tg-sum-untest { background: #F3F4F6; color: #4B5563; }
+
+.tg-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.tg-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.tg-pill { background: #FFF; border: 1px solid #E5E7EB; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer; transition: 0.15s; }
+.tg-pill:hover { border-color: #9CA3AF; color: #111827; }
+.tg-pill--active { background: #1F2937; color: #FFF; border-color: #1F2937; }
+.tg-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.tg-btn { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: 1px solid #E5E7EB; background: #FFF; color: #4B5563; transition: 0.15s; }
+.tg-btn:hover { border-color: #9CA3AF; color: #111827; }
+.tg-btn--ghost { background: transparent; }
+.tg-btn--danger { color: #991B1B; border-color: #FCA5A5; }
+.tg-btn--danger:hover { background: #FEE2E2; }
+
+.tg-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; padding: 10px 14px; background: #F9FAFB; border-radius: 10px; border: 1px solid #E5E7EB; }
+.tg-progress__bar { flex: 1; height: 8px; background: #E5E7EB; border-radius: 999px; overflow: hidden; }
+.tg-progress__fill { height: 100%; background: linear-gradient(90deg, #10B981, #059669); width: 0%; transition: width 0.3s ease; }
+.tg-progress__label { font-size: 12px; font-weight: 700; color: #4B5563; white-space: nowrap; }
+
+.tg-phase { background: #FFF; border: 1px solid #E5E7EB; border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+.tg-phase__head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; cursor: pointer; user-select: none; }
+.tg-phase__head:hover { background: #F3F4F6; }
+.tg-phase__title { font-size: 14px; font-weight: 800; color: #111827; }
+.tg-phase__count { font-size: 11px; color: #6B7280; font-weight: 600; }
+
+.tg-test { border-top: 1px solid #F3F4F6; padding: 12px 16px; transition: background 0.15s; }
+.tg-test:first-child { border-top: none; }
+.tg-test:hover { background: #FAFAFA; }
+.tg-test--passed { background: rgba(16,185,129,0.04); border-left: 3px solid #10B981; padding-left: 13px; }
+.tg-test--failed { background: rgba(239,68,68,0.04); border-left: 3px solid #EF4444; padding-left: 13px; }
+.tg-test__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.tg-test__title { font-size: 13px; font-weight: 700; color: #111827; }
+.tg-test__id { font-size: 10px; color: #9CA3AF; font-family: ui-monospace, monospace; font-weight: 600; margin-right: 6px; }
+.tg-test__expand { background: none; border: none; cursor: pointer; padding: 4px 8px; font-size: 11px; color: #6B7280; font-weight: 600; }
+.tg-test__expand:hover { color: var(--primary-700); }
+.tg-test__body { display: none; margin-top: 10px; padding: 12px; background: #F9FAFB; border-radius: 8px; }
+.tg-test.is-open .tg-test__body { display: block; }
+.tg-test__steps { font-size: 12px; color: #374151; line-height: 1.6; margin: 0 0 10px; padding-left: 18px; }
+.tg-test__steps li { margin-bottom: 4px; }
+.tg-test__expected { font-size: 12px; color: #4B5563; margin: 0 0 10px; padding: 8px 10px; background: #FEF3C7; border-radius: 6px; border-left: 3px solid #F59E0B; }
+.tg-test__expected strong { color: #92400E; }
+.tg-test__actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tg-test__act { padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid; transition: 0.15s; }
+.tg-test__act--pass { background: #FFF; color: #065F46; border-color: #6EE7B7; }
+.tg-test__act--pass:hover, .tg-test__act--pass.is-current { background: #10B981; color: #FFF; border-color: #10B981; }
+.tg-test__act--fail { background: #FFF; color: #991B1B; border-color: #FCA5A5; }
+.tg-test__act--fail:hover, .tg-test__act--fail.is-current { background: #EF4444; color: #FFF; border-color: #EF4444; }
+.tg-test__act--reset { background: #FFF; color: #6B7280; border-color: #E5E7EB; }
+.tg-test__act--reset:hover { background: #F3F4F6; color: #111827; }
+.tg-test__status { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
+.tg-test__status--passed { background: #D1FAE5; color: #065F46; }
+.tg-test__status--failed { background: #FEE2E2; color: #991B1B; }
+.tg-test__status--untested { background: #F3F4F6; color: #6B7280; }
+.tg-test__note { width: 100%; padding: 6px 10px; border: 1px solid #E5E7EB; border-radius: 6px; font-size: 11px; margin-top: 6px; outline: none; box-sizing: border-box; }
+.tg-test__note:focus { border-color: var(--primary-500); }
+
 /* p1_22 — PIN-only login: visual dots */
 .pin-dot {
  width: 14px; height: 14px; border-radius: 50%;
