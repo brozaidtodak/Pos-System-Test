@@ -11475,9 +11475,8 @@ window.setMode = function(mode) {
  } else if(mode === 'hq') {
  // p1_37: control centre — only HQ items (HR + Finance + Setup groups)
  show = isHq;
- } else { // manager — POS-side admin (Customers, Marketing, Ops, Reports). HQ items hidden.
+ } else { // manager — wide view: Sales + Inventory + Customers + Admin (everything except HQ + Investor)
  if(isHq || isInvestor) show = false;
- else if(isSales || isInv) show = false;
  else show = true;
  }
  it.classList.toggle('mode-hidden', !show);
