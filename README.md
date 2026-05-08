@@ -101,7 +101,7 @@ Push to `main` — Netlify builds and deploys automatically. The publish directo
 
 | Phase | Theme | Status |
 |---|---|---|
-| 1 | Stabilize | Shipped (30/30) |
+| 1 | Stabilize | Shipped (36/36) |
 | 2 | Compliance MY (LHDN, e-wallet) | Mostly done — blocked on external credentials |
 | 3 | Channels (i18n, public API, mobile) | In progress |
 | 4 | Operations | Shipped (12/12) |
