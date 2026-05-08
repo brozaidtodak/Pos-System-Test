@@ -11451,6 +11451,11 @@ window.setMode = function(mode) {
  t.setAttribute('aria-selected', isActive ? 'true' : 'false');
  });
 
+ // p1_45: Superior (Bos) gets full sidebar bypass — sees every item regardless of active mode.
+ // Mode bar still triggers landing-page redirects for context, but nothing is hidden.
+ const __u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ const __isSuperior = !!(__u && __u.role === 'superior');
+
  // Filter sidebar items via mode-hidden class (additive — respects existing role classes)
  const items = document.querySelectorAll('#appSidebar .menu-item');
  items.forEach(it => {
@@ -11464,6 +11469,8 @@ window.setMode = function(mode) {
  const dataTab = it.getAttribute('data-tab');
  // Roadmap button + Memo Board — keep visible in all modes (p1_19)
  if(it.id === 'sidebarRoadmapBtn' || dataTab === 'memo_board') { it.classList.remove('mode-hidden'); return; }
+ // p1_45: Superior bypass — Bos always sees everything, mode-class hiding skipped entirely
+ if(__isSuperior) { it.classList.remove('mode-hidden'); return; }
 
  let show = false;
  if(mode === 'cashier') {
@@ -11484,8 +11491,7 @@ window.setMode = function(mode) {
 
  // p1_42: per-tab override layer. Even if mode says show, an explicit deny in
  // staffSidebarAccess_v1 forces the item hidden. Skipped for superior (full access).
- const __u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
- if (__u && __u.role !== 'superior' && window.sidebarAccess) {
+ if (__u && !__isSuperior && window.sidebarAccess) {
  document.querySelectorAll('#appSidebar .menu-item[data-tab]').forEach(it => {
  const tabId = it.getAttribute('data-tab');
  const overridden = window.sidebarAccess.isAllowed(__u.staff_id, tabId);
