@@ -14130,6 +14130,7 @@ window.renderAskSection = async function() {
  const matrix = document.getElementById('permPaneMatrix');
  const audit = document.getElementById('permPaneAudit');
  const sidebarPane = document.getElementById('permPaneSidebar');
+ const tplPane = document.getElementById('permPaneTemplates');
  if (!matrix || !audit) return;
  document.querySelectorAll('.perm-tab').forEach(t => {
  const isActive = t.dataset.permTab === name;
@@ -14139,8 +14140,10 @@ window.renderAskSection = async function() {
  // Hide all panes first
  matrix.hidden = true; audit.hidden = true;
  if (sidebarPane) sidebarPane.hidden = true;
+ if (tplPane) tplPane.hidden = true;
  if (name === 'audit') { audit.hidden = false; window.renderPermissionsAudit(); }
  else if (name === 'sidebar') { if (sidebarPane) sidebarPane.hidden = false; window.renderPermSidebarPicker(); }
+ else if (name === 'templates') { if (tplPane) tplPane.hidden = false; window.renderPermTemplates(); }
  else { matrix.hidden = false; window.renderPermissionsMatrix(); }
  // Guard banner if not superior
  const guard = document.getElementById('permGuard');
@@ -14163,11 +14166,14 @@ window.renderAskSection = async function() {
  const lockedAll = u.role === 'superior'; // Bos all locked-true, can't be untoggled
  const isInact = inactive.has(u.staff_id);
  const rowCls = isInact ? 'perm-row perm-row--inactive' : 'perm-row';
+ const expiry = (window.permExpiry ? window.permExpiry.forStaff(u.staff_id) : {});
  const cells = PERM_MODES.map(m => {
  const checked = !!access[m];
  const disabled = !canEdit || lockedAll;
  const cellCls = m === 'hq' ? 'perm-cell perm-cell--hq' : 'perm-cell';
- return '<td class="' + cellCls + '"><label class="perm-cb"><input type="checkbox"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + ' onchange="window.togglePermission(\'' + escAttr(u.staff_id) + '\', \'' + m + '\', this.checked, this)"><span></span></label></td>';
+ const exp = expiry['mode:' + m];
+ const expBadge = (checked && exp) ? '<span class="perm-cell-exp" title="Auto-revoke ' + new Date(exp).toLocaleString('en-MY') + '">' + escAttr(window.permExpiry.formatRemaining(exp)) + '</span>' : '';
+ return '<td class="' + cellCls + '"><label class="perm-cb"><input type="checkbox"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + ' onchange="window.togglePermission(\'' + escAttr(u.staff_id) + '\', \'' + m + '\', this.checked, this)"><span></span></label>' + expBadge + '</td>';
  }).join('');
  const meta = '<div class="perm-staff-meta"><strong>' + escAttr(u.name) + '</strong><span>' + escAttr(u.staff_id) + ' · ' + escAttr(u.role) + (isInact ? ' · INACTIVE' : '') + (lockedAll ? ' · auto-true' : '') + '</span></div>';
  return '<tr class="' + rowCls + '" data-staff-id="' + escAttr(u.staff_id) + '"><td class="perm-staff-col">' + meta + '</td>' + cells + '</tr>';
@@ -14707,3 +14713,360 @@ window.shareProductWA = function(sku) {
  };
  window.sidebarAccess = api;
 })();
+
+// ============= p1_43 ROLE TEMPLATES (Tier 2) =============
+// Preset + custom permission templates. Apply = bulk write to both
+// staffModeAccess_v1 and staffSidebarAccess_v1 in one transaction.
+(function(){
+ const KEY = 'permTemplates_v1'; // custom templates only
+
+ // Built-in presets. Modes lists what's GRANTED (anything not listed = false override).
+ // sidebarDeny lists tab IDs that are explicitly denied even when the mode would allow.
+ const PRESETS = [
+ { id:'cashier_strict', name:'Cashier (strict)', desc:'POS only — pure cashier workflow.',
+ modes:{ cashier:true, operations:false, manager:false, hq:false, investor:false }, sidebarDeny:[] },
+ { id:'inventory_clerk', name:'Inventory clerk', desc:'POS + stock ops, no admin tools.',
+ modes:{ cashier:true, operations:true, manager:false, hq:false, investor:false }, sidebarDeny:[] },
+ { id:'manager_light', name:'Manager (light)', desc:'POS + stock + manager view, but no Bulk Edit / Re-engage / Test Guide.',
+ modes:{ cashier:true, operations:true, manager:true, hq:false, investor:false },
+ sidebarDeny:['admin_bulk_ops','admin_reengage','admin_test_guide'] },
+ { id:'manager_full', name:'Manager (full)', desc:'POS + stock + manager full access. No HQ / Investor.',
+ modes:{ cashier:true, operations:true, manager:true, hq:false, investor:false }, sidebarDeny:[] },
+ { id:'hq_basic', name:'HQ basic (delegate)', desc:'Manager + HQ control centre. No System Test Guide.',
+ modes:{ cashier:true, operations:true, manager:true, hq:true, investor:false },
+ sidebarDeny:['admin_test_guide'] },
+ { id:'hq_full', name:'HQ full', desc:'All modes including HQ. No Investor.',
+ modes:{ cashier:true, operations:true, manager:true, hq:true, investor:false }, sidebarDeny:[] }
+ ];
+
+ function readCustom() {
+ try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { return []; }
+ }
+ function writeCustom(arr) { try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch(e){} }
+ function actor() { return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null); }
+ function isSuperior() { const a = actor(); return !!(a && a.role === 'superior'); }
+ function escAttr(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+ function allTemplates() {
+ return PRESETS.map(p => ({ ...p, source:'preset' }))
+ .concat(readCustom().map(c => ({ ...c, source:'custom' })));
+ }
+
+ window.renderPermTemplates = function() {
+ const list = document.getElementById('permTemplatesList');
+ if (!list) return;
+ const tpls = allTemplates();
+ const staff = (typeof authUsers !== 'undefined' && Array.isArray(authUsers))
+ ? authUsers.filter(u => u.role !== 'superior') : [];
+ const roleOrder = { mgmt:0, inventory:1, sales:2, investor:3 };
+ staff.sort((a,b) => (roleOrder[a.role]||9) - (roleOrder[b.role]||9) || (a.name||'').localeCompare(b.name||''));
+ const staffOpts = '<option value="">— pilih staff —</option>' + staff.map(u =>
+ '<option value="' + escAttr(u.staff_id) + '">' + escAttr(u.name) + ' · ' + escAttr(u.role) + '</option>').join('');
+ list.innerHTML = tpls.map(t => {
+ const modesGranted = Object.keys(t.modes || {}).filter(m => t.modes[m]);
+ const denyCount = (t.sidebarDeny || []).length;
+ const sourceTag = t.source === 'preset'
+ ? '<span class="perm-tpl-tag perm-tpl-tag--preset">PRESET</span>'
+ : '<span class="perm-tpl-tag perm-tpl-tag--custom">CUSTOM</span>';
+ const deleteBtn = t.source === 'custom'
+ ? '<button type="button" class="perm-tpl-del" onclick="window.permDeleteTemplate(\'' + escAttr(t.id) + '\')" title="Delete custom template"><i data-lucide="trash-2" style="width:13px; height:13px;"></i></button>'
+ : '';
+ return '<div class="perm-tpl-card">' +
+ '<div class="perm-tpl-card__head">' +
+ '<div><strong>' + escAttr(t.name) + '</strong> ' + sourceTag + '</div>' +
+ deleteBtn +
+ '</div>' +
+ '<p class="perm-tpl-desc">' + escAttr(t.desc || '') + '</p>' +
+ '<div class="perm-tpl-meta">' +
+ '<span><i data-lucide="check-circle-2" style="width:12px; height:12px; color:#047857;"></i> Modes: ' + (modesGranted.length ? modesGranted.join(', ') : '<em>none</em>') + '</span>' +
+ (denyCount ? '<span><i data-lucide="ban" style="width:12px; height:12px; color:#B91C1C;"></i> ' + denyCount + ' sidebar deny</span>' : '') +
+ '</div>' +
+ '<div class="perm-tpl-apply">' +
+ '<select id="permTplStaff_' + escAttr(t.id) + '" style="flex:1; padding:6px 10px; border:1px solid var(--neutral-200); border-radius:6px; font-size:12.5px;">' + staffOpts + '</select>' +
+ '<select id="permTplDuration_' + escAttr(t.id) + '" style="padding:6px 8px; border:1px solid var(--neutral-200); border-radius:6px; font-size:12px;" title="Expiry duration">' +
+ '<option value="0">Permanent</option>' +
+ '<option value="1">1 day</option>' +
+ '<option value="7">7 days</option>' +
+ '<option value="30">30 days</option>' +
+ '</select>' +
+ '<button type="button" class="perm-tpl-apply-btn" onclick="(function(id){var d=parseInt((document.getElementById(\'permTplDuration_\'+id)||{}).value)||0; if(d>0){window.permApplyTemplateWithExpiry(id,d);} else {window.permApplyTemplate(id);}})(\'' + escAttr(t.id) + '\')"><i data-lucide="zap" style="width:13px; height:13px;"></i> Apply</button>' +
+ '</div>' +
+ '</div>';
+ }).join('');
+ if (window.lucide && typeof window.lucide.createIcons === 'function') { try { window.lucide.createIcons(); } catch(e){} }
+ };
+
+ window.permApplyTemplate = function(tplId) {
+ if (!isSuperior()) {
+ if (typeof showToast === 'function') showToast('Hanya Superior boleh apply template', 'warn');
+ return;
+ }
+ const tpls = allTemplates();
+ const tpl = tpls.find(t => t.id === tplId);
+ if (!tpl) return;
+ const sel = document.getElementById('permTplStaff_' + tplId);
+ const staffId = sel ? sel.value : '';
+ if (!staffId) {
+ if (typeof showToast === 'function') showToast('Pilih staff dulu sebelum apply', 'warn');
+ return;
+ }
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+ const target = list.find(u => u.staff_id === staffId);
+ if (!target) return;
+ if (target.role === 'superior') {
+ if (typeof showToast === 'function') showToast('Superior auto-true, takyah apply template', 'warn');
+ return;
+ }
+ if (!confirm('Apply "' + tpl.name + '" ke ' + target.name + '?\n\nIni akan overwrite mode access + sidebar access yang sedia ada untuk staff ni.')) return;
+
+ // Write mode access overlay
+ try {
+ const modeOverlay = JSON.parse(localStorage.getItem('staffModeAccess_v1') || '{}');
+ modeOverlay[staffId] = Object.assign({}, modeOverlay[staffId] || {}, tpl.modes || {});
+ // p1_37 alias: keep management flag in sync with hq for back-compat
+ if (typeof modeOverlay[staffId].hq !== 'undefined') modeOverlay[staffId].management = modeOverlay[staffId].hq;
+ localStorage.setItem('staffModeAccess_v1', JSON.stringify(modeOverlay));
+ } catch(e){}
+
+ // Write sidebar overlay — replace deny list (clear all then set deny)
+ if (window.sidebarAccess) {
+ window.sidebarAccess.clearAll(staffId);
+ (tpl.sidebarDeny || []).forEach(tabId => window.sidebarAccess.set(staffId, tabId, false));
+ }
+
+ // Audit log (one combined entry)
+ try {
+ if (typeof db !== 'undefined' && db && db.from) {
+ db.from('audit_logs').insert([{
+ action_type: 'apply_perm_template',
+ actor_name: actor() ? actor().name : 'Unknown',
+ target_staff: target.name + ' (' + target.staff_id + ')',
+ details: JSON.stringify({ staff_id: target.staff_id, template_id: tpl.id, template_name: tpl.name, modes: tpl.modes, sidebarDeny: tpl.sidebarDeny || [], source: 'permissions_centre' }),
+ created_at: new Date().toISOString()
+ }]).then(()=>{}).catch(()=>{});
+ }
+ } catch(e){}
+
+ // If editing self, refresh
+ const a = actor();
+ if (a && a.staff_id === staffId && typeof window.refreshAllModeTabsVisibility === 'function') {
+ try { window.refreshAllModeTabsVisibility(); } catch(e){}
+ const savedMode = localStorage.getItem('uxMode_v1') || 'cashier';
+ if (typeof window.setMode === 'function') { try { window.__modeJumping = true; window.setMode(savedMode); window.__modeJumping = false; } catch(e){} }
+ }
+ if (typeof CMDK_INDEX !== 'undefined' && CMDK_INDEX.length) CMDK_INDEX.length = 0;
+ if (typeof showToast === 'function') showToast('Template "' + tpl.name + '" applied to ' + target.name, 'success');
+ };
+
+ window.permSaveTemplateFromCurrent = function() {
+ if (!isSuperior()) {
+ if (typeof showToast === 'function') showToast('Hanya Superior boleh save template', 'warn');
+ return;
+ }
+ // Snapshot the currently-selected staff in the Sidebar Items tab
+ const staffSel = document.getElementById('permSidebarStaff');
+ const staffId = staffSel ? staffSel.value : '';
+ if (!staffId) {
+ alert('Pilih staff dulu di Sidebar Items tab — saya snapshot mode + sidebar access dia jadi template baru.');
+ return;
+ }
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+ const target = list.find(u => u.staff_id === staffId);
+ if (!target) return;
+ const name = prompt('Nama template baru?', target.name + ' setup');
+ if (!name) return;
+
+ // Snapshot mode access + sidebar denies
+ let modeOverlay = {};
+ try { modeOverlay = (JSON.parse(localStorage.getItem('staffModeAccess_v1') || '{}'))[staffId] || {}; } catch(e){}
+ const denies = window.sidebarAccess ? window.sidebarAccess.deniedTabs(staffId) : [];
+
+ const customs = readCustom();
+ const newTpl = {
+ id: 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+ name: name.slice(0, 60),
+ desc: 'Custom template — saved from ' + target.name + "'s setup",
+ modes: { cashier:!!modeOverlay.cashier, operations:!!modeOverlay.operations, manager:!!modeOverlay.manager, hq:!!modeOverlay.hq, investor:!!modeOverlay.investor },
+ sidebarDeny: denies.slice()
+ };
+ customs.push(newTpl);
+ writeCustom(customs);
+ if (typeof showToast === 'function') showToast('Template "' + name + '" saved', 'success');
+ // Re-render templates if pane visible
+ const pane = document.getElementById('permPaneTemplates');
+ if (pane && !pane.hidden) window.renderPermTemplates();
+ };
+
+ window.permDeleteTemplate = function(tplId) {
+ if (!isSuperior()) return;
+ const customs = readCustom();
+ const idx = customs.findIndex(t => t.id === tplId);
+ if (idx < 0) return;
+ if (!confirm('Delete custom template "' + customs[idx].name + '"?')) return;
+ customs.splice(idx, 1);
+ writeCustom(customs);
+ if (typeof showToast === 'function') showToast('Template deleted', 'success');
+ window.renderPermTemplates();
+ };
+})();
+
+// ============= p1_44 PERMISSION EXPIRY (Tier 3) =============
+// Time-bound mode grants. Auto-revoke on past expiry. 24h pre-expiry notification.
+// Storage: staffPermExpiry_v1 → {staffId: {modeKey: timestamp_ms}}
+//   modeKey: 'mode:hq', 'mode:manager', etc.
+(function(){
+ const KEY = 'staffPermExpiry_v1';
+ const NOTIFIED_KEY = 'permExpiryNotified_v1'; // tracks which expiry already had its 24h alert fired
+ const SCAN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+ const PRE_WARN_MS = 24 * 60 * 60 * 1000; // notify 24h before expiry
+
+ function readAll() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e) { return {}; } }
+ function writeAll(map) { try { localStorage.setItem(KEY, JSON.stringify(map)); } catch(e){} }
+ function readNotified() { try { return JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '{}'); } catch(e) { return {}; } }
+ function writeNotified(map) { try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(map)); } catch(e){} }
+
+ const api = {
+ forStaff(staffId) { return readAll()[staffId] || {}; },
+ set(staffId, key, expiresAt) {
+ const all = readAll();
+ if (!all[staffId]) all[staffId] = {};
+ if (!expiresAt) { delete all[staffId][key]; if (Object.keys(all[staffId]).length === 0) delete all[staffId]; }
+ else { all[staffId][key] = expiresAt; }
+ writeAll(all);
+ },
+ clear(staffId, key) { api.set(staffId, key, null); },
+ // Returns { remaining_ms, expired, target_ts } for a key, or null if no expiry
+ status(staffId, key) {
+ const m = api.forStaff(staffId);
+ if (!m[key]) return null;
+ const remaining = m[key] - Date.now();
+ return { target_ts: m[key], remaining_ms: remaining, expired: remaining <= 0 };
+ },
+ // Sweep all expiry entries — revoke past ones from staffModeAccess_v1, fire 24h warning toasts
+ scan() {
+ const all = readAll();
+ if (Object.keys(all).length === 0) return;
+ const now = Date.now();
+ const notified = readNotified();
+ let modeOverlay = {};
+ try { modeOverlay = JSON.parse(localStorage.getItem('staffModeAccess_v1') || '{}'); } catch(e){}
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+ let modeChanged = false;
+
+ Object.keys(all).forEach(staffId => {
+ const target = list.find(u => u.staff_id === staffId);
+ const targetName = target ? target.name : staffId;
+ Object.keys(all[staffId]).forEach(key => {
+ const ts = all[staffId][key];
+ const remaining = ts - now;
+ // Past expiry — auto-revoke
+ if (remaining <= 0) {
+ if (key.startsWith('mode:')) {
+ const mode = key.slice(5);
+ if (modeOverlay[staffId] && modeOverlay[staffId][mode]) {
+ modeOverlay[staffId][mode] = false;
+ modeChanged = true;
+ // Audit log
+ try {
+ if (typeof db !== 'undefined' && db && db.from) {
+ db.from('audit_logs').insert([{
+ action_type: 'auto_revoke_expired',
+ actor_name: 'system',
+ target_staff: targetName + ' (' + staffId + ')',
+ details: JSON.stringify({ staff_id: staffId, mode, expired_at: new Date(ts).toISOString() }),
+ created_at: new Date().toISOString()
+ }]).then(()=>{}).catch(()=>{});
+ }
+ } catch(e){}
+ if (window.notify) {
+ window.notify.add({ title:'Permission expired', body:targetName + ' · ' + mode + ' mode auto-revoked', type:'info' });
+ }
+ }
+ }
+ // Clear the expiry record
+ delete all[staffId][key];
+ // Clear notified flag
+ const nKey = staffId + '|' + key;
+ if (notified[nKey]) { delete notified[nKey]; }
+ }
+ // Approaching expiry (within 24h) — notify once
+ else if (remaining <= PRE_WARN_MS) {
+ const nKey = staffId + '|' + key;
+ if (!notified[nKey]) {
+ notified[nKey] = now;
+ const hoursLeft = Math.max(1, Math.round(remaining / (60*60*1000)));
+ if (window.notify) {
+ const label = key.startsWith('mode:') ? key.slice(5) : key;
+ window.notify.add({
+ title: 'Permission expiring soon',
+ body: targetName + ' · ' + label + ' expires in ' + hoursLeft + 'h',
+ type: 'warning'
+ });
+ }
+ }
+ }
+ });
+ // Drop empty staff entries
+ if (Object.keys(all[staffId]).length === 0) delete all[staffId];
+ });
+
+ if (modeChanged) {
+ try { localStorage.setItem('staffModeAccess_v1', JSON.stringify(modeOverlay)); } catch(e){}
+ // If currently logged-in user lost mode, refresh UI
+ const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ if (u && typeof window.refreshAllModeTabsVisibility === 'function') {
+ try { window.refreshAllModeTabsVisibility(); } catch(e){}
+ }
+ }
+ writeAll(all);
+ writeNotified(notified);
+ },
+ // Format helper for UI
+ formatRemaining(ts) {
+ if (!ts) return '';
+ const remaining = ts - Date.now();
+ if (remaining <= 0) return 'expired';
+ const days = Math.floor(remaining / (24*60*60*1000));
+ if (days >= 1) return 'expires in ' + days + 'd';
+ const hours = Math.max(1, Math.round(remaining / (60*60*1000)));
+ return 'expires in ' + hours + 'h';
+ }
+ };
+
+ window.permExpiry = api;
+
+ // Run scan on boot (after app fully loaded) and periodically.
+ if (document.readyState === 'loading') {
+ document.addEventListener('DOMContentLoaded', () => setTimeout(api.scan, 2000));
+ } else { setTimeout(api.scan, 2000); }
+ setInterval(api.scan, SCAN_INTERVAL_MS);
+ // Also scan when tab becomes visible after being hidden (e.g. left tab open overnight)
+ document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') api.scan(); });
+})();
+
+// ============= p1_44 — Apply template with optional expiry =============
+// Wraps the Tier 2 template apply to optionally set expiry on granted modes.
+window.permApplyTemplateWithExpiry = function(tplId, durationDays) {
+ const sel = document.getElementById('permTplStaff_' + tplId);
+ const staffId = sel ? sel.value : '';
+ if (!staffId) {
+ if (typeof showToast === 'function') showToast('Pilih staff dulu', 'warn');
+ return;
+ }
+ // Apply template normally first
+ if (typeof window.permApplyTemplate === 'function') window.permApplyTemplate(tplId);
+ // Then attach expiry to all granted modes if duration > 0
+ if (durationDays > 0 && window.permExpiry) {
+ const expiresAt = Date.now() + durationDays * 24 * 60 * 60 * 1000;
+ // Read what was just granted
+ try {
+ const modeOverlay = (JSON.parse(localStorage.getItem('staffModeAccess_v1') || '{}'))[staffId] || {};
+ ['cashier','operations','manager','hq','investor'].forEach(m => {
+ if (modeOverlay[m]) window.permExpiry.set(staffId, 'mode:' + m, expiresAt);
+ });
+ } catch(e){}
+ if (typeof showToast === 'function') showToast('Expiry set: ' + durationDays + ' days from now', 'info');
+ if (typeof window.renderPermTemplates === 'function') window.renderPermTemplates();
+ if (typeof window.renderPermissionsMatrix === 'function') window.renderPermissionsMatrix();
+ }
+};
