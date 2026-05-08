@@ -2590,6 +2590,28 @@ a:focus-visible {
 }
 .nc-empty__icon { display: block; margin: 0 auto 8px; opacity: 0.4; }
 
+/* ---------- STOCK TAKE DRAFT (st-) ---------- */
+.st-draft-banner {
+ display: flex; align-items: center; gap: 10px;
+ padding: 10px 14px; margin-bottom: 16px;
+ background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px;
+ font-size: 13px; color: #92400E;
+}
+.st-draft-banner span { flex: 1; }
+.st-draft-banner strong { font-weight: 700; }
+.st-draft-clear {
+ background: #FFF; border: 1px solid #FCD34D; color: #92400E;
+ font-size: 11.5px; font-weight: 700; padding: 4px 10px;
+ border-radius: 6px; cursor: pointer;
+ transition: background var(--transition-fast);
+}
+.st-draft-clear:hover { background: #FEF3C7; }
+.st-draft-tag {
+ display: inline-block; background: #FEF3C7; color: #92400E;
+ font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px;
+ margin-top: 5px;
+}
+
 /* ---------- DARK MODE (toggle ready, not yet active) ---------- */
 [data-theme="dark"] {
  --neutral-50: #18181B;

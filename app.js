@@ -257,6 +257,109 @@ window.showToast = function(msg, type) {
  } else { api.renderBadge(); }
 })();
 
+// p1_35: Stock Take save-draft. Auto-persists typed Kiraan Fizikal + komen so user
+// doesn't lose work on tab refresh / accidental close. Drafts older than 7d are pruned.
+(function(){
+ const KEY = 'stockTakeDraft_v1';
+ const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+ const DEBOUNCE_MS = 500;
+ let cache = null;
+ let saveTimer = null;
+ let pendingMutations = {};
+
+ function readRaw() {
+ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; }
+ }
+ function writeRaw(map) {
+ try { localStorage.setItem(KEY, JSON.stringify(map)); } catch(e){}
+ }
+ function load() {
+ if (cache) return cache;
+ const raw = readRaw();
+ const now = Date.now();
+ const fresh = {};
+ Object.keys(raw).forEach(sku => {
+ const e = raw[sku];
+ if (e && (now - (e.ts || 0)) < TTL_MS) fresh[sku] = e;
+ });
+ if (Object.keys(fresh).length !== Object.keys(raw).length) writeRaw(fresh); // prune stale
+ cache = fresh;
+ return cache;
+ }
+ function flush() {
+ const map = load();
+ Object.keys(pendingMutations).forEach(sku => {
+ const m = pendingMutations[sku];
+ if (m === null) { delete map[sku]; }
+ else { map[sku] = m; }
+ });
+ pendingMutations = {};
+ writeRaw(map);
+ if (typeof api.renderCounter === 'function') api.renderCounter();
+ }
+ function scheduleFlush() {
+ if (saveTimer) clearTimeout(saveTimer);
+ saveTimer = setTimeout(flush, DEBOUNCE_MS);
+ }
+
+ const api = {
+ get(sku) { return load()[sku] || null; },
+ all() { return load(); },
+ count() { return Object.keys(load()).length; },
+ save(sku, qty, note) {
+ if (!sku) return;
+ const qtyStr = (qty == null ? '' : String(qty)).trim();
+ const noteStr = (note == null ? '' : String(note));
+ if (qtyStr === '' && noteStr === '') { api.clear(sku); return; }
+ pendingMutations[sku] = { qty: qtyStr, note: noteStr, ts: Date.now() };
+ cache[sku] = pendingMutations[sku];
+ scheduleFlush();
+ },
+ clear(sku) {
+ if (!sku) return;
+ const map = load();
+ if (map[sku]) {
+ delete map[sku];
+ cache = map;
+ writeRaw(map);
+ api.renderCounter();
+ }
+ // also drop any pending mutation
+ delete pendingMutations[sku];
+ },
+ clearAll() {
+ if (!confirm('Buang semua draft Stock Take? Tindakan ini tidak boleh undo.')) return;
+ cache = {}; pendingMutations = {}; writeRaw({});
+ api.renderCounter();
+ if (typeof window.renderAuditCards === 'function') window.renderAuditCards();
+ if (typeof showToast === 'function') showToast('Semua draft Stock Take dibuang', 'success');
+ },
+ renderCounter() {
+ const wrap = document.getElementById('stDraftBanner');
+ if (!wrap) return;
+ const n = api.count();
+ if (n === 0) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+ wrap.hidden = false;
+ wrap.innerHTML =
+ '<div class="st-draft-banner">' +
+ '<i data-lucide="save" style="width:14px; height:14px;"></i>' +
+ '<span><strong>' + n + '</strong> draft kiraan disimpan auto. Boleh sambung bila-bila.</span>' +
+ '<button type="button" class="st-draft-clear" onclick="window.stDraft.clearAll()">Buang semua</button>' +
+ '</div>';
+ if (window.lucide && typeof window.lucide.createIcons === 'function') { try { window.lucide.createIcons(); } catch(e){} }
+ }
+ };
+
+ // Flush on tab close / visibility hidden (best-effort — protects against losing the last keystroke).
+ window.addEventListener('beforeunload', () => { if (saveTimer) { clearTimeout(saveTimer); flush(); } });
+ document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) { clearTimeout(saveTimer); flush(); } });
+
+ window.stDraft = api;
+ if (document.readyState === 'loading') {
+ document.addEventListener('DOMContentLoaded', () => api.renderCounter());
+ } else { api.renderCounter(); }
+})();
+
 // Global ESC handler: close any visible modal/overlay.
 document.addEventListener('keydown', function(e){
  if (e.key !== 'Escape') return;
@@ -977,7 +1080,7 @@ function renderStockTake() {
  </div>
  <div style="text-align:center;">
  <p class="small-lbl" style="margin:0; color:var(--primary);">Kiraan Fizikal</p>
- <input type="number" id="fizikalQty-${p.sku}" onkeyup="calculateVariance('${p.sku}')" class="login-input" style="width:80px; text-align:center; margin:0; padding:8px; border-color:var(--primary);" placeholder="Qty">
+ <input type="number" id="fizikalQty-${p.sku}" onkeyup="calculateVariance('${p.sku}')" oninput="window.stDraft && window.stDraft.save('${p.sku}', this.value, (document.getElementById('auditKomen-${p.sku}')||{}).value || '')" class="login-input" style="width:80px; text-align:center; margin:0; padding:8px; border-color:var(--primary);" placeholder="Qty">
  </div>
  <div style="text-align:center;">
  <p class="small-lbl" style="margin:0;">Selisih (+/-)</p>
@@ -990,7 +1093,7 @@ function renderStockTake() {
  <input type="text" onkeyup="handleTallyScan(event, '${p.sku}', '${erpBarcode}')" class="login-input" style="width:100%; text-align:center; padding:6px; margin:0; border-color:#0ea5e9; font-size:12px;" placeholder="Tumpu di sini & scan barcode...">
  </div>
 
- <input type="text" id="auditKomen-${p.sku}" class="login-input" style="margin:0; padding:8px; font-size:12px; margin-bottom:10px;" placeholder="Tulis catatan (Cth: 2 item rosak)...">
+ <input type="text" id="auditKomen-${p.sku}" oninput="window.stDraft && window.stDraft.save('${p.sku}', (document.getElementById('fizikalQty-${p.sku}')||{}).value || '', this.value)" class="login-input" style="margin:0; padding:8px; font-size:12px; margin-bottom:10px;" placeholder="Tulis catatan (Cth: 2 item rosak)...">
  
  <button onclick="submitAuditSingle('${p.sku}')" class="btn-primary" style="width:100%; margin:0; padding:10px;">SUBMIT KIRAAN ITEM</button>
  <div id="stampWrapper-${p.sku}">${stampHtml}</div>
@@ -1000,6 +1103,24 @@ function renderStockTake() {
  });
  
  container.innerHTML = html;
+
+ // p1_35: restore draft Kiraan Fizikal + komen, then refresh variance + draft tag
+ if (window.stDraft) {
+ const drafts = window.stDraft.all();
+ Object.keys(drafts).forEach(sku => {
+ const d = drafts[sku];
+ const fiz = document.getElementById('fizikalQty-' + sku);
+ const note = document.getElementById('auditKomen-' + sku);
+ if (fiz && d.qty) fiz.value = d.qty;
+ if (note && d.note) note.value = d.note;
+ if (fiz && d.qty && typeof window.calculateVariance === 'function') window.calculateVariance(sku);
+ const stamp = document.getElementById('stampWrapper-' + sku);
+ if (stamp && !auditTimestamps[sku]) {
+ stamp.innerHTML = '<span class="st-draft-tag" title="Auto-saved draft, belum submit">Draft tersimpan</span>';
+ }
+ });
+ window.stDraft.renderCounter();
+ }
 }
 
 window.openLocModal = function(sku) {
@@ -1118,6 +1239,9 @@ window.submitAuditSingle = function(sku) {
  
  // Optional border color change to signify done
  fizDom.parentElement.parentElement.parentElement.style.background = "#F0FDF4";
+
+ // p1_35: drop draft now that the count is submitted
+ if (window.stDraft) window.stDraft.clear(sku);
 }
 
 window.handleTallyScan = function(e, correctSku, correctErp) {
@@ -1259,7 +1383,10 @@ window.processBarcodeAudit = function() {
  auditTimestamps[sku] = today.toLocaleString('en-MY', { weekday:'short', day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
  
  if (typeof showToast==='function') showToast(`Kiraan fizikal untuk ${sku} disahkan`, 'success'); else alert(`Kiraan fizikal untuk ${sku} disahkan!`);
- 
+
+ // p1_35: drop draft after barcode-modal submit too
+ if (window.stDraft) window.stDraft.clear(sku);
+
  if (document.getElementById("auditCardsContainer").innerHTML !== "") {
  renderStockTake();
  setTimeout(() => {

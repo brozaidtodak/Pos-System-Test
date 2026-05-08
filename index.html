@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=34">
- <link rel="stylesheet" href="design-tokens.css?v=25">
+ <link rel="stylesheet" href="design-tokens.css?v=26">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -1843,7 +1843,8 @@
  <button onclick="openBarcodeScannerModal()" class="btn-primary" style="background:#10B981; border:none; margin:0; padding:10px 15px;"><span style="font-size:16px;"></span> Scan Barcode/QR</button>
  </div>
  <p style="font-size:13px; color:#888; margin-bottom:20px;">Kira dan sahkan kuantiti secara teliti. Tekan "Submit" bagi setiap item yang dikira, atau gunakan pengimbas kod.</p>
- 
+ <div id="stDraftBanner" hidden></div>
+
  <div style="background:#f0f9ff; border:2px dashed #0284c7; padding:20px; border-radius:8px; text-align:center; margin-bottom:20px;">
  <h3 style="color:#0284c7; margin-bottom:10px; font-size:18px;"> Tumpu Scanner Anda Di Sini</h3>
  <input type="text" id="mainAuditScanner" onkeyup="handleMainAuditScan(event)" class="login-input" style="font-size:20px; padding:15px; text-align:center; border-color:#0284c7; margin:0 auto; max-width:500px; font-weight:bold; letter-spacing:2px; box-shadow:0 0 10px rgba(2,132,199,0.2);" placeholder="Beep!">
@@ -8919,7 +8920,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=119"></script>
+ <script src="app.js?v=120"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
