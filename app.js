@@ -2882,6 +2882,58 @@ setTimeout(() => {
 window.lpSearchTerm = '';
 window.lpActiveCategory = '';
 
+// p1_48: Brand-as-category cleanup (read-only heuristic)
+// Some products were imported with category set to a brand name (e.g. "BLACKDOG").
+// Until the DB is hand-fixed, remap on the fly so the storefront pills/tiles stay clean.
+window.lpBrandNamedCats = new Set(['BLACKDOG','NATUREHIKE','MOUNTAINHIKER','CHANODUG','SHINE TRIP','10Camp Official Store']);
+window.lpCategoryRules = [
+    [['cookware utensil set','cookware','pot set','pot|','pot ','pot,','milk pan',' pan ','pan|','frying','kettle'], 'Pots'],
+    [['stove','burner'], 'Stove'],
+    [['tent','dome'], 'Tent'],
+    [['chair','stool'], 'Chairs'],
+    [['table','desk'], 'Tables'],
+    [['lamp','lantern','light pole','string light',' light ','light|'], 'Hanging Lamp'],
+    [['fan '], 'Portable Fan'],
+    [['backpack','bag '], 'Bags'],
+    [['box ','case ','organizer','crate'], 'Boxes'],
+    [['cup','mug'], 'Cups'],
+    [['mattress','sleeping pad','mat '], 'Mat'],
+    [['sleeping bag','sleepingbag'], 'Sleeping Bags'],
+    [['flysheet','tarp','canopy'], 'Flysheet'],
+    [['plate'], 'Plate'],
+    [['grill','bbq','barbecue'], 'Grills'],
+    [['hammock'], 'Hammock'],
+    [['wagon','cart','trolley'], 'Wagons'],
+    [['rope'], 'Rope'],
+    [['hammer'], 'Hammer'],
+    [['hook'], 'Hooks'],
+    [['carabiner','clip'], 'Carabiner'],
+    [['peg '], 'Pegs'],
+    [['ground sheet','footprint'], 'Ground Sheet'],
+    [['flag'], 'Flags'],
+    [['bucket','pail'], 'Bucket'],
+    [['rack'], 'Rack'],
+    [['shelf','shelves'], 'Shelf'],
+    [['blanket'], 'Blankets'],
+    [['pillow'], 'Pillow'],
+    [['cot '], 'Camping Cots'],
+    [['utensil','spork','fork','spoon','knife','chopstick'], 'Utensils'],
+    [['towel'], 'Towel'],
+    [['shirt','jersey','jacket','apparel'], 'Apparel'],
+    [['shovel','spade','axe'], 'Survival Tools']
+];
+window.lpRealCategory = function(p) {
+    const orig = (p && p.category) || '';
+    if(!window.lpBrandNamedCats.has(orig)) return orig;
+    const name = ((p && p.name) || '').toLowerCase();
+    for(const [kws, cat] of window.lpCategoryRules) {
+        for(const k of kws) {
+            if(name.includes(k)) return cat;
+        }
+    }
+    return '';
+};
+
 // p1_47: Activity Grid — group raw categories into 10 activity buckets for primary navigation
 window.LP_ACTIVITY_GROUPS = {
     shelter:   { label: 'Khemah & Shelter',  icon: 'tent',             cats: ['Tent','Dome','Canopy','Tent Pole','Pegs','Ground Sheet','Flysheet','Hammock'] },
@@ -2933,7 +2985,8 @@ window.lpRenderActivityTiles = function() {
     const products = masterProducts.filter(p => isPublished && isPublished(p));
     let html = '';
     Object.entries(window.LP_ACTIVITY_GROUPS).forEach(([key, g]) => {
-        const count = products.filter(p => g.cats.includes(p.category)).length;
+        // p1_48: count uses lpRealCategory so brand-named cats remap to real cats first
+        const count = products.filter(p => g.cats.includes(window.lpRealCategory(p))).length;
         const active = window.lpActiveActivity === key ? ' is-active' : '';
         html += `<button type="button" class="lp-activity-tile${active}" onclick="window.lpFilterByActivity('${key}')">
             <span class="lp-activity-tile__icon"><i data-lucide="${g.icon}"></i></span>
@@ -2962,7 +3015,10 @@ window.lpRenderCategoryPills = function() {
     const allowedCats = activity ? new Set(activity.cats) : null;
     const cats = {};
     masterProducts.filter(p => isPublished && isPublished(p)).forEach(p => {
-        const c = p.category || 'Uncat';
+        // p1_48: use cleaned category (brand-named cats remapped via heuristic)
+        const c = window.lpRealCategory(p) || 'Uncat';
+        // p1_48: never expose brand-named cats as a pill (BLACKDOG, NATUREHIKE, etc.)
+        if(window.lpBrandNamedCats && window.lpBrandNamedCats.has(c)) return;
         if(allowedCats && !allowedCats.has(c)) return;
         cats[c] = (cats[c] || 0) + 1;
     });
@@ -3132,12 +3188,13 @@ function renderPublicStorefront() {
         filtered = filtered.filter(p => (p.name||'').toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q) || (p.brand||'').toLowerCase().includes(q));
     }
     // p1_47: activity filter (broader bucket) applies first so category pill stays scoped
+    // p1_48: filters use lpRealCategory so brand-named cats remap to real ones
     if(window.lpActiveActivity && window.LP_ACTIVITY_GROUPS && window.LP_ACTIVITY_GROUPS[window.lpActiveActivity]) {
         const allowed = new Set(window.LP_ACTIVITY_GROUPS[window.lpActiveActivity].cats);
-        filtered = filtered.filter(p => allowed.has(p.category));
+        filtered = filtered.filter(p => allowed.has(window.lpRealCategory(p)));
     }
     if(window.lpActiveCategory && window.lpActiveCategory !== 'SALE') {
-        filtered = filtered.filter(p => (p.category || 'Uncat') === window.lpActiveCategory);
+        filtered = filtered.filter(p => (window.lpRealCategory(p) || 'Uncat') === window.lpActiveCategory);
     }
     if(window.lpActiveCategory === 'SALE') {
         // Treat anything with discount or specific sale flag as "sale"
@@ -3181,10 +3238,11 @@ function renderPublicStorefront() {
         }
         const parsed = window.lpParseProductName(lead);
         const skuEsc = String(lead.sku).replace(/'/g, "\\'");
-        // Suppress category badge if it duplicates the brand (e.g., brand "Black Dog" + category "BLACKDOG")
-        const sameBC = lead.brand && lead.category && lead.brand.toLowerCase().replace(/\s/g,'') === lead.category.toLowerCase().replace(/\s/g,'');
+        // p1_48: use cleaned category for the badge so customer never sees raw "BLACKDOG"
+        const cleanCat = window.lpRealCategory(lead);
+        const sameBC = lead.brand && cleanCat && lead.brand.toLowerCase().replace(/\s/g,'') === cleanCat.toLowerCase().replace(/\s/g,'');
         const brandPill = lead.brand ? `<span class="lp-product-card__brand">${lead.brand}</span>` : '';
-        const catPill = (!sameBC && lead.category) ? `<span class="lp-product-card__cat">${lead.category}</span>` : '';
+        const catPill = (!sameBC && cleanCat) ? `<span class="lp-product-card__cat">${cleanCat}</span>` : '';
         let chipsHtml = '';
         if (variants.length > 1) {
             chipsHtml = '<div class="lp-variant-chips">';
