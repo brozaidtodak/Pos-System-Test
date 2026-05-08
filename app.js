@@ -504,6 +504,33 @@ function switchHub(sectionIds, title, btnElement) {
  const oldTitle = document.getElementById('pageTitle');
  if(oldTitle) oldTitle.textContent = title;
  if(typeof updateBreadcrumb === 'function') updateBreadcrumb(title);
+
+ // p1_40: align in-section page heading to sidebar label so they never disagree.
+ // Looks for an explicit [data-page-title] marker first; otherwise the first h1/h2
+ // inside the section. Preserves icon children — only replaces text nodes.
+ // Opt-out via [data-skip-title-sync]. Runs immediately AND on next tick so
+ // sections that re-render via innerHTML (e.g. renderShiftSection) still get aligned.
+ const __syncSectionTitles = () => {
+ sectionIds.forEach(id => {
+ const sec = document.getElementById(id);
+ if (!sec) return;
+ let target = sec.querySelector('[data-page-title]');
+ if (!target) target = sec.querySelector('h1, h2');
+ if (!target || target.hasAttribute('data-skip-title-sync')) return;
+ let replaced = false;
+ Array.from(target.childNodes).forEach(node => {
+ if (node.nodeType === 3 /* TEXT_NODE */ && node.textContent.trim()) {
+ if (!replaced) { node.textContent = ' ' + title; replaced = true; }
+ else { node.textContent = ''; }
+ }
+ });
+ if (!replaced) target.appendChild(document.createTextNode(' ' + title));
+ });
+ };
+ if (title) {
+ __syncSectionTitles();
+ setTimeout(__syncSectionTitles, 0); // backstop for render functions that fire after switchHub
+ }
  
  // Update active state in sidebar
  document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
