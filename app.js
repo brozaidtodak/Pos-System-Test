@@ -11482,6 +11482,19 @@ window.setMode = function(mode) {
  it.classList.toggle('mode-hidden', !show);
  });
 
+ // p1_42: per-tab override layer. Even if mode says show, an explicit deny in
+ // staffSidebarAccess_v1 forces the item hidden. Skipped for superior (full access).
+ const __u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ if (__u && __u.role !== 'superior' && window.sidebarAccess) {
+ document.querySelectorAll('#appSidebar .menu-item[data-tab]').forEach(it => {
+ const tabId = it.getAttribute('data-tab');
+ const overridden = window.sidebarAccess.isAllowed(__u.staff_id, tabId);
+ if (overridden === false) it.classList.add('mode-hidden');
+ // overridden === true is a no-op here — mode rules already decided visibility,
+ // explicit grant doesn't bypass mode-level deny.
+ });
+ }
+
  // Auto-expand relevant group + redirect to first item if current section not in mode
  const groups = {
  cashier: 'sales',
@@ -11576,7 +11589,13 @@ const CMDK_INDEX = []; // built lazily
 
 function buildCmdkIndex() {
  if(CMDK_INDEX.length> 0) return;
+ // p1_42: respect per-tab access overlay so Cmd+K palette doesn't expose denied items
+ const __u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ const __overlay = (__u && __u.role !== 'superior' && window.sidebarAccess)
+ ? window.sidebarAccess.forStaff(__u.staff_id) : {};
  document.querySelectorAll('#appSidebar .menu-item[data-tab]').forEach(item => {
+ const tabId = item.getAttribute('data-tab');
+ if (__overlay[tabId] === false) return; // denied — skip from palette
  const label = item.textContent.trim().replace(/\s+/g, ' ').slice(0, 80);
  const onclickStr = item.getAttribute('onclick');
  const groupCls = (item.classList.contains('sales-only') ? 'Sales' :
@@ -14110,14 +14129,19 @@ window.renderAskSection = async function() {
  window.permTab = function(name) {
  const matrix = document.getElementById('permPaneMatrix');
  const audit = document.getElementById('permPaneAudit');
+ const sidebarPane = document.getElementById('permPaneSidebar');
  if (!matrix || !audit) return;
  document.querySelectorAll('.perm-tab').forEach(t => {
  const isActive = t.dataset.permTab === name;
  t.classList.toggle('is-active', isActive);
  t.setAttribute('aria-selected', isActive ? 'true' : 'false');
  });
- if (name === 'audit') { matrix.hidden = true; audit.hidden = false; window.renderPermissionsAudit(); }
- else { audit.hidden = true; matrix.hidden = false; window.renderPermissionsMatrix(); }
+ // Hide all panes first
+ matrix.hidden = true; audit.hidden = true;
+ if (sidebarPane) sidebarPane.hidden = true;
+ if (name === 'audit') { audit.hidden = false; window.renderPermissionsAudit(); }
+ else if (name === 'sidebar') { if (sidebarPane) sidebarPane.hidden = false; window.renderPermSidebarPicker(); }
+ else { matrix.hidden = false; window.renderPermissionsMatrix(); }
  // Guard banner if not superior
  const guard = document.getElementById('permGuard');
  if (guard) guard.hidden = isSuperior();
@@ -14239,6 +14263,219 @@ window.renderAskSection = async function() {
  const cls = c.granted ? 'perm-audit-grant' : 'perm-audit-revoke';
  return '<span class="' + cls + '">' + verb + ' ' + escAttr(lbl) + '</span>';
  }).join(' ');
+ const ts = new Date(row.created_at);
+ const tsStr = ts.toLocaleString('en-MY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+ const source = parsed.source ? ' · via ' + escAttr(parsed.source).replace(/_/g,' ') : '';
+ return '<div class="perm-audit-item">' +
+ '<div class="perm-audit-head"><strong>' + escAttr(row.actor_name || 'Unknown') + '</strong> → <em>' + escAttr(row.target_staff || '') + '</em></div>' +
+ '<div class="perm-audit-changes">' + (changeText || '<span style="color:var(--neutral-500);">no recorded changes</span>') + '</div>' +
+ '<div class="perm-audit-time">' + escAttr(tsStr) + escAttr(source) + '</div>' +
+ '</div>';
+ }).join('');
+ } catch(e) {
+ list.innerHTML = '<p style="text-align:center; padding:24px; color:#DC2626;">Audit query failed: ' + escAttr(e.message || e) + '</p>';
+ }
+ };
+
+ // p1_42 — Sidebar Items tab: per-staff per-tab grant/deny.
+ // Maps sidebar group attribute → human-readable section name (matches groupMap in Staff Mgmt).
+ const SB_GROUP_LABEL = {
+ sales: 'Sales (Kaunter mode)',
+ inv: 'Inventory (Operasi mode)',
+ customers: 'Customers (Pengurus mode)',
+ admin: 'Admin (Pengurus mode)',
+ hr: 'HR Department (HQ mode)',
+ finance: 'Finance Department (HQ mode)',
+ hq_setup: 'Setup (HQ mode)',
+ other: 'Other'
+ };
+
+ function collectSidebarItems() {
+ // Returns array of {tabId, label, group, classList}
+ const out = [];
+ document.querySelectorAll('#appSidebar .menu-item[data-tab]:not([data-group-toggle])').forEach(item => {
+ const tabId = item.getAttribute('data-tab');
+ if (!tabId) return;
+ let label = item.textContent.trim().split('\n')[0].trim().replace(/\s+/g, ' ');
+ label = label.replace(/\s*P\d+\s*$/, '').trim();
+ const group = item.getAttribute('data-group') || 'other';
+ out.push({ tabId, label, group, isHq: item.classList.contains('hq-only'), isInvestor: item.classList.contains('investor-only'), isSuperior: item.classList.contains('superior-only') });
+ });
+ return out;
+ }
+
+ window.renderPermSidebarPicker = function() {
+ const sel = document.getElementById('permSidebarStaff');
+ if (!sel) return;
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers.slice() : [];
+ // Filter out superior (auto-true full access)
+ const eligible = list.filter(u => u.role !== 'superior');
+ const roleOrder = { mgmt:0, inventory:1, sales:2, investor:3 };
+ eligible.sort((a,b) => (roleOrder[a.role]||9) - (roleOrder[b.role]||9) || (a.name||'').localeCompare(b.name||''));
+ const prev = sel.value;
+ sel.innerHTML = '<option value="">— pilih staff —</option>' + eligible.map(u => {
+ const denied = window.sidebarAccess ? window.sidebarAccess.deniedTabs(u.staff_id).length : 0;
+ const badge = denied > 0 ? ' (' + denied + ' denied)' : '';
+ return '<option value="' + escAttr(u.staff_id) + '">' + escAttr(u.name) + ' · ' + escAttr(u.role) + escAttr(badge) + '</option>';
+ }).join('');
+ if (prev) sel.value = prev;
+ if (sel.value) window.renderPermSidebarFor(sel.value);
+ else { document.getElementById('permSidebarBody').innerHTML = '<p style="text-align:center; padding:24px; color:var(--neutral-500);">Pilih staff untuk start.</p>'; document.getElementById('permSidebarReset').style.display = 'none'; }
+ };
+
+ window.renderPermSidebarFor = function(staffId) {
+ const body = document.getElementById('permSidebarBody');
+ const resetBtn = document.getElementById('permSidebarReset');
+ if (!body) return;
+ if (!staffId) { body.innerHTML = '<p style="text-align:center; padding:24px; color:var(--neutral-500);">Pilih staff untuk start.</p>'; if (resetBtn) resetBtn.style.display = 'none'; return; }
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+ const target = list.find(u => u.staff_id === staffId);
+ if (!target) { body.innerHTML = '<p>Staff tak dijumpai.</p>'; return; }
+ if (resetBtn) resetBtn.style.display = '';
+ const access = (typeof window.getModesAccess === 'function') ? window.getModesAccess(target) : {};
+ const overlay = window.sidebarAccess ? window.sidebarAccess.forStaff(staffId) : {};
+ const canEdit = isSuperior();
+ const items = collectSidebarItems();
+ // Group by sidebar group
+ const groups = {};
+ items.forEach(it => { (groups[it.group] = groups[it.group] || []).push(it); });
+ const orderedGroups = ['sales','inv','customers','admin','hr','finance','hq_setup','other'];
+ const html = orderedGroups.filter(g => groups[g] && groups[g].length).map(g => {
+ const rows = groups[g].map(it => {
+ // Mode-level access decides if this row is even reachable; show but mark "no mode access"
+ // Map group → governing mode for the "reachable" hint
+ const modeMap = { sales:'cashier', inv:'operations', customers:'manager', admin:'manager', hr:'hq', finance:'hq', hq_setup:'hq' };
+ const govMode = modeMap[g];
+ const hasMode = govMode ? !!access[govMode] : true;
+ const explicitDeny = overlay[it.tabId] === false;
+ const isVisible = hasMode && !explicitDeny;
+ const checked = !explicitDeny; // ticked = allowed (default or explicit), unticked = explicit deny
+ const disabled = !canEdit;
+ const hint = !hasMode ? '<span class="perm-sb-hint">no mode access</span>' : '';
+ return '<label class="perm-sb-row' + (isVisible ? '' : ' is-hidden') + '">' +
+ '<input type="checkbox"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') +
+ ' onchange="window.togglePermSidebar(\'' + escAttr(staffId) + '\', \'' + escAttr(it.tabId) + '\', this.checked, this)">' +
+ '<span class="perm-sb-label">' + escAttr(it.label) + '</span>' +
+ hint +
+ '</label>';
+ }).join('');
+ return '<div class="perm-sb-group"><h4>' + escAttr(SB_GROUP_LABEL[g] || g) + '</h4>' + rows + '</div>';
+ }).join('');
+ body.innerHTML = html || '<p>Tiada items.</p>';
+ };
+
+ window.togglePermSidebar = function(staffId, tabId, checked, el) {
+ if (!isSuperior()) {
+ if (typeof showToast === 'function') showToast('Hanya Superior boleh ubah permissions', 'warn');
+ if (el) el.checked = !checked;
+ return;
+ }
+ if (!staffId || !tabId || !window.sidebarAccess) return;
+ const a = actor();
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+ const target = list.find(u => u.staff_id === staffId);
+ if (!target) return;
+ const before = window.sidebarAccess.isAllowed(staffId, tabId);
+ if (checked) {
+ // ticked = allowed → clear any explicit deny (revert to inherit)
+ window.sidebarAccess.clear(staffId, tabId);
+ } else {
+ // unticked = explicit deny
+ window.sidebarAccess.set(staffId, tabId, false);
+ }
+ // Audit log
+ try {
+ if (typeof db !== 'undefined' && db && db.from) {
+ db.from('audit_logs').insert([{
+ action_type: 'update_sidebar_access',
+ actor_name: a ? a.name : 'Unknown',
+ target_staff: target.name + ' (' + target.staff_id + ')',
+ details: JSON.stringify({ staff_id: target.staff_id, role: target.role, tab: tabId, granted: checked, prev: before, source: 'permissions_centre' }),
+ created_at: new Date().toISOString()
+ }]).then(()=>{}).catch(()=>{});
+ }
+ } catch(e){}
+ // If editing self, refresh sidebar visibility so change is immediate
+ if (a && a.staff_id === staffId) {
+ const savedMode = localStorage.getItem('uxMode_v1') || 'cashier';
+ if (typeof window.setMode === 'function') { try { window.__modeJumping = true; window.setMode(savedMode); window.__modeJumping = false; } catch(e){} }
+ }
+ // Invalidate Cmd+K cache so palette reflects new state
+ if (typeof CMDK_INDEX !== 'undefined' && CMDK_INDEX.length) CMDK_INDEX.length = 0;
+ if (typeof showToast === 'function') showToast(target.name + ' · ' + tabId + ' = ' + (checked ? 'ALLOWED' : 'DENIED'), 'success');
+ // Re-render dropdown to refresh badge counts
+ window.renderPermSidebarPicker();
+ };
+
+ window.permSidebarResetAll = function() {
+ const sel = document.getElementById('permSidebarStaff');
+ if (!sel || !sel.value) return;
+ const staffId = sel.value;
+ const a = actor();
+ const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+ const target = list.find(u => u.staff_id === staffId);
+ if (!target) return;
+ if (!confirm('Reset semua sidebar overrides untuk ' + target.name + '? Semua item akan kembali default (ikut mode access).')) return;
+ if (window.sidebarAccess) window.sidebarAccess.clearAll(staffId);
+ try {
+ if (typeof db !== 'undefined' && db && db.from) {
+ db.from('audit_logs').insert([{
+ action_type: 'update_sidebar_access',
+ actor_name: a ? a.name : 'Unknown',
+ target_staff: target.name + ' (' + target.staff_id + ')',
+ details: JSON.stringify({ staff_id: target.staff_id, action: 'reset_all', source: 'permissions_centre' }),
+ created_at: new Date().toISOString()
+ }]).then(()=>{}).catch(()=>{});
+ }
+ } catch(e){}
+ if (typeof CMDK_INDEX !== 'undefined' && CMDK_INDEX.length) CMDK_INDEX.length = 0;
+ if (typeof showToast === 'function') showToast('Reset done · ' + target.name + ' kembali ke default sidebar access', 'success');
+ window.renderPermSidebarFor(staffId);
+ window.renderPermSidebarPicker();
+ };
+
+ // Audit Trail extended — query both update_mode_access AND update_sidebar_access
+ const __origRenderAudit = window.renderPermissionsAudit;
+ window.renderPermissionsAudit = async function() {
+ const list = document.getElementById('permAuditList');
+ if (!list) return;
+ list.innerHTML = '<p style="text-align:center; padding:24px; color:var(--neutral-500);">Loading audit logs…</p>';
+ if (typeof db === 'undefined' || !db || !db.from) {
+ list.innerHTML = '<p style="text-align:center; padding:24px; color:var(--neutral-500);">Database not ready — login dulu.</p>';
+ return;
+ }
+ try {
+ const { data, error } = await db.from('audit_logs')
+ .select('*')
+ .in('action_type', ['update_mode_access', 'update_sidebar_access'])
+ .order('created_at', { ascending: false })
+ .limit(50);
+ if (error) throw error;
+ if (!data || data.length === 0) {
+ list.innerHTML = '<p style="text-align:center; padding:32px; color:var(--neutral-500);">Tiada perubahan permission lagi.</p>';
+ return;
+ }
+ list.innerHTML = data.map(row => {
+ let parsed = {};
+ try { parsed = typeof row.details === 'string' ? JSON.parse(row.details) : (row.details || {}); } catch(e){}
+ let changeText = '';
+ if (row.action_type === 'update_mode_access') {
+ const changes = parsed.changes || [];
+ changeText = changes.map(c => {
+ const lbl = ({ cashier:'Kaunter', operations:'Operasi', manager:'Pengurus', hq:'HQ', investor:'Investor', management:'Pengurusan' })[c.mode] || c.mode;
+ const verb = c.granted ? 'GRANT' : 'REVOKE';
+ const cls = c.granted ? 'perm-audit-grant' : 'perm-audit-revoke';
+ return '<span class="' + cls + '">' + verb + ' ' + escAttr(lbl) + '</span>';
+ }).join(' ');
+ } else if (row.action_type === 'update_sidebar_access') {
+ if (parsed.action === 'reset_all') {
+ changeText = '<span class="perm-audit-grant">RESET ALL sidebar overrides</span>';
+ } else {
+ const verb = parsed.granted ? 'ALLOW' : 'DENY';
+ const cls = parsed.granted ? 'perm-audit-grant' : 'perm-audit-revoke';
+ changeText = '<span class="' + cls + '">' + verb + ' sidebar:' + escAttr(parsed.tab || '?') + '</span>';
+ }
+ }
  const ts = new Date(row.created_at);
  const tsStr = ts.toLocaleString('en-MY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
  const source = parsed.source ? ' · via ' + escAttr(parsed.source).replace(/_/g,' ') : '';
@@ -14421,3 +14658,52 @@ window.shareProductWA = function(sku) {
  if (typeof showToast === 'function') showToast('WhatsApp dibuka — pilih contact untuk hantar', 'success');
  }
 };
+
+// ============= p1_42 SIDEBAR-ITEM PERMISSIONS (Tier 1) =============
+// Granular per-tab access on top of staffModeAccess. Lets Bos hide specific
+// sidebar items from staff who otherwise have full mode access.
+// Storage: staffSidebarAccess_v1 → {staffId: {tabId: bool}}
+//   true  = explicitly grant (visible if mode access allows)
+//   false = explicitly deny (hide regardless of mode access)
+//   undef = inherit from mode access (default — back-compat)
+(function(){
+ const KEY = 'staffSidebarAccess_v1';
+
+ function readAll() {
+ try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e) { return {}; }
+ }
+ function writeAll(map) { try { localStorage.setItem(KEY, JSON.stringify(map)); } catch(e){} }
+
+ const api = {
+ forStaff(staffId) { return (readAll()[staffId]) || {}; },
+ isAllowed(staffId, tabId) {
+ // Return null = inherit (default), true = explicit grant, false = explicit deny
+ const o = api.forStaff(staffId);
+ return (tabId in o) ? !!o[tabId] : null;
+ },
+ set(staffId, tabId, value) {
+ const all = readAll();
+ if (!all[staffId]) all[staffId] = {};
+ all[staffId][tabId] = !!value;
+ writeAll(all);
+ },
+ clear(staffId, tabId) {
+ const all = readAll();
+ if (all[staffId] && tabId in all[staffId]) {
+ delete all[staffId][tabId];
+ if (Object.keys(all[staffId]).length === 0) delete all[staffId];
+ writeAll(all);
+ }
+ },
+ clearAll(staffId) {
+ const all = readAll();
+ if (all[staffId]) { delete all[staffId]; writeAll(all); }
+ },
+ // Returns array of denied tab IDs for a staff (for UI summary)
+ deniedTabs(staffId) {
+ const o = api.forStaff(staffId);
+ return Object.keys(o).filter(k => o[k] === false);
+ }
+ };
+ window.sidebarAccess = api;
+})();

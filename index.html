@@ -17,7 +17,7 @@
  <link href="data:image/x-icon;base64,iVBORw0KGgo=" rel="icon" type="image/x-icon">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=34">
- <link rel="stylesheet" href="design-tokens.css?v=32">
+ <link rel="stylesheet" href="design-tokens.css?v=33">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -6420,6 +6420,9 @@
  <button class="perm-tab is-active" role="tab" aria-selected="true" data-perm-tab="matrix" onclick="window.permTab && window.permTab('matrix')">
  <i data-lucide="grid-3x3" style="width:14px; height:14px;"></i> Mode Access
  </button>
+ <button class="perm-tab" role="tab" aria-selected="false" data-perm-tab="sidebar" onclick="window.permTab && window.permTab('sidebar')">
+ <i data-lucide="sidebar" style="width:14px; height:14px;"></i> Sidebar Items
+ </button>
  <button class="perm-tab" role="tab" aria-selected="false" data-perm-tab="audit" onclick="window.permTab && window.permTab('audit')">
  <i data-lucide="history" style="width:14px; height:14px;"></i> Audit Trail
  </button>
@@ -6436,6 +6439,24 @@
  <span><strong>Auto-save:</strong> setiap toggle terus simpan ke <code>staffModeAccess_v1</code> + audit_logs.</span>
  <button type="button" class="perm-btn-ghost" onclick="window.renderPermissionsMatrix && window.renderPermissionsMatrix()"><i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> Refresh</button>
  </div>
+ </div>
+
+ <div id="permPaneSidebar" class="perm-pane" hidden>
+ <div class="perm-sidebar-toolbar">
+ <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--neutral-700);">
+ <span><strong>Staff:</strong></span>
+ <select id="permSidebarStaff" onchange="window.renderPermSidebarFor(this.value)" style="padding:6px 10px; border:1px solid var(--neutral-200); border-radius:6px; font-size:13px; min-width:220px;">
+ <option value="">— pilih staff —</option>
+ </select>
+ </label>
+ <button type="button" class="perm-btn-ghost" id="permSidebarReset" style="display:none;" onclick="window.permSidebarResetAll && window.permSidebarResetAll()">
+ <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> Reset semua
+ </button>
+ </div>
+ <p style="font-size:11.5px; color:var(--neutral-500); margin:8px 4px 12px;">
+ Default: setiap staff nampak semua item dalam mode yang dia ada akses. Untick item untuk explicitly hide dari staff tu (extra restrict tanpa kena buang akses mode).
+ </p>
+ <div id="permSidebarBody" class="perm-sidebar-body"><p style="text-align:center; padding:24px; color:var(--neutral-500);">Pilih staff untuk start.</p></div>
  </div>
 
  <div id="permPaneAudit" class="perm-pane" hidden>
@@ -9022,7 +9043,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=131"></script>
+ <script src="app.js?v=132"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
