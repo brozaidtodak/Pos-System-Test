@@ -12332,7 +12332,10 @@ window.renderProductDatabase = function() {
  </div>
  <div class="pd-card__footer">
  <span>${p.category || '—'}</span>
+ <span style="display:inline-flex; gap:6px;">
+ <button onclick="event.stopPropagation(); window.shareProduct('${p.sku.replace(/'/g, "\\'")}')" aria-label="Share public-safe description" title="Share (no harga)" style="background:none; border:none; cursor:pointer; padding:2px 4px; color:var(--neutral-700);"><i data-lucide="share-2" style="width:13px; height:13px;"></i></button>
  <button onclick="event.stopPropagation(); window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')" aria-label="Edit details">Edit ›</button>
+ </span>
  </div>
  </div>
  `;
@@ -12354,7 +12357,10 @@ window.renderProductDatabase = function() {
  <td style="text-align:right;" class="pd-row-price">RM ${(p.price||0).toFixed(2)}</td>
  <td style="text-align:right; color:${stockColor}; font-weight:var(--weight-bold);">${stock}</td>
  <td style="text-align:center;">${pub ? '<span class="badge badge--success">Live</span>' : '<span class="badge badge--warning">Draft</span>'}</td>
- <td><button class="btn btn--ghost btn--sm" onclick="event.stopPropagation(); window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')">Edit</button></td>
+ <td>
+ <button class="btn btn--ghost btn--sm" onclick="event.stopPropagation(); window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')">Edit</button>
+ <button class="btn btn--ghost btn--sm" style="padding:4px 8px; margin-left:4px;" onclick="event.stopPropagation(); window.shareProduct('${p.sku.replace(/'/g, "\\'")}')" title="Share public-safe description"><i data-lucide="share-2" style="width:13px; height:13px;"></i></button>
+ </td>
  </tr>
  `;
  }).join('');
@@ -14216,3 +14222,105 @@ window.renderAskSection = async function() {
  }
  };
 })();
+
+// ============= p1_39 PRODUCT SHARE — public-safe text =============
+// Bos shares product description to public/customers without exposing
+// cost_price, selling price, numeric stock, or internal metadata.
+window.shareProduct = function(sku) {
+ if (!sku) return;
+ const list = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
+ const p = list.find(x => x.sku === sku);
+ if (!p) {
+ if (typeof showToast === 'function') showToast('Produk ' + sku + ' tak dijumpai', 'error');
+ return;
+ }
+
+ // Clean title — strip leading "SKU |" or "CODE _" pollution from EasyStore.
+ let cleanName = (p.name || 'Produk').toString();
+ cleanName = cleanName.replace(/^[A-Z0-9-]+\s*[|_]\s*/i, '').trim();
+ cleanName = cleanName.replace(/\s*[_]\s*/g, ' — ').replace(/\s{2,}/g, ' ').trim();
+ const letters = cleanName.replace(/[^A-Za-z]/g, '');
+ const upperRatio = letters.length ? (letters.match(/[A-Z]/g)||[]).length / letters.length : 0;
+ if (upperRatio > 0.7 && letters.length > 6) {
+ cleanName = cleanName.toLowerCase().replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
+ }
+
+ // Clean description — strip internal tags + duplicate header lines.
+ let desc = (p.description || '').toString();
+ desc = desc.replace(/\[EASYSTORE-ID:[^\]]+\]\s*/g, '');
+ desc = desc.replace(/\[STOK BELUM DISAHKAN[^\]]*\]\s*/g, '');
+ desc = desc.replace(/^Product name:\s*[^\n]*\n/i, '');
+ desc = desc.replace(/\n{3,}/g, '\n\n').trim();
+
+ // Stock availability — boolean text only, NEVER numeric (avoid leaking inventory levels).
+ const totalStock = (typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches))
+ ? inventoryBatches.filter(b => b.sku === sku).reduce((s, b) => s + (b.qty_remaining||0), 0) : 0;
+ const stockText = totalStock > 0 ? 'Stok ada' : 'Habis stok — sila tanya untuk restock';
+
+ // Specs — only safe public fields. Skip cost_price, price, bin, internal metadata.
+ const specs = [];
+ if (p.brand) specs.push('Jenama: ' + p.brand);
+ if (p.category) specs.push('Kategori: ' + p.category);
+ if (p.weight) specs.push('Berat: ' + p.weight);
+ if (p.dimensions) specs.push('Saiz: ' + p.dimensions);
+ if (p.material) specs.push('Bahan: ' + p.material);
+ if (p.color) specs.push('Warna: ' + p.color);
+
+ // Public URL — deep link to EasyStore product if mapping exists, else attribute to 10camp.com.
+ let url = 'https://10camp.com';
+ try {
+ const meta = p.metadata || {};
+ if (meta.easystore_product_id) url = 'https://10camp.com/products/' + meta.easystore_product_id;
+ else if (p.public_url) url = p.public_url;
+ } catch(e){}
+
+ // Assemble public-safe message.
+ const lines = [];
+ lines.push(cleanName);
+ lines.push('SKU: ' + sku);
+ if (specs.length) { lines.push(''); lines.push(specs.join('\n')); }
+ if (desc) { lines.push(''); lines.push(desc); }
+ lines.push('');
+ lines.push(stockText);
+ lines.push('');
+ lines.push('— 10 CAMP');
+ lines.push(url);
+ const text = lines.join('\n');
+
+ // Try Web Share API (native share sheet on mobile + recent desktop browsers).
+ const sharePayload = { title: cleanName + ' — 10 CAMP', text: text, url: url };
+ if (navigator.share && typeof navigator.share === 'function') {
+ navigator.share(sharePayload).then(() => {
+ if (typeof showToast === 'function') showToast('Shared', 'success');
+ }).catch((err) => {
+ // User cancelled or share unsupported — fall back to clipboard
+ if (err && err.name === 'AbortError') return; // silent on cancel
+ __copyShareText(text);
+ });
+ return;
+ }
+ __copyShareText(text);
+};
+
+function __copyShareText(text) {
+ if (navigator.clipboard && navigator.clipboard.writeText) {
+ navigator.clipboard.writeText(text).then(() => {
+ if (typeof showToast === 'function') showToast('Description disalin ke clipboard — boleh paste di WhatsApp / FB / IG', 'success');
+ }).catch(() => __copyFallback(text));
+ } else {
+ __copyFallback(text);
+ }
+}
+
+function __copyFallback(text) {
+ try {
+ const ta = document.createElement('textarea');
+ ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; ta.style.top = '-1000px';
+ document.body.appendChild(ta); ta.select();
+ const ok = document.execCommand('copy');
+ document.body.removeChild(ta);
+ if (typeof showToast === 'function') showToast(ok ? 'Description disalin ke clipboard' : 'Copy gagal — pilih manual dari modal', ok ? 'success' : 'warn');
+ } catch(e) {
+ if (typeof showToast === 'function') showToast('Copy gagal: ' + e.message, 'error');
+ }
+}
