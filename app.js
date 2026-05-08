@@ -12652,6 +12652,7 @@ window.I18N = {
  mode_operations: { bm: 'Operasi', en: 'Operations' },
  mode_manager: { bm: 'Pengurus', en: 'Manager' },
  mode_management: { bm: 'Pengurusan', en: 'Management' },
+ mode_hq: { bm: 'HQ', en: 'HQ' },
  mode_investor: { bm: 'Investor', en: 'Investor' },
 
  // Sidebar groups
@@ -12660,6 +12661,8 @@ window.I18N = {
  dept_admin: { bm: 'Jabatan Admin', en: 'Admin Department' },
  dept_finance: { bm: 'Jabatan Kewangan', en: 'Finance Department' },
  dept_hr: { bm: 'Jabatan HR', en: 'HR Department' },
+ dept_customers: { bm: 'Pelanggan', en: 'Customers' },
+ dept_setup: { bm: 'Tetapan', en: 'Setup' },
 
  // Common buttons
  btn_save: { bm: 'Simpan', en: 'Save' },
