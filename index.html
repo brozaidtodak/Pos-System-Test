@@ -5126,6 +5126,34 @@
  <span class="sy-status-pill armed" id="syStatusPill"><span class="dot"></span>SyncGuard Loaded</span>
  </div>
 
+ <!-- p1_50 — EasyStore sync health badge (cron + webhook status) -->
+ <div class="sy-card" id="esSyncHealthCard" style="border-left:4px solid var(--success);">
+ <h3 style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+ <span><i data-lucide="rss" style="width:18px;height:18px;vertical-align:-3px;"></i> EasyStore → POS Sync Health</span>
+ <span id="esSyncBadge" class="sy-status-pill armed" style="font-size:12px;"><span class="dot"></span><span id="esSyncBadgeText">Loading…</span></span>
+ </h3>
+ <p class="sub" style="margin-bottom:14px;">Two-layer protection: real-time webhook + 15-minute backup cron. Kalau webhook diam, cron tetap tarik order dalam 15 minit max.</p>
+ <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:14px;">
+ <div style="padding:12px 14px; background:var(--bg-color); border-radius:10px;">
+ <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">Last Cron Sync</div>
+ <div id="esSyncLastRun" style="font-size:14px; font-weight:700; margin-top:4px;">—</div>
+ </div>
+ <div style="padding:12px 14px; background:var(--bg-color); border-radius:10px;">
+ <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">Webhook Status</div>
+ <div id="esSyncWebhookStatus" style="font-size:14px; font-weight:700; margin-top:4px;">—</div>
+ </div>
+ <div style="padding:12px 14px; background:var(--bg-color); border-radius:10px;">
+ <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px;">EasyStore Orders (POS)</div>
+ <div id="esSyncOrderCount" style="font-size:14px; font-weight:700; margin-top:4px;">—</div>
+ </div>
+ </div>
+ <div style="display:flex; gap:8px; flex-wrap:wrap;">
+ <button class="sy-btn secondary" onclick="window.esSyncRefresh()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh Now</button>
+ <a class="sy-btn secondary" href="https://github.com/brozaidtodak/Pos-System-Test/actions/workflows/easystore-sync.yml" target="_blank" rel="noopener" style="text-decoration:none;"><i data-lucide="play-circle" style="width:14px;height:14px;"></i> Trigger GitHub Sync</a>
+ <a class="sy-btn secondary" href="https://10camp.easystore.co/admin" target="_blank" rel="noopener" style="text-decoration:none;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> EasyStore Admin</a>
+ </div>
+ </div>
+
  <!-- The conflict scenario -->
  <div class="sy-card">
  <h3> The Problem</h3>
@@ -9109,7 +9137,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=139"></script>
+ <script src="app.js?v=140"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

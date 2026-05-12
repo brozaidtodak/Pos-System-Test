@@ -15640,3 +15640,121 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  }, 3500);
 });
+
+// =============================================================
+// p1_50 — ESYNC HEALTH BADGE (HQ → Sync section)
+// =============================================================
+// Reads sync_status table (written by GH Actions cron) + counts EasyStore
+// orders in sales_history. Renders status pill + last-run timestamp + manual
+// refresh button. Auto-refreshes every 60s while syncSection is visible.
+window.__esSyncTimer = null;
+
+window.esSyncFmtAge = function(ts) {
+ if(!ts) return { text: 'Never', mins: Infinity, color: 'red' };
+ const t = new Date(ts).getTime();
+ if(isNaN(t)) return { text: 'Unknown', mins: Infinity, color: 'red' };
+ const mins = Math.floor((Date.now() - t) / 60000);
+ let text, color;
+ if(mins < 1) text = 'Just now';
+ else if(mins < 60) text = mins + ' min ago';
+ else if(mins < 1440) text = Math.floor(mins/60) + ' jam ' + (mins%60) + ' min ago';
+ else text = Math.floor(mins/1440) + ' hari ago';
+ if(mins < 30) color = 'green';
+ else if(mins < 60) color = 'amber';
+ else color = 'red';
+ return { text, mins, color };
+};
+
+window.esSyncRefresh = async function() {
+ const badge = document.getElementById('esSyncBadge');
+ const badgeTxt = document.getElementById('esSyncBadgeText');
+ const lastRunEl = document.getElementById('esSyncLastRun');
+ const webhookEl = document.getElementById('esSyncWebhookStatus');
+ const orderCountEl = document.getElementById('esSyncOrderCount');
+ const card = document.getElementById('esSyncHealthCard');
+ if(!badge || !badgeTxt) return; // section not rendered
+
+ if(!db) {
+ badgeTxt.textContent = 'DB Offline';
+ return;
+ }
+
+ // 1. Last cron run timestamp
+ let lastRunTs = null;
+ try {
+ const { data } = await db.from('sync_status').select('last_run_at,note').eq('source', 'easystore_cron').maybeSingle();
+ if(data && data.last_run_at) lastRunTs = data.last_run_at;
+ } catch(e) { /* table may not exist yet — first cron tick creates it */ }
+
+ // 2. EasyStore order count + latest order time
+ let esOrderCount = 0, latestOrderTs = null;
+ try {
+ const { count } = await db.from('sales_history').select('id', { count: 'exact', head: true }).ilike('channel', 'EasyStore%');
+ esOrderCount = count || 0;
+ const { data: latest } = await db.from('sales_history').select('created_at').ilike('channel', 'EasyStore%').order('created_at', { ascending: false }).limit(1).maybeSingle();
+ if(latest && latest.created_at) latestOrderTs = latest.created_at;
+ } catch(e) {}
+
+ // 3. Webhook health (HEAD/GET /api/easystore-webhook returns {ok:true,hmac_configured:true,...})
+ let webhookOk = null;
+ try {
+ const r = await fetch('/api/easystore-webhook', { method: 'GET' });
+ if(r.ok) {
+ const j = await r.json();
+ webhookOk = !!(j.ok && j.hmac_configured && j.supabase_configured);
+ } else { webhookOk = false; }
+ } catch(e) { webhookOk = false; }
+
+ // Render. Status pill reflects WORST of (cron freshness, latest order freshness).
+ // If cron has run within 30 min OR a real order arrived within 30 min, healthy.
+ const cronAge = window.esSyncFmtAge(lastRunTs);
+ const orderAge = window.esSyncFmtAge(latestOrderTs);
+ const bestColor = (cronAge.color === 'green' || orderAge.color === 'green') ? 'green'
+ : ((cronAge.color === 'amber' || orderAge.color === 'amber') ? 'amber' : 'red');
+
+ if(lastRunEl) lastRunEl.textContent = cronAge.text + (lastRunTs ? '' : ' (cron not run yet — first tick within 15 min)');
+ if(webhookEl) webhookEl.textContent = webhookOk === null ? 'Checking…' : (webhookOk ? 'Endpoint OK' : 'Endpoint DOWN');
+ if(orderCountEl) orderCountEl.textContent = esOrderCount + ' orders · latest ' + orderAge.text;
+
+ // Badge styling
+ badge.classList.remove('armed', 'unarmed');
+ if(card) card.style.borderLeftColor = '';
+ if(bestColor === 'green') {
+ badge.classList.add('armed');
+ badgeTxt.textContent = 'Healthy';
+ if(card) card.style.borderLeftColor = 'var(--success)';
+ } else if(bestColor === 'amber') {
+ badge.classList.add('unarmed');
+ badgeTxt.textContent = 'Stale (' + Math.min(cronAge.mins, orderAge.mins) + ' min)';
+ if(card) card.style.borderLeftColor = 'var(--warning)';
+ } else {
+ badge.classList.add('unarmed');
+ badge.style.color = '#DC2626';
+ badge.style.background = 'rgba(239,68,68,.12)';
+ badgeTxt.textContent = 'STALE — check webhook';
+ if(card) card.style.borderLeftColor = 'var(--danger)';
+ }
+};
+
+// Wrap renderSyncSection so the badge auto-refreshes when section opens + every 60s.
+document.addEventListener('DOMContentLoaded', () => {
+ const installEsSyncHook = () => {
+ const orig = window.renderSyncSection;
+ if(typeof orig !== 'function' || orig.__esSyncWrapped) return;
+ window.renderSyncSection = function() {
+ const r = orig.apply(this, arguments);
+ setTimeout(() => window.esSyncRefresh(), 50);
+ if(window.__esSyncTimer) clearInterval(window.__esSyncTimer);
+ window.__esSyncTimer = setInterval(() => {
+ const sec = document.getElementById('syncSection');
+ if(sec && sec.style.display !== 'none') window.esSyncRefresh();
+ else if(window.__esSyncTimer) { clearInterval(window.__esSyncTimer); window.__esSyncTimer = null; }
+ }, 60000);
+ return r;
+ };
+ window.renderSyncSection.__esSyncWrapped = true;
+ };
+ // renderSyncSection is defined inside an IIFE in index.html — install after DOM ready.
+ setTimeout(installEsSyncHook, 1500);
+ setTimeout(installEsSyncHook, 4000); // backstop
+});
