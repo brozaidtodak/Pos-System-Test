@@ -3290,16 +3290,44 @@ window.lpUpdateCartBadge = function() {
     }
 };
 
-window.lpNewsletterSubmit = function(form) {
-    const email = form.querySelector('input[type="email"]').value.trim();
-    if(!email) return;
-    let subs = []; try { subs = JSON.parse(localStorage.getItem('newsletter_subs_v1') || '[]'); } catch(e){}
-    if(!subs.includes(email)) {
-        subs.push(email);
-        try { localStorage.setItem('newsletter_subs_v1', JSON.stringify(subs)); } catch(e){}
+// p1_60: newsletter subscriptions now persist to Supabase newsletter_subscribers
+// (RLS allows anon INSERT only). Falls back to localStorage when offline / DB fails.
+window.lpNewsletterSubmit = async function(form) {
+    const input = form.querySelector('input[type="email"]');
+    const email = (input && input.value ? input.value : '').trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (typeof showToast === 'function') showToast('Email tak sah — cuba sekali lagi.', 'error');
+        return;
     }
-    form.querySelector('input[type="email"]').value = '';
-    if(typeof showToast === 'function') showToast('Thanks! You\'re on the list.', 'success');
+    if (input) input.value = '';
+
+    let savedToDb = false;
+    try {
+        if (db && typeof db.from === 'function') {
+            const { error } = await db.from('newsletter_subscribers').insert([{
+                email,
+                source: 'landing',
+                user_agent: (navigator.userAgent || '').slice(0, 200)
+            }]);
+            // 23505 = unique_violation (already subscribed) — treat as success
+            if (!error || error.code === '23505') savedToDb = true;
+            else console.warn('newsletter insert failed:', error);
+        }
+    } catch (e) {
+        console.warn('newsletter insert exception:', e);
+    }
+
+    if (!savedToDb) {
+        try {
+            let subs = JSON.parse(localStorage.getItem('newsletter_subs_v1') || '[]');
+            if (!subs.includes(email)) subs.push(email);
+            localStorage.setItem('newsletter_subs_v1', JSON.stringify(subs));
+        } catch(e){}
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(savedToDb ? 'Thanks! You\'re on the list.' : 'Saved locally — kita sync nanti.', savedToDb ? 'success' : 'info');
+    }
 };
 
 // Refresh promo banner from active promotions (best-effort)
