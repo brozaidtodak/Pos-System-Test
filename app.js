@@ -3139,6 +3139,7 @@ window.lpHandleSearch = function(val) {
     window.lpUpdateShopHeading();
 };
 window.lpFilterCategory = function(cat) {
+    window.lpActiveBrand = '';
     window.lpActiveCategory = cat || '';
     publicCurrentPage = 1;
     renderPublicStorefront();
@@ -3153,6 +3154,7 @@ window.lpFilterByActivity = function(activityKey) {
     // Toggle off if user clicks the same tile
     window.lpActiveActivity = (window.lpActiveActivity === next) ? '' : next;
     // Reset narrower filters so user starts fresh inside the activity
+    window.lpActiveBrand = '';
     window.lpActiveCategory = '';
     publicCurrentPage = 1;
     renderPublicStorefront();
@@ -3162,6 +3164,30 @@ window.lpFilterByActivity = function(activityKey) {
     const shop = document.getElementById('shop');
     if(shop) shop.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+// p1_58: brand filter — used by Featured Collection cards' data-filter-brand attribute
+window.lpFilterBrand = function(brand) {
+    window.lpActiveBrand = brand || '';
+    window.lpActiveCategory = '';
+    window.lpActiveActivity = '';
+    publicCurrentPage = 1;
+    renderPublicStorefront();
+    window.lpUpdateShopHeading();
+    window.lpRenderActivityTiles();
+    window.lpRenderCategoryPills();
+    const shop = document.getElementById('shop');
+    if(shop) shop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+// p1_58: delegated click handler for Featured Collection cards so their
+// data-filter-brand / data-filter-category attributes actually do something.
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.lp-collection');
+    if (!card) return;
+    const brand = (card.getAttribute('data-filter-brand') || '').trim();
+    const cat = (card.getAttribute('data-filter-category') || '').trim();
+    if (brand) { e.preventDefault(); window.lpFilterBrand(brand); }
+    else if (cat) { e.preventDefault(); window.lpFilterCategory(cat); }
+    // else: fall through to the default href="#shop" anchor behaviour
+});
 // p1_56: replace hardcoded hero/trust/about counts ("10K+ products", "2,800+ customers", "11 brands")
 // with live numbers from masterProducts + customersData. Runs after data load.
 window.lpUpdateTrustStats = function() {
@@ -3205,7 +3231,8 @@ window.lpUpdateShopHeading = function() {
     const h = document.getElementById('lpShopHeading');
     if(!h) return;
     const act = window.lpActiveActivity && window.LP_ACTIVITY_GROUPS && window.LP_ACTIVITY_GROUPS[window.lpActiveActivity];
-    if(window.lpActiveCategory && window.lpActiveCategory !== 'SALE') h.textContent = window.lpActiveCategory;
+    if(window.lpActiveBrand) h.textContent = window.lpActiveBrand;
+    else if(window.lpActiveCategory && window.lpActiveCategory !== 'SALE') h.textContent = window.lpActiveCategory;
     else if(window.lpActiveCategory === 'SALE') h.textContent = 'Festival Sale';
     else if(window.lpSearchTerm) h.textContent = 'Search: "' + window.lpSearchTerm + '"';
     else if(act) h.textContent = act.label;
@@ -3625,6 +3652,10 @@ function renderPublicStorefront() {
     if(window.lpActiveActivity && window.LP_ACTIVITY_GROUPS && window.LP_ACTIVITY_GROUPS[window.lpActiveActivity]) {
         const allowed = new Set(window.LP_ACTIVITY_GROUPS[window.lpActiveActivity].cats);
         filtered = filtered.filter(p => allowed.has(window.lpRealCategory(p)));
+    }
+    if(window.lpActiveBrand) {
+        const want = window.lpActiveBrand.toLowerCase();
+        filtered = filtered.filter(p => (p.brand || '').toLowerCase() === want);
     }
     if(window.lpActiveCategory && window.lpActiveCategory !== 'SALE') {
         filtered = filtered.filter(p => (window.lpRealCategory(p) || 'Uncat') === window.lpActiveCategory);
