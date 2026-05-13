@@ -3629,17 +3629,27 @@ function renderPublicStorefront() {
     const fmt = (n) => 'RM ' + (Number.isInteger(n) ? n : n.toFixed(2));
     let html = '';
     sliced.forEach((variants, gIdx) => {
+        // p1_55: pick the first in-stock variant as the card lead so groups with sold-out variants[0]
+        // but live siblings stop reading as "Sold Out". Sold-out badge only when the whole group is out.
+        const stockBySku = {};
+        let groupTotalStock = 0;
+        variants.forEach(v => {
+            const s = inventoryBatches.filter(b => b.sku === v.sku && b.qty_remaining > 0).reduce((sum, b) => sum + b.qty_remaining, 0);
+            stockBySku[v.sku] = s;
+            groupTotalStock += s;
+        });
+        const inStockIdx = variants.findIndex(v => stockBySku[v.sku] > 0);
+        if (inStockIdx > 0) { const promoted = variants.splice(inStockIdx, 1)[0]; variants.unshift(promoted); }
         const lead = variants[0];
         const cardKey = (lead.parent_sku || lead.sku || ('idx' + gIdx)).replace(/[^a-zA-Z0-9]/g, '_');
         const cardId = 'lpCard_' + gIdx + '_' + cardKey;
-        const myBatches = inventoryBatches.filter(b => b.sku === lead.sku && b.qty_remaining > 0);
-        const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+        const totalStock = stockBySku[lead.sku] || 0;
         const thumb = lead.images && lead.images[0] ? lead.images[0] : "https://placehold.co/300x300?text=No+Img";
         const compareAt = parseFloat(lead.compare_at_price || 0);
         const price = parseFloat(lead.price || 0);
         const onSale = compareAt > price && price > 0;
         let badge = '';
-        if(totalStock <= 0) badge = '<span class="lp-product-card__badge lp-product-card__badge--soldout">Sold Out</span>';
+        if(groupTotalStock <= 0) badge = '<span class="lp-product-card__badge lp-product-card__badge--soldout">Sold Out</span>';
         else if(onSale) {
             const off = Math.round(((compareAt - price) / compareAt) * 100);
             badge = '<span class="lp-product-card__badge">-' + off + '%</span>';
