@@ -1,4 +1,4 @@
-# 10 CAMP POS
+# POS10C
 
 Custom Point of Sale system for [10 CAMP](https://10camp.com), built to replace EasyStore POS with a leaner, in-house alternative tailored to the shop's workflow.
 

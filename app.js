@@ -3021,7 +3021,7 @@ function handleLogout() {
  document.getElementById("shopAppLayout").style.display = "block";
  document.getElementById("posAppLayout").style.display = "none";
  const sessEl = document.getElementById("sessionUsername");
- if(sessEl) sessEl.textContent = "10 CAMP POS";
+ if(sessEl) sessEl.textContent = "POS10C";
  document.getElementById("appSidebar")?.classList.remove('open');
  document.getElementById("sidebarOverlay")?.classList.remove('active');
 
@@ -3428,8 +3428,10 @@ window.lpSelectVariant = function(cardId, sku, btn) {
         addBtn.dataset.sku = sku;
         const myBatches = (typeof inventoryBatches !== 'undefined') ? inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0) : [];
         const totalStock = myBatches.reduce((s, b) => s + b.qty_remaining, 0);
-        if (totalStock <= 0) { addBtn.disabled = true; addBtn.textContent = 'Sold Out'; }
-        else { addBtn.disabled = false; addBtn.textContent = 'Add to Cart'; }
+        const soldOutLbl = (window.t ? window.t('lp_card_soldout') : 'Sold Out');
+        const addLbl = (window.t ? window.t('lp_card_add') : 'Add to Cart');
+        if (totalStock <= 0) { addBtn.disabled = true; addBtn.textContent = soldOutLbl; }
+        else { addBtn.disabled = false; addBtn.textContent = addLbl; }
     }
 };
 
@@ -3697,7 +3699,28 @@ function renderPublicStorefront() {
     }
 
     // p1_46: collapse variants — 1 card per parent_sku
-    const groups = window.lpGroupVariants(filtered);
+    let groups = window.lpGroupVariants(filtered);
+
+    // p1_50: hide sold-out groups (all variants stockless) from main grid + reorder variants
+    // so the in-stock one is shown as the lead card (otherwise badge/button still read "Sold Out"
+    // even when sibling variants have stock).
+    // Sold-out items get surfaced separately by renderPopularSoldOut() as social proof.
+    // Skip both steps if batches haven't loaded yet — otherwise nothing would render on first paint.
+    const __stockFor = (sku) => {
+        if(!Array.isArray(inventoryBatches)) return 0;
+        return inventoryBatches
+            .filter(b => b.sku === sku && b.qty_remaining > 0)
+            .reduce((s, b) => s + b.qty_remaining, 0);
+    };
+    if(Array.isArray(inventoryBatches) && inventoryBatches.length > 0) {
+        groups = groups
+            .map(variants => {
+                // In-stock variants first so variants[0] (lead) always reflects an available SKU
+                // when the group has at least one in stock.
+                return [...variants].sort((a, b) => __stockFor(b.sku) - __stockFor(a.sku));
+            })
+            .filter(variants => __stockFor(variants[0].sku) > 0);
+    }
 
     const itemsPerPg = (typeof itemsPerPage === 'number' ? itemsPerPage : 20);
     const totalPages = Math.ceil(groups.length / itemsPerPg) || 1;
@@ -3706,7 +3729,12 @@ function renderPublicStorefront() {
     const sliced = groups.slice((publicCurrentPage - 1) * itemsPerPg, publicCurrentPage * itemsPerPg);
 
     if(!sliced.length) {
-        list.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:#9CA3AF;"><p style="font-size:16px;">No products match your search.</p><button class="lp-btn lp-btn--primary lp-btn--sm" style="margin-top:14px;" onclick="window.lpHandleSearch(\'\'); window.lpFilterCategory(\'\')">Clear filters</button></div>';
+        const noMatch = (window.t ? window.t('lp_no_match') : 'No products match your search.');
+        const clearBtn = (window.t ? window.t('lp_clear_filters') : 'Clear filters');
+        list.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:#9CA3AF;"><p style="font-size:16px;">${noMatch}</p><button class="lp-btn lp-btn--primary lp-btn--sm" style="margin-top:14px;" onclick="window.lpHandleSearch(''); window.lpFilterCategory('')">${clearBtn}</button></div>`;
+        // Still render sold-out strip — it's the only way to see anything when filter yields nothing.
+        if(typeof window.renderPopularSoldOut === 'function') window.renderPopularSoldOut();
+        if(typeof window.applyI18N === 'function') window.applyI18N();
         return;
     }
 
@@ -3733,13 +3761,15 @@ function renderPublicStorefront() {
         const price = parseFloat(lead.price || 0);
         const onSale = compareAt > price && price > 0;
         let badge = '';
-        if(groupTotalStock <= 0) badge = '<span class="lp-product-card__badge lp-product-card__badge--soldout">Sold Out</span>';
+        const soldOutLabel = (window.t ? window.t('lp_card_soldout') : 'Sold Out');
+        const optionsLabel = (window.t ? window.t('lp_card_options') : 'options');
+        if(groupTotalStock <= 0) badge = '<span class="lp-product-card__badge lp-product-card__badge--soldout">' + soldOutLabel + '</span>';
         else if(onSale) {
             const off = Math.round(((compareAt - price) / compareAt) * 100);
             badge = '<span class="lp-product-card__badge">-' + off + '%</span>';
         }
         if(variants.length > 1) {
-            badge = (badge ? badge + ' ' : '') + '<span class="lp-product-card__badge lp-product-card__badge--variant">' + variants.length + ' options</span>';
+            badge = (badge ? badge + ' ' : '') + '<span class="lp-product-card__badge lp-product-card__badge--variant">' + variants.length + ' ' + optionsLabel + '</span>';
         }
         const parsed = window.lpParseProductName(lead);
         const skuEsc = String(lead.sku).replace(/'/g, "\\'");
@@ -3785,23 +3815,119 @@ function renderPublicStorefront() {
                     <p class="lp-product-card__variant" data-role="variant-label" style="${parsed.variantName ? '' : 'display:none'}">${parsed.variantName || ''}</p>
                     <p class="lp-product-card__price" data-role="price">${fmt(price)}${onSale ? ' <small style="color:#9CA3AF; font-weight:500; text-decoration:line-through; font-size:11px; margin-left:6px;">' + fmt(compareAt) + '</small>' : ''}</p>
                     ${chipsHtml}
-                    <button class="lp-product-card__btn" data-role="add-btn" data-sku="${skuEsc}" onclick="addToPublicCart(this.dataset.sku)" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Sold Out' : 'Add to Cart'}</button>
+                    <button class="lp-product-card__btn" data-role="add-btn" data-sku="${skuEsc}" onclick="addToPublicCart(this.dataset.sku)" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? soldOutLabel : (window.t ? window.t('lp_card_add') : 'Add to Cart')}</button>
                 </div>
             </div>
         `;
     });
 
+    const pgBack = (window.t ? window.t('lp_page_back') : '← Back');
+    const pgNext = (window.t ? window.t('lp_page_next') : 'Next →');
+    const pgLabel = (window.t ? window.t('lp_page_label') : 'Page');
     html += `
         <div style="width:100%; display:flex; justify-content:center; align-items:center; gap:14px; margin-top:30px; grid-column:1/-1;">
-            <button onclick="changePublicPage(-1)" ${publicCurrentPage <= 1 ? 'disabled' : ''} class="lp-pill" style="padding:8px 16px;">← Back</button>
-            <span style="font-size:13px; color:#6B7280; font-weight:600;">Page <strong style="color:#111827;">${publicCurrentPage}</strong> / ${totalPages}</span>
-            <button onclick="changePublicPage(1)" ${publicCurrentPage >= totalPages ? 'disabled' : ''} class="lp-pill" style="padding:8px 16px;">Next →</button>
+            <button onclick="changePublicPage(-1)" ${publicCurrentPage <= 1 ? 'disabled' : ''} class="lp-pill" style="padding:8px 16px;">${pgBack}</button>
+            <span style="font-size:13px; color:#6B7280; font-weight:600;">${pgLabel} <strong style="color:#111827;">${publicCurrentPage}</strong> / ${totalPages}</span>
+            <button onclick="changePublicPage(1)" ${publicCurrentPage >= totalPages ? 'disabled' : ''} class="lp-pill" style="padding:8px 16px;">${pgNext}</button>
         </div>
     `;
     list.innerHTML = html;
     window.lpUpdateCartBadge();
+    // p1_50: surface sold-out items as social proof + apply translations to dynamic strings.
+    if(typeof window.renderPopularSoldOut === 'function') window.renderPopularSoldOut();
+    if(typeof window.applyI18N === 'function') window.applyI18N();
     if(window.lucide && lucide.createIcons) lucide.createIcons();
 }
+
+// p1_50 — Sold-out social proof carousel.
+// Ranks by recent sales velocity so the strip reads as "look how much these moved before they ran out".
+window.renderPopularSoldOut = function() {
+    const section = document.getElementById('lpSoldOutSection');
+    const strip = document.getElementById('lpSoldOutStrip');
+    if(!section || !strip) return;
+    if(typeof masterProducts === 'undefined' || !Array.isArray(masterProducts)) return;
+
+    // Sales velocity per SKU from sales_history (last 90 days when timestamp available).
+    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const salesBySku = {};
+    if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+        salesHistory.forEach(s => {
+            const ts = s.timestamp ? new Date(s.timestamp).getTime() : Date.now();
+            if(ts < ninetyDaysAgo) return;
+            const items = Array.isArray(s.items) ? s.items : [];
+            items.forEach(it => {
+                const sku = it.sku;
+                const qty = parseInt(it.quantity || it.qty || 1, 10) || 1;
+                if(sku) salesBySku[sku] = (salesBySku[sku] || 0) + qty;
+            });
+        });
+    }
+
+    // Pick published products with zero remaining stock.
+    const soldOut = masterProducts.filter(p => {
+        if(!isPublished(p)) return false;
+        const stock = inventoryBatches
+            .filter(b => b.sku === p.sku && b.qty_remaining > 0)
+            .reduce((s, b) => s + b.qty_remaining, 0);
+        return stock <= 0;
+    });
+
+    // Collapse to one entry per parent_sku so variants don't crowd the strip.
+    const seen = new Set();
+    const unique = [];
+    soldOut.forEach(p => {
+        const key = p.parent_sku || p.sku;
+        if(seen.has(key)) return;
+        seen.add(key);
+        unique.push(p);
+    });
+
+    // Rank by sales velocity, fallback to alphabetical.
+    unique.sort((a, b) => {
+        const av = salesBySku[a.sku] || 0;
+        const bv = salesBySku[b.sku] || 0;
+        if(bv !== av) return bv - av;
+        return String(a.name||'').localeCompare(String(b.name||''));
+    });
+
+    const top = unique.slice(0, 12);
+    if(!top.length) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+
+    const badgeLabel = (window.t ? window.t('lp_soldout_badge') : 'SOLD OUT');
+    const notifyLabel = (window.t ? window.t('lp_soldout_notify') : 'Notify Me');
+    const waTemplate = (window.t ? window.t('lp_soldout_wa_text') : 'Hi 10 CAMP, I\'m interested in {NAME} ({SKU}). Please notify me when restocked. Thanks!');
+
+    strip.innerHTML = top.map(p => {
+        const parsed = (typeof window.lpParseProductName === 'function') ? window.lpParseProductName(p) : { title: p.name || p.sku };
+        const thumb = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/300x300?text=No+Img';
+        const nameSafe = String(parsed.title || p.name || p.sku).replace(/"/g,'&quot;');
+        const brand = p.brand ? String(p.brand).replace(/</g,'&lt;') : '';
+        const waText = waTemplate.replace('{NAME}', parsed.title || p.name || p.sku).replace('{SKU}', p.sku);
+        const waHref = 'https://wa.me/?text=' + encodeURIComponent(waText);
+        return `
+            <div class="lp-soldout-card">
+                <div class="lp-soldout-card__media">
+                    <span class="lp-soldout-card__badge">${badgeLabel}</span>
+                    <img class="lp-soldout-card__img" src="${thumb}" alt="${nameSafe}" loading="lazy" onerror="this.src='https://placehold.co/300x300?text=No+Img'">
+                </div>
+                <div class="lp-soldout-card__body">
+                    ${brand ? `<span class="lp-soldout-card__brand">${brand}</span>` : ''}
+                    <h3 class="lp-soldout-card__name">${parsed.title || p.name || p.sku}</h3>
+                    <a class="lp-soldout-card__notify" href="${waHref}" target="_blank" rel="noopener">
+                        <i data-lucide="bell" style="width:12px;height:12px;"></i>
+                        <span>${notifyLabel}</span>
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
 
 // Boot: render skeletons + category pills + activity tiles + promo banner ASAP
 document.addEventListener('DOMContentLoaded', function() {
@@ -4466,7 +4592,7 @@ window.finPrintPL = function() {
  <tr class="net"><td>Net Profit / (Loss)</td><td class="num ${net>=0?'pos':'neg'}">${formatRM(net)}</td></tr>
  <tr><td>Profit Margin</td><td class="num">${rev>0?((net/rev)*100).toFixed(1):'0.0'}%</td></tr>
  </table>
- <p class="footer">Auto-generated dari 10 CAMP POS · For internal review only · Bukan dokumen rasmi LHDN.</p>
+ <p class="footer">Auto-generated dari POS10C · For internal review only · Bukan dokumen rasmi LHDN.</p>
  <script>window.print();</script>
  </body></html>`);
  w.document.close();
@@ -9446,7 +9572,7 @@ window.printGrn = function(poId) {
  <div><strong>Penerima (Receiver)</strong><br><br>Nama: ___________________________<br>Tandatangan: ________________________<br>Tarikh: ${today}</div>
  <div><strong>Lulus Manager (Approver)</strong><br><br>Nama: ___________________________<br>Tandatangan: ________________________<br>Tarikh: ___________</div>
  </div>
- <p style="margin-top:30px; font-size:10px; color:#999; text-align:center;">Auto-generated by 10 CAMP POS · GRN-${po.po_number}-${Date.now().toString(36).toUpperCase()}</p>
+ <p style="margin-top:30px; font-size:10px; color:#999; text-align:center;">Auto-generated by POS10C · GRN-${po.po_number}-${Date.now().toString(36).toUpperCase()}</p>
  <button onclick="window.print()" style="position:fixed; top:20px; right:20px; padding:10px 20px; background:#0EA5E9; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;"> Print</button>
  </body></html>`);
  win.document.close();
@@ -11891,7 +12017,7 @@ window.openEodClose = async function() {
  <h2>Approval Reason</h2>
  <p style="font-size:11px;">${result.reason}${result.note ? ' — '+result.note : ''}</p>
 
- <p class="meta" style="margin-top:30px;">Generated by 10 CAMP POS · ${new Date().toLocaleString()}</p>
+ <p class="meta" style="margin-top:30px;">Generated by POS10C · ${new Date().toLocaleString()}</p>
  <button onclick="window.print()" style="margin-top:20px; padding:8px 16px; background:#0EA5E9; color:#FFF; border:none; border-radius:4px; cursor:pointer;"> Print Z-Report</button>
  </body></html>`);
  win.document.close();
@@ -13454,7 +13580,88 @@ window.I18N = {
  status_completed: { bm: 'Selesai', en: 'Completed' },
  status_pending: { bm: 'Menunggu', en: 'Pending' },
  label_loading: { bm: 'Loading…', en: 'Loading…' },
- label_total: { bm: 'Jumlah', en: 'Total' }
+ label_total: { bm: 'Jumlah', en: 'Total' },
+
+ // p1_50 — Public storefront (lp_*)
+ lp_nav_shop: { bm: 'Kedai', en: 'Shop' },
+ lp_nav_brands: { bm: 'Jenama', en: 'Brands' },
+ lp_nav_about: { bm: 'Tentang', en: 'About' },
+ lp_nav_contact: { bm: 'Hubungi', en: 'Contact' },
+ lp_aria_search: { bm: 'Cari produk', en: 'Search products' },
+ lp_aria_vip: { bm: 'Log masuk VIP', en: 'VIP customer login' },
+ lp_aria_cart: { bm: 'Buka troli', en: 'Open shopping cart' },
+ lp_aria_lang: { bm: 'Tukar bahasa', en: 'Switch language' },
+ lp_btn_staff_login: { bm: 'Log Masuk Staf', en: 'Staff Login' },
+
+ lp_hero_eyebrow: { bm: 'Oleh TODAK · Sejak 2024', en: 'By TODAK · Established 2024' },
+ lp_hero_title_pre: { bm: 'Healing in style with', en: 'Healing in style with' },
+ lp_hero_sub: { bm: 'Gear camping & outdoor premium, terus dari 11 jenama pilihan.', en: 'Premium camping & outdoor gear, supplied directly from 11 trusted brands.' },
+ lp_hero_cta_activity: { bm: 'Pilih Aktiviti Kau', en: 'Pick Your Activity' },
+ lp_hero_cta_shop: { bm: 'Tengok Semua Gear', en: 'Shop All Gear' },
+
+ lp_activity_eyebrow: { bm: 'Pilih Aktiviti Kau', en: 'Pick Your Activity' },
+ lp_activity_h2: { bm: 'Tengok ikut aktiviti', en: 'Browse by activity' },
+ lp_activity_sub: { bm: 'Klik mana satu kau nak buat — kami susunkan gear yang sesuai.', en: 'Tap whichever you want to do — we line up the right gear.' },
+
+ lp_trust_customers: { bm: 'Pelanggan Gembira', en: 'Happy Campers' },
+ lp_trust_products: { bm: 'Produk dalam Kedai', en: 'Products in Store' },
+ lp_trust_brands: { bm: 'Jenama Dipercayai', en: 'Trusted Brands' },
+ lp_trust_store: { bm: 'Kedai Fizikal', en: 'Physical Store' },
+
+ lp_brands_eyebrow: { bm: 'Jenama Yang Kami Bawa', en: 'Brands We Carry' },
+ lp_brands_h2: { bm: '11 Jenama Outdoor Premium', en: '11 Premium Outdoor Brands' },
+
+ lp_coll_eyebrow: { bm: 'Pilihan Untuk Kau', en: 'Curated for You' },
+ lp_coll_h2: { bm: 'Koleksi Pilihan', en: 'Featured Collections' },
+ lp_coll_apparel: { bm: 'Pakaian', en: 'Apparel' },
+ lp_coll_unity_sub: { bm: 'Koleksi jersi rasmi', en: 'Official jersey collection' },
+ lp_coll_bestseller: { bm: 'Paling Laku', en: 'Bestseller' },
+ lp_coll_nh_sub: { bm: 'Khemah, beg tidur & trail', en: 'Tents, sleeping bags & trails' },
+ lp_coll_limited: { bm: 'Masa Terhad', en: 'Limited Time' },
+ lp_coll_sale_title: { bm: 'Jualan Festival', en: 'Festival Sale' },
+ lp_coll_sale_sub: { bm: 'Diskaun sampai 30% untuk gear pilihan', en: 'Up to 30% off selected gear' },
+
+ lp_shop_eyebrow: { bm: 'Kedai', en: 'Shop' },
+ lp_shop_h2: { bm: 'Semua Produk', en: 'All Products' },
+ lp_search_placeholder: { bm: 'Cari nama produk atau jenama…', en: 'Search by product name or brand…' },
+
+ lp_about_eyebrow: { bm: 'Cerita Kami', en: 'Our Story' },
+ lp_about_h2: { bm: 'Dari Cyberjaya ke pengembaraan kau yang seterusnya.', en: 'From Cyberjaya to your next adventure.' },
+ lp_about_p1: { bm: '10 CAMP ialah lengan outdoor keluarga TODAK — bawa gear camping, hiking & lifestyle premium dari 11 jenama pilihan bawah satu bumbung. Dari ekspedisi beberapa malam ke escape weekend belakang rumah, kami percaya gear yang betul buat setiap pengembaraan terasa macam di rumah.', en: '10 CAMP is the outdoor arm of the TODAK family — bringing premium camping, hiking and lifestyle gear from 11 hand-picked brands under one roof. From multi-night expeditions to weekend backyard escapes, we believe the right gear makes every adventure feel like home.' },
+ lp_about_p2: { bm: 'Singgah kedai flagship kami di Cyberjaya, atau scroll katalog penuh dengan penghantaran sehari di Klang Valley.', en: 'Visit us at our flagship store in Cyberjaya, or browse our full catalogue online with same-day Klang Valley delivery.' },
+ lp_about_cta_visit: { bm: 'Lawat Kedai', en: 'Visit Our Store' },
+ lp_about_cta_browse: { bm: 'Lihat Katalog', en: 'Browse Catalogue' },
+
+ lp_news_h2: { bm: 'Stay in the loop', en: 'Stay in the loop' },
+ lp_news_sub: { bm: 'Dapat notifikasi pasal barang baru, jualan festival & idea trip outdoor.', en: 'Get notified about new arrivals, festival sales and outdoor trip ideas.' },
+ lp_news_placeholder: { bm: 'emel@kau.com', en: 'your@email.com' },
+ lp_news_btn: { bm: 'Langgan', en: 'Subscribe' },
+ lp_news_hint: { bm: 'Tiada spam. Berhenti bila-bila masa.', en: 'No spam. Unsubscribe anytime.' },
+
+ lp_foot_brand_sub: { bm: 'Gear camping & outdoor premium oleh TODAK.', en: 'Premium camping & outdoor gear by TODAK.' },
+ lp_foot_visit: { bm: 'Lawat', en: 'Visit' },
+ lp_foot_contact: { bm: 'Hubungi', en: 'Contact' },
+ lp_foot_hours: { bm: 'Isnin–Sabtu · 10pg–9mlm', en: 'Mon–Sat · 10am–9pm' },
+ lp_foot_payments: { bm: 'Pembayaran Diterima', en: 'Payments Accepted' },
+
+ // Sold-out strip
+ lp_soldout_eyebrow: { bm: 'Bukti Laku', en: 'Social Proof' },
+ lp_soldout_h2: { bm: 'Popular — Habis Stok', en: 'Popular — Out of Stock' },
+ lp_soldout_sub: { bm: 'Barang yang laku habis. Restock akan datang.', en: 'These sold out fast. Restock coming soon.' },
+ lp_soldout_badge: { bm: 'HABIS STOK', en: 'SOLD OUT' },
+ lp_soldout_notify: { bm: 'Beritahu Saya', en: 'Notify Me' },
+ lp_soldout_wa_text: { bm: 'Hai 10 CAMP, saya berminat dengan {NAME} ({SKU}). Beritahu saya bila restock ya. Terima kasih!', en: 'Hi 10 CAMP, I\'m interested in {NAME} ({SKU}). Please notify me when restocked. Thanks!' },
+ lp_soldout_empty: { bm: 'Tiada barang habis stok buat masa ni.', en: 'No sold-out items right now.' },
+
+ // Dynamic product card / state
+ lp_card_soldout: { bm: 'Habis Stok', en: 'Sold Out' },
+ lp_card_add: { bm: 'Tambah ke Troli', en: 'Add to Cart' },
+ lp_card_options: { bm: 'pilihan', en: 'options' },
+ lp_no_match: { bm: 'Tiada produk padan dengan carian.', en: 'No products match your search.' },
+ lp_clear_filters: { bm: 'Reset penapis', en: 'Clear filters' },
+ lp_page_back: { bm: '← Sebelum', en: '← Back' },
+ lp_page_next: { bm: 'Seterus →', en: 'Next →' },
+ lp_page_label: { bm: 'Muka surat', en: 'Page' }
  }
 };
 
@@ -13470,9 +13677,22 @@ window.applyI18N = function() {
  const val = window.t(key);
  if(val) el.textContent = val;
  });
+ // p1_50: placeholders (search inputs, etc.)
+ document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+ const key = el.getAttribute('data-i18n-placeholder');
+ const val = window.t(key);
+ if(val) el.setAttribute('placeholder', val);
+ });
+ // p1_50: aria-labels for icon buttons
+ document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+ const key = el.getAttribute('data-i18n-aria');
+ const val = window.t(key);
+ if(val) el.setAttribute('aria-label', val);
+ });
  // Update lang button label
- const lbl = document.getElementById('langLabel');
- if(lbl) lbl.textContent = window.I18N.lang.toUpperCase();
+ document.querySelectorAll('#langLabel, .lp-lang-btn__label').forEach(lbl => {
+ lbl.textContent = window.I18N.lang.toUpperCase();
+ });
  document.documentElement.setAttribute('lang', window.I18N.lang === 'bm' ? 'ms' : 'en');
 };
 
@@ -14129,7 +14349,7 @@ window.tgResetAll = function() {
 window.tgExportReport = function() {
     const status = __tgLoadStatus();
     const lines = [];
-    lines.push('# 10 CAMP POS — System Test Report');
+    lines.push('# POS10C — System Test Report');
     lines.push('Generated: ' + new Date().toLocaleString('en-MY'));
     lines.push('Tester: ' + ((window.currentUser || {}).name || 'unknown'));
     lines.push('');
