@@ -1,23 +1,25 @@
 /**
  * TikTok Shop sync — Netlify Function (p3_9 direct integration, Phase 2).
  *
- * Phase 2a (this version) — VERIFY + PEEK, does NOT write to sales_history yet:
- *   1. Load token from Supabase tiktok_tokens; refresh access_token if expired.
- *   2. GET /authorization/202309/shops → store shop_cipher + shop_id.
- *   3. POST /order/202309/orders/search → list recent order IDs.
- *   4. GET /order/202309/orders?ids=... → return raw order detail shape.
- * Returns a JSON summary. Once the real order shape is confirmed, Phase 2b
- * adds the order → sales_history mapping + dedup upsert.
+ * Pulls TikTok Shop orders directly (no EasyStore) into sales_history.
+ *
+ * Query modes:
+ *   ?mode=dryrun  (default) — fetch + map orders, return summary + samples,
+ *                             NO database write.
+ *   ?mode=import            — insert new orders into sales_history, deduped
+ *                             on metadata.tiktok_order_id.
+ *   ?since=YYYY-MM-DD        — only orders created on/after this date
+ *                             (default: 2 days ago).
  *
  * Public URL: https://pos.10camp.com/api/tiktok-sync
  *
- * Signature algorithm (TikTok Shop Open API 202309), verified against the
- * EcomPHP/tiktokshop-php SDK:
- *   sign = HMAC-SHA256( app_secret + path + sortedParams + body + app_secret,
- *                       key = app_secret )  → lowercase hex
- *   sortedParams: all query params except sign/access_token/x-tts-access-token,
- *   keys sorted alphabetically, concatenated as {key}{value}. Body appended for
- *   non-GET requests when content-type is not multipart/form-data.
+ * TRANSITION NOTE: TikTok orders also still arrive via EasyStore Channels.
+ * To avoid double-counting, disconnect the TikTok channel in EasyStore and
+ * run imports only from that cutoff date forward.
+ *
+ * Signature (TikTok Shop Open API 202309), verified vs EcomPHP/tiktokshop-php:
+ *   sign = HMAC-SHA256(app_secret + path + sortedParams + body + app_secret,
+ *                      key = app_secret) → lowercase hex.
  */
 
 const crypto = require('crypto');
@@ -26,8 +28,8 @@ const API_BASE   = 'https://open-api.tiktokglobalshop.com';
 const TOKEN_BASE = 'https://auth.tiktok-shops.com/api/v2/token';
 const VERSION    = '202309';
 
-const APP_KEY     = process.env.TIKTOK_APP_KEY || '';
-const APP_SECRET  = process.env.TIKTOK_APP_SECRET || '';
+const APP_KEY      = process.env.TIKTOK_APP_KEY || '';
+const APP_SECRET   = process.env.TIKTOK_APP_SECRET || '';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || '';
 
@@ -55,7 +57,7 @@ async function sb(method, path, body, extraHeaders) {
     return text ? JSON.parse(text) : null;
 }
 
-// ---- TikTok signature ----
+// ---- TikTok signature + signed call ----
 function signRequest(path, query, bodyStr, isGet) {
     const keys = Object.keys(query)
         .filter(k => k !== 'sign' && k !== 'access_token' && k !== 'x-tts-access-token')
@@ -71,14 +73,12 @@ function signRequest(path, query, bodyStr, isGet) {
     return crypto.createHmac('sha256', APP_SECRET).update(s).digest('hex');
 }
 
-// ---- Signed TikTok Open API call ----
 async function ttRequest(method, path, { query = {}, body = null, accessToken, shopCipher } = {}) {
     const isGet = method.toUpperCase() === 'GET';
     const q = Object.assign({}, query, {
         app_key: APP_KEY,
         timestamp: Math.floor(Date.now() / 1000).toString()
     });
-    // shop_cipher applies to shop-scoped calls — not /authorization/ or /seller/ paths
     const noCipher = /^\/(authorization|seller)\/\d{6}\//.test(path);
     if (shopCipher && !noCipher) q.shop_cipher = shopCipher;
 
@@ -91,31 +91,23 @@ async function ttRequest(method, path, { query = {}, body = null, accessToken, s
 
     const res = await fetch(`${API_BASE}${path}?${qs}`, {
         method,
-        headers: {
-            'x-tts-access-token': accessToken,
-            'content-type': 'application/json'
-        },
+        headers: { 'x-tts-access-token': accessToken, 'content-type': 'application/json' },
         body: bodyStr || undefined
     });
-    const data = await res.json();
-    return data;
+    return res.json();
 }
 
-// ---- Token: load + refresh if expired ----
+// ---- Token: load + refresh if expiring ----
 async function getValidToken() {
     const rows = await sb('GET', '/tiktok_tokens?order=created_at.desc&limit=1');
-    if (!rows || !rows.length) throw new Error('No TikTok token in tiktok_tokens — run the authorize flow first.');
+    if (!rows || !rows.length) throw new Error('No TikTok token — run the authorize flow first.');
     let tok = rows[0];
 
-    const expMs = new Date(tok.access_token_expire_at).getTime();
-    // refresh if expiring within 1 hour
-    if (expMs - Date.now() < 60 * 60 * 1000) {
+    if (new Date(tok.access_token_expire_at).getTime() - Date.now() < 60 * 60 * 1000) {
         const url = `${TOKEN_BASE}/refresh?app_key=${encodeURIComponent(APP_KEY)}`
             + `&app_secret=${encodeURIComponent(APP_SECRET)}`
-            + `&refresh_token=${encodeURIComponent(tok.refresh_token)}`
-            + `&grant_type=refresh_token`;
-        const r = await fetch(url);
-        const j = await r.json();
+            + `&refresh_token=${encodeURIComponent(tok.refresh_token)}&grant_type=refresh_token`;
+        const j = await (await fetch(url)).json();
         if (j.code !== 0 || !j.data || !j.data.access_token) {
             throw new Error(`Token refresh failed: ${j.message || 'unknown'} (code ${j.code})`);
         }
@@ -136,62 +128,165 @@ async function getValidToken() {
     return tok;
 }
 
-exports.handler = async () => {
+async function ensureShopCipher(tok) {
+    if (tok.shop_cipher && tok.shop_id) return { cipher: tok.shop_cipher, id: tok.shop_id };
+    const res = await ttRequest('GET', `/authorization/${VERSION}/shops`, { accessToken: tok.access_token });
+    if (res.code !== 0) throw new Error(`Get shops failed: ${res.message} (code ${res.code})`);
+    const shop = ((res.data && res.data.shops) || [])[0];
+    if (!shop) throw new Error('No authorized shop found.');
+    await sb('PATCH', `/tiktok_tokens?open_id=eq.${encodeURIComponent(tok.open_id)}`,
+        { shop_cipher: shop.cipher, shop_id: String(shop.id), updated_at: new Date().toISOString() },
+        { Prefer: 'return=minimal' });
+    return { cipher: shop.cipher, id: String(shop.id) };
+}
+
+// ---- TikTok order status → sales_history status ----
+const STATUS_MAP = {
+    UNPAID: 'Pending',
+    ON_HOLD: 'Pending',
+    AWAITING_SHIPMENT: 'To Fulfil',
+    AWAITING_COLLECTION: 'To Fulfil',
+    PARTIALLY_SHIPPING: 'Processing',
+    IN_TRANSIT: 'Processing',
+    DELIVERED: 'Completed',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Voided'
+};
+
+// ---- Map a TikTok order → sales_history row ----
+function mapOrder(o) {
+    const pay = o.payment || {};
+    const addr = o.recipient_address || {};
+    const total = parseFloat(pay.total_amount || 0) || 0;
+
+    // line_items: each entry is one unit — group by sku_id
+    const bySku = {};
+    for (const li of (o.line_items || [])) {
+        const key = li.sku_id || li.seller_sku || li.id;
+        if (!bySku[key]) {
+            bySku[key] = {
+                sku: (li.seller_sku || '').toUpperCase(),
+                name: li.product_name || li.sku_name || '(unnamed)',
+                qty: 0,
+                price: parseFloat(li.sale_price || 0) || 0,
+                sku_name: li.sku_name || null
+            };
+        }
+        bySku[key].qty += 1;
+    }
+
+    return {
+        customer_name: (addr.name || 'TikTok Buyer').slice(0, 200),
+        customer_phone: addr.phone_number || null,
+        payment_method: o.payment_method_name || 'TikTok',
+        total,
+        total_amount: total,
+        items: Object.values(bySku),
+        created_at: new Date((o.create_time || 0) * 1000).toISOString(),
+        channel: 'TikTok Shop',
+        status: STATUS_MAP[o.status] || 'Completed',
+        staff_name: null,
+        metadata: {
+            tiktok_order_id: String(o.id),
+            tiktok_user_id: o.user_id ? String(o.user_id) : null,
+            buyer_email: o.buyer_email || null,
+            shipping_provider: o.shipping_provider || null,
+            payment_method_name: o.payment_method_name || null,
+            currency: pay.currency || 'MYR',
+            subtotal: parseFloat(pay.sub_total || 0) || 0,
+            shipping: parseFloat(pay.shipping_fee || 0) || 0,
+            platform_discount: parseFloat(pay.platform_discount || 0) || 0,
+            seller_discount: parseFloat(pay.seller_discount || 0) || 0,
+            tax: parseFloat(pay.tax || 0) || 0,
+            tiktok_status: o.status,
+            source: 'tiktok_direct',
+            synced_at: new Date().toISOString()
+        }
+    };
+}
+
+function chunk(arr, n) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+}
+
+exports.handler = async (event) => {
     if (!APP_KEY || !APP_SECRET) return json(500, { error: 'TIKTOK_APP_KEY / TIKTOK_APP_SECRET not set' });
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
 
-    const out = { phase: '2a verify+peek', steps: {} };
+    const params = event.queryStringParameters || {};
+    const mode = params.mode === 'import' ? 'import' : 'dryrun';
+    const sinceMs = params.since
+        ? Date.parse(params.since)
+        : Date.now() - 2 * 24 * 60 * 60 * 1000;
+    if (isNaN(sinceMs)) return json(400, { error: 'invalid ?since date (use YYYY-MM-DD)' });
+    const createGe = Math.floor(sinceMs / 1000);
+
+    const out = { mode, since: new Date(sinceMs).toISOString() };
 
     try {
-        // Step 1 — token
         const tok = await getValidToken();
-        out.steps.token = { open_id: tok.open_id, seller_name: tok.seller_name, region: tok.seller_base_region };
+        const shop = await ensureShopCipher(tok);
 
-        // Step 2 — get authorized shop → shop_cipher
-        const shopsRes = await ttRequest('GET', `/authorization/${VERSION}/shops`, { accessToken: tok.access_token });
-        if (shopsRes.code !== 0) {
-            out.steps.shops = { error: shopsRes.message, code: shopsRes.code, raw: shopsRes };
-            return json(502, out);
-        }
-        const shops = (shopsRes.data && shopsRes.data.shops) || [];
-        out.steps.shops = shops.map(s => ({ id: s.id, name: s.name, region: s.region, cipher_present: !!s.cipher }));
-
-        if (!shops.length) { out.note = 'No authorized shops returned.'; return json(200, out); }
-        const shop = shops[0];
-
-        // store shop_cipher + shop_id
-        await sb('PATCH', `/tiktok_tokens?open_id=eq.${encodeURIComponent(tok.open_id)}`,
-            { shop_cipher: shop.cipher, shop_id: String(shop.id), updated_at: new Date().toISOString() },
-            { Prefer: 'return=minimal' });
-        out.steps.shop_cipher_stored = true;
-
-        // Step 3 — list recent orders (last 7 days)
-        const createGe = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-        const listRes = await ttRequest('POST', `/order/${VERSION}/orders/search`, {
-            query: { page_size: 10, sort_field: 'create_time', sort_order: 'DESC' },
-            body: { create_time_ge: createGe },
-            accessToken: tok.access_token,
-            shopCipher: shop.cipher
-        });
-        if (listRes.code !== 0) {
-            out.steps.order_list = { error: listRes.message, code: listRes.code, raw: listRes };
-            return json(502, out);
-        }
-        const orderIds = ((listRes.data && listRes.data.orders) || []).map(o => o.id);
-        out.steps.order_list = { count: orderIds.length, ids: orderIds, total_count: listRes.data && listRes.data.total_count };
-
-        // Step 4 — peek order detail (raw shape of first batch)
-        if (orderIds.length) {
-            const detailRes = await ttRequest('GET', `/order/${VERSION}/orders`, {
-                query: { ids: orderIds.slice(0, 5).join(',') },
-                accessToken: tok.access_token,
-                shopCipher: shop.cipher
+        // 1. Pull all order IDs since cutoff (paginated)
+        const ids = [];
+        let pageToken = '';
+        let guard = 0;
+        do {
+            const q = { page_size: 50, sort_field: 'create_time', sort_order: 'DESC' };
+            if (pageToken) q.page_token = pageToken;
+            const res = await ttRequest('POST', `/order/${VERSION}/orders/search`, {
+                query: q, body: { create_time_ge: createGe },
+                accessToken: tok.access_token, shopCipher: shop.cipher
             });
-            out.steps.order_detail = detailRes.code === 0
-                ? { raw_first_order: (detailRes.data && detailRes.data.orders && detailRes.data.orders[0]) || null }
-                : { error: detailRes.message, code: detailRes.code };
+            if (res.code !== 0) { out.error = `order search failed: ${res.message} (code ${res.code})`; return json(502, out); }
+            for (const o of ((res.data && res.data.orders) || [])) ids.push(o.id);
+            pageToken = (res.data && res.data.next_page_token) || '';
+        } while (pageToken && ++guard < 40);
+        out.orders_found = ids.length;
+
+        if (!ids.length) { out.note = 'No TikTok orders in this window.'; return json(200, out); }
+
+        // 2. Fetch order details in batches
+        const orders = [];
+        for (const batch of chunk(ids, 50)) {
+            const res = await ttRequest('GET', `/order/${VERSION}/orders`, {
+                query: { ids: batch.join(',') },
+                accessToken: tok.access_token, shopCipher: shop.cipher
+            });
+            if (res.code !== 0) { out.error = `order detail failed: ${res.message} (code ${res.code})`; return json(502, out); }
+            for (const o of ((res.data && res.data.orders) || [])) orders.push(o);
         }
 
+        // 3. Map
+        const rows = orders.map(mapOrder);
+
+        // 4. Dedup against already-imported TikTok-direct orders
+        const idList = rows.map(r => r.metadata.tiktok_order_id);
+        const existing = await sb('GET',
+            `/sales_history?select=tid:metadata->>tiktok_order_id&metadata->>tiktok_order_id=in.(${idList.join(',')})`);
+        const seen = new Set((existing || []).map(r => r.tid).filter(Boolean));
+        const fresh = rows.filter(r => !seen.has(r.metadata.tiktok_order_id));
+
+        out.mapped = rows.length;
+        out.already_imported = rows.length - fresh.length;
+        out.new = fresh.length;
+
+        if (mode === 'dryrun') {
+            out.sample = fresh.slice(0, 3);
+            out.note = 'DRY RUN — nothing written. Add ?mode=import to insert.';
+            return json(200, out);
+        }
+
+        // 5. Import — insert new rows
+        let inserted = 0;
+        for (const batch of chunk(fresh, 50)) {
+            if (!batch.length) continue;
+            await sb('POST', '/sales_history', batch, { Prefer: 'return=minimal' });
+            inserted += batch.length;
+        }
+        out.inserted = inserted;
         out.ok = true;
         return json(200, out);
 
