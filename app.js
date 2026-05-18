@@ -10950,7 +10950,7 @@ window.renderManagerDashboard = function() {
  ? `${sales.length} orders ever`
  : `${startD.toLocaleDateString('en-MY',{day:'numeric',month:'short'})} → ${endD.toLocaleDateString('en-MY',{day:'numeric',month:'short'})}`;
  const lbl = document.getElementById('dashPeriodLabel');
- if(lbl) lbl.textContent = `${periodNames[__dashPeriod]} · ${dateRange}`;
+ if(lbl) lbl.textContent = dateRange;
 
  // ---------- HERO ----------
  document.getElementById('heroRevValue').textContent = fmtCurrency(netRev);

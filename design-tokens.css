@@ -2143,12 +2143,13 @@ a:focus-visible {
 
 .dash-hero-row {
  display: grid;
- grid-template-columns: 1.6fr 1fr 1fr 1fr;
+ grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr;
  gap: var(--space-3);
  margin-bottom: var(--space-4);
 }
-@media (max-width: 920px) {.dash-hero-row { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 540px) {.dash-hero-row { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) {.dash-hero-row { grid-template-columns: 1fr 1fr 1fr; } }
+@media (max-width: 720px) {.dash-hero-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) {.dash-hero-row { grid-template-columns: 1fr; } }
 
 /* Hero card — dominates */
 .dash-hero {
@@ -2237,6 +2238,15 @@ a:focus-visible {
 }
 @media (max-width: 800px) {.dash-row-2 { grid-template-columns: 1fr; } }
 
+/* Three-column row: Top SKUs + Top Staff + Low Stock */
+.dash-row-3 {
+ display: grid;
+ grid-template-columns: 1fr 1fr 1fr;
+ gap: var(--space-3);
+ margin-bottom: var(--space-4);
+}
+@media (max-width: 900px) {.dash-row-3 { grid-template-columns: 1fr; } }
+
 /* Card with title + body */
 .dash-card {
  background: #FFF;
@@ -2254,7 +2264,17 @@ a:focus-visible {
  color: var(--neutral-900);
  margin: 0;
  letter-spacing: -0.2px;
+ display: flex;
+ align-items: center;
+ gap: 6px;
 }
+.dash-card__title svg {
+ width: 15px; height: 15px;
+ flex-shrink: 0;
+ color: var(--primary-600);
+}
+.dash-card__title--danger { color: var(--danger-700); }
+.dash-card__title--danger svg { color: var(--danger-600); }
 .dash-card__link {
  font-size: var(--text-xs);
  color: var(--primary-600);
