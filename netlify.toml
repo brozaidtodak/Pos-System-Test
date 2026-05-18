@@ -28,3 +28,9 @@
   to = "/.netlify/functions/tiktok-oauth"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/tiktok-sync"
+  to = "/.netlify/functions/tiktok-sync"
+  status = 200
+  force = true
