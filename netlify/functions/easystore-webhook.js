@@ -32,6 +32,20 @@ function normalizePhone(raw) {
     return digits;
 }
 
+// p3_1: map EasyStore order.source_name → human channel label.
+// Observed values: tiktok-shop, shopee-malaysia, pos, sf, online_store.
+// Unknown sources get a title-cased fallback so new channels stay readable.
+function mapChannel(sourceName) {
+    const s = (sourceName || '').toLowerCase().trim();
+    if (!s) return 'Web EasyStore';
+    if (s.includes('tiktok'))  return 'TikTok Shop';
+    if (s.includes('shopee'))  return 'Shopee';
+    if (s.includes('lazada'))  return 'Lazada';
+    if (s === 'pos')           return 'Walk-in Kedai';
+    if (s === 'sf' || s === 'online_store' || s.includes('store')) return 'Web EasyStore';
+    return s.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function verifyHmac(rawBody, signature) {
     if (!APP_SECRET || !signature) return false;
     const expected = crypto.createHmac('sha256', APP_SECRET).update(rawBody).digest('base64');
@@ -89,8 +103,9 @@ function buildSalesPayload(order) {
         cancelled: 'Voided'
     };
 
-    const channel = (cust.creation_source || '').toLowerCase() === 'pos'
-        ? 'EasyStore POS' : 'EasyStore Online';
+    // p3_1: channel from order.source_name (tiktok-shop / shopee-malaysia / pos / sf).
+    // Falls back to customer.creation_source only when the order omits source_name.
+    const channel = mapChannel(order.source_name || order.source_type || cust.creation_source);
 
     const customerName = cust.name
         || `${cust.first_name || ''} ${cust.last_name || ''}`.trim()
@@ -116,6 +131,7 @@ function buildSalesPayload(order) {
             easystore_processed_at: order.processed_at,
             easystore_currency: order.currency_code,
             easystore_customer_id: cust.id ? String(cust.id) : null,
+            easystore_source_name: order.source_name || order.source_type || null,
             subtotal: parseFloat(order.subtotal_price) || 0,
             shipping: parseFloat(order.total_shipping_fee || order.total_shipping) || 0,
             discount: parseFloat(order.total_discount) || 0,

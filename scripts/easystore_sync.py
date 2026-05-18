@@ -35,6 +35,24 @@ if not SUPABASE_TOKEN:  sys.exit("SUPABASE_ACCESS_TOKEN not set; source ~/.claud
 
 
 # -----------------------------------------------------------------
+# CHANNEL MAPPING (p3_1)
+# -----------------------------------------------------------------
+def map_channel(source_name):
+    """Map EasyStore order.source_name → human channel label.
+    Observed values: tiktok-shop, shopee-malaysia, pos, sf, online_store.
+    Unknown sources get a title-cased fallback so new channels stay readable."""
+    s = (source_name or '').lower().strip()
+    if not s:
+        return 'Web EasyStore'
+    if 'tiktok' in s: return 'TikTok Shop'
+    if 'shopee' in s: return 'Shopee'
+    if 'lazada' in s: return 'Lazada'
+    if s == 'pos':    return 'Walk-in Kedai'
+    if s in ('sf', 'online_store') or 'store' in s: return 'Web EasyStore'
+    return s.replace('-', ' ').replace('_', ' ').title()
+
+
+# -----------------------------------------------------------------
 # HTTP HELPERS
 # -----------------------------------------------------------------
 def es_get(path):
@@ -510,9 +528,9 @@ def migrate_orders(orders, dry_run=False):
         gateways = o.get('gateway_names') or []
         payment_method = ', '.join(gateways) if gateways else (o.get('payment_method') or 'Unknown')
 
-        # Channel — EasyStore is a unified system; if creation_source='pos' → in-store, else web
-        creation_source = (cust.get('creation_source') or '').lower()
-        channel_name = 'EasyStore POS' if creation_source == 'pos' else 'EasyStore Online'
+        # Channel — p3_1: from order.source_name (tiktok-shop / shopee-malaysia / pos / sf).
+        # Falls back to customer.creation_source only when the order omits source_name.
+        channel_name = map_channel(o.get('source_name') or o.get('source_type') or cust.get('creation_source'))
 
         # Staff — from order user_id or order metadata
         staff_name = None  # unknown — backfill later
@@ -524,6 +542,7 @@ def migrate_orders(orders, dry_run=False):
             'easystore_processed_at': o.get('processed_at'),
             'easystore_currency': o.get('currency_code'),
             'easystore_customer_id': str(cust.get('id')) if cust.get('id') else None,
+            'easystore_source_name': o.get('source_name') or o.get('source_type'),
             'subtotal': float(o.get('subtotal_price') or 0),
             'shipping': float(o.get('total_shipping_fee') or o.get('total_shipping') or 0),
             'discount': float(o.get('total_discount') or 0),

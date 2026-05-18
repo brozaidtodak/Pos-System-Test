@@ -2275,8 +2275,10 @@ a:focus-visible {
  font-size: var(--text-xs);
 }
 .dash-donut__legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-.dash-donut__legend-name { font-weight: var(--weight-semibold); color: var(--neutral-700); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-donut__legend-val { color: var(--neutral-500); font-weight: var(--weight-medium); }
+.dash-donut__legend-main { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.dash-donut__legend-name { font-weight: var(--weight-semibold); color: var(--neutral-700); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-donut__legend-sub { font-size: 10px; color: var(--neutral-500); font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-donut__legend-val { color: var(--neutral-500); font-weight: var(--weight-semibold); flex-shrink: 0; }
 
 /* Ranked list (Top SKUs / Staff / Customers) */
 .dash-ranked { display: flex; flex-direction: column; gap: var(--space-2); }

@@ -11159,13 +11159,16 @@ window.renderManagerDashboard = function() {
  const canvas = document.getElementById('dashRevenueChart');
  if(canvas) drawRevenueChart(canvas, positives, cutoff);
 
- // ---------- CHANNEL DONUT ----------
+ // ---------- CHANNEL DONUT (p3_1: per-channel revenue + order count) ----------
  const channelTotals = {};
+ const channelCounts = {};
  positives.forEach(s => {
  const ch = s.channel || 'Unknown';
  channelTotals[ch] = (channelTotals[ch] || 0) + (s.total||0);
+ channelCounts[ch] = (channelCounts[ch] || 0) + 1;
  });
- const slices = Object.entries(channelTotals).sort((a,b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+ const slices = Object.entries(channelTotals).sort((a,b) => b[1] - a[1])
+ .map(([name, value]) => ({ name, value, count: channelCounts[name] || 0 }));
  const donutContainer = document.getElementById('dashChannelDonut');
  if(donutContainer) {
  const grandCh = slices.reduce((s, x) => s + x.value, 0) || 1;
@@ -11176,7 +11179,10 @@ window.renderManagerDashboard = function() {
  slices.slice(0, 6).map(sl => `
  <div class="dash-donut__legend-item">
  <span class="dash-donut__legend-swatch" style="background:${sl._color};"></span>
+ <div class="dash-donut__legend-main">
  <span class="dash-donut__legend-name">${sl.name}</span>
+ <span class="dash-donut__legend-sub">${sl.count} order · RM ${Number(sl.value).toLocaleString('en-MY',{maximumFractionDigits:0})}</span>
+ </div>
  <span class="dash-donut__legend-val">${(sl.value/grandCh*100).toFixed(0)}%</span>
  </div>
  `).join('')}
