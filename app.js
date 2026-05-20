@@ -12,6 +12,12 @@ try {
  console.error("API Error: ", e.message);
 }
 
+// p1_72: Wire Supabase Auth password recovery listener — fires when user
+// clicks reset link in email and Supabase returns to redirectTo with recovery hash.
+document.addEventListener('DOMContentLoaded', () => {
+ try { if(typeof window.__initPasswordRecovery === 'function') window.__initPasswordRecovery(); } catch(e){}
+});
+
 
 // Money helper: avoid float-drift accumulation. Use after every += / arithmetic
 // that contributes to a money total. Display layers can still toFixed(2).
@@ -2641,7 +2647,8 @@ async function hashPin(staffId, pin) {
 }
 
 const authUsers = [
- { name: 'Zaid', role: 'superior', pin_hash: '50d1e0682d0e472acc6a9dc109911c4703ddb14ebfa90c3b051f541111626343', dept: 'Managing Director', email: 'zaid@todak.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
+ // p1_72: 'superior' role retired — Zaid jadi mgmt-tier, dikenali sebagai Bos via dept='Managing Director' (isBoss helper).
+ { name: 'Zaid', role: 'mgmt', pin_hash: '50d1e0682d0e472acc6a9dc109911c4703ddb14ebfa90c3b051f541111626343', dept: 'Managing Director', email: 'zaid@todak.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
  { name: 'Aliff', role: 'mgmt', pin_hash: '33ffc079d45afe132295ee5e09980e872c3be2334df23aeb1ee52d0c7c9cfcec', dept: 'Administrative Department', email: 'aliff@10camp.com', staff_id: 'CMP008', full_name: 'Muhammad Aliff Ashraf Bin Johar', join_date: '2024-07-01' },
  { name: 'Farhan Moyy', role: 'mgmt', pin_hash: 'bed579f196a5bbb1ffbf1ba2b3c9bdd754a28680861ce96103794e25527d914e', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com', staff_id: 'CMP010', full_name: 'Mohamad Farhan Bin Wakiman', join_date: '2025-09-01' },
  { name: 'Zack', role: 'mgmt', pin_hash: 'e5f99d4a4886603bb5c9dd78b4c529ee3657dcf6818a93aff697f7436eef36ca', dept: 'System Manager Department', email: 'zack@10camp.com', staff_id: 'CMP005', full_name: 'Muhammad Nur Zakwan Bin Md Mahalli', join_date: '2024-07-01' },
@@ -2859,24 +2866,107 @@ window.submitPinLogin = async function() {
  loginAs(user);
 };
 
-// p1_71: Email/password login alongside PIN (Supabase Auth).
-// Login flow: signInWithPassword → match authUsers by email → loginAs(user).
-window.__switchLoginMode = function(mode) {
- const tabs = document.querySelectorAll('#pinLoginOverlay .login-tab');
- tabs.forEach(t => {
- const isActive = t.dataset.mode === mode;
- t.classList.toggle('is-active', isActive);
- t.style.color = isActive ? 'var(--primary)' : '#888';
- t.style.borderBottomColor = isActive ? 'var(--primary)' : 'transparent';
- });
+// p1_72: Email-only login + Supabase Auth password reset.
+// Login flow: signInWithPassword → match authUsers by email → check must_change_password
+// flag → force set-password modal if set → otherwise loginAs(user).
+// PIN form retained dormant in DOM for emergency only (window.__showPinFallback to expose).
+
+window.__showEmailLogin = function() {
  const pinForm = document.getElementById('pinLoginForm');
  const emailForm = document.getElementById('emailLoginForm');
- if(pinForm) pinForm.style.display = mode === 'pin' ? 'block' : 'none';
- if(emailForm) emailForm.style.display = mode === 'email' ? 'block' : 'none';
+ if(pinForm) pinForm.style.display = 'none';
+ if(emailForm) emailForm.style.display = 'block';
+ setTimeout(() => { const i = document.getElementById('emailLoginEmail'); if(i) i.focus(); }, 50);
+};
+
+window.__showPinFallback = function() {
+ const pinForm = document.getElementById('pinLoginForm');
+ const emailForm = document.getElementById('emailLoginForm');
+ if(pinForm) pinForm.style.display = 'block';
+ if(emailForm) emailForm.style.display = 'none';
+ setTimeout(() => { const i = document.getElementById('pinLoginInput'); if(i) i.focus(); }, 50);
+};
+
+window.__openForgotPassword = async function() {
+ const emailEl = document.getElementById('emailLoginEmail');
+ const errEl = document.getElementById('emailLoginError');
+ const seed = (emailEl && emailEl.value || '').trim();
+ const email = (prompt('Masukkan emel untuk hantar link reset password:', seed) || '').trim().toLowerCase();
+ if(!email) return;
+ if(!db || !db.auth || typeof db.auth.resetPasswordForEmail !== 'function') {
+ if(errEl) { errEl.textContent = 'Auth tidak tersedia.'; errEl.style.color = '#dc2626'; }
+ return;
+ }
+ try {
+ const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+ if(error) {
+ if(errEl) { errEl.textContent = 'Gagal hantar email: ' + error.message; errEl.style.color = '#dc2626'; }
+ return;
+ }
+ if(errEl) { errEl.textContent = 'Link reset password dihantar ke ' + email + '. Cek inbox/spam.'; errEl.style.color = '#16a34a'; }
+ } catch(e) {
+ if(errEl) { errEl.textContent = 'Ralat: ' + (e.message || e); errEl.style.color = '#dc2626'; }
+ }
+};
+
+// p1_72: Detect recovery URL (Supabase Auth password recovery) on boot.
+// Supabase sends user back to redirectTo with hash like #access_token=...&type=recovery.
+// We grab the session via auth event PASSWORD_RECOVERY, then show set-password modal.
+window.__initPasswordRecovery = function() {
+ if(!db || !db.auth || typeof db.auth.onAuthStateChange !== 'function') return;
+ db.auth.onAuthStateChange((event, session) => {
+ if(event === 'PASSWORD_RECOVERY') {
+ window.__openSetPasswordModal({ source: 'recovery' });
+ }
+ });
+};
+
+window.__openSetPasswordModal = function(opts) {
+ opts = opts || {};
+ const modal = document.getElementById('setPasswordModal');
+ if(!modal) return;
+ modal.style.display = 'flex';
+ modal.dataset.source = opts.source || 'manual';
+ const p1 = document.getElementById('setPwdNew');
+ const p2 = document.getElementById('setPwdConfirm');
+ const err = document.getElementById('setPwdError');
+ if(p1) p1.value = '';
+ if(p2) p2.value = '';
+ if(err) err.textContent = '';
+ setTimeout(() => { if(p1) p1.focus(); }, 50);
+};
+
+window.__submitSetPassword = async function() {
+ const p1El = document.getElementById('setPwdNew');
+ const p2El = document.getElementById('setPwdConfirm');
+ const err = document.getElementById('setPwdError');
+ const modal = document.getElementById('setPasswordModal');
+ const newPwd = (p1El && p1El.value) || '';
+ const confirm = (p2El && p2El.value) || '';
+ if(newPwd.length < 8) { if(err) { err.textContent = 'Password mesti ≥ 8 aksara.'; err.style.color = '#dc2626'; } return; }
+ if(newPwd !== confirm) { if(err) { err.textContent = 'Password tidak sepadan.'; err.style.color = '#dc2626'; } return; }
+ if(!db || !db.auth || typeof db.auth.updateUser !== 'function') { if(err) { err.textContent = 'Auth tidak tersedia.'; err.style.color = '#dc2626'; } return; }
+ try {
+ if(err) { err.textContent = 'Memuat...'; err.style.color = '#666'; }
+ const { data, error } = await db.auth.updateUser({ password: newPwd, data: { must_change_password: false } });
+ if(error) { if(err) { err.textContent = 'Gagal tukar password: ' + error.message; err.style.color = '#dc2626'; } return; }
+ if(err) { err.textContent = 'Password ditetapkan. Sila login.'; err.style.color = '#16a34a'; }
+ // Sign out so user can re-login fresh
+ try { await db.auth.signOut(); } catch(e){}
  setTimeout(() => {
- if(mode === 'pin') { const i = document.getElementById('pinLoginInput'); if(i) i.focus(); }
- else { const i = document.getElementById('emailLoginEmail'); if(i) i.focus(); }
- }, 50);
+ if(modal) modal.style.display = 'none';
+ const overlay = document.getElementById('pinLoginOverlay');
+ if(overlay) overlay.style.display = 'flex';
+ window.__showEmailLogin();
+ }, 1200);
+ } catch(e) {
+ if(err) { err.textContent = 'Ralat: ' + (e.message || e); err.style.color = '#dc2626'; }
+ }
+};
+
+window.__closeSetPasswordModal = function() {
+ const modal = document.getElementById('setPasswordModal');
+ if(modal) modal.style.display = 'none';
 };
 
 window.submitEmailLogin = async function() {
@@ -2912,6 +3002,15 @@ window.submitEmailLogin = async function() {
  errEl.textContent = 'Akaun ini bukan staff berdaftar. Hubungi Bos.';
  errEl.style.color = '#dc2626';
  try { await db.auth.signOut(); } catch(e){}
+ return;
+ }
+ // p1_72: Force password change on first login if admin set must_change_password=true
+ const meta = (data.user.user_metadata || {});
+ if(meta.must_change_password === true) {
+ pwEl.value = '';
+ errEl.textContent = 'Sila tetapkan password baharu untuk teruskan.';
+ errEl.style.color = '#0f766e';
+ window.__openSetPasswordModal({ source: 'first_login' });
  return;
  }
  // Success — clear, close, boot session
@@ -3027,7 +3126,7 @@ window.__obwNext = async function() {
 };
 
 function maybeShowOnboarding(user) {
- if (!user || user.role !== 'superior') return;
+ if (!user || !(typeof window.isBoss === 'function' && window.isBoss(user))) return;
  const status = localStorage.getItem(ONBOARDING_KEY);
  if (status) return; // already completed or skipped
  const overlay = document.getElementById('onboardingOverlay');
@@ -3068,13 +3167,16 @@ function maybeShowOnboarding(user) {
 //
 // IMPORTANT: defaultMode must match the home section's mode group,
 // otherwise the home tab will be hidden by mode-bar's class filter.
+// p1_72: 'superior' role retired. Bos dikenali via dept='Managing Director' (lihat isBoss helper).
 const ROLE_CAPS = {
- superior: { modes: ['cashier', 'operations', 'manager', 'management', 'hq', 'investor'], defaultMode: 'manager', home: 'admin_dashboard', label: 'Superior', emoji: '' },
  mgmt: { modes: ['cashier', 'operations', 'manager'], defaultMode: 'manager', home: 'admin_dashboard', label: 'Manager', emoji: '' },
  inventory: { modes: ['cashier', 'operations'], defaultMode: 'operations', home: 'inv_database', label: 'Inventory', emoji: '' },
  sales: { modes: ['cashier', 'operations'], defaultMode: 'cashier', home: 'sales_cashier', label: 'Sales', emoji: '' },
  investor: { modes: ['investor'], defaultMode: 'investor', home: 'investor_overview', label: 'Investor', emoji: '' },
 };
+
+// p1_72: isBoss — identifies the Managing Director (single source of truth, replaces old role==='superior').
+window.isBoss = function(u) { return !!(u && u.dept === 'Managing Director'); };
 
 function loginAs(user) {
  if(!user) return;
@@ -3135,7 +3237,7 @@ function loginAs(user) {
    if(access.cashier || access.manager || access.management || access.investor) {
      const total = todaySales.reduce((sum, s) => sum + parseFloat(s.amount || s.total || 0), 0);
      stats.push({ value: todaySales.length, label: 'Sales today' });
-     if(total > 0 && (access.management || access.investor || user.role === 'superior')) {
+     if(total > 0 && (access.management || access.investor || window.isBoss(user))) {
        const fmt = window.formatRMShort || (n => 'RM ' + Math.round(n));
        stats.push({ value: fmt(total), label: 'Revenue' });
      }
@@ -3143,14 +3245,14 @@ function loginAs(user) {
  } catch(e) {}
  // Pending memos for superior
  try {
-   if(user.role === 'superior' && typeof window.memoGetPendingCount === 'function') {
+   if(window.isBoss(user) && typeof window.memoGetPendingCount === 'function') {
      const pending = window.memoGetPendingCount();
      if(pending > 0) stats.push({ value: pending, label: 'Pending memos' });
    }
  } catch(e) {}
  // Low stock alerts (operations/management/superior)
  try {
-   if((access.operations || access.management || user.role === 'superior') && typeof masterProducts !== 'undefined') {
+   if((access.operations || access.management || window.isBoss(user)) && typeof masterProducts !== 'undefined') {
      let lowCount = 0;
      masterProducts.forEach(p => {
        if(!p.is_published && !p.published_at) return;
@@ -4969,7 +5071,7 @@ function renderMgmtPlaceholders() {
  // 1. Logic for determining identity
  let isZack = currentUser && currentUser.name === 'Zack';
  let isMoyy = currentUser && currentUser.name === 'Farhan Moyy';
- let isSuperior = currentUser && currentUser.role === 'superior';
+ let isSuperior = window.isBoss(currentUser);
  let isAliff = currentUser && currentUser.name === 'Aliff';
 
  // Management pills are removed, flattened to sidebar.
@@ -5266,7 +5368,7 @@ document.getElementById("reqScheduleBtn")?.addEventListener('click', async () =>
 // p1_68: Roster routing + admin-gate (Bos + Aliff only access admin grid; only Bos approves).
 window.__rosterIsAdmin = function(u) {
  u = u || window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
- return !!(u && (u.role === 'superior' || u.staff_id === 'CMP008'));
+ return !!(u && (window.isBoss(u) || u.staff_id === 'CMP008'));
 };
 window.openRoster = function(btn) {
  if (typeof switchHub === 'function') switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', btn);
@@ -5364,7 +5466,7 @@ window.renderHrClaim = function() {
  if (!tbody) return;
 
  const all = _hrcLoadClaims();
- const isBos = u.role === 'superior';
+ const isBos = window.isBoss(u);
  const list = isBos ? all : all.filter(c => c.staff_id === u.staff_id);
 
  const hint = document.getElementById('hrcClaimSidebarHint');
@@ -6007,7 +6109,7 @@ function __invSafeCust() { return (typeof customersData !== 'undefined' && Array
 function __invSafeBatches(){ return (typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches)) ? inventoryBatches : []; }
 function __invSafeMaster() { return (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : []; }
 function __invSafeQuotes() { return (typeof window.quotationsLog !== 'undefined' && Array.isArray(window.quotationsLog)) ? window.quotationsLog : []; }
-function __invSafeStaff() { return (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers.filter(u => u.role !== 'investor' && u.role !== 'superior') : []; }
+function __invSafeStaff() { return (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers.filter(u => u.role !== 'investor' && !(typeof window.isBoss === 'function' && window.isBoss(u))) : []; }
 
 function computeInvestorMetrics() {
  const now = new Date();
@@ -6370,7 +6472,7 @@ window.memoSubmit = function() {
  if(!body) { if(typeof showToast==='function') showToast('Sila isi kandungan memo', 'warn'); return; }
 
  const memos = window.memoLoad();
- const isSuperior = u.role === 'superior';
+ const isSuperior = window.isBoss(u);
  const memo = {
  id: 'm' + Date.now() + Math.floor(Math.random()*1000),
  department: dept,
@@ -6478,7 +6580,7 @@ window.memoDelete = function(id) {
  const memos = window.memoLoad();
  const m = memos.find(x => x.id === id);
  if(!m) return;
- const canDelete = u.role === 'superior' || (m.posted_by_id === u.staff_id && m.status === 'pending');
+ const canDelete = window.isBoss(u) || (m.posted_by_id === u.staff_id && m.status === 'pending');
  if(!canDelete) { if(typeof showToast==='function') showToast('Tak boleh padam memo ni', 'warn'); return; }
  if(!confirm('Padam memo "' + m.title + '"?')) return;
  const filtered = memos.filter(x => x.id !== id);
@@ -6507,7 +6609,7 @@ window.memoRefreshSidebarBadge = function() {
  const badge = document.getElementById('memoBadgePending');
  if(!badge) return;
  const u = window.memoCurrentUser();
- const isSuperior = u && u.role === 'superior';
+ const isSuperior = window.isBoss(u);
  const count = window.memoGetPendingCount();
  if(isSuperior && count> 0) {
  badge.style.display = 'inline-block';
@@ -6551,9 +6653,9 @@ window.renderMemoBoard = function() {
  const list = document.getElementById('memoBoardList');
  if(!list) return;
  const u = window.memoCurrentUser();
- const isSuperior = u && u.role === 'superior';
+ const isSuperior = window.isBoss(u);
 
- // Hide Pending tab for non-superior (they only see their own pending in "Memo Saya")
+ // Hide Pending tab for non-Bos (they only see their own pending in "Memo Saya")
  const pendingTab = document.getElementById('memoTabPending');
  if(pendingTab) pendingTab.style.display = isSuperior ? '' : 'none';
 
@@ -6604,7 +6706,7 @@ window.renderMemoBoard = function() {
  (m.status === 'pending' ? ' memo-card--pending' : '') +
  (m.status === 'rejected' ? ' memo-card--rejected' : '');
  const canApprove = isSuperior && m.status === 'pending';
- const canDelete = u && (u.role === 'superior' || (m.posted_by_id === u.staff_id && m.status === 'pending'));
+ const canDelete = u && (window.isBoss(u) || (m.posted_by_id === u.staff_id && m.status === 'pending'));
  const actions = [];
  if(canApprove) {
  actions.push('<button class="memo-card__act memo-card__act--approve" onclick="window.memoApprove(\''+m.id+'\')"> Approve</button>');
@@ -7150,7 +7252,7 @@ function __cmGetDateRange() {
 
 window.renderPersonalCommission = function() {
  if (!currentUser) return;
- const isManager = currentUser.role === 'mgmt' || currentUser.role === 'superior';
+ const isManager = currentUser.role === 'mgmt';
  const range = __cmGetDateRange();
 
  // Filter sales by date range
@@ -9461,10 +9563,10 @@ window.requireManagerPin = function(opts) {
  document.getElementById('mgrPinInput').value = '';
  document.getElementById('mgrPinNote').value = '';
 
- // Manager dropdown — only mgmt/superior, active only
+ // Manager dropdown — only mgmt, active only (Bos sekarang juga mgmt-tier)
  const inactive = JSON.parse(localStorage.getItem('staffInactive_v1') || '[]');
  const managers = (typeof authUsers !== 'undefined' ? authUsers : [])
-.filter(u => (u.role === 'mgmt' || u.role === 'superior') && !inactive.includes(u.staff_id));
+.filter(u => u.role === 'mgmt' && !inactive.includes(u.staff_id));
  const sel = document.getElementById('mgrPinStaff');
  sel.innerHTML = managers.map(m =>
  `<option value="${m.staff_id}">${m.name} (${m.role})</option>`
@@ -12715,7 +12817,7 @@ window.getModesAccess = function(user) {
  user = user || window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
  const out = { cashier:false, operations:false, manager:false, management:false, hq:false, investor:false };
  if(!user) return out;
- if(user.role === 'superior') return { cashier:true, operations:true, manager:true, management:true, hq:true, investor:true };
+ if(window.isBoss && window.isBoss(user)) return { cashier:true, operations:true, manager:true, management:true, hq:true, investor:true };
  let overlay = {};
  try { overlay = (JSON.parse(localStorage.getItem('staffModeAccess_v1')||'{}')[user.staff_id]) || {}; } catch(e){}
  // Role-based defaults (back-compat for staff with no overlay entry)
@@ -12745,7 +12847,7 @@ window.pickDefaultMode = function(user) {
  // HR + Finance Department dah migrated ke 10cc, so HQ mode tinggal Setup je —
  // tak guna untuk daily landing. Manager mode lebih relevant + sidebar superior
  // bypass (p1_45) tetap papar Setup items kalau Bos perlu access.
- if(user && user.role === 'superior') return 'manager';
+ if(window.isBoss && window.isBoss(user)) return 'manager';
  // p1_64: Manager-role staff (Aliff/Zack/Moyy) skip Cashier — go straight to Manager mode.
  if(user && user.role === 'mgmt' && access.manager) return 'manager';
  if(access.cashier) return 'cashier';
@@ -12802,7 +12904,7 @@ window.setMode = function(mode) {
  // p1_45: Superior (Bos) gets full sidebar bypass — sees every item regardless of active mode.
  // Mode bar still triggers landing-page redirects for context, but nothing is hidden.
  const __u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
- const __isSuperior = !!(__u && __u.role === 'superior');
+ const __isSuperior = !!(__u && window.isBoss && window.isBoss(__u));
 
  // Filter sidebar items via mode-hidden class (additive — respects existing role classes)
  const items = document.querySelectorAll('#appSidebar .menu-item');
@@ -15564,7 +15666,8 @@ window.renderAskSection = async function() {
 
  function escAttr(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
  function actor() { return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null); }
- function isSuperior() { const a = actor(); return !!(a && a.role === 'superior'); }
+ // p1_72: 'superior' role retired — Bos identified by jawatan via window.isBoss.
+ function isSuperior() { const a = actor(); return !!(typeof window.isBoss === 'function' && window.isBoss(a)); }
  function readOverlay() { try { return JSON.parse(localStorage.getItem('staffModeAccess_v1') || '{}'); } catch(e) { return {}; } }
  function writeOverlay(map) { try { localStorage.setItem('staffModeAccess_v1', JSON.stringify(map)); } catch(e){} }
  function inactiveSet() {
@@ -15608,12 +15711,16 @@ window.renderAskSection = async function() {
  const overlay = readOverlay();
  const inactive = inactiveSet();
  const canEdit = isSuperior();
- // Sort: superior first, then by role, then by name
- const roleOrder = { superior:0, mgmt:1, inventory:2, sales:3, investor:4 };
- list.sort((a,b) => (roleOrder[a.role]||9) - (roleOrder[b.role]||9) || (a.name||'').localeCompare(b.name||''));
+ // Sort: Bos first (Managing Director), then by role, then by name
+ const roleOrder = { mgmt:1, inventory:2, sales:3, investor:4 };
+ list.sort((a,b) => {
+ const aB = typeof window.isBoss === 'function' && window.isBoss(a) ? 0 : (roleOrder[a.role]||9);
+ const bB = typeof window.isBoss === 'function' && window.isBoss(b) ? 0 : (roleOrder[b.role]||9);
+ return aB - bB || (a.name||'').localeCompare(b.name||'');
+ });
  tbody.innerHTML = list.map(u => {
  const access = (typeof window.getModesAccess === 'function') ? window.getModesAccess(u) : {};
- const lockedAll = u.role === 'superior'; // Bos all locked-true, can't be untoggled
+ const lockedAll = typeof window.isBoss === 'function' && window.isBoss(u); // Bos all locked-true, can't be untoggled
  const isInact = inactive.has(u.staff_id);
  const rowCls = isInact ? 'perm-row perm-row--inactive' : 'perm-row';
  const expiry = (window.permExpiry ? window.permExpiry.forStaff(u.staff_id) : {});
@@ -15625,7 +15732,7 @@ window.renderAskSection = async function() {
  const expBadge = (checked && exp) ? '<span class="perm-cell-exp" title="Auto-revoke ' + new Date(exp).toLocaleString('en-MY') + '">' + escAttr(window.permExpiry.formatRemaining(exp)) + '</span>' : '';
  return '<td class="' + cellCls + '"><label class="perm-cb"><input type="checkbox"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + ' onchange="window.togglePermission(\'' + escAttr(u.staff_id) + '\', \'' + m + '\', this.checked, this)"><span></span></label>' + expBadge + '</td>';
  }).join('');
- const meta = '<div class="perm-staff-meta"><strong>' + escAttr(u.name) + '</strong><span>' + escAttr(u.staff_id) + ' · ' + escAttr(u.role) + (isInact ? ' · INACTIVE' : '') + (lockedAll ? ' · auto-true' : '') + '</span></div>';
+ const meta = '<div class="perm-staff-meta"><strong>' + escAttr(u.name) + '</strong><span>' + escAttr(u.staff_id) + ' · ' + escAttr(u.dept || u.role) + (isInact ? ' · INACTIVE' : '') + (lockedAll ? ' · auto-true' : '') + '</span></div>';
  return '<tr class="' + rowCls + '" data-staff-id="' + escAttr(u.staff_id) + '"><td class="perm-staff-col">' + meta + '</td>' + cells + '</tr>';
  }).join('');
  if (window.lucide && typeof window.lucide.createIcons === 'function') { try { window.lucide.createIcons(); } catch(e){} }
@@ -15633,7 +15740,7 @@ window.renderAskSection = async function() {
 
  window.togglePermission = function(staffId, mode, value, checkboxEl) {
  if (!isSuperior()) {
- if (typeof showToast === 'function') showToast('Hanya Superior boleh ubah permissions', 'warn');
+ if (typeof showToast === 'function') showToast('Hanya Bos boleh ubah permissions', 'warn');
  if (checkboxEl) checkboxEl.checked = !value;
  return;
  }
@@ -15641,8 +15748,8 @@ window.renderAskSection = async function() {
  const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
  const target = list.find(u => u.staff_id === staffId);
  if (!target) return;
- if (target.role === 'superior') {
- if (typeof showToast === 'function') showToast('Superior auto-true, tak boleh ubah', 'warn');
+ if (typeof window.isBoss === 'function' && window.isBoss(target)) {
+ if (typeof showToast === 'function') showToast('Bos auto-true, tak boleh ubah', 'warn');
  if (checkboxEl) checkboxEl.checked = true;
  return;
  }
@@ -15764,15 +15871,15 @@ window.renderAskSection = async function() {
  const sel = document.getElementById('permSidebarStaff');
  if (!sel) return;
  const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers.slice() : [];
- // Filter out superior (auto-true full access)
- const eligible = list.filter(u => u.role !== 'superior');
+ // Filter out Bos (auto-true full access)
+ const eligible = list.filter(u => !(typeof window.isBoss === 'function' && window.isBoss(u)));
  const roleOrder = { mgmt:0, inventory:1, sales:2, investor:3 };
  eligible.sort((a,b) => (roleOrder[a.role]||9) - (roleOrder[b.role]||9) || (a.name||'').localeCompare(b.name||''));
  const prev = sel.value;
  sel.innerHTML = '<option value="">— pilih staff —</option>' + eligible.map(u => {
  const denied = window.sidebarAccess ? window.sidebarAccess.deniedTabs(u.staff_id).length : 0;
  const badge = denied > 0 ? ' (' + denied + ' denied)' : '';
- return '<option value="' + escAttr(u.staff_id) + '">' + escAttr(u.name) + ' · ' + escAttr(u.role) + escAttr(badge) + '</option>';
+ return '<option value="' + escAttr(u.staff_id) + '">' + escAttr(u.name) + ' · ' + escAttr(u.dept || u.role) + escAttr(badge) + '</option>';
  }).join('');
  if (prev) sel.value = prev;
  if (sel.value) window.renderPermSidebarFor(sel.value);
@@ -16194,7 +16301,8 @@ window.shareProductWA = function(sku) {
  }
  function writeCustom(arr) { try { localStorage.setItem(KEY, JSON.stringify(arr)); } catch(e){} }
  function actor() { return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null); }
- function isSuperior() { const a = actor(); return !!(a && a.role === 'superior'); }
+ // p1_72: isBoss via jawatan replaces role==='superior'.
+ function isSuperior() { const a = actor(); return !!(typeof window.isBoss === 'function' && window.isBoss(a)); }
  function escAttr(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
  function allTemplates() {
@@ -16207,11 +16315,11 @@ window.shareProductWA = function(sku) {
  if (!list) return;
  const tpls = allTemplates();
  const staff = (typeof authUsers !== 'undefined' && Array.isArray(authUsers))
- ? authUsers.filter(u => u.role !== 'superior') : [];
+ ? authUsers.filter(u => !(typeof window.isBoss === 'function' && window.isBoss(u))) : [];
  const roleOrder = { mgmt:0, inventory:1, sales:2, investor:3 };
  staff.sort((a,b) => (roleOrder[a.role]||9) - (roleOrder[b.role]||9) || (a.name||'').localeCompare(b.name||''));
  const staffOpts = '<option value="">— pilih staff —</option>' + staff.map(u =>
- '<option value="' + escAttr(u.staff_id) + '">' + escAttr(u.name) + ' · ' + escAttr(u.role) + '</option>').join('');
+ '<option value="' + escAttr(u.staff_id) + '">' + escAttr(u.name) + ' · ' + escAttr(u.dept || u.role) + '</option>').join('');
  list.innerHTML = tpls.map(t => {
  const modesGranted = Object.keys(t.modes || {}).filter(m => t.modes[m]);
  const denyCount = (t.sidebarDeny || []).length;
@@ -16248,7 +16356,7 @@ window.shareProductWA = function(sku) {
 
  window.permApplyTemplate = function(tplId) {
  if (!isSuperior()) {
- if (typeof showToast === 'function') showToast('Hanya Superior boleh apply template', 'warn');
+ if (typeof showToast === 'function') showToast('Hanya Bos boleh apply template', 'warn');
  return;
  }
  const tpls = allTemplates();
@@ -16263,8 +16371,8 @@ window.shareProductWA = function(sku) {
  const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
  const target = list.find(u => u.staff_id === staffId);
  if (!target) return;
- if (target.role === 'superior') {
- if (typeof showToast === 'function') showToast('Superior auto-true, takyah apply template', 'warn');
+ if (typeof window.isBoss === 'function' && window.isBoss(target)) {
+ if (typeof showToast === 'function') showToast('Bos auto-true, takyah apply template', 'warn');
  return;
  }
  if (!confirm('Apply "' + tpl.name + '" ke ' + target.name + '?\n\nIni akan overwrite mode access + sidebar access yang sedia ada untuk staff ni.')) return;
