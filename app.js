@@ -13998,7 +13998,6 @@ window.I18N = {
  sb_audit_alerts: { bm: 'Amaran Audit', en: 'Audit Alerts' },
  sb_manager_dashboard: { bm: 'Papan Pemuka Pengurus', en: 'Manager Dashboard' },
  sb_tanya_ai: { bm: 'Tanya 10 CAMP (AI)', en: 'Ask 10 CAMP (AI)' },
- sb_admin_operations_divider: { bm: '— Operasi —', en: '— Operations —' },
  sb_invoice_quotation: { bm: 'Invois & Sebut Harga', en: 'Invoice & Quotation' },
  sb_bulk_product_edit: { bm: 'Edit Produk Pukal', en: 'Bulk Product Edit' },
  sb_promotions_vouchers: { bm: 'Promosi & Voucher', en: 'Promotions & Vouchers' },
