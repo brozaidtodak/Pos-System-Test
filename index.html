@@ -1285,10 +1285,7 @@
  <i data-lucide="package-check" style="width:16px; height:16px;"></i> <span data-i18n="sb_pesanan_online">Pesanan Online</span>
  <span id="ffSidebarBadge" style="display:none; margin-left:auto; background:#EF4444; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px;">0</span>
  </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="hr_roster" onclick="window.openRoster(this)">
- <i data-lucide="calendar-clock" style="width:16px; height:16px;"></i> <span data-i18n="sb_jadual_operasi">Jadual Operasi</span>
- <span id="rosterSidebarBadge" style="display:none; margin-left:auto; background:#F59E0B; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px;">0</span>
- </div>
+ <!-- p1_83: Jadual Operasi pindah ke HR Department group (workflow alignment) -->
  <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Browse Products', this)">
  <i data-lucide="package" style="width:16px; height:16px;"></i> <span data-i18n="sb_browse_products">Browse Products</span>
  </div>
@@ -1317,10 +1314,19 @@
 
 
  
- <!-- HR DEPARTMENT — staff self-service (p1_69: Cuti + Claim only) -->
+ <!-- HR DEPARTMENT — staff self-service (p1_69 + p1_83 reorg) -->
  <div class="menu-item" data-group-toggle="hr" onclick="toggleSidebarGroup('hr')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
  <span data-i18n="dept_hr">HR Department</span>
  <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
+ </div>
+ <!-- p1_83: HR Today overview (daily essentials hub) -->
+ <div class="menu-item" data-group="hr" data-tab="hr_today" onclick="switchHub(['hrTodaySection'], 'HR Hari Ni', this); if(typeof renderHrToday==='function') renderHrToday();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="sun" style="width:16px; height:16px;"></i> <span data-i18n="sb_hr_today">Hari Ni</span>
+ </div>
+ <!-- p1_83: Jadual Saya moved from Inventory (was hr_roster under Operasi Harian) -->
+ <div class="menu-item" data-group="hr" data-tab="hr_roster" onclick="window.openRoster(this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="calendar-clock" style="width:16px; height:16px;"></i> <span data-i18n="sb_jadual_saya">Jadual Saya</span>
+ <span id="rosterSidebarBadge" style="display:none; margin-left:auto; background:#F59E0B; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px;">0</span>
  </div>
  <div class="menu-item" data-group="hr" data-tab="hr_cuti" onclick="switchHub(['hrCutiSection'], 'Cuti &amp; Maklumat Saya', this); if(typeof renderHrCuti==='function') renderHrCuti();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="palmtree" style="width:16px; height:16px;"></i> <span data-i18n="sb_cuti">Cuti</span>
@@ -1328,6 +1334,9 @@
  <div class="menu-item" data-group="hr" data-tab="hr_claim" onclick="switchHub(['hrClaimSection'], 'Tuntutan (Claim)', this); if(typeof renderHrClaim==='function') renderHrClaim();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="receipt" style="width:16px; height:16px;"></i> <span data-i18n="sb_claim">Claim</span>
  <span id="claimSidebarBadge" style="display:none; margin-left:auto; background:#10B981; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px;">0</span>
+ </div>
+ <div class="menu-item" data-group="hr" data-tab="hr_clock_history" onclick="switchHub(['hrClockHistorySection'], 'Riwayat Clock', this); if(typeof renderHrClockHistory==='function') renderHrClockHistory();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="history" style="width:16px; height:16px;"></i> <span data-i18n="sb_clock_history">Riwayat Clock</span>
  </div>
 
  <!-- ADMIN DEPARTMENT — manager tools, ops, system -->
@@ -1524,6 +1533,89 @@
  <!-- ============================================== -->
  <!-- HR — CUTI & MAKLUMAT SAYA (p1_69) -->
  <!-- ============================================== -->
+ <!-- ============================================== -->
+ <!-- HR — HARI NI (p1_83 daily overview) -->
+ <!-- ============================================== -->
+ <div id="hrTodaySection" class="tab-section" style="display:none;">
+ <h2 class="section-title" style="margin-top:30px;" data-i18n="hr_today_title">HR Hari Ni</h2>
+ <p class="inv-page-sub" data-i18n="hr_today_sub">Status clock-in, baki cuti, dan tindakan pantas untuk hari ni.</p>
+
+ <!-- Hero clock card -->
+ <div class="admin-card" id="hrTodayClockCard" style="padding:24px; margin:18px 0; background:linear-gradient(135deg, #ECFDF5, #D1FAE5); border-left:4px solid #10B981;">
+ <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+ <div>
+ <div style="font-size:11px; font-weight:700; color:#065F46; text-transform:uppercase; letter-spacing:0.8px;" data-i18n="hr_today_clock_label">Status Clock</div>
+ <div style="font-size:24px; font-weight:900; color:#064E3B; margin-top:4px;" id="hrTodayClockStatus">—</div>
+ <div style="font-size:12px; color:#065F46; margin-top:4px;" id="hrTodayClockHint" data-i18n="hr_today_clock_hint">Tekan butang untuk clock in / out</div>
+ </div>
+ <button onclick="window.openClockModal()" id="hrTodayClockBtn" style="background:#10B981; color:#fff; border:none; padding:14px 28px; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 6px 14px rgba(16,185,129,0.3);">
+ <i data-lucide="clock" style="width:18px; height:18px;"></i>
+ <span id="hrTodayClockBtnLabel" data-i18n="hr_today_clock_btn">Clock In</span>
+ </button>
+ </div>
+ </div>
+
+ <!-- Quick stats -->
+ <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:18px;">
+ <div class="ff-kpi ff-kpi--warn">
+ <span class="ff-kpi__lbl" data-i18n="hr_today_kpi_balance">Baki Cuti Tahunan</span>
+ <span class="ff-kpi__num" id="hrTodayLeaveBalance">0</span>
+ </div>
+ <div class="ff-kpi">
+ <span class="ff-kpi__lbl" data-i18n="hr_today_kpi_pending">Cuti Pending</span>
+ <span class="ff-kpi__num" id="hrTodayPendingLeave">0</span>
+ </div>
+ <div class="ff-kpi">
+ <span class="ff-kpi__lbl" data-i18n="hr_today_kpi_next">Cuti Hadapan</span>
+ <span class="ff-kpi__num" id="hrTodayNextLeave" style="font-size:14px;">—</span>
+ </div>
+ <div class="ff-kpi">
+ <span class="ff-kpi__lbl" data-i18n="hr_today_kpi_claim_pending">Claim Pending</span>
+ <span class="ff-kpi__num" id="hrTodayPendingClaim">0</span>
+ </div>
+ </div>
+
+ <!-- Quick action buttons -->
+ <div style="display:flex; gap:10px; flex-wrap:wrap;">
+ <button onclick="(document.querySelector('[data-tab=hr_roster]'))?.click()" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px;">
+ <i data-lucide="calendar-plus" style="width:14px; height:14px;"></i> <span data-i18n="hr_today_action_apply_leave">Pohon Cuti</span>
+ </button>
+ <button onclick="(document.querySelector('[data-tab=hr_claim]'))?.click()" class="btn-success" style="display:inline-flex; align-items:center; gap:6px;">
+ <i data-lucide="receipt" style="width:14px; height:14px;"></i> <span data-i18n="hr_today_action_submit_claim">Hantar Claim</span>
+ </button>
+ <button onclick="(document.querySelector('[data-tab=hr_clock_history]'))?.click()" class="btn-primary" style="background:#6366F1; border-color:#6366F1; display:inline-flex; align-items:center; gap:6px;">
+ <i data-lucide="history" style="width:14px; height:14px;"></i> <span data-i18n="hr_today_action_clock_history">Riwayat Clock</span>
+ </button>
+ </div>
+ </div>
+
+ <!-- ============================================== -->
+ <!-- HR — CLOCK HISTORY (p1_83) -->
+ <!-- ============================================== -->
+ <div id="hrClockHistorySection" class="tab-section" style="display:none;">
+ <h2 class="section-title" style="margin-top:30px;" data-i18n="hr_clock_history_title">Riwayat Clock In/Out</h2>
+ <p class="inv-page-sub" data-i18n="hr_clock_history_sub">30 hari terakhir clock-in dan clock-out anda.</p>
+
+ <div class="admin-card" style="padding:14px; margin-top:14px;">
+ <div class="table-responsive">
+ <table class="data-table" style="font-size:12.5px; width:100%;">
+ <thead style="background:#FAFAFA;">
+ <tr>
+ <th data-i18n="hr_clock_th_date">Tarikh</th>
+ <th data-i18n="hr_clock_th_in">Clock In</th>
+ <th data-i18n="hr_clock_th_out">Clock Out</th>
+ <th data-i18n="hr_clock_th_hours">Jumlah Jam</th>
+ <th data-i18n="hr_clock_th_status">Status</th>
+ </tr>
+ </thead>
+ <tbody id="hrClockHistoryTbody">
+ <tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Memuat...</td></tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
  <div id="hrCutiSection" class="tab-section" style="display:none;">
  <h2 class="section-title" style="margin-top:30px;">Cuti &amp; Maklumat HR Saya</h2>
  <p class="inv-page-sub">Baki cuti, sejarah cuti, faedah, dan skop kerja anda.</p>
@@ -4757,7 +4849,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (82/82 · last 2026-05-20)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (83/83 · last 2026-05-20)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -4832,6 +4924,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_83', label:'HR Department reorganization — daily essentials consolidated. Zaid scope: POS HR cuma daily tasks (schedule, clock in/out, claim, mintak cuti, balance cuti); selebihnya akan dibuat di 10cc Command Centre. Sebelum ni daily HR tasks scattered 3 tempat: sidebar Inventory > Jadual Operasi (apply leave tersorok), sidebar HR Dept > Cuti + Claim, floating clock button bottom-left. Workflow confusing — staff baru takkan sangka mintak cuti melalui Inventory group. Reorganization: (1) Tambah `hrTodaySection` baharu — overview card dengan status clock (hijau "Belum Clock In" / merah "Sedang Bekerja" / kelabu "Dah Clock Out" + button quick-toggle), 4 KPI tiles (baki cuti tahunan, cuti pending, cuti hadapan, claim pending), 3 quick action buttons (Pohon Cuti → roster, Hantar Claim → claim section, Riwayat Clock → clock history). (2) Sidebar HR Department dapat 3 items baharu: "Hari Ni" (top, ikon sun), "Jadual Saya" (moved dari Inventory, rename dari Jadual Operasi, kekal data-tab hr_roster supaya tiada break), "Riwayat Clock" (bottom, ikon history). Cuti + Claim items existing kekal. (3) Jadual Operasi entry dalam Inventory group dibuang (workflow alignment dengan p1_69 HR scope). (4) Tambah `hrClockHistorySection` — jadual 30 hari terakhir clock-in/out dari Supabase staff_attendance dengan compute jumlah jam + status badge. (5) renderHrToday compute clock state async dari staff_attendance + balance dari staffProfiles + pending leave dari pendingSchedules + next leave dari staffSchedules filter AL/MC/EL/PH + pending claim dari _hrcLoadClaims. (6) Tambah 30 keys i18n hr_today_* + hr_clock_* + 3 sidebar labels.', d:'done' },
  { id:'p1_82', label:'Bulk i18n untuk 5 Inventory sections yang sebelum ni langsung tiada data-i18n coverage — Stock Take, Purchase Orders, Smart Picking, Barcode Labels, Browse Products, Warehouse Hub. Tambah ~70 keys dalam window.I18N.dict dengan prefix per-section: st_* (Stock Take, 10 keys), po_* (Purchase Orders, 22 keys), sp_* (Smart Picking, 7 keys), bc_* (Barcode Labels, 7 keys), db_* (Browse Products, 23 keys), wh_* (Warehouse Hub, 15 keys). Tag semua main visible labels: section titles, subtitles, form labels, filter labels, sort options, status pills, table headers, button text, empty state messages. Deep nested form fields (Master Product registration full form ~30 inputs) defer ke patch kemudian — fokus high-traffic labels dulu. Toggle BM/EN sekarang affect majoriti UI dalam Inventory Department. Sample: Browse Products header "Product Database" → "Pangkalan Data Produk" (BM); Stock Take title "Per-Item Inventory Audit Review" → "Semakan Audit Inventori Per-Item"; Purchase Orders "PO Grand Total" → "Total Keseluruhan PO".', d:'done' },
  { id:'p1_81', label:'Marketplace Seller Centre quick links dalam Pesanan Online — no data sync, link sahaja. Zaid request "tekan link untuk check order di tiktok seller centre" tanpa disconnect EasyStore. Implementation: (1) Header buttons: tambah 2 butang shortcut di atas KPI strip — TikTok Seller (background hitam, link ke https://seller-my.tiktok.com/order) + Shopee Seller (background oren #ee4d2d, link ke https://seller.shopee.com.my/portal/sale/order). Buka dalam tab baru via target="_blank" rel="noopener". (2) Per-order deep link: tambah ffMarketplaceLink helper yang return URL + label + color based on order metadata (priority: metadata.tiktok_order_id direct → channel includes "tiktok" → metadata.shopee_order_id → channel includes "shopee"). Bila ada tiktok_order_id, URL deep link ke order detail page: https://seller-my.tiktok.com/order/detail?order_no=<id>. Sama untuk Shopee dengan /portal/sale/order/<id>. Kalau tiada order ID specific (cthnya datang via EasyStore tapi marked TikTok channel), fallback ke order LIST URL. (3) Card render: ffCardHtml inject mpLink HTML kecil bersebelahan ref number — badge berwarna brand dengan icon external-link + label "TikTok" atau "Shopee". Klik buka tab baru ke Seller Centre. (4) Tiada sync data ke sales_history — pure navigation aid supaya Bos/staff tak perlu manual buka browser bookmark untuk Seller Centre, terus klik dari POS.', d:'done' },
  { id:'p1_80', label:'Customers (CRM) section audit fixes (rolling). Fix #1 2026-05-20: Segment dropdown count dynamic. Sebelum ni `<option value="email_consent"> Email consent (430)</option>` ada hardcoded "(430)" yang stale — bila customer database tumbuh atau menyusut, label tak update. Tambah window.__updateCrmSegmentCounts function yang compute counts dari customersData full dataset untuk semua 7 segments (vip / email_consent / sms_consent / tiktok / shopee / never_bought / big_spender) dan replace option text dengan format "Label (N)". Dipanggil dari renderCustomersV2 supaya counts auto-refresh setiap kali filter trigger. Buang "(430)" dari markup HTML supaya tak conflict dengan JS output. Fix #3 2026-05-20: Wire CRM section ke i18n. Tambah 28 keys cr_* — section title, filter labels (search/segment/sort/page size), sort options, page size "Semua", action buttons (email blast/export/add customer), 9 table headers (Name/Phone/Email/Spent/Orders/Points/Member/Consent/Tags), email blast modal labels (title/subject/body/howto/cancel/generate), empty state, row click hint, Show More. Tag semua label HTML data-i18n termasuk select options. Fix #5 2026-05-20: Email Blast modal cleanup — buang ref "Phase 7.2" yang outdated (roadmap dah ke p1_80 / no more numbered phase 7); ganti dengan ayat generic "SMTP terus akan datang kemudian". Modal labels semua data-i18n. Fix #7 2026-05-20: Empty state lebih helpful. "Tiada customer match filter." biasa → "Tiada pelanggan padan filter. Cuba clear filter atau tambah pelanggan baru." (BM) / "No customers match this filter. Try clearing filters or adding a new customer." (EN). Padding 32px untuk give breathing room. Fix #9 2026-05-20: Sticky header bg ditukar dari `#FAFAFA` keras ke `var(--card-bg)` supaya konsisten dengan parent card + future dark mode ready. Fix #10 2026-05-20: Row click → buka customer detail modal. Sebelum ni klik row tiada apa berlaku. Sekarang `<tr>` ada `cursor:pointer; onclick="openCustomerDetail(id)"` (id = customer.id || phone || email fallback). Modal papar: nama + phone + email header, 3 stats grid (Belanja/Pesanan/Mata), VIP badge kalau is_member, dan jadual 10 pembelian terakhir dari salesHistory (matched via customer_phone atau customer_name). Quick view read-only — full edit modal boleh ditambah kemudian. Fix #2 2026-05-20: Tambah "+ Tambah Pelanggan" button + modal di CRM section. Sebelum ni customers cuma ditambah via Cashier checkout — nak insert customer baru tanpa transaksi tak boleh. Sekarang button hijau di action bar buka modal dengan field nama (wajib), telefon, emel, tag, consent checkbox (email/SMS marketing). Submit validate (nama wajib + at least phone/email + dup guard on phone) → insert ke Supabase customers table + unshift ke customersData → renderCustomersV2 + toast. Fail-safe kalau db tak ada: kekal dalam memori sahaja. Fix #8 2026-05-20: Show More pagination + better summary line. Sebelum ni cuma "Match: X · Show: Y" — UX tak jelas yang sebenarnya dia truncate. Sekarang summary line papar "Showing N of Total" + "Show More (+pageSize)" link kalau ada lagi rows. Klik Show More tambah pageSize lagi rows. window.__crmShown state track current. Search/segment/sort/pageSize change reset __crmShown=null supaya bermula semula dari page 1. Translation keys cr_showing/cr_of/cr_show_more. Fix #6 2026-05-20: Bulk select dengan checkbox column + bulk action bar. Tambah column pertama (24px wide) untuk checkbox + header checkbox untuk select-all visible rows. State: window.__crmSelected Set persisted across renders dengan id (id/phone/email fallback). __crmRenderBulkBar tunjuk amaran bar kuning (sticky di bawah table) bila ada item dipilih, dengan count + 3 butang: Eksport Pilihan (CSV download selected only), Padam Pilihan (Supabase delete by id + splice from customersData with confirm dialog), Hapus Pilihan (clear selection state). Row td onclick masih trigger openCustomerDetail tapi checkbox td stopPropagation supaya klik checkbox tak buka modal. Translation keys cr_selected/cr_bulk_export/cr_bulk_delete/cr_bulk_clear/cr_bulk_delete_confirm. colspan skeleton + empty state ditukar dari 9 ke 10 supaya cover column checkbox baharu.', d:'done' },
@@ -9220,7 +9313,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=203"></script>
+ <script src="app.js?v=204"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

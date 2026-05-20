@@ -5657,6 +5657,138 @@ window.refreshClaimBadge = function() {
  else badge.style.display = 'none';
 };
 
+// p1_83: HR Today overview — daily essentials hub.
+window.renderHrToday = async function() {
+ const u = _hrCurrentUser();
+ if (!u) return;
+ const T = (k, f) => (typeof window.t === 'function') ? (window.t(k) || f) : f;
+
+ // 1. Clock status — read latest from staff_attendance for today
+ const today = new Date().toISOString().slice(0,10);
+ let clockState = 'none';
+ let clockInTime = null;
+ try {
+ if(db) {
+ const { data } = await db.from('staff_attendance').select('*').eq('staff_name', u.name).eq('date', today);
+ if(data && data.length) {
+ const r = data[0];
+ if(r.clock_out_time) clockState = 'out';
+ else { clockState = 'in'; clockInTime = r.clock_in_time; }
+ }
+ }
+ } catch(e) { /* fail silent */ }
+
+ const statusEl = document.getElementById('hrTodayClockStatus');
+ const btnLabelEl = document.getElementById('hrTodayClockBtnLabel');
+ const btn = document.getElementById('hrTodayClockBtn');
+ const card = document.getElementById('hrTodayClockCard');
+ if(statusEl && btnLabelEl && btn && card) {
+ if(clockState === 'in') {
+ statusEl.textContent = T('hr_today_clock_status_in', 'Currently Working') + (clockInTime ? ' · ' + clockInTime.slice(0,5) : '');
+ btnLabelEl.textContent = T('hr_today_clock_btn_out', 'Clock Out');
+ btn.style.background = '#EF4444';
+ card.style.background = 'linear-gradient(135deg, #FEE2E2, #FECACA)';
+ card.style.borderLeftColor = '#EF4444';
+ statusEl.style.color = '#7F1D1D';
+ } else if(clockState === 'out') {
+ statusEl.textContent = T('hr_today_clock_status_out', 'Clocked Out');
+ btnLabelEl.textContent = T('hr_today_clock_done', 'Done');
+ btn.style.background = '#9CA3AF';
+ btn.style.pointerEvents = 'none';
+ card.style.background = 'linear-gradient(135deg, #F3F4F6, #E5E7EB)';
+ card.style.borderLeftColor = '#6B7280';
+ statusEl.style.color = '#374151';
+ } else {
+ statusEl.textContent = T('hr_today_clock_status_none', 'Not Clocked In');
+ btnLabelEl.textContent = T('hr_today_clock_btn', 'Clock In');
+ btn.style.background = '#10B981';
+ btn.style.pointerEvents = 'auto';
+ card.style.background = 'linear-gradient(135deg, #ECFDF5, #D1FAE5)';
+ card.style.borderLeftColor = '#10B981';
+ statusEl.style.color = '#064E3B';
+ }
+ }
+
+ // 2. Leave balance — pull from staffProfiles
+ const profile = (typeof staffProfiles !== 'undefined' && Array.isArray(staffProfiles))
+ ? staffProfiles.find(p => p.name === u.name) : null;
+ const bal = profile ? (profile.leave_balance || 0) : '-';
+ const balEl = document.getElementById('hrTodayLeaveBalance');
+ if(balEl) balEl.textContent = bal;
+
+ // 3. Pending leave + next upcoming leave
+ const pending = (typeof pendingSchedules !== 'undefined' && Array.isArray(pendingSchedules))
+ ? pendingSchedules.filter(p => p.staff_name === u.name) : [];
+ const pEl = document.getElementById('hrTodayPendingLeave');
+ if(pEl) pEl.textContent = pending.length;
+
+ const allSched = (typeof staffSchedules !== 'undefined' && Array.isArray(staffSchedules))
+ ? staffSchedules : [];
+ const upcoming = allSched.filter(s => s.staff_name === u.name
+ && ['AL','MC','EL','PH'].includes(s.shift)
+ && s.date >= today)
+ .sort((a,b) => (a.date||'').localeCompare(b.date||''))[0];
+ const nextEl = document.getElementById('hrTodayNextLeave');
+ if(nextEl) nextEl.textContent = upcoming ? (upcoming.date + ' · ' + upcoming.shift) : '—';
+
+ // 4. Pending claim count for this user
+ const claims = _hrcLoadClaims();
+ const pendingClaim = claims.filter(c => c.staff_id === u.staff_id && c.status === 'pending').length;
+ const cEl = document.getElementById('hrTodayPendingClaim');
+ if(cEl) cEl.textContent = pendingClaim;
+
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+// p1_83: Clock In/Out history — last 30 days
+window.renderHrClockHistory = async function() {
+ const u = _hrCurrentUser();
+ const tbody = document.getElementById('hrClockHistoryTbody');
+ if(!u || !tbody) return;
+ const T = (k, f) => (typeof window.t === 'function') ? (window.t(k) || f) : f;
+ const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+ const cutoffStr = cutoff.toISOString().slice(0,10);
+ let rows = [];
+ try {
+ if(db) {
+ const { data } = await db.from('staff_attendance')
+ .select('*')
+ .eq('staff_name', u.name)
+ .gte('date', cutoffStr)
+ .order('date', { ascending: false });
+ if(data) rows = data;
+ }
+ } catch(e) { /* fail silent */ }
+
+ if(!rows.length) {
+ tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:#999;">' + T('hr_clock_empty', 'No clock-in records in the last 30 days.') + '</td></tr>';
+ return;
+ }
+ tbody.innerHTML = rows.map(r => {
+ const inT = r.clock_in_time || '-';
+ const outT = r.clock_out_time || '-';
+ let hours = '-';
+ if(r.clock_in_time && r.clock_out_time) {
+ try {
+ const a = r.clock_in_time.split(':').map(Number);
+ const b = r.clock_out_time.split(':').map(Number);
+ const mins = (b[0]*60 + b[1]) - (a[0]*60 + a[1]);
+ if(mins > 0) hours = (mins/60).toFixed(1);
+ } catch(e){}
+ }
+ const stat = r.clock_out_time ? T('hr_today_clock_status_out', 'Clocked Out')
+ : (r.clock_in_time ? T('hr_today_clock_status_in', 'Currently Working') : '-');
+ const statColor = r.clock_out_time ? '#10B981' : '#F59E0B';
+ return '<tr>'
+ + '<td>' + (r.date || '-') + '</td>'
+ + '<td style="font-family:monospace;">' + inT + '</td>'
+ + '<td style="font-family:monospace;">' + outT + '</td>'
+ + '<td style="text-align:right;">' + hours + '</td>'
+ + '<td><span style="background:' + statColor + '22; color:' + statColor + '; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700;">' + stat + '</span></td>'
+ + '</tr>';
+ }).join('');
+};
+
 window.renderHrCuti = function() {
  const u = _hrCurrentUser();
  if (!u) return;
@@ -14481,6 +14613,36 @@ window.I18N = {
  status_pending: { bm: 'Menunggu', en: 'Pending' },
  label_loading: { bm: 'Loading…', en: 'Loading…' },
  label_total: { bm: 'Jumlah', en: 'Total' },
+
+ // p1_83 — HR Department reorganization
+ hr_today_title: { bm: 'HR Hari Ni', en: 'HR Today' },
+ hr_today_sub: { bm: 'Status clock-in, baki cuti, dan tindakan pantas untuk hari ni.', en: 'Clock-in status, leave balance, and quick actions for today.' },
+ hr_today_clock_label: { bm: 'Status Clock', en: 'Clock Status' },
+ hr_today_clock_hint: { bm: 'Tekan butang untuk clock in / out', en: 'Press button to clock in / out' },
+ hr_today_clock_btn: { bm: 'Clock In', en: 'Clock In' },
+ hr_today_clock_btn_out: { bm: 'Clock Out', en: 'Clock Out' },
+ hr_today_clock_done: { bm: 'Selesai', en: 'Done' },
+ hr_today_clock_status_in: { bm: 'Sedang Bekerja', en: 'Currently Working' },
+ hr_today_clock_status_out: { bm: 'Dah Clock Out', en: 'Clocked Out' },
+ hr_today_clock_status_none: { bm: 'Belum Clock In', en: 'Not Clocked In' },
+ hr_today_kpi_balance: { bm: 'Baki Cuti Tahunan', en: 'Annual Leave Balance' },
+ hr_today_kpi_pending: { bm: 'Cuti Pending', en: 'Pending Leave' },
+ hr_today_kpi_next: { bm: 'Cuti Hadapan', en: 'Next Leave' },
+ hr_today_kpi_claim_pending: { bm: 'Claim Pending', en: 'Pending Claims' },
+ hr_today_action_apply_leave: { bm: 'Pohon Cuti', en: 'Apply Leave' },
+ hr_today_action_submit_claim: { bm: 'Hantar Claim', en: 'Submit Claim' },
+ hr_today_action_clock_history: { bm: 'Riwayat Clock', en: 'Clock History' },
+ hr_clock_history_title: { bm: 'Riwayat Clock In/Out', en: 'Clock In/Out History' },
+ hr_clock_history_sub: { bm: '30 hari terakhir clock-in dan clock-out anda.', en: 'Your last 30 days of clock-in and clock-out records.' },
+ hr_clock_th_date: { bm: 'Tarikh', en: 'Date' },
+ hr_clock_th_in: { bm: 'Clock In', en: 'Clock In' },
+ hr_clock_th_out: { bm: 'Clock Out', en: 'Clock Out' },
+ hr_clock_th_hours: { bm: 'Jumlah Jam', en: 'Total Hours' },
+ hr_clock_th_status: { bm: 'Status', en: 'Status' },
+ hr_clock_empty: { bm: 'Tiada rekod clock-in dalam 30 hari terakhir.', en: 'No clock-in records in the last 30 days.' },
+ sb_hr_today: { bm: 'Hari Ni', en: 'Today' },
+ sb_jadual_saya: { bm: 'Jadual Saya', en: 'My Schedule' },
+ sb_clock_history: { bm: 'Riwayat Clock', en: 'Clock History' },
 
  // p1_82 — Inventory sections (5 sections bulk i18n)
  // Stock Take
