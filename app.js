@@ -10932,6 +10932,37 @@ window.exportProductSalesCsv = function() {
 // ===================================
 // CRM V2 — enriched customers + segments
 // ===================================
+// p1_80 fix #1: Recompute segment dropdown counts from full customersData
+// so the hardcoded "(430)" no longer goes stale. Runs on every render.
+window.__updateCrmSegmentCounts = function() {
+ const sel = document.getElementById('crmSegment');
+ if(!sel || typeof customersData === 'undefined' || !Array.isArray(customersData)) return;
+ const all = customersData;
+ const counts = {
+ vip: all.filter(c => c.is_member).length,
+ email_consent: all.filter(c => c.accepts_email_marketing).length,
+ sms_consent: all.filter(c => c.accepts_sms_marketing).length,
+ tiktok: all.filter(c => (c.tags||'').toLowerCase().includes('tiktok')).length,
+ shopee: all.filter(c => (c.tags||'').toLowerCase().includes('shopee')).length,
+ never_bought: all.filter(c => (c.total_orders||0) === 0).length,
+ big_spender: all.filter(c => (c.total_spent||0) >= 1000).length,
+ };
+ const labels = {
+ vip: '⭐ VIP (3+ orders)',
+ email_consent: 'Email consent',
+ sms_consent: 'SMS consent',
+ tiktok: 'TikTok customers',
+ shopee: 'Shopee customers',
+ never_bought: '🆕 Newsletter / never bought',
+ big_spender: 'Big spender (RM1K+)'
+ };
+ Array.from(sel.options).forEach(opt => {
+ if(opt.value && counts[opt.value] !== undefined) {
+ opt.textContent = labels[opt.value] + ' (' + counts[opt.value] + ')';
+ }
+ });
+};
+
 window.renderCustomersV2 = function() {
  const tbody = document.getElementById('customersTableBody');
  if(!tbody) return;
@@ -10939,6 +10970,8 @@ window.renderCustomersV2 = function() {
  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Loading customer data...</td></tr>';
  return;
  }
+ // p1_80 fix #1: refresh segment counts so dropdown reflects current data
+ try { window.__updateCrmSegmentCounts(); } catch(e){}
 
  const all = customersData;
  const q = (document.getElementById('crmSearch')?.value || '').trim().toLowerCase();
