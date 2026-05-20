@@ -13983,6 +13983,8 @@ window.I18N = {
  sb_customer_lookup: { bm: 'Cari Pelanggan', en: 'Customer Lookup' },
  sb_my_commission: { bm: 'Komisen Saya', en: 'My Commission' },
  sb_shift_close: { bm: 'Tutup Syif', en: 'Shift Close' },
+ sb_inv_daily_divider: { bm: '— Operasi Harian —', en: '— Daily Operations —' },
+ sb_inv_stock_divider: { bm: '— Pengurusan Stok —', en: '— Stock Management —' },
  sb_pesanan_online: { bm: 'Pesanan Online', en: 'Online Orders' },
  sb_jadual_operasi: { bm: 'Jadual Operasi', en: 'Operations Schedule' },
  sb_browse_products: { bm: 'Senarai Produk', en: 'Browse Products' },
