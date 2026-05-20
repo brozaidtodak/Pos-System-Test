@@ -13951,6 +13951,7 @@ window.I18N = {
  dept_finance: { bm: 'Jabatan Kewangan', en: 'Finance Department' },
  dept_hr: { bm: 'Jabatan HR', en: 'HR Department' },
  dept_customers: { bm: 'Pelanggan', en: 'Customers' },
+ dept_marketing: { bm: 'Jabatan Pemasaran', en: 'Marketing Department' },
  dept_setup: { bm: 'Tetapan', en: 'Setup' },
 
  // Common buttons
