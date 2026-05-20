@@ -17770,3 +17770,159 @@ document.addEventListener('DOMContentLoaded', () => {
  setTimeout(installEsSyncHook, 1500);
  setTimeout(installEsSyncHook, 4000); // backstop
 });
+
+// =============================================================
+// p1_85 — Shop AI chat bubble (customer-facing on landing page)
+// =============================================================
+window.__shopAiHistory = []; // {role, content} pairs persisted in localStorage
+window.__SHOP_AI_KEY = 'shopAiHistory_v1';
+
+// Restore history from localStorage on boot
+(function __restoreShopAiHistory(){
+ try {
+ const saved = localStorage.getItem(window.__SHOP_AI_KEY);
+ if(saved) {
+ const parsed = JSON.parse(saved);
+ if(Array.isArray(parsed)) window.__shopAiHistory = parsed.slice(-20); // cap to 20 messages
+ }
+ } catch(e){}
+})();
+
+window.shopAiToggle = function() {
+ const panel = document.getElementById('shopAiPanel');
+ const bubble = document.getElementById('shopAiBubble');
+ if(!panel || !bubble) return;
+ const isOpen = panel.style.display === 'flex';
+ if(isOpen) {
+ panel.style.display = 'none';
+ bubble.style.transform = '';
+ } else {
+ panel.style.display = 'flex';
+ bubble.style.transform = 'scale(0.92)';
+ // Render history if any
+ window.__shopAiRenderHistory();
+ setTimeout(() => { const i = document.getElementById('shopAiInput'); if(i) i.focus(); }, 100);
+ }
+};
+
+window.__shopAiRenderHistory = function() {
+ const thread = document.getElementById('shopAiThread');
+ if(!thread || !window.__shopAiHistory.length) return;
+ // Keep the welcome message (first child) + append history
+ const welcomeMsg = thread.firstElementChild ? thread.firstElementChild.cloneNode(true) : null;
+ thread.innerHTML = '';
+ if(welcomeMsg) thread.appendChild(welcomeMsg);
+ window.__shopAiHistory.forEach(m => {
+ const bubble = document.createElement('div');
+ const isUser = m.role === 'user';
+ bubble.style.cssText = isUser
+ ? 'background:var(--primary); color:#fff; padding:10px 12px; border-radius:12px; font-size:13px; line-height:1.5; align-self:flex-end; max-width:80%;'
+ : 'background:#fff; border:1px solid #E5E7EB; color:#374151; padding:10px 12px; border-radius:12px; font-size:13px; line-height:1.5; max-width:90%;';
+ bubble.textContent = m.content;
+ thread.appendChild(bubble);
+ });
+ thread.scrollTop = thread.scrollHeight;
+};
+
+window.shopAiAsk = function(question) {
+ const input = document.getElementById('shopAiInput');
+ if(input) input.value = question;
+ window.shopAiSend();
+};
+
+window.shopAiSend = async function() {
+ const input = document.getElementById('shopAiInput');
+ const thread = document.getElementById('shopAiThread');
+ const chips = document.getElementById('shopAiChips');
+ if(!input || !thread) return;
+ const q = (input.value || '').trim();
+ if(!q) return;
+
+ // Hide quick chips after first send (less clutter)
+ if(chips) chips.style.display = 'none';
+
+ // Add user bubble
+ const userBubble = document.createElement('div');
+ userBubble.style.cssText = 'background:var(--primary); color:#fff; padding:10px 12px; border-radius:12px; font-size:13px; line-height:1.5; align-self:flex-end; max-width:80%;';
+ userBubble.textContent = q;
+ thread.appendChild(userBubble);
+ input.value = '';
+
+ // Pending indicator
+ const pending = document.createElement('div');
+ pending.style.cssText = 'background:#fff; border:1px solid #E5E7EB; color:#9CA3AF; padding:10px 12px; border-radius:12px; font-size:13px; font-style:italic; max-width:80%;';
+ pending.textContent = 'Sedang fikir...';
+ thread.appendChild(pending);
+ thread.scrollTop = thread.scrollHeight;
+
+ // Build catalog summary from current masterProducts (top 30 published)
+ let catalog = [];
+ try {
+ if(typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+ catalog = masterProducts
+ .filter(p => p && (p.is_published || p.published_at))
+ .slice(0, 30)
+ .map(p => ({
+ sku: p.sku || '',
+ name: (p.name || '').slice(0, 80),
+ brand: p.brand || '',
+ category: p.category || '',
+ price: (p.retail_price != null ? p.retail_price : (p.price || '')).toString().slice(0, 10)
+ }));
+ }
+ } catch(e){}
+
+ try {
+ const resp = await fetch('/api/shop-ai', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ question: q,
+ catalog_summary: catalog,
+ history: window.__shopAiHistory.slice(-8)
+ })
+ });
+ const data = await resp.json();
+ pending.remove();
+
+ const answer = data.answer || data.error || 'Maaf, ada masalah. Cuba lagi nanti.';
+ const aiBubble = document.createElement('div');
+ aiBubble.style.cssText = 'background:#fff; border:1px solid #E5E7EB; color:#374151; padding:10px 12px; border-radius:12px; font-size:13px; line-height:1.5; max-width:90%; white-space:pre-wrap;';
+ aiBubble.textContent = answer;
+ thread.appendChild(aiBubble);
+ thread.scrollTop = thread.scrollHeight;
+
+ // Persist history (cap last 20)
+ window.__shopAiHistory.push({ role: 'user', content: q });
+ window.__shopAiHistory.push({ role: 'assistant', content: answer });
+ window.__shopAiHistory = window.__shopAiHistory.slice(-20);
+ try { localStorage.setItem(window.__SHOP_AI_KEY, JSON.stringify(window.__shopAiHistory)); } catch(e){}
+ } catch(err) {
+ pending.remove();
+ const errBubble = document.createElement('div');
+ errBubble.style.cssText = 'background:#FEE2E2; color:#991B1B; padding:10px 12px; border-radius:12px; font-size:13px; max-width:90%;';
+ errBubble.textContent = 'Ralat sambungan: ' + (err.message || err) + '. Cuba lagi.';
+ thread.appendChild(errBubble);
+ }
+};
+
+// Hide bubble in POS internal mode (only show on landing page)
+document.addEventListener('DOMContentLoaded', () => {
+ try {
+ const observer = new MutationObserver(() => {
+ const bubble = document.getElementById('shopAiBubble');
+ const panel = document.getElementById('shopAiPanel');
+ if(!bubble) return;
+ const posLayout = document.getElementById('posAppLayout');
+ const inPos = posLayout && posLayout.style.display === 'block';
+ if(inPos) {
+ bubble.style.display = 'none';
+ if(panel) panel.style.display = 'none';
+ } else {
+ bubble.style.display = 'flex';
+ }
+ });
+ const posLayout = document.getElementById('posAppLayout');
+ if(posLayout) observer.observe(posLayout, { attributes: true, attributeFilter: ['style'] });
+ } catch(e){}
+});
