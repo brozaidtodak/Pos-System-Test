@@ -3341,6 +3341,9 @@ function loginAs(user, opts) {
  } catch(e){}
  // Refresh sidebar badge for Bos
  if(typeof window.memoRefreshSidebarBadge === 'function') window.memoRefreshSidebarBadge();
+ // p1_77 fix #7: refresh sidebar badges on login so Bos sees pending counts immediately
+ if(typeof window.refreshRosterBadge === 'function') try { window.refreshRosterBadge(); } catch(e){}
+ if(typeof window.refreshClaimBadge === 'function') try { window.refreshClaimBadge(); } catch(e){}
  }, 1200);
 
  document.getElementById("shopAppLayout").style.display = "none";
@@ -5438,7 +5441,26 @@ function _hrcLoadClaims() {
 }
 function _hrcSaveClaims(arr) {
  try { localStorage.setItem(window.HRC_CLAIMS_KEY, JSON.stringify(arr)); } catch(e) {}
+ // p1_77 fix #7: refresh sidebar badge so Bos sees new pending claim immediately
+ try { if(typeof window.refreshClaimBadge === 'function') window.refreshClaimBadge(); } catch(e){}
 }
+
+// p1_77 fix #7: Claim sidebar badge — pending claim count, visible to Bos only.
+window.refreshClaimBadge = function() {
+ const badge = document.getElementById('claimSidebarBadge');
+ if(!badge) return;
+ const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ // Badge visible only for Bos (the approver). Other staff see their own claims
+ // in the section view but don't need an approval counter.
+ if(!u || !(typeof window.isBoss === 'function' && window.isBoss(u))) {
+ badge.style.display = 'none';
+ return;
+ }
+ const all = _hrcLoadClaims();
+ const pending = all.filter(c => c.status === 'pending').length;
+ if(pending > 0) { badge.style.display = ''; badge.textContent = pending; }
+ else badge.style.display = 'none';
+};
 
 window.renderHrCuti = function() {
  const u = _hrCurrentUser();
