@@ -15307,7 +15307,75 @@ window.I18N = {
  lp_clear_filters: { bm: 'Reset penapis', en: 'Clear filters' },
  lp_page_back: { bm: '← Sebelum', en: '← Back' },
  lp_page_next: { bm: 'Seterus →', en: 'Next →' },
- lp_page_label: { bm: 'Muka surat', en: 'Page' }
+ lp_page_label: { bm: 'Muka surat', en: 'Page' },
+
+ // p1_91 — Marketing Dept i18n (3 sections: Promotions / Re-engage / WA Broadcast)
+ // Promotions & Vouchers (mk_promo_*)
+ mk_promo_title: { bm: 'Pengurus Promosi & Voucher', en: 'Promotion & Voucher Manager' },
+ mk_promo_sub: { bm: 'Promo aktif auto-apply masa checkout (berasaskan peraturan: total troli / brand / kategori / SKU / tier pelanggan). Klik "Templat Festival" untuk setup one-click Raya/CNY/Deepavali/Merdeka/dll.', en: 'Active promos auto-apply at checkout (rule-based: cart total / brand / category / SKU / customer tier). Click "Festival Templates" for one-click Raya/CNY/Deepavali/Merdeka setup.' },
+ mk_promo_festival_btn: { bm: 'Templat Festival', en: 'Festival Templates' },
+ mk_promo_refresh_btn: { bm: 'Muat Semula', en: 'Refresh' },
+ mk_promo_col_code: { bm: 'Kod / Penerangan', en: 'Code / Description' },
+ mk_promo_col_type: { bm: 'Jenis / Syarat', en: 'Type / Conditions' },
+ mk_promo_col_value: { bm: 'Nilai', en: 'Value' },
+ mk_promo_col_status: { bm: 'Status', en: 'Status' },
+
+ // Re-engage Campaign (mk_re_*)
+ mk_re_title: { bm: 'Kempen Re-engage', en: 'Re-engage Campaign' },
+ mk_re_sub: { bm: 'Tarik balik pelanggan dorman via WhatsApp peribadi. Tier ikut hari sejak pesanan terakhir. Anti-spam: pelanggan sama di-skip kalau dah dihubungi dalam 30 hari lepas.', en: 'Win back dormant customers via personalised WhatsApp outreach. Tier by days-since-last-order. Anti-spam: same customer skipped if messaged within the last 30 days.' },
+ mk_re_refresh: { bm: 'Muat Semula', en: 'Refresh' },
+ mk_re_tier_sleeping: { bm: 'Tidur', en: 'Sleeping' },
+ mk_re_tier_cold: { bm: 'Sejuk', en: 'Cold' },
+ mk_re_tier_lost: { bm: 'Hilang', en: 'Lost' },
+ mk_re_range_sleeping: { bm: '30–59 hari', en: '30–59 days' },
+ mk_re_range_cold: { bm: '60–89 hari', en: '60–89 days' },
+ mk_re_range_lost: { bm: '90+ hari', en: '90+ days' },
+ mk_re_tier_cust: { bm: 'pelanggan ·', en: 'customers ·' },
+ mk_re_tier_value: { bm: 'nilai sejarah', en: 'historic value' },
+ mk_re_detail_title_sleeping: { bm: 'Pelanggan Tidur (30–59 hari)', en: 'Sleeping customers (30–59 days)' },
+ mk_re_detail_title_cold: { bm: 'Pelanggan Sejuk (60–89 hari)', en: 'Cold customers (60–89 days)' },
+ mk_re_detail_title_lost: { bm: 'Pelanggan Hilang (90+ hari)', en: 'Lost customers (90+ days)' },
+ mk_re_detail_sub_pre: { bm: 'Memaparkan', en: 'Showing' },
+ mk_re_detail_sub_post: { bm: 'yang layak (selepas tapis anti-spam). Tick untuk hantar.', en: 'eligible (after anti-spam filter). Tick to include in send.' },
+ mk_re_select_all: { bm: 'Pilih Semua', en: 'Select all' },
+ mk_re_clear: { bm: 'Kosongkan', en: 'Clear' },
+ mk_re_template_label: { bm: 'Templat mesej', en: 'Message template' },
+ mk_re_vars: { bm: 'Variables: {name} · {last_order_days} · {total_spent} · {promo_code}', en: 'Vars: {name} · {last_order_days} · {total_spent} · {promo_code}' },
+ mk_re_promo_label: { bm: 'Kod promo:', en: 'Promo code:' },
+ mk_re_selected: { bm: 'dipilih · anggar', en: 'selected · est' },
+ mk_re_value_suffix: { bm: 'nilai sejarah', en: 'historic value' },
+ mk_re_send_btn: { bm: 'Hantar 10 seterusnya via WhatsApp', en: 'Send next 10 via WhatsApp' },
+ mk_re_history_title: { bm: 'Aktiviti Re-engage Terkini', en: 'Recent re-engagement activity' },
+ mk_re_history_empty: { bm: 'Belum ada kempen re-engage dihantar.', en: 'No re-engagement campaigns sent yet.' },
+
+ // WhatsApp Broadcast (mk_wa_*)
+ mk_wa_title: { bm: 'Siaran WhatsApp', en: 'WhatsApp Broadcast' },
+ mk_wa_sub: { bm: 'Hantar promo / peringatan ke ramai pelanggan sekaligus via wa.me click-to-send. Tak perlu WhatsApp Business API. Browser akan buka tab baru per pelanggan (maksimum 10 sekali untuk elak rate-limit).', en: 'Send promos / reminders to multiple customers via wa.me click-to-send. No WhatsApp Business API needed. Browser opens a new tab per customer (max 10 at a time to avoid rate-limit).' },
+ mk_wa_card_template_audience: { bm: 'Templat & Audiens', en: 'Template & Audience' },
+ mk_wa_card_preview: { bm: 'Preview Mesej', en: 'Message preview' },
+ mk_wa_card_send: { bm: 'Hantar Siaran', en: 'Send broadcast' },
+ mk_wa_lbl_template: { bm: 'Templat', en: 'Template' },
+ mk_wa_lbl_audience: { bm: 'Tapis audiens', en: 'Audience filter' },
+ mk_wa_lbl_promo: { bm: 'Kod promo (pilihan)', en: 'Promo code (optional)' },
+ mk_wa_tpl_raya: { bm: 'Promo Hari Raya', en: 'Hari Raya promo' },
+ mk_wa_tpl_cny: { bm: 'Promo CNY', en: 'CNY promo' },
+ mk_wa_tpl_deepavali: { bm: 'Promo Deepavali', en: 'Deepavali promo' },
+ mk_wa_tpl_merdeka: { bm: 'Promo Merdeka', en: 'Merdeka promo' },
+ mk_wa_tpl_vip: { bm: 'Peringatan mata VIP', en: 'VIP points reminder' },
+ mk_wa_tpl_reorder: { bm: 'Nudge re-order (pesanan terakhir > 60 hari)', en: 'Re-order nudge (last order > 60 days)' },
+ mk_wa_tpl_generic: { bm: 'Pengumuman umum', en: 'Generic announcement' },
+ mk_wa_aud_all: { bm: 'Semua pelanggan (ada telefon)', en: 'All customers (with phone)' },
+ mk_wa_aud_vip: { bm: 'Ahli VIP sahaja', en: 'VIP members only' },
+ mk_wa_aud_sms: { bm: 'Yang consent SMS marketing', en: 'Consented to SMS marketing' },
+ mk_wa_aud_big: { bm: 'Big spender (RM 1,000+)', en: 'Big spenders (RM 1,000+)' },
+ mk_wa_aud_dormant: { bm: 'Dorman (pesanan terakhir > 60 hari)', en: 'Dormant (last order > 60 days)' },
+ mk_wa_match_pre: { bm: 'Padanan audiens:', en: 'Audience match:' },
+ mk_wa_match_post: { bm: 'pelanggan', en: 'customer(s)' },
+ mk_wa_vars: { bm: 'Variables: {name}, {points}, {total_spent}, {last_order_days}, {promo_code}', en: 'Variables: {name}, {points}, {total_spent}, {last_order_days}, {promo_code}' },
+ mk_wa_sample: { bm: 'Contoh untuk padanan pertama:', en: 'Sample for first match:' },
+ mk_wa_send_info: { bm: 'Klik butang untuk mula. Browser akan buka 10 tab sekali (batch). Sila benarkan popup. Lepas tu klik tab "Continue" untuk batch seterusnya.', en: 'Click the button to start. The browser will open 10 tabs at once (batched). Please allow the popup. Then click the "Continue" tab for the next batch.' },
+ mk_wa_send_btn: { bm: 'Hantar Batch', en: 'Send batch' },
+ mk_wa_reset_btn: { bm: 'Reset', en: 'Reset' }
  }
 };
 
@@ -16234,13 +16302,16 @@ window.reSelectTier = function(tier, suppressScroll) {
     document.querySelectorAll('.re-tier').forEach(el => el.classList.toggle('is-active', el.dataset.tier === tier));
     document.getElementById('reDetail').style.display = 'block';
 
+    // p1_91: i18n via window.t — fall back English if missing.
+    const T = (k, fb) => (typeof window.t === 'function' ? window.t(k) : fb) || fb;
     const labels = {
-        sleeping: 'Sleeping customers (30–59 days)',
-        cold: 'Cold customers (60–89 days)',
-        lost: 'Lost customers (90+ days)'
+        sleeping: T('mk_re_detail_title_sleeping', 'Sleeping customers (30–59 days)'),
+        cold: T('mk_re_detail_title_cold', 'Cold customers (60–89 days)'),
+        lost: T('mk_re_detail_title_lost', 'Lost customers (90+ days)')
     };
     document.getElementById('reDetailTitle').textContent = labels[tier];
-    document.getElementById('reTierLabel').textContent = '· ' + tier + ' tier';
+    const tierName = T('mk_re_tier_' + tier, tier);
+    document.getElementById('reTierLabel').textContent = '· ' + tierName;
 
     const ta = document.getElementById('reMessage');
     if(ta) ta.value = window.RE_TEMPLATES[tier] || '';

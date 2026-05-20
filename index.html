@@ -2820,17 +2820,17 @@
  <div id="promotionsSection" class="tab-section" style="display: none;">
  <div class="admin-card" style="padding:20px;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:8px;">
- <h2 style="margin:0;"> Promotion &amp; Voucher Manager</h2>
+ <h2 style="margin:0;" data-i18n="mk_promo_title">Promotion &amp; Voucher Manager</h2>
  <div style="display:flex; gap:8px;">
- <button class="btn-success" onclick="window.openFestivalTemplates()" style="background:#A855F7; border-color:#A855F7;"> Festival Templates</button>
- <button class="btn-primary" onclick="if(typeof renderPromotionsV2==='function')renderPromotionsV2()">↻ Refresh</button>
+ <button class="btn-success" onclick="window.openFestivalTemplates()" style="background:#A855F7; border-color:#A855F7;" data-i18n="mk_promo_festival_btn">Festival Templates</button>
+ <button class="btn-primary" onclick="if(typeof renderPromotionsV2==='function')renderPromotionsV2()" data-i18n="mk_promo_refresh_btn">Refresh</button>
  </div>
  </div>
- <p style="font-size:13px; color:#888; margin-bottom:14px;">Promo aktif auto-apply masa checkout (rules-based: cart total / brand / category / SKU / customer tier). Klik Festival Templates untuk one-click setup Raya/CNY/Deepavali/Merdeka/dll.</p>
+ <p style="font-size:13px; color:#888; margin-bottom:14px;" data-i18n="mk_promo_sub">Promo aktif auto-apply masa checkout (rules-based: cart total / brand / category / SKU / customer tier). Klik Festival Templates untuk one-click setup Raya/CNY/Deepavali/Merdeka/dll.</p>
  <div class="table-responsive">
  <table class="data-table" style="font-size:12px;">
- <thead><tr><th>Code / Description</th><th>Type / Conditions</th><th>Value</th><th>Status</th></tr></thead>
- <tbody id="promotionsTableBody"><tr><td colspan="4"><i>Loading...</i></td></tr></tbody>
+ <thead><tr><th data-i18n="mk_promo_col_code">Code / Description</th><th data-i18n="mk_promo_col_type">Type / Conditions</th><th data-i18n="mk_promo_col_value">Value</th><th data-i18n="mk_promo_col_status">Status</th></tr></thead>
+ <tbody id="promotionsTableBody"><tr><td colspan="4"><i data-i18n="label_loading">Loading…</i></td></tr></tbody>
  </table>
  </div>
  </div>
@@ -4646,11 +4646,11 @@
  <div id="reengageSection" class="tab-section re-root" style="display:none;">
  <div class="re-header">
  <div>
- <h2>Re-engage Campaign</h2>
- <p class="re-sub">Win back dormant customers via personalised WhatsApp outreach. Tier by days-since-last-order. Anti-spam: same customer skipped if messaged within last 30 days.</p>
+ <h2 data-i18n="mk_re_title">Re-engage Campaign</h2>
+ <p class="re-sub" data-i18n="mk_re_sub">Win back dormant customers via personalised WhatsApp outreach. Tier by days-since-last-order. Anti-spam: same customer skipped if messaged within last 30 days.</p>
  </div>
  <button class="re-btn re-btn--ghost" onclick="window.renderReengage()">
- <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i> Refresh
+ <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i> <span data-i18n="mk_re_refresh">Refresh</span>
  </button>
  </div>
 
@@ -4659,29 +4659,29 @@
  <div class="re-tier re-tier--sleeping" data-tier="sleeping" onclick="window.reSelectTier('sleeping')">
  <div class="re-tier__head">
  <span class="re-tier__dot"></span>
- <span class="re-tier__name">Sleeping</span>
- <span class="re-tier__range">30–59 days</span>
+ <span class="re-tier__name" data-i18n="mk_re_tier_sleeping">Sleeping</span>
+ <span class="re-tier__range" data-i18n="mk_re_range_sleeping">30–59 days</span>
  </div>
  <div class="re-tier__num" id="reCountSleeping">—</div>
- <div class="re-tier__sub">customers · <strong id="reValueSleeping">RM 0</strong> historic value</div>
+ <div class="re-tier__sub"><span data-i18n="mk_re_tier_cust">customers ·</span> <strong id="reValueSleeping">RM 0</strong> <span data-i18n="mk_re_tier_value">historic value</span></div>
  </div>
  <div class="re-tier re-tier--cold" data-tier="cold" onclick="window.reSelectTier('cold')">
  <div class="re-tier__head">
  <span class="re-tier__dot"></span>
- <span class="re-tier__name">Cold</span>
- <span class="re-tier__range">60–89 days</span>
+ <span class="re-tier__name" data-i18n="mk_re_tier_cold">Cold</span>
+ <span class="re-tier__range" data-i18n="mk_re_range_cold">60–89 days</span>
  </div>
  <div class="re-tier__num" id="reCountCold">—</div>
- <div class="re-tier__sub">customers · <strong id="reValueCold">RM 0</strong> historic value</div>
+ <div class="re-tier__sub"><span data-i18n="mk_re_tier_cust">customers ·</span> <strong id="reValueCold">RM 0</strong> <span data-i18n="mk_re_tier_value">historic value</span></div>
  </div>
  <div class="re-tier re-tier--lost" data-tier="lost" onclick="window.reSelectTier('lost')">
  <div class="re-tier__head">
  <span class="re-tier__dot"></span>
- <span class="re-tier__name">Lost</span>
- <span class="re-tier__range">90+ days</span>
+ <span class="re-tier__name" data-i18n="mk_re_tier_lost">Lost</span>
+ <span class="re-tier__range" data-i18n="mk_re_range_lost">90+ days</span>
  </div>
  <div class="re-tier__num" id="reCountLost">—</div>
- <div class="re-tier__sub">customers · <strong id="reValueLost">RM 0</strong> historic value</div>
+ <div class="re-tier__sub"><span data-i18n="mk_re_tier_cust">customers ·</span> <strong id="reValueLost">RM 0</strong> <span data-i18n="mk_re_tier_value">historic value</span></div>
  </div>
  </div>
 
@@ -4689,24 +4689,24 @@
  <div class="re-detail" id="reDetail" style="display:none;">
  <div class="re-detail__head">
  <div>
- <h3 id="reDetailTitle">Sleeping customers (30–59 days)</h3>
- <p id="reDetailSub" class="re-sub">Showing <strong id="reEligibleCount">0</strong> eligible (after anti-spam filter). Tick to include in send.</p>
+ <h3 id="reDetailTitle" data-i18n="mk_re_detail_title_sleeping">Sleeping customers (30–59 days)</h3>
+ <p id="reDetailSub" class="re-sub"><span data-i18n="mk_re_detail_sub_pre">Showing</span> <strong id="reEligibleCount">0</strong> <span data-i18n="mk_re_detail_sub_post">eligible (after anti-spam filter). Tick to include in send.</span></p>
  </div>
  <div class="re-detail__actions">
- <button class="re-btn re-btn--ghost" onclick="window.reSelectAllVisible()">Select all</button>
- <button class="re-btn re-btn--ghost" onclick="window.reClearSelection()">Clear</button>
+ <button class="re-btn re-btn--ghost" onclick="window.reSelectAllVisible()" data-i18n="mk_re_select_all">Select all</button>
+ <button class="re-btn re-btn--ghost" onclick="window.reClearSelection()" data-i18n="mk_re_clear">Clear</button>
  </div>
  </div>
 
  <!-- Template editor -->
  <div class="re-template-block">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
- <strong style="font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;">Message template <span id="reTierLabel" style="color:#6B7280; font-weight:500; text-transform:none; letter-spacing:0;"></span></strong>
- <span style="font-size:11px; color:#6B7280;">Vars: {name} · {last_order_days} · {total_spent} · {promo_code}</span>
+ <strong style="font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;"><span data-i18n="mk_re_template_label">Message template</span> <span id="reTierLabel" style="color:#6B7280; font-weight:500; text-transform:none; letter-spacing:0;"></span></strong>
+ <span style="font-size:11px; color:#6B7280;" data-i18n="mk_re_vars">Vars: {name} · {last_order_days} · {total_spent} · {promo_code}</span>
  </div>
  <textarea id="reMessage" rows="6" class="re-textarea"></textarea>
  <div style="display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap;">
- <label style="font-size:12px; font-weight:600; color:#374151;">Promo code:</label>
+ <label style="font-size:12px; font-weight:600; color:#374151;" data-i18n="mk_re_promo_label">Promo code:</label>
  <input type="text" id="rePromoCode" class="re-input" style="width:180px;" placeholder="WELCOME10">
  <span id="rePreview" style="font-size:11px; color:#6B7280; margin-left:auto;"></span>
  </div>
@@ -4717,18 +4717,18 @@
  <!-- Send bar -->
  <div class="re-send-bar">
  <div>
- <strong id="reSelectedCount">0</strong> selected · est <strong id="reSelectedRev">RM 0</strong> historic value
+ <strong id="reSelectedCount">0</strong> <span data-i18n="mk_re_selected">selected · est</span> <strong id="reSelectedRev">RM 0</strong> <span data-i18n="mk_re_value_suffix">historic value</span>
  </div>
  <button class="re-btn re-btn--gold" onclick="window.reSendBatch()" id="reSendBtn">
- <i data-lucide="send" style="width:14px; height:14px;"></i> Send next 10 via WhatsApp
+ <i data-lucide="send" style="width:14px; height:14px;"></i> <span data-i18n="mk_re_send_btn">Send next 10 via WhatsApp</span>
  </button>
  </div>
  </div>
 
  <!-- History log -->
  <div class="re-history">
- <h3>Recent re-engagement activity</h3>
- <div id="reHistoryList"><p class="re-empty">No re-engagement campaigns sent yet.</p></div>
+ <h3 data-i18n="mk_re_history_title">Recent re-engagement activity</h3>
+ <div id="reHistoryList"><p class="re-empty" data-i18n="mk_re_history_empty">No re-engagement campaigns sent yet.</p></div>
  </div>
  </div>
 
@@ -4736,61 +4736,61 @@
  <!-- WHATSAPP BROADCAST (p3_2 expand) -->
  <!-- ============================================== -->
  <div id="waBroadcastSection" class="tab-section" style="display:none;">
- <h2 class="section-title" style="margin-top:20px;"><i data-lucide="message-circle" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> WhatsApp Broadcast</h2>
- <p style="font-size:13px; color:#666; margin-bottom:14px;">Hantar promo / reminder ke ramai customers sekaligus via wa.me click-to-send. Tak perlu WhatsApp Business API. Browser akan open tab baru per customer (max 10 sekali untuk avoid rate-limit).</p>
+ <h2 class="section-title" style="margin-top:20px;"><i data-lucide="message-circle" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> <span data-i18n="mk_wa_title">WhatsApp Broadcast</span></h2>
+ <p style="font-size:13px; color:#666; margin-bottom:14px;" data-i18n="mk_wa_sub">Hantar promo / reminder ke ramai customers sekaligus via wa.me click-to-send. Tak perlu WhatsApp Business API. Browser akan open tab baru per customer (max 10 sekali untuk avoid rate-limit).</p>
 
  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
  <!-- LEFT: Template + filter -->
  <div class="card" style="padding:16px;">
- <h3 class="card-title" style="margin-bottom:10px;"> Template &amp; Audience</h3>
- <label class="small-lbl">Template</label>
+ <h3 class="card-title" style="margin-bottom:10px;" data-i18n="mk_wa_card_template_audience">Template &amp; Audience</h3>
+ <label class="small-lbl" data-i18n="mk_wa_lbl_template">Template</label>
  <select id="waTemplate" class="cp-input" onchange="window.__waPreviewMessage()">
- <option value="raya"> Hari Raya promo</option>
- <option value="cny"> CNY promo</option>
- <option value="deepavali"> Deepavali promo</option>
- <option value="merdeka">🇲🇾 Merdeka promo</option>
- <option value="vip_nudge">⭐ VIP points reminder</option>
- <option value="reorder_nudge"> Re-order nudge (last order &gt; 60 days)</option>
- <option value="generic"> Generic announcement</option>
+ <option value="raya" data-i18n="mk_wa_tpl_raya">Hari Raya promo</option>
+ <option value="cny" data-i18n="mk_wa_tpl_cny">CNY promo</option>
+ <option value="deepavali" data-i18n="mk_wa_tpl_deepavali">Deepavali promo</option>
+ <option value="merdeka" data-i18n="mk_wa_tpl_merdeka">Merdeka promo</option>
+ <option value="vip_nudge" data-i18n="mk_wa_tpl_vip">VIP points reminder</option>
+ <option value="reorder_nudge" data-i18n="mk_wa_tpl_reorder">Re-order nudge (last order &gt; 60 days)</option>
+ <option value="generic" data-i18n="mk_wa_tpl_generic">Generic announcement</option>
  </select>
 
- <label class="small-lbl" style="margin-top:10px;">Audience filter</label>
+ <label class="small-lbl" style="margin-top:10px;" data-i18n="mk_wa_lbl_audience">Audience filter</label>
  <select id="waAudience" class="cp-input" onchange="window.__waPreviewCount()">
- <option value="all">Semua customer (yang ada phone)</option>
- <option value="vip">VIP members sahaja</option>
- <option value="sms_consent">Yang consent SMS marketing</option>
- <option value="big_spender">Big spender (RM 1,000+)</option>
- <option value="dormant">Dormant (last order &gt; 60 days)</option>
+ <option value="all" data-i18n="mk_wa_aud_all">Semua customer (yang ada phone)</option>
+ <option value="vip" data-i18n="mk_wa_aud_vip">VIP members sahaja</option>
+ <option value="sms_consent" data-i18n="mk_wa_aud_sms">Yang consent SMS marketing</option>
+ <option value="big_spender" data-i18n="mk_wa_aud_big">Big spender (RM 1,000+)</option>
+ <option value="dormant" data-i18n="mk_wa_aud_dormant">Dormant (last order &gt; 60 days)</option>
  </select>
 
- <label class="small-lbl" style="margin-top:10px;">Promo code (optional)</label>
+ <label class="small-lbl" style="margin-top:10px;" data-i18n="mk_wa_lbl_promo">Promo code (optional)</label>
  <input type="text" id="waPromoCode" class="cp-input" placeholder="RAYA20" oninput="window.__waPreviewMessage()">
 
  <div style="margin-top:14px; padding:10px; background:#FEF3C7; border-radius:6px; font-size:12px;">
- <strong>Audience match:</strong> <span id="waMatchCount">-</span> customer(s)
+ <strong data-i18n="mk_wa_match_pre">Audience match:</strong> <span id="waMatchCount">-</span> <span data-i18n="mk_wa_match_post">customer(s)</span>
  </div>
  </div>
 
  <!-- RIGHT: Message preview -->
  <div class="card" style="padding:16px;">
- <h3 class="card-title" style="margin-bottom:10px;"> Message preview</h3>
- <p style="font-size:11px; color:#666; margin-bottom:6px;">Variables: <code>{name}</code>, <code>{points}</code>, <code>{total_spent}</code>, <code>{last_order_days}</code>, <code>{promo_code}</code></p>
+ <h3 class="card-title" style="margin-bottom:10px;" data-i18n="mk_wa_card_preview">Message preview</h3>
+ <p style="font-size:11px; color:#666; margin-bottom:6px;" data-i18n="mk_wa_vars">Variables: {name}, {points}, {total_spent}, {last_order_days}, {promo_code}</p>
  <textarea id="waMessage" class="cp-input" rows="9" style="font-family:monospace; font-size:12px;" oninput="window.__waPreviewMessage(true)"></textarea>
  <div style="margin-top:10px; padding:10px; background:#E0F2FE; border-radius:6px; font-size:12px;">
- <strong>Sample for first match:</strong>
+ <strong data-i18n="mk_wa_sample">Sample for first match:</strong>
  <div id="waSamplePreview" style="margin-top:4px; white-space:pre-wrap; color:#1E40AF;"></div>
  </div>
  </div>
  </div>
 
  <div class="card" style="padding:16px;">
- <h3 class="card-title" style="margin-bottom:10px;"> Send broadcast</h3>
- <p style="font-size:12px; color:#666; margin-bottom:10px;">Click button untuk start. Browser akan open <strong>10 tab</strong> sekali (batched). Sila approve popup permission. Selepas tu klik tab "Continue" untuk batch seterusnya.</p>
+ <h3 class="card-title" style="margin-bottom:10px;" data-i18n="mk_wa_card_send">Send broadcast</h3>
+ <p style="font-size:12px; color:#666; margin-bottom:10px;" data-i18n="mk_wa_send_info">Click button untuk start. Browser akan open 10 tab sekali (batched). Sila approve popup permission. Selepas tu klik tab "Continue" untuk batch seterusnya.</p>
  <div style="display:flex; gap:10px;">
  <button class="btn btn--primary" onclick="window.__waSendBroadcast()">
- <i data-lucide="send" style="width:14px; height:14px;"></i> Send batch
+ <i data-lucide="send" style="width:14px; height:14px;"></i> <span data-i18n="mk_wa_send_btn">Send batch</span>
  </button>
- <button class="btn btn--secondary" onclick="window.__waResetBroadcast()">Reset</button>
+ <button class="btn btn--secondary" onclick="window.__waResetBroadcast()" data-i18n="mk_wa_reset_btn">Reset</button>
  </div>
  <div id="waSendStatus" style="margin-top:14px; font-size:12px; color:#374151;"></div>
  </div>
@@ -4965,7 +4965,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (90/90 · last 2026-05-20)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (91/91 · last 2026-05-20)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -5040,6 +5040,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_91', label:'Marketing Dept audit + bulk i18n (rolling). 3 seksyen ditangani: (1) Promotions & Vouchers — tajuk "Promotion & Voucher Manager", butang "Festival Templates" + "Refresh", deskripsi sub, dan 4 column headers table (Code/Description, Type/Conditions, Value, Status) ditag data-i18n (mk_promo_*). (2) Re-engage Campaign — tajuk + deskripsi panjang (translated dari English-only ke BM-friendly "Tarik balik pelanggan dorman..."), 3 tier cards (Sleeping/Cold/Lost dengan range 30-59/60-89/90+ hari + "customers · historic value" footer), butang "Select all"/"Clear", "Message template" header + variables hint, "Promo code:" label, send bar "X selected · est RM Y historic value", butang "Send next 10 via WhatsApp", history section title + empty state — semua tag data-i18n (mk_re_*). Dynamic JS dalam reSelectTier juga di-update guna window.t() supaya detail title + tier label translate ikut bahasa aktif. (3) WhatsApp Broadcast — tajuk + deskripsi panjang, 3 card titles (Template & Audience, Message preview, Send broadcast), labels (Template/Audience filter/Promo code), 7 template options (Hari Raya/CNY/Deepavali/Merdeka/VIP/Re-order/Generic), 5 audience options (Semua/VIP/SMS consent/Big spender/Dormant), "Audience match: N customer(s)", "Variables:" hint, "Sample for first match:", info text + butang "Send batch"/"Reset" — semua tag data-i18n (mk_wa_*). Emoji buang dari 7 template dropdown options + 2 emoji dari card titles (Zaid no-emojis rule). Total: 60+ keys baharu mk_promo_/mk_re_/mk_wa_ dalam I18N.dict. Sama pattern dengan p1_82 (Inventory) dan p1_84 (Admin). Reports section kekal tak audit (placeholder coming-soon).', d:'done' },
  { id:'p1_90', label:'Bugfix sidebar rail — content tertentu group tak keluar. Zaid feedback: "content dalam certain department tak keluar". Punca: legacy function initSidebarGroups() dari design lama (expandable groups era p1_36) masih jalan masa boot — dia tambah class `.sidebar-collapsed` pada items dalam group yang tak active dengan default state collapsed=true untuk semua kecuali active group. CSS rule `.menu-item[data-group].sidebar-collapsed { display:none !important }` override window.setActiveRail style.display=\"\" yang aku set untuk filter rail — items tertentu stuck tersembunyi walaupun rail yang betul dipilih. Fix: (1) Stripping `sidebar-collapsed` class dalam setActiveRail loop untuk setiap menu-item — ensure clean state setiap kali tukar rail. (2) Disable initSidebarGroups() entirely — replace dengan no-op (back-compat untuk caller existing). (3) Disable legacy click handler yang auto-expand parent group bila klik sub-item — rail filter sekarang handle visibility, tiada concept "collapsed" lagi. Items dalam setiap rail sekarang konsisten papar bila rail icon yang betul dipilih. CSS rule .sidebar-collapsed kekal harmless sebab class tak pernah ditambah lagi.', d:'done' },
  { id:'p1_89', label:'Sidebar polish — Supabase-inspired typography + custom hover tooltips. Zaid feedback: "part icon tu okay, atau kau tiru style macam supabase ni. font dia pun simple. kalau hover mouse dekat icon baru keluar nama". Improvements ke atas p1_88 rail design. (1) Custom CSS-only tooltip ganti title="..." native browser tooltip — guna data-tooltip attribute + pseudo-element ::after dengan animation fade-in delay 0.3s. Tooltip pill di kanan icon dengan dark bg (#0F1419), 12px font-size weight 500, subtle border, pointer-events:none, z-index 1000 supaya overlay panel. (2) Rail dimensions slimmer: width 60px→56px, button 44x44→40x40, icon 20px→18px, badges 16px→14px. Cleaner ratios less heavy. (3) Rail bg ditukar dari #111 ke #0F1419 (Supabase dark navy), hover state #1E293B (vs #1F2937). (4) Panel typography: menu-item font-size override 13px weight 500 (was 14px 700), tighter padding 8px 16px (was 15px 20px), gap 10px (was 12px), letter-spacing 0. Active state weight 600 (lebih subtle dari sebelum 700). Border-right active 3px (was 4px). (5) Hide redundant sub-dividers Inventory "— Operasi Harian —" / "— Pengurusan Stok —" sebab rail icon dah jadi section indicator. (6) Animation delay 0.3s pada tooltip untuk elak flicker bila staff scan icon-icon cepat. Reference: Supabase dashboard sidebar.', d:'done' },
  { id:'p1_88', label:'Sidebar redesign Slack-style — icon rail (60px) + menu panel (220px). Zaid request "buang departments" dari sidebar — redesign guna icon. Pilih Architecture A (rail + panel). Restructure: (1) #appSidebar sekarang flex container 280px lebar dengan dua child — <aside class="sidebar-rail"> di kiri (icon-only nav) + .sidebar-main di kanan (existing menu items dalam panel). (2) Rail items: Overview (mgmt-only) / Memo Board (everyone, badge) / divider / Sales (sales-only) / Customers / Inventory (inv-only, badge) / HR (badge) / Admin (mgmt-only, badge) / Marketing / Setup (hq-only) / Roadmap accent gradient di bawah. Total 10 buttons. Setiap icon Lucide consistent. (3) State: window.__activeRail persisted localStorage. window.setActiveRail(railId, navigateDirect) — set active class kat rail icon, filter #sidebarMain menu items via display:none kecuali yang match data-group=railId atau standalone matching (overview/memo/roadmap). Hide ALL data-group-toggle headers (rail jadi new header). (4) Standalone rails (overview/memo/roadmap) ada flag navigateDirect=true → terus klik item bersama tanpa perlu staff cari dalam panel. (5) Group rails (sales/customers/inv/hr/admin/marketing/hq_setup) tunjuk items dalam panel je. (6) Auto-sync: window.__tabToRail(tab) map data-tab → rail; loginAs panggil setActiveRail dengan railName before clicking homeTab. (7) Rail badges aggregate: railBadgeMemo (Bos pending memo), railBadgeHr (roster pending + claim pending untuk Bos+Aliff), railBadgeFulfill (Pesanan Online to_fulfil count), railBadgeAudit (audit critical+warn). refreshRailBadges helper centralized. (8) CSS dalam design-tokens.css — rail dark #111 bg, 44px square buttons radius 10px, hover #1F2937, active primary color, accent gradient untuk roadmap, badges red #EF4444 top-right corner. Mobile masih guna slide-in pattern (sidebar.open toggles left:-300 → 0). Total ~110 baris CSS + ~120 baris JS.', d:'done' },
@@ -9436,7 +9437,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=211"></script>
+ <script src="app.js?v=212"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
