@@ -2542,6 +2542,41 @@ window.posSetCustomer = function(c) {
 
 window.posDetachCustomer = function() { window.posSetCustomer(null); };
 
+// p1_79 fix #7: Keyboard shortcuts for cashier speed.
+// F9 = Open Payment, F10 = Clear Cart (with confirm), Esc = close active modal,
+// "/" = focus search (only when not already typing in an input).
+document.addEventListener('keydown', function(e) {
+ try {
+ const posVisible = document.getElementById('posSection')?.style.display !== 'none';
+ if(!posVisible) return;
+ const tag = (e.target && e.target.tagName) || '';
+ const inField = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable);
+
+ if(e.key === 'F9') {
+ e.preventDefault();
+ if(typeof window.openPaymentModal === 'function' && cart.length > 0) window.openPaymentModal();
+ } else if(e.key === 'F10') {
+ e.preventDefault();
+ if(typeof window.clearCart === 'function') {
+ if(cart.length > 0) {
+ const msg = (typeof window.t === 'function' ? window.t('cs_clear_cart_confirm') : null) || 'Kosongkan troli?';
+ if(confirm(msg)) window.clearCart();
+ } else {
+ window.clearCart();
+ }
+ }
+ } else if(e.key === 'Escape') {
+ const pay = document.getElementById('checkoutPaymentModal');
+ if(pay && pay.style.display === 'flex') { pay.style.display = 'none'; e.preventDefault(); return; }
+ if(inField && e.target) try { e.target.blur(); } catch(err){}
+ } else if(e.key === '/' && !inField) {
+ e.preventDefault();
+ const search = document.getElementById('searchInput');
+ if(search) { search.focus(); search.select && search.select(); }
+ }
+ } catch(err) { /* fail silent */ }
+});
+
 window.posAttachCustomer = function() {
  const T = (k, f) => (typeof window.t === 'function') ? (window.t(k) || f) : f;
  const list = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
@@ -14153,6 +14188,7 @@ window.I18N = {
  cs_customer_not_found: { bm: 'Pelanggan tak dijumpai. Teruskan sebagai walk-in.', en: 'Customer not found. Continue as walk-in.' },
  cs_customer_multi: { bm: 'Banyak padanan. Sila masukkan nombor yang betul:', en: 'Multiple matches. Enter the correct number:' },
  cs_customer_attached_toast: { bm: 'Pelanggan dilampirkan', en: 'Customer attached' },
+ cs_clear_cart_confirm: { bm: 'Kosongkan troli? Semua barang dalam troli akan dibuang.', en: 'Clear the cart? All items will be removed.' },
  cs_customer_display: { bm: 'Paparan Pelanggan', en: 'Customer Display' },
  cs_subtotal: { bm: 'Subtotal', en: 'Subtotal' },
  cs_system_discount: { bm: 'Diskaun Sistem', en: 'System Discount' },
