@@ -2076,6 +2076,110 @@
  </datalist>
  </div>
 
+ <!-- p1_87: Order Detail overlay (EasyStore-style 2-column) — opens from Pesanan Online cards -->
+ <div id="orderDetailOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:3800; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto;" onclick="if(event.target===this) window.closeOrderDetail();">
+ <div style="background:#fff; max-width:1100px; width:100%; border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,0.2); margin:20px 0; overflow:hidden;">
+ <!-- Header -->
+ <div style="padding:18px 24px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
+ <div style="flex:1; min-width:0;">
+ <h2 style="margin:0; font-size:18px; font-weight:800;" id="odHeaderRef">—</h2>
+ <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+ <span id="odHeaderDate">—</span>
+ <span id="odHeaderPills" style="margin-left:8px;"></span>
+ </div>
+ </div>
+ <button onclick="window.closeOrderDetail()" style="background:none; border:none; font-size:24px; color:#94A3B8; cursor:pointer; line-height:1; padding:0;">×</button>
+ </div>
+
+ <!-- Action bar -->
+ <div style="padding:10px 24px; background:#FAFAFA; border-bottom:1px solid var(--border-color); display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+ <button onclick="window.odPrintSlip()" style="background:#fff; border:1px solid var(--border-color); padding:7px 14px; border-radius:8px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="printer" style="width:14px; height:14px;"></i> <span data-i18n="od_action_packing_slip">Packing Slip</span></button>
+ <button onclick="window.odPrintInvoice()" style="background:#fff; border:1px solid var(--border-color); padding:7px 14px; border-radius:8px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="file-text" style="width:14px; height:14px;"></i> <span data-i18n="od_action_invoice">Invoice</span></button>
+ <a id="odMarketplaceLink" href="#" target="_blank" rel="noopener" style="display:none; background:#000; color:#fff; padding:7px 14px; border-radius:8px; font-size:12px; text-decoration:none; align-items:center; gap:6px;"><i data-lucide="external-link" style="width:14px; height:14px;"></i> <span id="odMarketplaceLabel">Marketplace</span></a>
+ <div style="margin-left:auto; display:flex; gap:6px;">
+ <button onclick="window.odNavOrder(-1)" title="Previous order" style="background:#fff; border:1px solid var(--border-color); width:32px; height:32px; border-radius:8px; cursor:pointer;"><i data-lucide="chevron-left" style="width:14px; height:14px;"></i></button>
+ <button onclick="window.odNavOrder(1)" title="Next order" style="background:#fff; border:1px solid var(--border-color); width:32px; height:32px; border-radius:8px; cursor:pointer;"><i data-lucide="chevron-right" style="width:14px; height:14px;"></i></button>
+ </div>
+ </div>
+
+ <!-- Body: 2-column grid -->
+ <div style="display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:0;">
+ <!-- MAIN -->
+ <div style="padding:20px 24px; border-right:1px solid var(--border-color); min-width:0;">
+ <!-- KPI row -->
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
+ <div style="background:#F8FAFC; padding:14px; border-radius:10px;">
+ <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:700;" data-i18n="od_kpi_total">Total amount</div>
+ <div style="font-size:24px; font-weight:800; margin-top:4px;" id="odKpiTotal">RM 0.00</div>
+ <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="odKpiPaid">paid</div>
+ </div>
+ <div style="background:#F8FAFC; padding:14px; border-radius:10px;">
+ <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:700;" data-i18n="od_kpi_items">Total items</div>
+ <div style="font-size:24px; font-weight:800; margin-top:4px;" id="odKpiItems">0</div>
+ <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="odKpiFulfilled">fulfilled</div>
+ </div>
+ </div>
+
+ <!-- Items section -->
+ <div style="border:1px solid var(--border-color); border-radius:10px; padding:14px; margin-bottom:18px;">
+ <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:700; margin-bottom:10px;" data-i18n="od_items_label">Items</div>
+ <div id="odItemsList"></div>
+ </div>
+
+ <!-- Totals breakdown -->
+ <div style="border:1px solid var(--border-color); border-radius:10px; padding:14px; margin-bottom:18px;">
+ <div id="odBreakdown" style="display:flex; flex-direction:column; gap:6px; font-size:13px;"></div>
+ </div>
+
+ <!-- History timeline -->
+ <div>
+ <h3 style="font-size:14px; font-weight:800; margin:0 0 10px;" data-i18n="od_history">History</h3>
+ <div id="odHistoryList" style="display:flex; flex-direction:column; gap:8px; font-size:12.5px;"></div>
+ </div>
+ </div>
+
+ <!-- SIDEBAR -->
+ <div style="padding:20px; background:#FAFAFA; min-width:0;">
+ <!-- Channel -->
+ <div id="odChannelCard" style="background:#fff; padding:12px; border-radius:8px; margin-bottom:12px; display:flex; align-items:center; gap:10px;">
+ <span id="odChannelIcon" style="font-size:20px;"></span>
+ <strong style="font-size:13px;" id="odChannelName">—</strong>
+ </div>
+
+ <!-- Customer -->
+ <div style="background:#fff; padding:12px; border-radius:8px; margin-bottom:12px;">
+ <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">
+ <i data-lucide="user" style="width:12px; height:12px;"></i> <span data-i18n="od_customer">Customer details</span>
+ </div>
+ <div id="odCustomerInfo" style="font-size:13px; color:#111;">—</div>
+ </div>
+
+ <!-- Shipping address -->
+ <div style="background:#fff; padding:12px; border-radius:8px; margin-bottom:12px;">
+ <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">
+ <i data-lucide="truck" style="width:12px; height:12px;"></i> <span data-i18n="od_shipping_address">Shipping address</span>
+ </div>
+ <div id="odShippingAddr" style="font-size:12.5px; color:#374151; line-height:1.5; white-space:pre-line;">—</div>
+ </div>
+
+ <!-- Tracking -->
+ <div id="odTrackingCard" style="display:none; background:#ECFDF5; padding:12px; border-radius:8px; margin-bottom:12px; border-left:3px solid #10B981;">
+ <div style="font-size:11px; color:#065F46; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:6px;" data-i18n="od_tracking">Tracking</div>
+ <div id="odTrackingInfo" style="font-size:12.5px; color:#064E3B;"></div>
+ </div>
+
+ <!-- Tags -->
+ <div style="background:#fff; padding:12px; border-radius:8px;">
+ <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">
+ <i data-lucide="tag" style="width:12px; height:12px;"></i> <span data-i18n="od_tags">Tags</span>
+ </div>
+ <div id="odTagsList" style="display:flex; gap:4px; flex-wrap:wrap; font-size:11px;">—</div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+
  <!-- ============================================== -->
  <!-- SECTION: INVENTORY WMS (p1_49: card grid + filter bar) -->
  <!-- ============================================== -->
@@ -4820,7 +4924,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (86/86 · last 2026-05-20)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (87/87 · last 2026-05-20)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -4895,6 +4999,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_87', label:'Order Detail modal ala EasyStore — 2-column comprehensive view bila klik order card. Zaid request "bila click order, aku nak macam ni" (screenshot EasyStore back-office). Build: (1) HTML overlay #orderDetailOverlay dengan header (order ref + date + status pills + close), action bar (Packing Slip + Invoice + Marketplace deep link + prev/next nav), 2-column body (main: 2 KPI tiles total amount + total items / items list dengan SKU+qty+price / breakdown subtotal+discount+shipping+SST+total / history timeline; sidebar: channel card dengan icon+color brand / customer details / shipping address dari metadata.shipping_address atau fallback phone / tracking card hijau bila ada ff_tracking / tags list). (2) JS functions: openOrderDetail(id) cari salesHistory + render, closeOrderDetail clear state, odNavOrder(±1) jump previous/next dalam ffOnlineOrders list, __renderOrderDetail populate semua DOM elements. (3) Wire dari Pesanan Online: ff-card top area dapat cursor:pointer + onclick="if(target buttonOrLink) return; openOrderDetail(o.id)" supaya klik kad body buka detail tapi klik action buttons (Print Slip / Mark Packed) kekal independent. (4) Reuse helpers: ffParseItems untuk parse items JSON, ffMarketplaceLink untuk deep link ke TikTok/Shopee Seller. (5) History timeline auto-build dari sale.created_at + payment_method + metadata.ff_packed_at + ff_shipped_at. Future enhancements (not in this commit): bulk select dari orders table, refund button wire, attachment upload, customer remark inline edit.', d:'done' },
  { id:'p1_86', label:'Buang semua feature AI dari POS — Zaid decide tak nak setup ANTHROPIC_API_KEY dalam Netlify (kena billing setup). Reverse p1_85 + retire p8_3 Tanya AI internal. (1) Padam fail Netlify function: netlify/functions/claude-ask.js + netlify/functions/claude-shop.js. (2) Buang 2 redirects dari netlify.toml: /api/ask dan /api/shop-ai. (3) Buang sidebar item "Tanya 10 CAMP (AI)" dari Admin Department. (4) Buang HTML section askSection (28 baris) + landing page shopAiBubble + shopAiPanel (30 baris). (5) Buang ~175 baris JS Tanya AI block (__askBuildContextSummary + __askExample + __askSend + renderAskSection) dari app.js + ~155 baris Shop AI block (__shopAiHistory state + shopAiToggle + __shopAiRenderHistory + shopAiAsk + shopAiSend + MutationObserver bubble hide). (6) Buang 12 translation keys: sb_tanya_ai + 10 ai_* keys (ai_title/sub/example_*/input_ph/send_btn). Netlify functions untuk TikTok + EasyStore kekal sebab tidak bergantung Anthropic. Zaid boleh revive AI nanti dari git history kalau berubah fikiran.', d:'done' },
  { id:'p1_85', label:'Landing page AI shopping assistant (Claude Haiku 4.5) — pembantu customer dalam laman publik. POS sudah ada Tanya AI internal (p8_3 — staff-facing business analytics). Sekarang tambah versi customer-facing untuk landing page. (1) Netlify function baharu /api/shop-ai → claude-shop.js dengan system prompt berbeza: "friendly shopping advisor" — fokus product recommendations, sizing, brands, store hours, shipping/return policy. Hard guardrails: NEVER expose sales numbers / customer lists / exact stock / staff data. Stock checks redirect ke "check kedai atau WhatsApp". Off-topic queries (politik/agama/dll) politely redirect. Tone ramah, BM/EN/Manglish capable. (2) Chat bubble UI: butang bulat di bottom-right landing page (gradient primary, icon sparkles, shadow). Klik → buka panel 380px lebar di atas bubble dengan: header gradient + tutup, thread messages scrollable, 4 quick reply chips (Tent 4 orang / Hours & lokasi / Return policy / Top brands), input field + send button. (3) JS handlers: shopAiToggle / shopAiAsk / shopAiSend — POST ke /api/shop-ai dengan question + catalog_summary (top 30 published products dari masterProducts: sku/name/brand/category/price) + history (last 8 turns untuk context conversation). Conversation persisted dalam localStorage shopAiHistory_v1 (cap 20 messages). (4) Hide bubble dalam POS internal mode via MutationObserver monitor posAppLayout style.display — bubble cuma keluar masa landing/shop layout. (5) Reuse ANTHROPIC_API_KEY existing (sama dengan claude-ask). Cost: Claude Haiku ~RM 0.005/query — 500 queries/day ~RM 8/bulan. (6) Netlify redirect /api/shop-ai → claude-shop function ditambah dalam netlify.toml. Catalog summary dipasang dengan setiap query untuk grounding (avoid hallucination product yang tak wujud). Phase B (future): RAG dengan full product DB, voice input, action capabilities (add to cart via AI).', d:'done' },
  { id:'p1_84', label:'Bulk i18n untuk 4 Admin Department sections yang sebelum ni zero coverage — Audit Alerts, Tanya AI, Invoice & Quotation, Bulk Product Edit. Tambah ~70 keys baharu dengan prefix per-section: aa_* (Audit Alerts, 10 keys: title, sub, 3 period pills, 3 action buttons, rules label + list — termasuk consistency BM/EN dalam rules text), ai_* (Tanya AI, 9 keys: title, sub, 6 example query labels, input placeholder, send button), inv_* (Invoice & Quotation, 18 keys: title, sub, 6 field labels uppercase, view logs btn, edit mode label, empty title + sub, add item btn, subtotal, 4 PDF jana buttons), bk_* (Bulk Ops, 28 keys: title, sub, bin import + danger zone titles + buttons, 5 filter labels + status options, page size, 5 bulk action buttons, 9 table headers). Skip bigger refactors (Invoice 4-PDF → 1 dropdown + Bulk Edit tab-ed structure) — defer untuk Zaid request specific. Tagging je kali ni — pure i18n, no behaviour change. Toggle BM/EN sekarang affect semua label utama dalam Admin Department.', d:'done' },
@@ -9287,7 +9392,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=207"></script>
+ <script src="app.js?v=208"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

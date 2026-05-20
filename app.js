@@ -1259,7 +1259,7 @@ function ffCardHtml(o) {
  ? `<div class="ff-card__track">Dihantar via <strong>${m.ff_courier||'-'}</strong> · Tracking: <strong>${m.ff_tracking}</strong></div>`
  : (stage === 'shipped' ? `<div class="ff-card__track">Dihantar via <strong>${m.ff_courier||'-'}</strong></div>` : '');
 
- return `<div class="ff-card" id="ffCard_${o.id}">
+ return `<div class="ff-card" id="ffCard_${o.id}" style="cursor:pointer;" onclick="if(event.target.closest('button, a')) return; window.openOrderDetail('${o.id}')">
  <div class="ff-card__top">
  <div>
  <span class="ff-card__chan ${ffChanClass(o.channel)}">${o.channel||'-'}</span>
@@ -1277,6 +1277,157 @@ function ffCardHtml(o) {
  <div class="ff-card__actions">${actions}</div>
  </div>`;
 }
+
+// p1_87: Order Detail modal — EasyStore-style 2-column view.
+window.__orderDetailCurrentId = null;
+window.__orderDetailCurrentList = [];
+
+window.openOrderDetail = function(orderId) {
+ const sale = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory))
+ ? salesHistory.find(s => String(s.id) === String(orderId)) : null;
+ if(!sale) { if(typeof showToast === 'function') showToast('Order tak dijumpai', 'warn'); return; }
+ window.__orderDetailCurrentId = orderId;
+ try {
+ window.__orderDetailCurrentList = (typeof ffOnlineOrders === 'function')
+ ? ffOnlineOrders().map(o => o.id) : salesHistory.map(s => s.id);
+ } catch(e) { window.__orderDetailCurrentList = []; }
+ window.__renderOrderDetail(sale);
+ const overlay = document.getElementById('orderDetailOverlay');
+ if(overlay) overlay.style.display = 'flex';
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+window.closeOrderDetail = function() {
+ const overlay = document.getElementById('orderDetailOverlay');
+ if(overlay) overlay.style.display = 'none';
+ window.__orderDetailCurrentId = null;
+};
+
+window.odNavOrder = function(dir) {
+ const list = window.__orderDetailCurrentList || [];
+ const idx = list.indexOf(window.__orderDetailCurrentId);
+ if(idx < 0) return;
+ const next = idx + dir;
+ if(next < 0 || next >= list.length) return;
+ window.openOrderDetail(list[next]);
+};
+
+window.odPrintSlip = function() {
+ if(typeof ffPrintSlip === 'function' && window.__orderDetailCurrentId) ffPrintSlip(window.__orderDetailCurrentId);
+};
+
+window.odPrintInvoice = function() {
+ if(typeof showToast === 'function') showToast('Untuk B2B invoice rasmi, pakai Admin > Invoice & Quotation', 'info');
+};
+
+window.__renderOrderDetail = function(sale) {
+ const m = sale.metadata || {};
+ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const ref = m.tiktok_order_id || m.shopee_order_id || m.easystore_order_number || m.easystore_order_id || sale.order_id || ('#' + String(sale.id || '').slice(0,8));
+ document.getElementById('odHeaderRef').textContent = ref;
+ const dt = sale.created_at ? new Date(sale.created_at) : null;
+ document.getElementById('odHeaderDate').textContent = dt ? dt.toLocaleString('en-MY', { dateStyle:'medium', timeStyle:'short' }) : '—';
+
+ const total = parseFloat(sale.total || sale.total_amount || 0);
+ const paidStatus = (sale.payment_method && total > 0) ? 'Paid' : (sale.status === 'voided' ? 'Voided' : 'Pending');
+ const ffStageVal = m.ff_stage || 'to_fulfil';
+ const ffLabel = ffStageVal === 'shipped' ? 'Fulfilled' : (ffStageVal === 'packed' ? 'Packed' : 'Pending Pack');
+ document.getElementById('odHeaderPills').innerHTML =
+ '<span style="background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700;">' + paidStatus + '</span> ' +
+ '<span style="background:#E0E7FF; color:#3730A3; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700;">' + ffLabel + '</span>';
+
+ document.getElementById('odKpiTotal').textContent = 'RM ' + total.toFixed(2);
+ document.getElementById('odKpiPaid').textContent = total.toFixed(2) + ' paid';
+ const items = (typeof ffParseItems === 'function') ? ffParseItems(sale.items) : (Array.isArray(sale.items) ? sale.items : []);
+ const itemCount = items.reduce((s, it) => s + (parseInt(it.qty || it.quantity || 1)), 0);
+ document.getElementById('odKpiItems').textContent = itemCount;
+ document.getElementById('odKpiFulfilled').textContent = ffStageVal === 'shipped' ? itemCount + ' fulfilled' : '0 fulfilled';
+
+ const itemsHtml = items.length ? items.map(it => {
+ const qty = parseInt(it.qty || it.quantity || 1);
+ const name = it.name || it.product_name || 'item';
+ const sku = it.sku || '';
+ const price = parseFloat(it.price || it.unit_price || 0);
+ return '<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #F1F5F9; font-size:13px;">'
+ + '<div style="flex:1;"><strong>' + esc(name) + '</strong>' + (sku ? ' <span style="color:#94A3B8; font-size:11px;">[' + esc(sku) + ']</span>' : '') + '<br><span style="color:#64748B; font-size:11px;">RM ' + price.toFixed(2) + ' × ' + qty + '</span></div>'
+ + '<div style="font-weight:700;">RM ' + (price * qty).toFixed(2) + '</div></div>';
+ }).join('') : '<div style="text-align:center; color:#94A3B8; padding:14px;">(no items)</div>';
+ document.getElementById('odItemsList').innerHTML = itemsHtml;
+
+ const subtotal = items.reduce((s, it) => s + (parseFloat(it.price || it.unit_price || 0) * parseInt(it.qty || it.quantity || 1)), 0);
+ const discount = parseFloat(m.vip_discount_amount || m.discount_amount || 0);
+ const shipping = parseFloat(m.shipping_fee || 0);
+ const tax = parseFloat(m.tax_amount || m.sst_amount || 0);
+ document.getElementById('odBreakdown').innerHTML =
+ '<div style="display:flex; justify-content:space-between;"><span style="color:#64748B;">Subtotal</span><span>RM ' + subtotal.toFixed(2) + '</span></div>'
+ + (discount > 0 ? '<div style="display:flex; justify-content:space-between; color:#10B981;"><span>Discount</span><span>−RM ' + discount.toFixed(2) + '</span></div>' : '')
+ + (shipping > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#64748B;">Shipping</span><span>RM ' + shipping.toFixed(2) + '</span></div>' : '')
+ + (tax > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#64748B;">SST</span><span>RM ' + tax.toFixed(2) + '</span></div>' : '')
+ + '<div style="display:flex; justify-content:space-between; padding-top:8px; border-top:1px solid #E2E8F0; font-weight:800; font-size:15px;"><span>Total</span><span>RM ' + total.toFixed(2) + '</span></div>';
+
+ const ch = sale.channel || 'Walk-in Kedai';
+ const chColor = ch === 'TikTok Shop' ? '#000' : (ch === 'Shopee' ? '#ee4d2d' : (String(ch).includes('EasyStore') ? '#10B981' : '#6366F1'));
+ document.getElementById('odChannelIcon').textContent = ch === 'TikTok Shop' ? 'T' : (ch === 'Shopee' ? 'S' : (String(ch).includes('EasyStore') ? 'E' : 'W'));
+ document.getElementById('odChannelName').textContent = ch;
+ document.getElementById('odChannelCard').style.borderLeft = '3px solid ' + chColor;
+
+ const custName = sale.customer_name || '—';
+ const custPhone = sale.customer_phone || '';
+ const custEmail = sale.customer_email || '';
+ document.getElementById('odCustomerInfo').innerHTML =
+ '<strong>' + esc(custName) + '</strong>'
+ + (custPhone ? '<br><span style="color:#64748B; font-size:12px;">' + esc(custPhone) + '</span>' : '')
+ + (custEmail ? '<br><span style="color:#64748B; font-size:12px;">' + esc(custEmail) + '</span>' : '');
+
+ const addr = m.shipping_address || m.address || null;
+ if(addr && typeof addr === 'object') {
+ const lines = [addr.name, addr.line1, addr.line2, [addr.city, addr.postcode].filter(Boolean).join(' '), [addr.state, addr.country].filter(Boolean).join(', ')].filter(Boolean);
+ document.getElementById('odShippingAddr').textContent = lines.join('\n');
+ } else if(typeof addr === 'string') {
+ document.getElementById('odShippingAddr').textContent = addr;
+ } else {
+ document.getElementById('odShippingAddr').textContent = custPhone || '—';
+ }
+
+ const trackingCard = document.getElementById('odTrackingCard');
+ if(m.ff_tracking || m.ff_courier) {
+ trackingCard.style.display = 'block';
+ document.getElementById('odTrackingInfo').innerHTML =
+ (m.ff_courier ? '<strong>' + esc(m.ff_courier) + '</strong>' : '')
+ + (m.ff_tracking ? '<br>Tracking: <code>' + esc(m.ff_tracking) + '</code>' : '');
+ } else { trackingCard.style.display = 'none'; }
+
+ const tagsList = document.getElementById('odTagsList');
+ const tags = [];
+ if(sale.channel) tags.push(sale.channel);
+ if(sale.payment_method) tags.push(sale.payment_method);
+ if(m.vip_customer_id) tags.push('VIP');
+ tagsList.innerHTML = tags.length ? tags.map(t => '<span style="background:#E0E7FF; color:#3730A3; padding:2px 8px; border-radius:4px;">' + esc(t) + '</span>').join('') : '<span style="color:#94A3B8;">—</span>';
+
+ const mpLink = document.getElementById('odMarketplaceLink');
+ const mpLabel = document.getElementById('odMarketplaceLabel');
+ if(typeof ffMarketplaceLink === 'function') {
+ const mp = ffMarketplaceLink(sale);
+ if(mp) {
+ mpLink.style.display = 'inline-flex';
+ mpLink.href = mp.url;
+ mpLink.style.background = mp.color;
+ if(mpLabel) mpLabel.textContent = mp.label + ' Seller';
+ } else { mpLink.style.display = 'none'; }
+ }
+
+ const history = [];
+ if(sale.created_at) history.push({ time: sale.created_at, label: 'Order placed · RM ' + total.toFixed(2) });
+ if(sale.payment_method) history.push({ time: sale.created_at, label: 'Paid via ' + sale.payment_method });
+ if(m.ff_packed_at) history.push({ time: m.ff_packed_at, label: 'Packed' });
+ if(m.ff_shipped_at) history.push({ time: m.ff_shipped_at, label: 'Shipped' + (m.ff_courier ? ' via ' + m.ff_courier : '') });
+ document.getElementById('odHistoryList').innerHTML = history.length
+ ? history.map(h => {
+ const t = h.time ? new Date(h.time).toLocaleString('en-MY', { dateStyle:'short', timeStyle:'short' }) : '';
+ return '<div style="display:flex; gap:10px; padding:8px 0; border-bottom:1px solid #F1F5F9;"><div style="flex:1;">' + esc(h.label) + '</div><div style="font-size:11px; color:#94A3B8;">' + t + '</div></div>';
+ }).join('')
+ : '<div style="color:#94A3B8;">No history yet.</div>';
+};
 
 window.renderFulfillment = function() {
  const orders = ffOnlineOrders();
