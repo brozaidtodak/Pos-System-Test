@@ -14049,6 +14049,21 @@ window.I18N = {
  label_loading: { bm: 'Loading…', en: 'Loading…' },
  label_total: { bm: 'Jumlah', en: 'Total' },
 
+ // p1_79 — Cashier (posSection)
+ cs_cart_title: { bm: 'Troli Jualan', en: 'Sales Cart' },
+ cs_customer_display: { bm: 'Paparan Pelanggan', en: 'Customer Display' },
+ cs_subtotal: { bm: 'Subtotal', en: 'Subtotal' },
+ cs_system_discount: { bm: 'Diskaun Sistem', en: 'System Discount' },
+ cs_total: { bm: 'JUMLAH', en: 'TOTAL' },
+ cs_pay_now: { bm: 'BAYAR SEKARANG', en: 'PAY NOW' },
+ cs_clear_cart: { bm: 'Kosongkan Troli', en: 'Clear Cart' },
+ cs_search_placeholder: { bm: 'Imbas Barcode / Cari Nama...', en: 'Scan Barcode / Search Name...' },
+ cs_small_screen: { bm: 'Skrin Kecil', en: 'Small Screen' },
+ cs_empty_cart: { bm: 'Tiada barang di-scan.', en: 'No items scanned.' },
+ cs_loading: { bm: 'Memuatkan data cloud...', en: 'Loading cloud data...' },
+ cs_items: { bm: 'item', en: 'items' },
+ cs_view_cart: { bm: 'Lihat Troli', en: 'View Cart' },
+
  // p1_78 — homeSection (Overview)
  hs_range_today: { bm: 'Hari Ini', en: 'Today' },
  hs_range_yesterday: { bm: 'Semalam', en: 'Yesterday' },
