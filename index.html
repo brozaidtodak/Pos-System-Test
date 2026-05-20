@@ -1263,23 +1263,7 @@
  <i data-lucide="printer" style="width:16px; height:16px;"></i> Barcode Labels
  </div>
 
- <!-- Reports / Analytics -->
- <div style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:1px; font-weight:700; letter-spacing:0.8px;">— Reports —</div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_velocity" onclick="switchHub(['productSalesSection'], 'Velocity &amp; Sales', this); if(typeof renderProductSales==='function') renderProductSales();">
- <i data-lucide="trending-up" style="width:16px; height:16px;"></i> Velocity &amp; Sales
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_aging" onclick="switchHub(['agingSection'], 'Stock Aging', this); if(typeof renderInventoryAging==='function') renderInventoryAging();">
- <i data-lucide="hourglass" style="width:16px; height:16px;"></i> Stock Aging
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_valuation" onclick="switchHub(['valuationSection'], 'Stock Valuation', this); if(typeof renderValuationSection === 'function') renderValuationSection();">
- <i data-lucide="wallet" style="width:16px; height:16px;"></i> Stock Valuation
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_snapshot" onclick="switchHub(['snapshotSection'], 'Period Snapshot', this);">
- <i data-lucide="camera" style="width:16px; height:16px;"></i> Period Snapshot
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_reservations" onclick="switchHub(['reservationsSection'], 'Stock Reservations', this); if(typeof renderStockReservations==='function') renderStockReservations();">
- <i data-lucide="lock" style="width:16px; height:16px;"></i> Stock Reservations
- </div>
+ <!-- p1_70: Reports section removed from Inventory sidebar (Velocity, Aging, Valuation, Snapshot, Reservations). Section divs kekal untuk back-compat. -->
 
 
  <!-- END INVENTORY DEPT -->
@@ -1331,18 +1315,7 @@
  <i data-lucide="sparkles" style="width:16px; height:16px;"></i> Tanya 10 CAMP (AI)
  </div>
  <!-- p1_36: Customer Database + B2B Customers moved out → Customers group above -->
- <!-- — Marketing — -->
- <div class="menu-item" data-group="admin" style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; font-weight:700; cursor:default; background:none;">— Marketing —</div>
- <div class="menu-item" data-group="admin" data-tab="admin_promotions" onclick="switchHub(['promotionsSection'], 'Promotions &amp; Vouchers', this); if(typeof renderPromotionsV2==='function') renderPromotionsV2();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
- <i data-lucide="gift" style="width:16px; height:16px;"></i> Promotions &amp; Vouchers
- </div>
- <div class="menu-item" data-group="admin" data-tab="admin_wa_broadcast" onclick="switchHub(['waBroadcastSection'], 'WhatsApp Broadcast', this); if(typeof renderWABroadcast==='function') renderWABroadcast();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
- <i data-lucide="message-circle" style="width:16px; height:16px;"></i> WhatsApp Broadcast
- </div>
- <!-- p7_2: Auto re-engage dormant customers -->
- <div class="menu-item" data-group="admin" data-tab="admin_reengage" onclick="switchHub(['reengageSection'], 'Re-engage Campaign', this); if(typeof renderReengage==='function') renderReengage();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
- <i data-lucide="heart-handshake" style="width:16px; height:16px;"></i> Re-engage Campaign
- </div>
+ <!-- p1_70: Marketing items moved out → Marketing Department (own group below Admin) -->
  <!-- — Operations — -->
  <div class="menu-item" data-group="admin" style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; font-weight:700; cursor:default; background:none;">— Operations —</div>
  <div class="menu-item" data-group="admin" data-tab="admin_invoice" onclick="switchHub(['invoiceSection'], 'Invoice &amp; Quotation', this)" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
@@ -1352,6 +1325,21 @@
  <i data-lucide="check-square" style="width:16px; height:16px;"></i> Bulk Product Edit
  </div>
  <!-- p1_37: Setup items moved out of Admin → HQ Setup group below (HQ mode only) -->
+
+ <!-- MARKETING DEPARTMENT (p1_70) — promotions, broadcast, re-engage campaigns -->
+ <div class="menu-item" data-group-toggle="marketing" onclick="toggleSidebarGroup('marketing')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
+ <span data-i18n="dept_marketing">Marketing Department</span>
+ <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
+ </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_promotions" onclick="switchHub(['promotionsSection'], 'Promotions &amp; Vouchers', this); if(typeof renderPromotionsV2==='function') renderPromotionsV2();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="gift" style="width:16px; height:16px;"></i> Promotions &amp; Vouchers
+ </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_wa_broadcast" onclick="switchHub(['waBroadcastSection'], 'WhatsApp Broadcast', this); if(typeof renderWABroadcast==='function') renderWABroadcast();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="message-circle" style="width:16px; height:16px;"></i> WhatsApp Broadcast
+ </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_reengage" onclick="switchHub(['reengageSection'], 'Re-engage Campaign', this); if(typeof renderReengage==='function') renderReengage();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="heart-handshake" style="width:16px; height:16px;"></i> Re-engage Campaign
+ </div>
 
  <!-- FINANCE DEPARTMENT — money/accounting/tax — Management mode -->
  <div class="menu-item hq-only" data-group-toggle="finance" onclick="toggleSidebarGroup('finance')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
@@ -4871,7 +4859,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (69/69 · last 2026-05-20)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (70/70 · last 2026-05-20)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -4942,7 +4930,8 @@
  { id:'p1_66', label:'Manager Dashboard design audit fix — 6 isu dibetulkan: (1) hero row grid 4 lajur tapi 5 kad → kad "Money at Risk" tergantung sorang kat baris 2; ditukar jadi 5 lajur (1.6fr + 4×1fr) dengan breakpoint 1100/720/480px. (2) Row 3 (Top SKUs/Staff/Low Stock) guna inline grid tanpa breakpoint mobile → buat class .dash-row-3 dengan collapse ke 1 lajur bawah 900px. (3) Emoji 🆕 kat kad New Customers dibuang. (4) Space terkebil depan tajuk "Top SKUs"/"Low Stock"/"Top Customers" (sisa emoji lama) dibersihkan. (5) Lucide icon ditambah konsisten pada semua 7 tajuk kad (trending-up/pie-chart/package/award/alert-triangle/heart/user-plus) — accent primary, danger card pakai .dash-card__title--danger merah. (6) Subtitle header buang redundansi "period last 30 days" (period bar dah tunjuk) — kekal julat tarikh sebenar je', d:'done' },
  { id:'p1_67', label:'Seed memo Cuti Hari Raya Aidiladha 2026 — memo rasmi pengurusan (dibuat Aliff, 18 May 2026) dimasukkan ke Memo Board via boot-seed idempotent (corak sama seedQ1Aliff). Kandungan: cuti mingguan minggu 25-31 May diseragamkan (Selasa 26 cuti mingguan), cuti umum Hari Raya Aidiladha Rabu 27, cuti tambahan Khamis-Sabtu 28-30; hari bekerja Isnin 25 + Ahad 31 (Shift C). Memo dept "general", pinned (muncul toast masa login), status approved, posted_by Aliff. Flag memoRayaAidiladha2026_seeded_v1 — broadcast sekali ke setiap peranti staff', d:'done' },
  { id:'p1_68', label:'Roster (Jadual Operasi) dimunculkan semula dengan edit-gating — sebelum ni Jadual Operasi dalam HR Department yang di-hide oleh p1_63 (HR pindah 10cc), tapi penjadualan staff masih operasi POS harian. Penyelesaian: pindah entry sidebar dari HR group ke Operasi (Inventory) group — visible kepada semua staff. Section rosterSection (papar grid + borang permohonan cuti) jadi default; semua staff termasuk Aliff boleh apply cuti melalui borang. Butang baru "Mod Pengurusan Roster" dalam header rosterSection — visible HANYA untuk Bos (superior) + Aliff (CMP008) — buka rosterSection__hr_legacy (admin grid + peti kelulusan + tetapan masa). Fungsi approveRequest/rejectRequest di-gate role==="superior" (Bos sahaja yang lulus/tolak). Badge sidebar oren tunjuk bilangan permohonan pending — visible Bos+Aliff je, auto-refresh via Supabase realtime subscription pending_requests. Aliff jadi HR pentadbiran (edit jadual + bantu lihat queue) tapi keputusan kelulusan kekal di Bos', d:'done' },
- { id:'p1_69', label:'HR Department dibawa balik (staff self-service) — sebelum ni HR dihidekan p1_63 (pindah 10cc), tapi staff masih perlu lihat baki cuti + hantar tuntutan claim dalam POS harian. Skop sengaja kecil: Cuti + Claim sahaja (selebihnya nanti). (1) CSS hide sempitkan kepada finance je — HR header + items hr muncul semula. (2) Sidebar entries lama (Staff Mgmt, Roster-Attendance) digantikan dengan dua entry baru: "Cuti" (hrCutiSection) + "Claim" (hrClaimSection). (3) hrCutiSection: papar nama/department/baki cuti AL/tarikh mula kerja staff, panel Faedah (EPF/SOCSO/EIS + jenis cuti) + Skop Kerja (ikut role), jadual sejarah cuti (pending + approved digabung), butang Pohon Cuti Baru ke borang permohonan roster. (4) hrClaimSection: borang hantar tuntutan (jenis Perubatan/Pengangkutan/Makanan/Pejabat/Lain-Lain + jumlah + tarikh + keterangan), senarai tuntutan dengan badge status. Bos view nampak semua tuntutan staff + butang Lulus/Tolak; staff lain nampak tuntutan sendiri sahaja. Hanya Bos boleh lulus/tolak (hrcApproveClaim/hrcRejectClaim di-gate role==="superior"). Data claim disimpan dalam localStorage staff_claims_v1 (skema scaffold, boleh pindah Supabase kemudian)', d:'done' }
+ { id:'p1_69', label:'HR Department dibawa balik (staff self-service) — sebelum ni HR dihidekan p1_63 (pindah 10cc), tapi staff masih perlu lihat baki cuti + hantar tuntutan claim dalam POS harian. Skop sengaja kecil: Cuti + Claim sahaja (selebihnya nanti). (1) CSS hide sempitkan kepada finance je — HR header + items hr muncul semula. (2) Sidebar entries lama (Staff Mgmt, Roster-Attendance) digantikan dengan dua entry baru: "Cuti" (hrCutiSection) + "Claim" (hrClaimSection). (3) hrCutiSection: papar nama/department/baki cuti AL/tarikh mula kerja staff, panel Faedah (EPF/SOCSO/EIS + jenis cuti) + Skop Kerja (ikut role), jadual sejarah cuti (pending + approved digabung), butang Pohon Cuti Baru ke borang permohonan roster. (4) hrClaimSection: borang hantar tuntutan (jenis Perubatan/Pengangkutan/Makanan/Pejabat/Lain-Lain + jumlah + tarikh + keterangan), senarai tuntutan dengan badge status. Bos view nampak semua tuntutan staff + butang Lulus/Tolak; staff lain nampak tuntutan sendiri sahaja. Hanya Bos boleh lulus/tolak (hrcApproveClaim/hrcRejectClaim di-gate role==="superior"). Data claim disimpan dalam localStorage staff_claims_v1 (skema scaffold, boleh pindah Supabase kemudian)', d:'done' },
+ { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' }
 ]},
  { id:'p2', num:'PHASE 2', name:'Compliance & Payments MY', status:'active', goal:'Legal-ready untuk pasaran Malaysia', eta:'Q2-Q3 2026 · 5/7 shipped (e-Invoice LHDN + e-wallet native blocked on external creds)',
  desc:'Tier-1 critical untuk B2B Malaysia: e-Invoice MyInvois (mandatory LHDN), DuitNow QR + e-wallet native (TnG/Boost/GrabPay/ShopeePay), SST automation, PDPA compliance. Audit + 20-bug fix done 2026-05-06. Yang masih scaffold: real LHDN API submission + native e-wallet APIs (kena server-side service / merchant onboarding).',
