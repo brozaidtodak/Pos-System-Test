@@ -3201,7 +3201,7 @@ function maybeShowOnboarding(user) {
 // p1_72: 'superior' role retired. Bos dikenali via dept='Managing Director' (lihat isBoss helper).
 // p1_73: Investor role removed — dashboard pindah ke 10cc Command Centre.
 const ROLE_CAPS = {
- mgmt: { modes: ['cashier', 'operations', 'manager'], defaultMode: 'manager', home: 'admin_dashboard', label: 'Manager', emoji: '' },
+ mgmt: { modes: ['cashier', 'operations', 'manager'], defaultMode: 'manager', home: 'overview', label: 'Manager', emoji: '' },
  inventory: { modes: ['cashier', 'operations'], defaultMode: 'operations', home: 'inv_database', label: 'Inventory', emoji: '' },
  sales: { modes: ['cashier', 'operations'], defaultMode: 'cashier', home: 'sales_cashier', label: 'Sales', emoji: '' },
 };
@@ -3384,7 +3384,7 @@ function loginAs(user, opts) {
  // p1_65 (2026-05-14): Manager mode lands on Manager Dashboard for everyone
  // (was finance_main for Bos pre-p1_63 — Finance now lives at 10cc).
  if(defaultMode === 'manager') {
-   homeTab = cap.home || 'admin_dashboard';
+   homeTab = cap.home || 'overview';
  } else if(defaultMode === 'operations') homeTab = 'inv_database';
  else if(defaultMode === 'cashier') homeTab = 'sales_cashier';
  // p1_73: investor mode removed — no homeTab override here
@@ -12837,10 +12837,12 @@ window.setMode = function(mode) {
  } else if(mode === 'hq' || mode === 'management') {
  // p1_65 (2026-05-14): finance_main moved to 10cc; HQ now auto-lands on Manager Dashboard
  // since HQ mode no longer has a meaningful daily-ops home page.
- const dash = document.querySelector('[data-tab="admin_dashboard"]');
+ // p1_78 fix #6: admin_dashboard sidebar item removed; route to Overview instead.
+ const dash = document.querySelector('[data-tab="overview"]');
  if(dash) dash.click();
  } else {
- const dash = document.querySelector('[data-tab="admin_dashboard"]');
+ // p1_78 fix #6: admin_dashboard sidebar item removed; route to Overview instead.
+ const dash = document.querySelector('[data-tab="overview"]');
  if(dash) dash.click();
  }
  }
@@ -14088,7 +14090,7 @@ window.I18N = {
  hs_active_products: { bm: 'Produk Aktif', en: 'Active Products' },
 
  // p1_76 — Manager Dashboard
- dash_title: { bm: 'Papan Pemuka Pengurus', en: 'Manager Dashboard' },
+ dash_title: { bm: 'Analitik', en: 'Analytics' },
  dash_subtitle_prefix: { bm: 'Snapshot 10 CAMP', en: 'Snapshot 10 CAMP' },
  dash_last_refresh: { bm: 'kemaskini akhir', en: 'last refreshed' },
  dash_target_label: { bm: 'Kemajuan Sasaran Bulanan', en: 'Monthly Target Progress' },
