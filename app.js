@@ -603,7 +603,33 @@ window.switchHub = switchHub;
 window.togglePosLayoutMode = function() {
  const isMobile = document.body.classList.toggle('pos-mobile-mode');
  localStorage.setItem('posMode', isMobile ? 'mobile' : 'desktop');
+ // p1_79 fix #9: update button label/icon to reflect current state
+ try { window.__updatePosLayoutBtn(); } catch(e){}
 }
+
+// p1_79 fix #9: Reflect current layout state in the toggle button so cashier
+// can tell at a glance whether they're in compact or full mode.
+window.__updatePosLayoutBtn = function() {
+ const btn = document.getElementById('btnPosLayoutToggle');
+ if(!btn) return;
+ const isMobile = document.body.classList.contains('pos-mobile-mode');
+ const T = (k, f) => (typeof window.t === 'function') ? (window.t(k) || f) : f;
+ const key = isMobile ? 'cs_full_screen' : 'cs_small_screen';
+ const fallback = isMobile ? 'Skrin Besar' : 'Skrin Kecil';
+ const icon = isMobile ? 'monitor' : 'smartphone';
+ btn.innerHTML = '<i data-lucide="' + icon + '" style="width:14px; height:14px; vertical-align:-2px;"></i> <span data-i18n="' + key + '">' + T(key, fallback) + '</span>';
+ // Add visual active state when in compact mode
+ if(isMobile) {
+ btn.style.background = 'var(--primary)';
+ btn.style.color = '#fff';
+ btn.style.borderColor = 'var(--primary)';
+ } else {
+ btn.style.background = '';
+ btn.style.color = '';
+ btn.style.borderColor = '';
+ }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
 window.toggleMobileCartSheet = function() {
  const cartSec = document.getElementById('posCartDrawer');
  if(cartSec) cartSec.classList.toggle('drawer-open');
@@ -3583,6 +3609,8 @@ setTimeout(() => {
  if(localStorage.getItem('posMode') === 'mobile') {
  document.body.classList.add('pos-mobile-mode');
  }
+ // p1_79 fix #9: paint the layout toggle to match persisted state on boot
+ try { if(typeof window.__updatePosLayoutBtn === 'function') window.__updatePosLayoutBtn(); } catch(e){}
 
  if(db) initApp();
 }, 200);
@@ -14198,6 +14226,7 @@ window.I18N = {
  cs_clear_cart: { bm: 'Kosongkan Troli', en: 'Clear Cart' },
  cs_search_placeholder: { bm: 'Imbas Barcode / Cari Nama...', en: 'Scan Barcode / Search Name...' },
  cs_small_screen: { bm: 'Skrin Kecil', en: 'Small Screen' },
+ cs_full_screen: { bm: 'Skrin Besar', en: 'Full Screen' },
  cs_empty_cart: { bm: 'Imbas barcode atau klik produk dari katalog untuk mulakan jualan.', en: 'Scan a barcode or tap a product from the catalogue to start a sale.' },
  cs_loading: { bm: 'Memuatkan data cloud...', en: 'Loading cloud data...' },
  cs_items: { bm: 'item', en: 'items' },
@@ -14413,6 +14442,8 @@ window.setLang = function(lang) {
  try { if(typeof window.__renderDashOverview === 'function') window.__renderDashOverview(); } catch(e){}
  // p1_78 fix #3: re-render homeSection so JS-set dashRangeLabel + values pick up locale
  try { if(typeof window.renderDashboard === 'function') window.renderDashboard(); } catch(e){}
+ // p1_79 fix #9: refresh POS layout toggle label since it uses JS-set innerHTML
+ try { if(typeof window.__updatePosLayoutBtn === 'function') window.__updatePosLayoutBtn(); } catch(e){}
  if(typeof showToast === 'function') {
  showToast(lang === 'bm' ? 'Bahasa: Bahasa Malaysia ' : 'Language: English ', 'success');
  }
