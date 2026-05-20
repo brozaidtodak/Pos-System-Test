@@ -552,6 +552,10 @@ window.setActiveRail = function(railId, navigateDirect) {
  // Filter sidebar items in the panel
  const items = document.querySelectorAll('#sidebarMain .menu-item');
  items.forEach(it => {
+ // p1_90 fix: strip legacy sidebar-collapsed class so rail filter wins.
+ // initSidebarGroups (old expandable design) adds this class to non-active
+ // groups with display:none !important — overrides our rail filter unless removed.
+ it.classList.remove('sidebar-collapsed');
  const group = it.getAttribute('data-group');
  const tab = it.getAttribute('data-tab');
  const isToggle = it.hasAttribute('data-group-toggle');

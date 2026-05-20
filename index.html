@@ -4965,7 +4965,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (89/89 · last 2026-05-20)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (90/90 · last 2026-05-20)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -5040,6 +5040,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_90', label:'Bugfix sidebar rail — content tertentu group tak keluar. Zaid feedback: "content dalam certain department tak keluar". Punca: legacy function initSidebarGroups() dari design lama (expandable groups era p1_36) masih jalan masa boot — dia tambah class `.sidebar-collapsed` pada items dalam group yang tak active dengan default state collapsed=true untuk semua kecuali active group. CSS rule `.menu-item[data-group].sidebar-collapsed { display:none !important }` override window.setActiveRail style.display=\"\" yang aku set untuk filter rail — items tertentu stuck tersembunyi walaupun rail yang betul dipilih. Fix: (1) Stripping `sidebar-collapsed` class dalam setActiveRail loop untuk setiap menu-item — ensure clean state setiap kali tukar rail. (2) Disable initSidebarGroups() entirely — replace dengan no-op (back-compat untuk caller existing). (3) Disable legacy click handler yang auto-expand parent group bila klik sub-item — rail filter sekarang handle visibility, tiada concept "collapsed" lagi. Items dalam setiap rail sekarang konsisten papar bila rail icon yang betul dipilih. CSS rule .sidebar-collapsed kekal harmless sebab class tak pernah ditambah lagi.', d:'done' },
  { id:'p1_89', label:'Sidebar polish — Supabase-inspired typography + custom hover tooltips. Zaid feedback: "part icon tu okay, atau kau tiru style macam supabase ni. font dia pun simple. kalau hover mouse dekat icon baru keluar nama". Improvements ke atas p1_88 rail design. (1) Custom CSS-only tooltip ganti title="..." native browser tooltip — guna data-tooltip attribute + pseudo-element ::after dengan animation fade-in delay 0.3s. Tooltip pill di kanan icon dengan dark bg (#0F1419), 12px font-size weight 500, subtle border, pointer-events:none, z-index 1000 supaya overlay panel. (2) Rail dimensions slimmer: width 60px→56px, button 44x44→40x40, icon 20px→18px, badges 16px→14px. Cleaner ratios less heavy. (3) Rail bg ditukar dari #111 ke #0F1419 (Supabase dark navy), hover state #1E293B (vs #1F2937). (4) Panel typography: menu-item font-size override 13px weight 500 (was 14px 700), tighter padding 8px 16px (was 15px 20px), gap 10px (was 12px), letter-spacing 0. Active state weight 600 (lebih subtle dari sebelum 700). Border-right active 3px (was 4px). (5) Hide redundant sub-dividers Inventory "— Operasi Harian —" / "— Pengurusan Stok —" sebab rail icon dah jadi section indicator. (6) Animation delay 0.3s pada tooltip untuk elak flicker bila staff scan icon-icon cepat. Reference: Supabase dashboard sidebar.', d:'done' },
  { id:'p1_88', label:'Sidebar redesign Slack-style — icon rail (60px) + menu panel (220px). Zaid request "buang departments" dari sidebar — redesign guna icon. Pilih Architecture A (rail + panel). Restructure: (1) #appSidebar sekarang flex container 280px lebar dengan dua child — <aside class="sidebar-rail"> di kiri (icon-only nav) + .sidebar-main di kanan (existing menu items dalam panel). (2) Rail items: Overview (mgmt-only) / Memo Board (everyone, badge) / divider / Sales (sales-only) / Customers / Inventory (inv-only, badge) / HR (badge) / Admin (mgmt-only, badge) / Marketing / Setup (hq-only) / Roadmap accent gradient di bawah. Total 10 buttons. Setiap icon Lucide consistent. (3) State: window.__activeRail persisted localStorage. window.setActiveRail(railId, navigateDirect) — set active class kat rail icon, filter #sidebarMain menu items via display:none kecuali yang match data-group=railId atau standalone matching (overview/memo/roadmap). Hide ALL data-group-toggle headers (rail jadi new header). (4) Standalone rails (overview/memo/roadmap) ada flag navigateDirect=true → terus klik item bersama tanpa perlu staff cari dalam panel. (5) Group rails (sales/customers/inv/hr/admin/marketing/hq_setup) tunjuk items dalam panel je. (6) Auto-sync: window.__tabToRail(tab) map data-tab → rail; loginAs panggil setActiveRail dengan railName before clicking homeTab. (7) Rail badges aggregate: railBadgeMemo (Bos pending memo), railBadgeHr (roster pending + claim pending untuk Bos+Aliff), railBadgeFulfill (Pesanan Online to_fulfil count), railBadgeAudit (audit critical+warn). refreshRailBadges helper centralized. (8) CSS dalam design-tokens.css — rail dark #111 bg, 44px square buttons radius 10px, hover #1F2937, active primary color, accent gradient untuk roadmap, badges red #EF4444 top-right corner. Mobile masih guna slide-in pattern (sidebar.open toggles left:-300 → 0). Total ~110 baris CSS + ~120 baris JS.', d:'done' },
  { id:'p1_87', label:'Order Detail modal ala EasyStore — 2-column comprehensive view bila klik order card. Zaid request "bila click order, aku nak macam ni" (screenshot EasyStore back-office). Build: (1) HTML overlay #orderDetailOverlay dengan header (order ref + date + status pills + close), action bar (Packing Slip + Invoice + Marketplace deep link + prev/next nav), 2-column body (main: 2 KPI tiles total amount + total items / items list dengan SKU+qty+price / breakdown subtotal+discount+shipping+SST+total / history timeline; sidebar: channel card dengan icon+color brand / customer details / shipping address dari metadata.shipping_address atau fallback phone / tracking card hijau bila ada ff_tracking / tags list). (2) JS functions: openOrderDetail(id) cari salesHistory + render, closeOrderDetail clear state, odNavOrder(±1) jump previous/next dalam ffOnlineOrders list, __renderOrderDetail populate semua DOM elements. (3) Wire dari Pesanan Online: ff-card top area dapat cursor:pointer + onclick="if(target buttonOrLink) return; openOrderDetail(o.id)" supaya klik kad body buka detail tapi klik action buttons (Print Slip / Mark Packed) kekal independent. (4) Reuse helpers: ffParseItems untuk parse items JSON, ffMarketplaceLink untuk deep link ke TikTok/Shopee Seller. (5) History timeline auto-build dari sale.created_at + payment_method + metadata.ff_packed_at + ff_shipped_at. Future enhancements (not in this commit): bulk select dari orders table, refund button wire, attachment upload, customer remark inline edit.', d:'done' },
@@ -9435,7 +9436,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=210"></script>
+ <script src="app.js?v=211"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
@@ -9550,33 +9551,10 @@
  });
  }
 
- function initSidebarGroups() {
- const state = JSON.parse(localStorage.getItem('sidebarGroupState') || '{}');
- const activeChild = document.querySelector('.menu-item.active[data-group]');
- const activeGroup = activeChild ? activeChild.getAttribute('data-group') : null;
- document.querySelectorAll('[data-group-toggle]').forEach(function(header) {
- const name = header.getAttribute('data-group-toggle');
- let collapsed;
- if (state[name] === 'collapsed') collapsed = true;
- else if (state[name] === 'expanded') collapsed = false;
- else collapsed = (activeGroup !== name); // first-time default
- applySidebarGroupState(name, collapsed);
- });
- }
-
- // When user clicks a sub-item, ensure parent group expands (in case it was collapsed via DOM mutation)
- document.addEventListener('click', function(e) {
- const item = e.target.closest('.menu-item[data-group]');
- if (!item) return;
- const name = item.getAttribute('data-group');
- const header = document.querySelector('[data-group-toggle="' + name + '"]');
- if (header && header.classList.contains('collapsed')) {
- applySidebarGroupState(name, false);
- const state = JSON.parse(localStorage.getItem('sidebarGroupState') || '{}');
- state[name] = 'expanded';
- localStorage.setItem('sidebarGroupState', JSON.stringify(state));
- }
- });
+ // p1_90: initSidebarGroups disabled — rail design (p1_88) replaces expandable groups.
+ // Legacy function kekal sebagai no-op untuk back-compat dengan caller existing.
+ function initSidebarGroups() { /* no-op since p1_90 */ }
+ // p1_90: legacy auto-expand click handler disabled — rail filter handles visibility.
  </script>
 
 
