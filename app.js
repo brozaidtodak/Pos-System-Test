@@ -11019,18 +11019,27 @@ window.renderCustomersV2 = function() {
  <div style="background:#FEE2E2; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#991B1B;">Email Consent</div><div style="font-size:18px; font-weight:bold;">${emailConsent}</div></div>
  `;
 
- const slice = filtered.slice(0, pageSize);
- document.getElementById('crmSummaryLine').innerHTML =
- `Match: <strong>${filtered.length}</strong> · Show: <strong>${slice.length}</strong>`;
+ // p1_80 fix #8: pagination via __crmShown — incremented by Show More button
+ if(typeof window.__crmShown !== 'number' || window.__crmShown < pageSize) window.__crmShown = pageSize;
+ const slice = filtered.slice(0, window.__crmShown);
+ const T = (k, f) => (typeof window.t === 'function') ? (window.t(k) || f) : f;
+ const summaryEl = document.getElementById('crmSummaryLine');
+ if(summaryEl) {
+ const more = filtered.length > slice.length
+ ? ` · <button onclick="window.__crmShowMore()" style="background:none; border:none; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline; padding:0;">${T('cr_show_more','Show More')} (+${Math.min(pageSize, filtered.length - slice.length)})</button>`
+ : '';
+ summaryEl.innerHTML = `${T('cr_showing','Showing')} <strong>${slice.length}</strong> ${T('cr_of','of')} <strong>${filtered.length}</strong>${more}`;
+ }
 
  if(slice.length === 0) {
  // p1_80 fix #7: friendlier empty state with action hint
  const emptyMsg = (typeof window.t === 'function' ? window.t('cr_empty') : null) || 'Tiada pelanggan padan filter. Cuba clear filter atau tambah pelanggan baru.';
- tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999; padding:32px 16px;">' + emptyMsg + '</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#999; padding:32px 16px;">' + emptyMsg + '</td></tr>';
+ try { window.__crmRenderBulkBar(); } catch(e){}
  return;
  }
 
- // p1_80 fix #10: row click opens detail/edit modal (currently quick info — full edit later)
+ // p1_80 fix #10 + #6: row click opens detail; first cell = bulk select checkbox
  tbody.innerHTML = slice.map((c, idx) => {
  const consent = [];
  if(c.accepts_email_marketing) consent.push('<span title="Email consent" style="color:#10B981;"></span>');
@@ -11040,21 +11049,24 @@ window.renderCustomersV2 = function() {
  const memberBadge = c.is_member
  ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">⭐ VIP</span>'
  : '<span style="color:#999; font-size:11px;">-</span>';
- const cid = c.id || c.phone || c.email || idx;
+ const cid = String(c.id || c.phone || c.email || idx);
+ const isSelected = window.__crmSelected && window.__crmSelected.has(cid);
  return `
- <tr style="cursor:pointer;" onclick="window.openCustomerDetail('${String(cid).replace(/'/g,"\\'")}')" title="Klik untuk lihat detail / Click for details">
- <td><strong>${(c.name||'').slice(0, 50)}</strong></td>
- <td style="font-family:monospace; font-size:11px;">${c.phone || '-'}</td>
- <td style="font-size:11px;">${c.email || '-'}</td>
- <td style="text-align:right; font-weight:bold; color:${(c.total_spent||0)> 1000 ? '#10B981' : '#111'};">${(c.total_spent||0).toFixed(2)}</td>
- <td style="text-align:right;">${c.total_orders || 0}</td>
- <td style="text-align:right; color:#F59E0B; font-weight:bold;">${c.points || 0}</td>
- <td style="text-align:center;">${memberBadge}</td>
- <td style="text-align:center; font-size:14px;">${consent.join(' ') || '<span style="color:#999;">-</span>'}</td>
- <td>${tagBadges || '-'}</td>
+ <tr style="cursor:pointer;" title="Klik baris untuk detail / Click row for details">
+ <td style="text-align:center;" onclick="event.stopPropagation();"><input type="checkbox" class="cr-row-cb" data-cid="${cid.replace(/"/g,'&quot;')}" ${isSelected ? 'checked' : ''} onchange="window.__crmToggleSelect('${cid.replace(/'/g,"\\'")}', this.checked)"></td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')"><strong>${(c.name||'').slice(0, 50)}</strong></td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="font-family:monospace; font-size:11px;">${c.phone || '-'}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="font-size:11px;">${c.email || '-'}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; font-weight:bold; color:${(c.total_spent||0)> 1000 ? '#10B981' : '#111'};">${(c.total_spent||0).toFixed(2)}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right;">${c.total_orders || 0}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; color:#F59E0B; font-weight:bold;">${c.points || 0}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:center;">${memberBadge}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:center; font-size:14px;">${consent.join(' ') || '<span style="color:#999;">-</span>'}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')">${tagBadges || '-'}</td>
  </tr>
  `;
  }).join('');
+ try { window.__crmRenderBulkBar(); } catch(e){}
 };
 
 // p1_80 fix #10: Open simple customer detail view (read-only quick info).
@@ -11091,6 +11103,96 @@ window.openCustomerDetail = function(id) {
  const tmp = document.createElement('div');
  tmp.innerHTML = html;
  document.body.appendChild(tmp.firstChild);
+};
+
+// p1_80 fix #8: "Show More" button increments shown count by current pageSize.
+window.__crmShowMore = function() {
+ const pageSize = parseInt(document.getElementById('crmPageSize')?.value) || 50;
+ window.__crmShown = (window.__crmShown || pageSize) + pageSize;
+ if(typeof renderCustomersV2 === 'function') renderCustomersV2();
+};
+
+// p1_80 fix #6: Bulk select — persists selected customer IDs across renders.
+window.__crmSelected = new Set();
+window.__crmToggleSelect = function(id, checked) {
+ if(checked) window.__crmSelected.add(String(id));
+ else window.__crmSelected.delete(String(id));
+ window.__crmRenderBulkBar();
+};
+window.__crmToggleSelectAll = function(checked) {
+ const rows = document.querySelectorAll('#customersTableBody input.cr-row-cb');
+ rows.forEach(cb => {
+ cb.checked = checked;
+ const id = cb.getAttribute('data-cid');
+ if(id) {
+ if(checked) window.__crmSelected.add(id);
+ else window.__crmSelected.delete(id);
+ }
+ });
+ window.__crmRenderBulkBar();
+};
+window.__crmClearSelection = function() {
+ window.__crmSelected.clear();
+ if(typeof renderCustomersV2 === 'function') renderCustomersV2();
+};
+window.__crmRenderBulkBar = function() {
+ const bar = document.getElementById('crmBulkBar');
+ const cnt = document.getElementById('crmBulkCount');
+ if(!bar) return;
+ const n = window.__crmSelected.size;
+ if(n > 0) {
+ bar.style.display = 'flex';
+ if(cnt) cnt.textContent = String(n);
+ } else {
+ bar.style.display = 'none';
+ }
+};
+window.__crmBulkExport = function() {
+ if(!window.__crmSelected.size) return;
+ const ids = Array.from(window.__crmSelected);
+ const all = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
+ const sel = all.filter(c => ids.includes(String(c.id || c.phone || c.email || '')));
+ const header = ['Name','Phone','Email','Total_Spent_RM','Total_Orders','Points','Is_Member','Email_Consent','SMS_Consent','Tags'];
+ const csv = [header.join(',')].concat(sel.map(c => [
+ '"' + (c.name||'').replace(/"/g, '""') + '"',
+ c.phone || '', c.email || '',
+ (c.total_spent||0).toFixed(2), c.total_orders || 0, c.points || 0,
+ c.is_member ? 'yes' : 'no',
+ c.accepts_email_marketing ? 'yes' : 'no',
+ c.accepts_sms_marketing ? 'yes' : 'no',
+ '"' + (c.tags||'').replace(/"/g, '""') + '"'
+ ].join(','))).join('\n');
+ const blob = new Blob([csv], { type: 'text/csv' });
+ const a = document.createElement('a');
+ a.href = URL.createObjectURL(blob);
+ a.download = 'customers_selected_' + new Date().toISOString().slice(0,10) + '.csv';
+ a.click();
+ if(typeof showToast === 'function') showToast(sel.length + ' pelanggan dieksport / customers exported', 'success');
+};
+window.__crmBulkDelete = async function() {
+ if(!window.__crmSelected.size) return;
+ const T = (k, f) => (typeof window.t === 'function') ? (window.t(k) || f) : f;
+ const msg = T('cr_bulk_delete_confirm', 'Delete {n} selected customers?').replace('{n}', window.__crmSelected.size);
+ if(!confirm(msg)) return;
+ const ids = Array.from(window.__crmSelected);
+ const all = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
+ try {
+ if(typeof db !== 'undefined' && db && db.from) {
+ // Delete by id (only customers with real Supabase id)
+ const dbIds = all.filter(c => ids.includes(String(c.id || c.phone || c.email || '')) && c.id).map(c => c.id);
+ if(dbIds.length) await db.from('customers').delete().in('id', dbIds);
+ }
+ // Remove from local array
+ for(let i = all.length - 1; i >= 0; i--) {
+ if(ids.includes(String(all[i].id || all[i].phone || all[i].email || ''))) all.splice(i, 1);
+ }
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Padam gagal: ' + (e.message || e), 'error');
+ return;
+ }
+ window.__crmSelected.clear();
+ if(typeof showToast === 'function') showToast(ids.length + ' pelanggan dipadam / customers deleted', 'success');
+ if(typeof renderCustomersV2 === 'function') renderCustomersV2();
 };
 
 // p1_80 fix #2: Add new customer modal — quick form to insert into customersData + Supabase.
@@ -14390,6 +14492,13 @@ window.I18N = {
  cr_blast_generate: { bm: 'Generate Emel + Senarai BCC', en: 'Generate Email + BCC List' },
  cr_row_click_hint: { bm: 'klik baris untuk detail', en: 'click row for details' },
  cr_show_more: { bm: 'Tunjuk Lagi', en: 'Show More' },
+ cr_showing: { bm: 'Menunjukkan', en: 'Showing' },
+ cr_of: { bm: 'daripada', en: 'of' },
+ cr_selected: { bm: 'dipilih', en: 'selected' },
+ cr_bulk_delete: { bm: 'Padam Pilihan', en: 'Delete Selected' },
+ cr_bulk_export: { bm: 'Eksport Pilihan', en: 'Export Selected' },
+ cr_bulk_clear: { bm: 'Hapus Pilihan', en: 'Clear Selection' },
+ cr_bulk_delete_confirm: { bm: 'Padam {n} pelanggan terpilih? Tindakan ini tidak boleh dibatalkan.', en: 'Delete {n} selected customers? This cannot be undone.' },
 
  // p1_79 — Cashier (posSection)
  cs_cart_title: { bm: 'Troli Jualan', en: 'Sales Cart' },
