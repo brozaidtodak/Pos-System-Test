@@ -2641,7 +2641,7 @@ async function hashPin(staffId, pin) {
 }
 
 const authUsers = [
- { name: 'brozaidtodak', role: 'superior', pin_hash: '50d1e0682d0e472acc6a9dc109911c4703ddb14ebfa90c3b051f541111626343', dept: 'Managing Director', email: 'zaid@10camp.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
+ { name: 'Zaid', role: 'superior', pin_hash: '50d1e0682d0e472acc6a9dc109911c4703ddb14ebfa90c3b051f541111626343', dept: 'Managing Director', email: 'zaid@todak.com', staff_id: 'CMP001', full_name: 'Muhammad Zaid Ariffuddin Bin Zainal Ariffin', join_date: '2020-02-03' },
  { name: 'Aliff', role: 'mgmt', pin_hash: '33ffc079d45afe132295ee5e09980e872c3be2334df23aeb1ee52d0c7c9cfcec', dept: 'Administrative Department', email: 'aliff@10camp.com', staff_id: 'CMP008', full_name: 'Muhammad Aliff Ashraf Bin Johar', join_date: '2024-07-01' },
  { name: 'Farhan Moyy', role: 'mgmt', pin_hash: 'bed579f196a5bbb1ffbf1ba2b3c9bdd754a28680861ce96103794e25527d914e', dept: 'Business Development Department', email: 'farhanwakiman@10camp.com', staff_id: 'CMP010', full_name: 'Mohamad Farhan Bin Wakiman', join_date: '2025-09-01' },
  { name: 'Zack', role: 'mgmt', pin_hash: 'e5f99d4a4886603bb5c9dd78b4c529ee3657dcf6818a93aff697f7436eef36ca', dept: 'System Manager Department', email: 'zack@10camp.com', staff_id: 'CMP005', full_name: 'Muhammad Nur Zakwan Bin Md Mahalli', join_date: '2024-07-01' },
@@ -2857,6 +2857,74 @@ window.submitPinLogin = async function() {
  const overlay = document.getElementById('pinLoginOverlay');
  if(overlay) overlay.style.display = 'none';
  loginAs(user);
+};
+
+// p1_71: Email/password login alongside PIN (Supabase Auth).
+// Login flow: signInWithPassword → match authUsers by email → loginAs(user).
+window.__switchLoginMode = function(mode) {
+ const tabs = document.querySelectorAll('#pinLoginOverlay .login-tab');
+ tabs.forEach(t => {
+ const isActive = t.dataset.mode === mode;
+ t.classList.toggle('is-active', isActive);
+ t.style.color = isActive ? 'var(--primary)' : '#888';
+ t.style.borderBottomColor = isActive ? 'var(--primary)' : 'transparent';
+ });
+ const pinForm = document.getElementById('pinLoginForm');
+ const emailForm = document.getElementById('emailLoginForm');
+ if(pinForm) pinForm.style.display = mode === 'pin' ? 'block' : 'none';
+ if(emailForm) emailForm.style.display = mode === 'email' ? 'block' : 'none';
+ setTimeout(() => {
+ if(mode === 'pin') { const i = document.getElementById('pinLoginInput'); if(i) i.focus(); }
+ else { const i = document.getElementById('emailLoginEmail'); if(i) i.focus(); }
+ }, 50);
+};
+
+window.submitEmailLogin = async function() {
+ const emailEl = document.getElementById('emailLoginEmail');
+ const pwEl = document.getElementById('emailLoginPassword');
+ const errEl = document.getElementById('emailLoginError');
+ if(!emailEl || !pwEl || !errEl) return;
+ const email = (emailEl.value || '').trim().toLowerCase();
+ const password = pwEl.value || '';
+ if(!email || !password) {
+ errEl.textContent = 'Sila isi emel dan kata laluan.';
+ errEl.style.color = '#dc2626';
+ return;
+ }
+ if(!db || !db.auth || typeof db.auth.signInWithPassword !== 'function') {
+ errEl.textContent = 'Auth tidak tersedia. Hubungi Bos.';
+ errEl.style.color = '#dc2626';
+ return;
+ }
+ errEl.textContent = 'Memuat...';
+ errEl.style.color = '#666';
+ try {
+ const { data, error } = await db.auth.signInWithPassword({ email, password });
+ if(error || !data || !data.user) {
+ errEl.textContent = 'Emel atau kata laluan salah.';
+ errEl.style.color = '#dc2626';
+ pwEl.value = '';
+ return;
+ }
+ const authedEmail = (data.user.email || '').toLowerCase();
+ const user = (typeof authUsers !== 'undefined' ? authUsers : []).find(u => (u.email || '').toLowerCase() === authedEmail);
+ if(!user) {
+ errEl.textContent = 'Akaun ini bukan staff berdaftar. Hubungi Bos.';
+ errEl.style.color = '#dc2626';
+ try { await db.auth.signOut(); } catch(e){}
+ return;
+ }
+ // Success — clear, close, boot session
+ pwEl.value = '';
+ emailEl.value = '';
+ errEl.textContent = '';
+ const overlay = document.getElementById('pinLoginOverlay');
+ if(overlay) overlay.style.display = 'none';
+ loginAs(user);
+ } catch(e) {
+ errEl.textContent = 'Ralat: ' + (e.message || e);
+ errEl.style.color = '#dc2626';
+ }
 };
 
 // Onboarding wizard state — first-run setup for superior on fresh install.
@@ -3206,6 +3274,8 @@ window.applyRoleCapabilities = function(allowedModes) {
 };
 
 function handleLogout() {
+ // p1_71: also sign out of Supabase Auth so email/password session cleared
+ try { if(db && db.auth && db.auth.signOut) db.auth.signOut(); } catch(e){}
  currentUser = null;
  currentUserRole = null;
  document.getElementById("shopAppLayout").style.display = "block";
