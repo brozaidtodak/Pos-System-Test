@@ -11024,11 +11024,14 @@ window.renderCustomersV2 = function() {
  `Match: <strong>${filtered.length}</strong> · Show: <strong>${slice.length}</strong>`;
 
  if(slice.length === 0) {
- tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Tiada customer match filter.</td></tr>';
+ // p1_80 fix #7: friendlier empty state with action hint
+ const emptyMsg = (typeof window.t === 'function' ? window.t('cr_empty') : null) || 'Tiada pelanggan padan filter. Cuba clear filter atau tambah pelanggan baru.';
+ tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999; padding:32px 16px;">' + emptyMsg + '</td></tr>';
  return;
  }
 
- tbody.innerHTML = slice.map(c => {
+ // p1_80 fix #10: row click opens detail/edit modal (currently quick info — full edit later)
+ tbody.innerHTML = slice.map((c, idx) => {
  const consent = [];
  if(c.accepts_email_marketing) consent.push('<span title="Email consent" style="color:#10B981;"></span>');
  if(c.accepts_sms_marketing) consent.push('<span title="SMS consent" style="color:#10B981;"></span>');
@@ -11037,8 +11040,9 @@ window.renderCustomersV2 = function() {
  const memberBadge = c.is_member
  ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">⭐ VIP</span>'
  : '<span style="color:#999; font-size:11px;">-</span>';
+ const cid = c.id || c.phone || c.email || idx;
  return `
- <tr>
+ <tr style="cursor:pointer;" onclick="window.openCustomerDetail('${String(cid).replace(/'/g,"\\'")}')" title="Klik untuk lihat detail / Click for details">
  <td><strong>${(c.name||'').slice(0, 50)}</strong></td>
  <td style="font-family:monospace; font-size:11px;">${c.phone || '-'}</td>
  <td style="font-size:11px;">${c.email || '-'}</td>
@@ -11051,6 +11055,118 @@ window.renderCustomersV2 = function() {
  </tr>
  `;
  }).join('');
+};
+
+// p1_80 fix #10: Open simple customer detail view (read-only quick info).
+// Full edit modal can come later; for now show name/phone/email/spent/orders/points/tags.
+window.openCustomerDetail = function(id) {
+ if(typeof customersData === 'undefined' || !Array.isArray(customersData)) return;
+ const c = customersData.find(x => String(x.id) === String(id) || x.phone === id || x.email === id);
+ if(!c) { if(typeof showToast==='function') showToast('Pelanggan tak dijumpai', 'warn'); return; }
+ const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory))
+ ? salesHistory.filter(s => s.customer_phone === c.phone || s.customer_name === c.name).slice(0, 10)
+ : [];
+ const salesRows = sales.length
+ ? sales.map(s => '<tr><td>' + (s.created_at ? new Date(s.created_at).toLocaleDateString('en-MY') : '-') + '</td><td>' + (s.channel || '-') + '</td><td style="text-align:right;">RM ' + (parseFloat(s.total||0)).toFixed(2) + '</td></tr>').join('')
+ : '<tr><td colspan="3" style="text-align:center; color:#999; padding:8px;">Tiada pembelian / No purchases yet</td></tr>';
+ const html =
+ '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3700; display:flex; align-items:center; justify-content:center; padding:20px;" onclick="if(event.target===this) this.remove();">'
+ + '<div style="background:#fff; max-width:560px; width:100%; border-radius:12px; padding:24px; max-height:90vh; overflow-y:auto;">'
+ + '<div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">'
+ + '<div><h2 style="margin:0; font-size:20px;">' + (c.name || '-') + '</h2><div style="font-size:12px; color:#666; margin-top:2px;">' + (c.phone || '-') + ' · ' + (c.email || '-') + '</div></div>'
+ + '<button onclick="this.closest(\'div[style*=\\\'inset:0\\\']\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999;">×</button>'
+ + '</div>'
+ + '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px;">'
+ + '<div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Belanja / Spent</div><div style="font-size:16px; font-weight:bold;">RM ' + (parseFloat(c.total_spent||0)).toFixed(2) + '</div></div>'
+ + '<div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Pesanan / Orders</div><div style="font-size:16px; font-weight:bold;">' + (c.total_orders || 0) + '</div></div>'
+ + '<div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Mata / Points</div><div style="font-size:16px; font-weight:bold;">' + (c.points || 0) + '</div></div>'
+ + '</div>'
+ + (c.is_member ? '<div style="background:#FEF3C7; color:#92400E; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:700; margin-bottom:12px; display:inline-block;">⭐ VIP Member</div>' : '')
+ + '<h3 style="font-size:13px; margin:6px 0; color:#111;">10 Pembelian Terakhir / Last 10 purchases</h3>'
+ + '<table style="width:100%; font-size:12px; border-collapse:collapse;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left; padding:6px;">Tarikh</th><th style="text-align:left; padding:6px;">Channel</th><th style="text-align:right; padding:6px;">Jumlah</th></tr></thead><tbody>'
+ + salesRows
+ + '</tbody></table>'
+ + '</div>'
+ + '</div>';
+ const tmp = document.createElement('div');
+ tmp.innerHTML = html;
+ document.body.appendChild(tmp.firstChild);
+};
+
+// p1_80 fix #2: Add new customer modal — quick form to insert into customersData + Supabase.
+window.openAddCustomerModal = function() {
+ const html =
+ '<div id="addCustOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3700; display:flex; align-items:center; justify-content:center; padding:20px;" onclick="if(event.target===this) this.remove();">'
+ + '<div style="background:#fff; max-width:460px; width:100%; border-radius:12px; padding:24px;">'
+ + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">'
+ + '<h2 style="margin:0; font-size:18px;">+ Tambah Pelanggan / + Add Customer</h2>'
+ + '<button onclick="document.getElementById(\'addCustOverlay\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999;">×</button>'
+ + '</div>'
+ + '<label class="small-lbl">Nama / Name</label>'
+ + '<input id="addCustName" class="login-input" placeholder="Nama penuh" autocomplete="off">'
+ + '<label class="small-lbl">Telefon / Phone</label>'
+ + '<input id="addCustPhone" type="tel" class="login-input" placeholder="60123456789" autocomplete="off">'
+ + '<label class="small-lbl">Emel / Email (pilihan)</label>'
+ + '<input id="addCustEmail" type="email" class="login-input" placeholder="nama@contoh.com" autocomplete="off">'
+ + '<label class="small-lbl">Tag (pilihan, pisah dengan koma)</label>'
+ + '<input id="addCustTags" class="login-input" placeholder="walk-in, hiker, returning" autocomplete="off">'
+ + '<label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:8px; cursor:pointer;"><input id="addCustEmailConsent" type="checkbox"> Setuju terima emel promosi / Email marketing consent</label>'
+ + '<label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:4px; cursor:pointer;"><input id="addCustSmsConsent" type="checkbox"> Setuju terima SMS promosi / SMS marketing consent</label>'
+ + '<div id="addCustErr" style="font-size:12px; color:#dc2626; min-height:16px; margin-top:8px;"></div>'
+ + '<div style="display:flex; gap:8px; margin-top:14px;">'
+ + '<button onclick="document.getElementById(\'addCustOverlay\').remove()" class="login-btn" style="background:#6B7280; flex:1;">Batal</button>'
+ + '<button onclick="window.submitNewCustomer()" class="login-btn" style="flex:2; background:var(--primary);">Simpan</button>'
+ + '</div>'
+ + '</div>'
+ + '</div>';
+ const tmp = document.createElement('div');
+ tmp.innerHTML = html;
+ document.body.appendChild(tmp.firstChild);
+ setTimeout(() => { const n = document.getElementById('addCustName'); if(n) n.focus(); }, 50);
+};
+
+window.submitNewCustomer = async function() {
+ const name = (document.getElementById('addCustName')?.value || '').trim();
+ const phone = (document.getElementById('addCustPhone')?.value || '').trim();
+ const email = (document.getElementById('addCustEmail')?.value || '').trim();
+ const tags = (document.getElementById('addCustTags')?.value || '').trim();
+ const emailConsent = !!document.getElementById('addCustEmailConsent')?.checked;
+ const smsConsent = !!document.getElementById('addCustSmsConsent')?.checked;
+ const err = document.getElementById('addCustErr');
+ if(!name) { if(err) err.textContent = 'Nama wajib diisi.'; return; }
+ if(!phone && !email) { if(err) err.textContent = 'Sekurang-kurangnya satu: telefon atau emel.'; return; }
+ // Duplicate guard on phone
+ if(phone && typeof customersData !== 'undefined') {
+ const dup = customersData.find(c => c.phone === phone);
+ if(dup) { if(err) err.textContent = 'Pelanggan dengan telefon ni dah wujud: ' + (dup.name||''); return; }
+ }
+ const row = {
+ name, phone, email, tags,
+ accepts_email_marketing: emailConsent,
+ accepts_sms_marketing: smsConsent,
+ is_member: false,
+ total_spent: 0, total_orders: 0, points: 0,
+ created_at: new Date().toISOString()
+ };
+ try {
+ if(typeof db !== 'undefined' && db && db.from) {
+ const { data, error } = await db.from('customers').insert([row]).select();
+ if(error) throw error;
+ if(data && data[0]) {
+ if(typeof customersData !== 'undefined') customersData.unshift(data[0]);
+ } else {
+ if(typeof customersData !== 'undefined') customersData.unshift(row);
+ }
+ } else {
+ if(typeof customersData !== 'undefined') customersData.unshift(row);
+ }
+ } catch(e) {
+ if(err) err.textContent = 'Gagal simpan: ' + (e.message || e);
+ return;
+ }
+ document.getElementById('addCustOverlay')?.remove();
+ if(typeof showToast === 'function') showToast('Pelanggan ' + name + ' ditambah', 'success');
+ if(typeof renderCustomersV2 === 'function') renderCustomersV2();
 };
 
 window.exportCustomersCsv = function() {
@@ -14240,6 +14356,40 @@ window.I18N = {
  status_pending: { bm: 'Menunggu', en: 'Pending' },
  label_loading: { bm: 'Loading…', en: 'Loading…' },
  label_total: { bm: 'Jumlah', en: 'Total' },
+
+ // p1_80 — Customers (CRM) section
+ cr_title: { bm: 'Pangkalan Data Pelanggan (CRM)', en: 'Customer Database (CRM)' },
+ cr_filter_search: { bm: 'Cari (nama / telefon / emel)', en: 'Search (name / phone / email)' },
+ cr_filter_segment: { bm: 'Segmen', en: 'Segment' },
+ cr_filter_sort: { bm: 'Susun', en: 'Sort' },
+ cr_filter_page_size: { bm: 'Saiz Halaman', en: 'Page Size' },
+ cr_segment_all: { bm: 'Semua', en: 'All' },
+ cr_sort_spent_desc: { bm: 'Jumlah Belanja (terbesar)', en: 'Total Spent (highest)' },
+ cr_sort_orders_desc: { bm: 'Jumlah Pesanan (terbanyak)', en: 'Total Orders (most)' },
+ cr_sort_recent: { bm: 'Terkini ditambah', en: 'Recently added' },
+ cr_sort_name: { bm: 'Nama A-Z', en: 'Name A-Z' },
+ cr_page_all: { bm: 'Semua', en: 'All' },
+ cr_email_blast: { bm: 'Hantar Email', en: 'Email Blast' },
+ cr_export_csv: { bm: 'Eksport CSV', en: 'Export CSV' },
+ cr_add_customer: { bm: '+ Tambah Pelanggan', en: '+ Add Customer' },
+ cr_col_name: { bm: 'Nama', en: 'Name' },
+ cr_col_phone: { bm: 'Telefon', en: 'Phone' },
+ cr_col_email: { bm: 'Emel', en: 'Email' },
+ cr_col_spent: { bm: 'Jumlah Belanja (RM)', en: 'Total Spent (RM)' },
+ cr_col_orders: { bm: 'Pesanan', en: 'Orders' },
+ cr_col_points: { bm: 'Mata', en: 'Points' },
+ cr_col_member: { bm: 'Ahli', en: 'Member' },
+ cr_col_consent: { bm: 'Consent', en: 'Consent' },
+ cr_col_tags: { bm: 'Tag', en: 'Tags' },
+ cr_empty: { bm: 'Tiada pelanggan padan filter. Cuba clear filter atau tambah pelanggan baru.', en: 'No customers match this filter. Try clearing filters or adding a new customer.' },
+ cr_blast_title: { bm: 'Komposer Email Blast', en: 'Email Blast Composer' },
+ cr_blast_subject: { bm: 'Subjek', en: 'Subject' },
+ cr_blast_body: { bm: 'Isi Kandungan', en: 'Body' },
+ cr_blast_howto: { bm: 'Cara guna: Klik Generate → fail .txt akan download dengan SUBJECT + BODY + senarai BCC. Buka emel (Gmail/Outlook), salin & paste. SMTP terus akan datang kemudian.', en: 'How to use: Click Generate → a .txt file downloads with SUBJECT + BODY + BCC list. Open your email (Gmail/Outlook), copy & paste. Direct SMTP coming later.' },
+ cr_blast_cancel: { bm: 'Batal', en: 'Cancel' },
+ cr_blast_generate: { bm: 'Generate Emel + Senarai BCC', en: 'Generate Email + BCC List' },
+ cr_row_click_hint: { bm: 'klik baris untuk detail', en: 'click row for details' },
+ cr_show_more: { bm: 'Tunjuk Lagi', en: 'Show More' },
 
  // p1_79 — Cashier (posSection)
  cs_cart_title: { bm: 'Troli Jualan', en: 'Sales Cart' },
