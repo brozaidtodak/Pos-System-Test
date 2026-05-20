@@ -11216,22 +11216,25 @@ window.__renderDashOverviewRoster = function() {
  if(!list) return;
  const today = new Date();
  const dateStr = today.toISOString().slice(0,10);
- const dayLabel = today.toLocaleDateString('en-MY', { weekday:'long', day:'2-digit', month:'short' });
+ // p1_76: locale ikut current language
+ const localeTag = (window.I18N && window.I18N.lang === 'en') ? 'en-MY' : 'ms-MY';
+ const dayLabel = today.toLocaleDateString(localeTag, { weekday:'long', day:'2-digit', month:'short' });
  if(dateEl) dateEl.textContent = '· ' + dayLabel;
  const all = (typeof staffSchedules !== 'undefined' && Array.isArray(staffSchedules)) ? staffSchedules : [];
  const today_sched = all.filter(s => s.date === dateStr);
+ const T = (typeof window.t === 'function') ? window.t : (k) => k;
  if(today_sched.length === 0) {
- list.innerHTML = '<p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;">Jadual belum ditetapkan untuk hari ni.</p>';
+ list.innerHTML = '<p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;" data-i18n="dash_overview_roster_empty">' + T('dash_overview_roster_empty') + '</p>';
  return;
  }
  const SHIFT_LABEL = {
- B: { label: 'Syif B (2-8pm)', color:'#0EA5E9' },
- C: { label: 'Syif C (11am-8pm)', color:'#0F766E' },
- OFF: { label: 'OFF', color:'#94A3B8' },
- AL: { label: 'Cuti Tahunan', color:'#F59E0B' },
- MC: { label: 'Cuti Sakit', color:'#DC2626' },
- EL: { label: 'Kecemasan', color:'#DC2626' },
- PH: { label: 'Cuti Umum', color:'#8B5CF6' }
+ B: { label: T('dash_shift_B'), color:'#0EA5E9' },
+ C: { label: T('dash_shift_C'), color:'#0F766E' },
+ OFF: { label: T('dash_shift_OFF'), color:'#94A3B8' },
+ AL: { label: T('dash_shift_AL'), color:'#F59E0B' },
+ MC: { label: T('dash_shift_MC'), color:'#DC2626' },
+ EL: { label: T('dash_shift_EL'), color:'#DC2626' },
+ PH: { label: T('dash_shift_PH'), color:'#8B5CF6' }
  };
  // Group by shift
  const groups = {};
@@ -11257,6 +11260,8 @@ window.renderManagerDashboard = function() {
  // p1_74: Render overview widgets first (lightweight, runs even tanpa sales data)
  try { window.__renderDashOverviewMemo(); } catch(e){}
  try { window.__renderDashOverviewRoster(); } catch(e){}
+ // p1_76: re-apply i18n to catch any dynamic labels injected by render fns
+ try { if(typeof window.applyI18N === 'function') window.applyI18N(); } catch(e){}
 
  if(typeof salesHistory === 'undefined') return;
 
@@ -13934,6 +13939,47 @@ window.I18N = {
  status_pending: { bm: 'Menunggu', en: 'Pending' },
  label_loading: { bm: 'Loading…', en: 'Loading…' },
  label_total: { bm: 'Jumlah', en: 'Total' },
+
+ // p1_76 — Manager Dashboard
+ dash_title: { bm: 'Papan Pemuka Pengurus', en: 'Manager Dashboard' },
+ dash_subtitle_prefix: { bm: 'Snapshot 10 CAMP', en: 'Snapshot 10 CAMP' },
+ dash_last_refresh: { bm: 'kemaskini akhir', en: 'last refreshed' },
+ dash_target_label: { bm: 'Kemajuan Sasaran Bulanan', en: 'Monthly Target Progress' },
+ dash_target_hint_empty: { bm: 'Tetapkan sasaran bulanan untuk mula track kemajuan.', en: 'Set monthly target to enable progress tracking.' },
+ dash_overview_memo_title: { bm: 'Memo Terkini', en: 'Latest Memos' },
+ dash_overview_memo_view: { bm: 'Lihat semua', en: 'View all' },
+ dash_overview_memo_empty: { bm: 'Tiada memo aktif buat masa ni.', en: 'No active memos right now.' },
+ dash_overview_roster_title: { bm: 'Jadual', en: 'Schedule' },
+ dash_overview_roster_view: { bm: 'Lihat penuh', en: 'View full' },
+ dash_overview_roster_empty: { bm: 'Jadual belum ditetapkan untuk hari ni.', en: "Today's schedule not set yet." },
+ dash_stat_revenue: { bm: 'Hasil Bersih', en: 'Net Revenue' },
+ dash_stat_revenue_sub: { bm: 'selepas refund', en: 'after refunds' },
+ dash_stat_margin: { bm: 'Margin Kasar', en: 'Gross Margin' },
+ dash_stat_orders: { bm: 'Pesanan', en: 'Orders' },
+ dash_stat_aov: { bm: 'Nilai Pesanan Purata', en: 'Avg Order Value' },
+ dash_stat_customers_pre: { bm: 'Pelanggan', en: 'Customers' },
+ dash_stat_customers_repeat: { bm: 'ulang', en: 'repeat' },
+ dash_stat_risk: { bm: 'Wang Berisiko', en: 'Money at Risk' },
+ dash_card_revenue_trend: { bm: 'Trend Hasil', en: 'Revenue Trend' },
+ dash_card_revenue_trend_meta: { bm: 'Harian', en: 'Daily' },
+ dash_card_channel: { bm: 'Jualan Mengikut Saluran', en: 'Sales by Channel' },
+ dash_card_channel_sub: { bm: 'Kedai · TikTok · Shopee · Web', en: 'Kedai · TikTok · Shopee · Web' },
+ dash_card_top_skus: { bm: 'Produk Terlaris', en: 'Top SKUs' },
+ dash_card_top_staff: { bm: 'Staf Terbaik', en: 'Top Staff' },
+ dash_card_top_staff_sub: { bm: 'ikut Hasil Bersih', en: 'by Net Sales' },
+ dash_card_lowstock: { bm: 'Amaran Stok Rendah', en: 'Low Stock Alerts' },
+ dash_card_top_customers: { bm: 'Pelanggan Terbaik', en: 'Top Customers' },
+ dash_card_cohort: { bm: 'Pelanggan Baru — 12 Bulan Lepas', en: 'New Customers — Last 12 Months' },
+ dash_link_view_all: { bm: 'Lihat semua →', en: 'View all →' },
+ dash_link_view_crm: { bm: 'Lihat CRM →', en: 'View CRM →' },
+ dash_link_open_pos: { bm: 'Buka PO →', en: 'Open POs →' },
+ dash_shift_B: { bm: 'Syif B (2-8ptg)', en: 'Shift B (2-8pm)' },
+ dash_shift_C: { bm: 'Syif C (11pg-8ptg)', en: 'Shift C (11am-8pm)' },
+ dash_shift_OFF: { bm: 'OFF', en: 'OFF' },
+ dash_shift_AL: { bm: 'Cuti Tahunan', en: 'Annual Leave' },
+ dash_shift_MC: { bm: 'Cuti Sakit', en: 'Sick Leave' },
+ dash_shift_EL: { bm: 'Kecemasan', en: 'Emergency Leave' },
+ dash_shift_PH: { bm: 'Cuti Umum', en: 'Public Holiday' },
 
  // p1_50 — Public storefront (lp_*)
  lp_nav_shop: { bm: 'Kedai', en: 'Shop' },

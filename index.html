@@ -4061,8 +4061,8 @@
  <!-- Header (p8_4+ enhanced) -->
  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:var(--space-3); flex-wrap:wrap; gap:var(--space-3);">
  <div>
- <h2 style="font-size:var(--text-2xl); font-weight:var(--weight-extra); margin:0 0 4px; letter-spacing:-0.5px;">Manager Dashboard</h2>
- <p style="font-size:var(--text-sm); color:var(--neutral-600); margin:0;" id="dashSubtitle">Snapshot 10 CAMP · <strong id="dashPeriodLabel">—</strong> · last refreshed <span id="dashLastRefresh" style="font-weight:600;">—</span></p>
+ <h2 style="font-size:var(--text-2xl); font-weight:var(--weight-extra); margin:0 0 4px; letter-spacing:-0.5px;" data-i18n="dash_title">Manager Dashboard</h2>
+ <p style="font-size:var(--text-sm); color:var(--neutral-600); margin:0;" id="dashSubtitle"><span data-i18n="dash_subtitle_prefix">Snapshot 10 CAMP</span> · <strong id="dashPeriodLabel">—</strong> · <span data-i18n="dash_last_refresh">last refreshed</span> <span id="dashLastRefresh" style="font-weight:600;">—</span></p>
  </div>
  <div style="display:flex; gap:8px; align-items:center;">
  <button class="dash-icon-btn" onclick="renderManagerDashboard()" title="Refresh data">
@@ -4088,7 +4088,7 @@
  <div id="dashTargetBar" class="dash-target-bar">
  <div class="dash-target-bar__top">
  <div>
- <span class="dash-target-bar__label">Monthly Target Progress</span>
+ <span class="dash-target-bar__label" data-i18n="dash_target_label">Monthly Target Progress</span>
  <span id="dashTargetStatus" class="dash-target-bar__status">—</span>
  </div>
  <div class="dash-target-bar__numbers">
@@ -4099,7 +4099,7 @@
  </div>
  </div>
  <div class="dash-target-bar__track"><div class="dash-target-bar__fill" id="dashTargetFill"></div></div>
- <div class="dash-target-bar__foot" id="dashTargetFoot">Set monthly target to enable progress tracking.</div>
+ <div class="dash-target-bar__foot" id="dashTargetFoot" data-i18n="dash_target_hint_empty">Set monthly target to enable progress tracking.</div>
  </div>
 
  <!-- p1_74: Overview row — Memo + Jadual ringkas supaya staff nampak terus. -->
@@ -4109,12 +4109,12 @@
  <div class="dash-card__head">
  <h3 class="dash-card__title" style="display:flex; align-items:center; gap:8px;">
  <i data-lucide="megaphone" style="width:16px; height:16px; color:#B45309;"></i>
- Memo Terkini
+ <span data-i18n="dash_overview_memo_title">Memo Terkini</span>
  </h3>
- <button onclick="document.querySelector('[data-tab=memo_board]').click();" style="background:none; border:none; color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline;">Lihat semua</button>
+ <button onclick="document.querySelector('[data-tab=memo_board]').click();" style="background:none; border:none; color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline;" data-i18n="dash_overview_memo_view">Lihat semua</button>
  </div>
  <div id="dashOverviewMemoList" style="display:flex; flex-direction:column; gap:8px; padding:8px 0;">
- <p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;">Tiada memo aktif.</p>
+ <p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;" data-i18n="dash_overview_memo_empty">Tiada memo aktif.</p>
  </div>
  </div>
 
@@ -4123,12 +4123,12 @@
  <div class="dash-card__head">
  <h3 class="dash-card__title" style="display:flex; align-items:center; gap:8px;">
  <i data-lucide="calendar-days" style="width:16px; height:16px; color:#0F766E;"></i>
- Jadual <span id="dashOverviewRosterDate" style="font-weight:400; color:var(--neutral-500); font-size:12px;"></span>
+ <span data-i18n="dash_overview_roster_title">Jadual</span> <span id="dashOverviewRosterDate" style="font-weight:400; color:var(--neutral-500); font-size:12px;"></span>
  </h3>
- <button onclick="(document.querySelector('[data-tab=hr_roster]') || document.querySelector('[data-tab=roster]'))?.click();" style="background:none; border:none; color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline;">Lihat penuh</button>
+ <button onclick="(document.querySelector('[data-tab=hr_roster]') || document.querySelector('[data-tab=roster]'))?.click();" style="background:none; border:none; color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline;" data-i18n="dash_overview_roster_view">Lihat penuh</button>
  </div>
  <div id="dashOverviewRosterList" style="display:flex; flex-direction:column; gap:6px; padding:8px 0;">
- <p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;">Jadual belum ditetapkan untuk hari ni.</p>
+ <p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;" data-i18n="dash_overview_roster_empty">Jadual belum ditetapkan untuk hari ni.</p>
  </div>
  </div>
  </div>
@@ -4138,13 +4138,13 @@
  <!-- Hero: Net Revenue with sparkline + trend + GM% -->
  <div class="dash-hero">
  <div class="dash-hero__label">
- <span>Net Revenue</span>
- <span class="dash-hero__sublabel" title="After refunds, before tax">after refunds</span>
+ <span data-i18n="dash_stat_revenue">Net Revenue</span>
+ <span class="dash-hero__sublabel" title="After refunds, before tax" data-i18n="dash_stat_revenue_sub">after refunds</span>
  </div>
  <div class="dash-hero__value">RM <span id="heroRevValue">0</span></div>
  <div class="dash-hero__compare" id="heroRevCompare">—</div>
  <div class="dash-hero__margin">
- <span class="dash-hero__margin-label">Gross Margin</span>
+ <span class="dash-hero__margin-label" data-i18n="dash_stat_margin">Gross Margin</span>
  <span class="dash-hero__margin-value" id="heroMarginValue">—</span>
  </div>
  <svg id="heroSparkline" class="dash-hero__sparkline" viewBox="0 0 240 50" preserveAspectRatio="none"></svg>
@@ -4152,7 +4152,7 @@
 
  <!-- Secondary: Orders -->
  <div class="dash-stat">
- <div class="dash-stat__label">Orders</div>
+ <div class="dash-stat__label" data-i18n="dash_stat_orders">Orders</div>
  <div class="dash-stat__value" id="statOrdersValue">0</div>
  <div class="dash-stat__compare" id="statOrdersCompare">—</div>
  <svg id="statOrdersSpark" class="dash-stat__sparkline" viewBox="0 0 80 28" preserveAspectRatio="none"></svg>
@@ -4160,21 +4160,21 @@
 
  <!-- Secondary: AOV -->
  <div class="dash-stat">
- <div class="dash-stat__label">Avg Order Value</div>
+ <div class="dash-stat__label" data-i18n="dash_stat_aov">Avg Order Value</div>
  <div class="dash-stat__value">RM <span id="statAovValue">0</span></div>
  <div class="dash-stat__compare" id="statAovCompare">—</div>
  </div>
 
  <!-- Secondary: Customers + Repeat rate -->
  <div class="dash-stat">
- <div class="dash-stat__label">Customers · <span id="statRepeatRate" style="color:var(--success-700); font-weight:700;">—</span> repeat</div>
+ <div class="dash-stat__label"><span data-i18n="dash_stat_customers_pre">Customers</span> · <span id="statRepeatRate" style="color:var(--success-700); font-weight:700;">—</span> <span data-i18n="dash_stat_customers_repeat">repeat</span></div>
  <div class="dash-stat__value" id="statCustValue">0</div>
  <div class="dash-stat__compare" id="statCustCompare">—</div>
  </div>
 
  <!-- NEW: Money at risk -->
  <div class="dash-stat dash-stat--risk">
- <div class="dash-stat__label" style="color:var(--danger-700);">Money at Risk</div>
+ <div class="dash-stat__label" style="color:var(--danger-700);" data-i18n="dash_stat_risk">Money at Risk</div>
  <div class="dash-stat__value">RM <span id="statRiskValue">0</span></div>
  <div class="dash-stat__compare" id="statRiskBreakdown" style="font-size:11px; color:var(--neutral-600);">—</div>
  </div>
@@ -4184,15 +4184,15 @@
  <div class="dash-row-2">
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"><i data-lucide="trending-up"></i>Revenue Trend</h3>
- <span style="font-size:var(--text-xs); color:var(--neutral-500);" id="dashTrendMeta">Daily</span>
+ <h3 class="dash-card__title"><i data-lucide="trending-up"></i><span data-i18n="dash_card_revenue_trend">Revenue Trend</span></h3>
+ <span style="font-size:var(--text-xs); color:var(--neutral-500);" id="dashTrendMeta" data-i18n="dash_card_revenue_trend_meta">Daily</span>
  </div>
  <canvas id="dashRevenueChart" style="width:100%; height:220px;"></canvas>
  </div>
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"><i data-lucide="pie-chart"></i>Sales by Channel</h3>
- <span style="font-size:var(--text-xs); color:var(--neutral-500);">Kedai · TikTok · Shopee · Web</span>
+ <h3 class="dash-card__title"><i data-lucide="pie-chart"></i><span data-i18n="dash_card_channel">Sales by Channel</span></h3>
+ <span style="font-size:var(--text-xs); color:var(--neutral-500);" data-i18n="dash_card_channel_sub">Kedai · TikTok · Shopee · Web</span>
  </div>
  <div id="dashChannelDonut" class="dash-donut"></div>
  </div>
@@ -4202,22 +4202,22 @@
  <div class="dash-row-3">
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"><i data-lucide="package"></i>Top SKUs</h3>
- <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;inv_product_sales&quot;]')?.click()">View all →</a>
+ <h3 class="dash-card__title"><i data-lucide="package"></i><span data-i18n="dash_card_top_skus">Top SKUs</span></h3>
+ <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;inv_product_sales&quot;]')?.click()" data-i18n="dash_link_view_all">View all →</a>
  </div>
  <div class="dash-ranked" id="dashTopSkus"></div>
  </div>
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"><i data-lucide="award"></i>Top Staff <span style="font-size:10px; color:var(--neutral-500); font-weight:500; margin-left:2px;">by Net Sales</span></h3>
- <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;sales_analytics&quot;]')?.click()">View all →</a>
+ <h3 class="dash-card__title"><i data-lucide="award"></i><span data-i18n="dash_card_top_staff">Top Staff</span> <span style="font-size:10px; color:var(--neutral-500); font-weight:500; margin-left:2px;" data-i18n="dash_card_top_staff_sub">by Net Sales</span></h3>
+ <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;sales_analytics&quot;]')?.click()" data-i18n="dash_link_view_all">View all →</a>
  </div>
  <div class="dash-ranked" id="dashTopStaff"></div>
  </div>
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title dash-card__title--danger"><i data-lucide="alert-triangle"></i>Low Stock Alerts</h3>
- <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;inv_po&quot;]')?.click()">Open POs →</a>
+ <h3 class="dash-card__title dash-card__title--danger"><i data-lucide="alert-triangle"></i><span data-i18n="dash_card_lowstock">Low Stock Alerts</span></h3>
+ <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;inv_po&quot;]')?.click()" data-i18n="dash_link_open_pos">Open POs →</a>
  </div>
  <div id="dashLowStock"></div>
  </div>
@@ -4227,14 +4227,14 @@
  <div class="dash-row-2">
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"><i data-lucide="heart"></i>Top Customers</h3>
- <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;sales_crm&quot;]')?.click()">View CRM →</a>
+ <h3 class="dash-card__title"><i data-lucide="heart"></i><span data-i18n="dash_card_top_customers">Top Customers</span></h3>
+ <a class="dash-card__link" onclick="document.querySelector('[data-tab=&quot;sales_crm&quot;]')?.click()" data-i18n="dash_link_view_crm">View CRM →</a>
  </div>
  <div class="dash-ranked" id="dashTopCustomers"></div>
  </div>
  <div class="dash-card">
  <div class="dash-card__head">
- <h3 class="dash-card__title"><i data-lucide="user-plus"></i>New Customers — Last 12 Months</h3>
+ <h3 class="dash-card__title"><i data-lucide="user-plus"></i><span data-i18n="dash_card_cohort">New Customers — Last 12 Months</span></h3>
  <span style="font-size:var(--text-xs); color:var(--neutral-500);" id="dashCohortTotal">—</span>
  </div>
  <div class="dash-cohort" id="dashCohortBars"></div>
@@ -4796,7 +4796,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (75/75 · last 2026-05-20)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (76/76 · last 2026-05-20)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -4871,6 +4871,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_76', label:'Manager Dashboard di-wire ke sistem i18n (BM/EN toggle dah ada p1_62). Sebelum ni dashboard labels keras dalam HTML (Manager Dashboard, Net Revenue, Orders, AOV, Money at Risk, Revenue Trend, Top SKUs, dll) — campuran BM widget baru (p1_74: Memo Terkini, Jadual Hari Ni) + EN rest. Sekarang: (1) Tambah ~40 translation keys baharu (dash_*) ke window.I18N.dict — cover header, target bar, overview widgets, hero stats, charts, lists, view-links, plus shift labels (Syif B/C/OFF/AL/MC/EL/PH). (2) Tag setiap label HTML dengan data-i18n attribute supaya window.applyI18N() auto-translate. (3) Roster widget JS guna window.t() untuk SHIFT_LABEL + locale-aware tarikh (ms-MY untuk BM, en-MY untuk EN). (4) renderManagerDashboard panggil window.applyI18N() di hujung supaya labels dinamik terkemas-kini bila bahasa ditukar. (5) Lang toggle button (langToggle dalam header internal mode) — klik akan tukar bahasa POS keseluruhan termasuk Manager Dashboard. Default kekal BM (lang_v1 localStorage, set masa user pertama buka). Per-user preference disimpan dalam localStorage', d:'done' },
  { id:'p1_75', label:'Session persistence — refresh tak perlu login balik. Sebelum ni: setiap refresh wipe currentUser, staff kena masuk emel+password lagi (Zaid frustration "annoying bro"). Supabase JS client memang auto-persist session dalam localStorage (key sb-{ref}-auth-token), cuma POS tak panggil getSession() masa boot. Fix: tambah window.__restoreSession() yang dipanggil dalam DOMContentLoaded — fetch db.auth.getSession() → kalau ada session valid + emel padan authUsers → loginAs(user, {silent:true}). loginAs sekarang accept opts.silent: skip welcome modal flash (Selamat Pagi etc) + skip maybeShowOnboarding wizard, tapi tetap swap shopAppLayout→posAppLayout, setMode, navigate ke homeTab. Kalau session orphan (emel tak match mana-mana staff, cth selepas migration), auto signOut supaya tak loop. Hasil: refresh = terus masuk POS dalam keadaan macam sebelum refresh. Edge case: kalau Supabase tak ready / no session → fallback ke landing page biasa, klik Staff Login macam normal', d:'done' },
  { id:'p1_74', label:'Memo + Jadual Hari Ni dalam Manager Dashboard overview. Sebelum ni staff perlu klik sidebar Memo Board / Jadual Operasi untuk lihat status. Sekarang Manager Dashboard (admin_dashboard, landing default untuk Bos + mgmt) ada baris overview baru di atas hero stats dengan dua kad: (1) Memo Terkini — papar 3 memo approved terbaharu (pinned dulu, kemudian latest), termasuk department badge berwarna, status PIN, dan timestamp "X jam lepas". Klik "Lihat semua" → terus ke sidebar Memo Board. (2) Jadual Hari Ni — papar jadual operasi staff untuk tarikh hari ni, dikelompokkan ikut syif (Syif B 2-8pm, Syif C 11am-8pm, OFF, AL, MC, EL, PH) dengan warna unik. Klik "Lihat penuh" → terus ke roster. Render functions __renderDashOverviewMemo + __renderDashOverviewRoster dipanggil dari renderManagerDashboard sebelum data sales loaded supaya tampil walaupun data POS belum ready. Source data: window.memoLoad() untuk memos + staffSchedules array untuk roster. Layout: 2-column grid, padding card sama dengan dash-card lain. Bugfix 2026-05-20: "Lihat penuh" button asalnya pakai `?.click() || ?.click()` chain — kerana `click()` return undefined, `||` chain teruskan evaluate semua selectors. Tukar ke `(selector1 || selector2)?.click()` supaya pilih element dulu, baru klik sekali sahaja. Fix #2 2026-05-20: Memo widget auto-refresh — sebelum ni widget tunjuk data stale sehingga renderManagerDashboard dipanggil semula. Sekarang hook ke window.memoSaveAll() (chokepoint untuk semua memo writes: submit, approve, reject, delete) supaya widget langsung re-render bila memos berubah. Roster widget tak perlu — staffSchedules tak ada single saveAll chokepoint, dan Bos biasanya guna refresh button kalau ubah roster.', d:'done' },
  { id:'p1_72', label:'Role superior dipencen + email-only login + first-login password setup. (1) Konsep "superior" sebagai role hierarchy DIBUANG — Zaid dikenali via jawatan dept="Managing Director" (helper window.isBoss(u)). authUsers Zaid role superior → mgmt. ROLE_CAPS.superior dipadam (Zaid kini guna ROLE_CAPS.mgmt + isBoss bypass untuk sidebar full access). Semua semakan role==="superior" di app.js + index.html (~25 tempat) digantikan dengan isBoss(u): approval gates (claim/leave/refund void/PDPA delete), Permissions Centre matrix (sort/lock Bos row), Memo Board (pending tab + delete), Welcome screen stats, Manager dashboards, mode access bypass (p1_45). Dropdown role Staff Mgmt + Permissions Preview keluarkan option "Superior". Counts dashboard buang counter superior. UI label "Superior" → "Bos" (Managing Director) semua tempat. (2) PIN tab DIBUANG dari login overlay default — login UI sekarang email/password sahaja. Form PIN kekal dorman dalam DOM, boleh diaktifkan via window.__showPinFallback() untuk emergency. submitPinLogin tak diubah — masih jalan kalau dipanggil. (3) Password reset/setup flow: butang "Lupa / Tetap Password Baharu" bawah login → prompt emel → db.auth.resetPasswordForEmail dengan redirectTo current page → Supabase hantar email. Auth state listener tangkap event PASSWORD_RECOVERY → buka modal Set Password Baharu → db.auth.updateUser({password, data:{must_change_password:false}}) → signOut + redirect ke login. Flow first-login: submitEmailLogin check user.user_metadata.must_change_password; jika true → buka set-password modal terus (admin set flag bila cipta Supabase Auth user dengan placeholder password). Setup steps untuk Zaid: dashboard Supabase → Authentication → cipta user untuk setiap staff guna placeholder password (cthnya Welcome10camp!) + tick raw_user_meta_data must_change_password=true. Staff first login akan auto-prompt set password baharu mereka', d:'done' }
@@ -9252,7 +9253,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=167"></script>
+ <script src="app.js?v=168"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
