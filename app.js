@@ -655,6 +655,7 @@ async function initApp() {
  } else {
  pendingSchedules = [];
  }
+ if (window.refreshRosterBadge) window.refreshRosterBadge();
 
  // Tsunami Pembersihan Zombie Cache
  localStorage.removeItem('saved_staffSchedules');
@@ -675,6 +676,7 @@ async function initApp() {
  if(data) {
  pendingSchedules = data;
  if(typeof renderPendingSchedules === 'function') renderPendingSchedules();
+ if (window.refreshRosterBadge) window.refreshRosterBadge();
  }
  })
 .subscribe();
@@ -5188,7 +5190,40 @@ document.getElementById("reqScheduleBtn")?.addEventListener('click', async () =>
  alert(`Permohonan ${shift} pada ${dateStrInput} dihantar! Sila tunggu kelulusan bos.`);
  document.getElementById("reqScheduleDate").value = '';
  renderPendingSchedules();
+ if (window.refreshRosterBadge) window.refreshRosterBadge();
 });
+
+// p1_68: Roster routing + admin-gate (Bos + Aliff only access admin grid; only Bos approves).
+window.__rosterIsAdmin = function(u) {
+ u = u || window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ return !!(u && (u.role === 'superior' || u.staff_id === 'CMP008'));
+};
+window.openRoster = function(btn) {
+ if (typeof switchHub === 'function') switchHub(['rosterSection'], 'Jadual Operasi 10 CAMP', btn);
+ const adminBtn = document.getElementById('btnOpenAdminRoster');
+ if (adminBtn) adminBtn.style.display = window.__rosterIsAdmin() ? 'inline-flex' : 'none';
+ if (typeof renderStaffSchedule === 'function') renderStaffSchedule();
+ if (window.refreshRosterBadge) window.refreshRosterBadge();
+ if (window.lucide && lucide.createIcons) lucide.createIcons();
+};
+window.openAdminRoster = function() {
+ if (!window.__rosterIsAdmin()) {
+ if (typeof showToast === 'function') showToast('Tiada akses ke Mod Pengurusan Roster', 'warn');
+ return;
+ }
+ if (typeof switchHub === 'function') switchHub(['rosterSection__hr_legacy'], 'Pengurusan Roster', null);
+ if (typeof renderStaffSchedule === 'function') renderStaffSchedule();
+};
+window.refreshRosterBadge = function() {
+ const badge = document.getElementById('rosterSidebarBadge');
+ if (!badge) return;
+ const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ // Badge visible only for Bos + Aliff (the approvers/editors)
+ if (!window.__rosterIsAdmin(u)) { badge.style.display = 'none'; return; }
+ const n = (typeof pendingSchedules !== 'undefined' && Array.isArray(pendingSchedules)) ? pendingSchedules.length : 0;
+ if (n > 0) { badge.style.display = ''; badge.textContent = n; }
+ else badge.style.display = 'none';
+};
 
 window.renderStaffSchedule = function() {
  const theadAdmin = document.getElementById("adminRosterThead");
@@ -5478,6 +5513,13 @@ window.renderPendingSchedules = function() {
 };
 
 window.approveRequest = async function(id) {
+ // p1_68: only Bos approves leave requests
+ const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ if (!u || u.role !== 'superior') {
+ if (typeof showToast === 'function') showToast('Hanya Bos boleh approve permohonan cuti', 'warn');
+ else alert('Hanya Bos boleh approve permohonan cuti');
+ return;
+ }
  let reqIndex = pendingSchedules.findIndex(r => r.id === id);
  if(reqIndex === -1) return;
  let req = pendingSchedules[reqIndex];
@@ -5533,8 +5575,15 @@ window.approveRequest = async function(id) {
 };
 
 window.rejectRequest = async function(id) {
+ // p1_68: only Bos rejects leave requests
+ const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ if (!u || u.role !== 'superior') {
+ if (typeof showToast === 'function') showToast('Hanya Bos boleh tolak permohonan cuti', 'warn');
+ else alert('Hanya Bos boleh tolak permohonan cuti');
+ return;
+ }
  if(!confirm("Tolak permohonan staf ini?")) return;
- 
+
  let reqIndex = pendingSchedules.findIndex(r => r.id === id);
  if(reqIndex !== -1) {
  let req = pendingSchedules[reqIndex];
