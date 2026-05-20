@@ -3241,3 +3241,82 @@ a:focus-visible {
 .ff-card__track { font-size: 12px; color: var(--neutral-600); margin-top: 8px; }
 .ff-card__track strong { color: var(--neutral-900); }
 .ff-empty { text-align: center; padding: 40px 20px; color: var(--neutral-400); font-size: 14px; }
+
+/* =============================================================
+   p1_78 fix #4 — homeSection (Overview) — moved from inline <style>.
+   Every selector scoped under #homeSection to prevent .dash-hero
+   conflict with Manager Dashboard's same-named class.
+   ============================================================= */
+#homeSection .dash-wrap { padding:4px 2px 60px; max-width:1280px; margin:0 auto; }
+#homeSection .dash-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+#homeSection .dash-pill { padding:7px 14px; border-radius:999px; border:1px solid var(--border-color); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-muted); cursor:pointer; transition:.15s; }
+#homeSection .dash-pill:hover { border-color:var(--primary); color:var(--primary); }
+#homeSection .dash-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+#homeSection .dash-custom { display:none; gap:6px; align-items:center; }
+#homeSection .dash-custom.active { display:flex; }
+#homeSection .dash-custom input { margin:0; padding:6px 10px; font-size:12.5px; max-width:140px; border-radius:6px; }
+#homeSection .dash-fresh { margin-left:auto; font-size:11.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
+#homeSection .dash-fresh .dot { width:6px; height:6px; border-radius:50%; background:#10b981; }
+
+#homeSection .dash-hero { display:grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap:14px; margin-bottom:14px; }
+#homeSection .dash-hero-card { background:var(--card-bg); padding:18px; border-radius:12px; border:1px solid var(--border-color); }
+#homeSection .dash-hero-card.primary { background:linear-gradient(135deg, var(--primary) 0%, #b86a26 100%); color:#fff; border:none; }
+#homeSection .dash-hero-card.primary h3, #homeSection .dash-hero-card.primary .lbl { color:rgba(255,255,255,.85); }
+#homeSection .dash-hero-card.primary .val { color:#fff; }
+#homeSection .dash-hero-card .lbl { font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); font-weight:700; margin-bottom:6px; }
+#homeSection .dash-hero-card .val { font-size:28px; font-weight:900; color:#111; line-height:1.1; }
+#homeSection .dash-hero-card .sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+#homeSection .dash-hero-card.primary .sub { color:rgba(255,255,255,.85); }
+#homeSection .dash-hero-chart { padding:12px 14px; }
+#homeSection .dash-hero-chart canvas { height:90px !important; }
+
+#homeSection .dash-section-label { font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-muted); font-weight:700; margin:18px 0 8px; display:flex; align-items:center; gap:8px; }
+#homeSection .dash-section-label::after { content:''; flex:1; height:1px; background:var(--border-color); }
+
+#homeSection .dash-grid-4 { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; }
+#homeSection .dash-grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+#homeSection .dash-grid-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; margin-top:14px; }
+
+#homeSection .dash-alert { background:#fff; border:1px solid var(--border-color); border-left:4px solid; border-radius:10px; padding:14px 16px; cursor:pointer; transition:.18s; display:flex; justify-content:space-between; align-items:center; }
+#homeSection .dash-alert:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.06); }
+#homeSection .dash-alert.sev-red { border-left-color:#dc2626; }
+#homeSection .dash-alert.sev-amber { border-left-color:#f59e0b; }
+#homeSection .dash-alert.sev-blue { border-left-color:#3b82f6; }
+#homeSection .dash-alert.sev-gray { border-left-color:#9ca3af; }
+#homeSection .dash-alert.sev-green { border-left-color:#10b981; }
+#homeSection .dash-alert .meta { display:flex; flex-direction:column; gap:2px; }
+#homeSection .dash-alert .meta .lbl { font-size:11.5px; color:var(--text-muted); font-weight:600; }
+#homeSection .dash-alert .meta .name { font-size:14px; font-weight:700; color:#111; }
+#homeSection .dash-alert .num { font-size:24px; font-weight:900; }
+#homeSection .dash-alert.sev-red .num { color:#dc2626; }
+#homeSection .dash-alert.sev-amber .num { color:#f59e0b; }
+#homeSection .dash-alert.sev-blue .num { color:#3b82f6; }
+#homeSection .dash-alert.sev-gray .num { color:#6b7280; }
+#homeSection .dash-alert.sev-green .num { color:#10b981; }
+#homeSection .dash-alert .arrow { font-size:14px; color:var(--text-muted); margin-left:8px; opacity:.5; }
+#homeSection .dash-alert:hover .arrow { opacity:1; color:var(--primary); }
+
+#homeSection .dash-card2 { background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; padding:14px 16px; }
+#homeSection .dash-card2 h3 { font-size:13px; font-weight:700; color:#111; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+#homeSection .dash-card2 h3 .hint { font-size:11px; font-weight:500; color:var(--text-muted); }
+#homeSection .dash-mini-row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:13px; }
+#homeSection .dash-mini-row + .dash-mini-row { border-top:1px solid #f1f1f1; }
+#homeSection .dash-mini-row strong { font-size:14px; }
+#homeSection .dash-mini-row.clickable { cursor:pointer; transition:.15s; margin:0 -8px; padding-left:8px; padding-right:8px; border-radius:6px; }
+#homeSection .dash-mini-row.clickable:hover { background:#f9fafb; }
+
+#homeSection .dash-skel { display:inline-block; height:14px; width:60px; background:linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%); background-size:200% 100%; border-radius:4px; animation:skelShim 1.4s infinite; }
+@keyframes skelShim { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+@media (max-width:1024px) {
+ #homeSection .dash-hero { grid-template-columns:1fr 1fr; }
+ #homeSection .dash-hero-card.dash-hero-chart { grid-column:1 / -1; }
+}
+@media (max-width:768px) {
+ #homeSection .dash-hero { grid-template-columns:1fr; }
+ #homeSection .dash-grid-4, #homeSection .dash-grid-3 { grid-template-columns:1fr 1fr; }
+ #homeSection .dash-grid-2 { grid-template-columns:1fr; }
+}
+@media (max-width:480px) {
+ #homeSection .dash-grid-4, #homeSection .dash-grid-3 { grid-template-columns:1fr; }
+}
