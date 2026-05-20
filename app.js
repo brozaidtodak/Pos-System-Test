@@ -14139,7 +14139,7 @@ window.I18N = {
  cs_clear_cart: { bm: 'Kosongkan Troli', en: 'Clear Cart' },
  cs_search_placeholder: { bm: 'Imbas Barcode / Cari Nama...', en: 'Scan Barcode / Search Name...' },
  cs_small_screen: { bm: 'Skrin Kecil', en: 'Small Screen' },
- cs_empty_cart: { bm: 'Tiada barang di-scan.', en: 'No items scanned.' },
+ cs_empty_cart: { bm: 'Imbas barcode atau klik produk dari katalog untuk mulakan jualan.', en: 'Scan a barcode or tap a product from the catalogue to start a sale.' },
  cs_loading: { bm: 'Memuatkan data cloud...', en: 'Loading cloud data...' },
  cs_items: { bm: 'item', en: 'items' },
  cs_view_cart: { bm: 'Lihat Troli', en: 'View Cart' },
