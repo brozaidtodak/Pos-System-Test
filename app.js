@@ -878,27 +878,38 @@ window.renderDashboard = function() {
  } else { shareEl.textContent = 'No sales in range'; }
  }
 
+ // p1_78 fix #8: helper — set badge value + hide parent .dash-alert when 0
+ // (alerts with 0 count are noise; collapse them so Bos focuses on actionable items)
+ const __setAlert = (id, val) => {
+ const el = document.getElementById(id);
+ if(!el) return;
+ el.textContent = val;
+ const card = el.closest('.dash-alert');
+ if(card) card.style.display = (parseInt(val) > 0) ? '' : 'none';
+ };
+
  // Status Board Update
- document.getElementById("badgeToFulfil").textContent = statusToFulfil;
- document.getElementById("badgeUnpaid").textContent = statusUnpaid;
- document.getElementById("badgeProcessing").textContent = statusProcessing;
- document.getElementById("badgeReturn").textContent = statusReturn;
+ __setAlert('badgeToFulfil', statusToFulfil);
+ __setAlert('badgeUnpaid', statusUnpaid);
+ __setAlert('badgeProcessing', statusProcessing);
+ __setAlert('badgeReturn', statusReturn);
 
  // 3. Inventory Stock Health
  let activeP=0; let draftP=0; let oosP=0; let lowP=0;
  masterProducts.forEach(p => {
  if(!isPublished(p)) { draftP++; return; }
  activeP++;
- 
+
  let qty = inventoryBatches.filter(b=>b.sku===p.sku).reduce((sum, b)=>sum+b.qty_remaining,0);
  if(qty === 0) oosP++;
  else if(qty < 5) lowP++;
  });
- 
+
+ // Active Products is in Snapshot card (mini-row, not alert) — keep as-is
  document.getElementById("badgeActive").textContent = activeP;
- document.getElementById("badgeDraft").textContent = draftP;
- document.getElementById("badgeOos").textContent = oosP;
- document.getElementById("badgeLow").textContent = lowP;
+ __setAlert('badgeDraft', draftP);
+ __setAlert('badgeOos', oosP);
+ __setAlert('badgeLow', lowP);
 
  // 4. CRM Customer Metrics
  // Calculate new buyers based on how many unique names are in filteredSales vs customersData. 
