@@ -14015,7 +14015,6 @@ window.I18N = {
  sb_sync_advanced: { bm: 'Sync (Lanjutan)', en: 'Sync (Advanced)' },
  sb_test_guide: { bm: 'Panduan Ujian Sistem', en: 'System Test Guide' },
  sb_roadmap: { bm: 'Peta Jalan & Progres', en: 'Roadmap & Progress' },
- sb_visit_website: { bm: 'Lawat Laman Web', en: 'Visit Website' },
 
  // Common buttons
  btn_save: { bm: 'Simpan', en: 'Save' },
