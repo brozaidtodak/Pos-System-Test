@@ -1449,6 +1449,9 @@
  <div class="menu-item mgmt-only" data-group="marketing" data-tab="admin_brandperf" onclick="switchHub(['brandPerfSection'], 'Brand Performance', this); if(typeof renderBrandPerf==='function') renderBrandPerf();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="award" style="width:16px; height:16px;"></i> <span data-i18n="sb_brand_perf">Brand Performance</span>
  </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_mktweekly" onclick="switchHub(['marketingWeeklySection'], 'Marketing Weekly Data', this); if(typeof renderMktWeekly==='function') renderMktWeekly();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="megaphone" style="width:16px; height:16px;"></i> <span data-i18n="sb_mkt_weekly">Marketing Data (Weekly)</span>
+ </div>
 
  <!-- p1_96: REPORTS — staff self-report + Bos drill-down + posted reports inbox -->
  <div class="menu-item" data-group-toggle="reports" onclick="toggleSidebarGroup('reports')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
@@ -3159,6 +3162,86 @@
  <div class="fin-modal__foot">
  <button class="fin-btn fin-btn--ghost" onclick="window.__rlCloseSubmit()">Batal</button>
  <button class="fin-btn fin-btn--gold" onclick="window.__rlSubmit()"><i data-lucide="save" style="width:13px;height:13px;"></i> Simpan Log</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- ============================================== -->
+ <!-- p1_122 — MARKETING WEEKLY DATA FORM -->
+ <!-- ============================================== -->
+ <div id="marketingWeeklySection" class="tab-section" style="display:none;">
+ <div class="rp-wrap">
+ <div class="rp-header">
+ <div>
+ <h2 class="rp-title"><i data-lucide="megaphone" style="width:22px; height:22px; color:var(--primary);"></i> Marketing Weekly Data</h2>
+ <p class="rp-subtitle">Capture social media KPI manual (POS tak ada integrasi langsung). Irfan isi setiap minggu, save ke Posted Reports inbox.</p>
+ </div>
+ </div>
+
+ <!-- Form -->
+ <div class="rp-section" style="border-left:4px solid #EC4899; background:rgba(236,72,153,.04);">
+ <h3 class="rp-section__title" style="color:#9D174D;"><i data-lucide="edit-3" style="width:14px;height:14px;"></i> Isi Data Minggu Ni</h3>
+ <p class="rp-section__help">Anggar je kalau tak ingat tepat. Compare vs minggu lepas dalam history table di bawah.</p>
+
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">WEEK START (Isnin)</label>
+ <input type="date" id="mwWeekStart" class="rp-comm-input" style="width:100%; text-align:left;">
+ </div>
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">WEEK END (Ahad)</label>
+ <input type="date" id="mwWeekEnd" class="rp-comm-input" style="width:100%; text-align:left;" readonly>
+ </div>
+ </div>
+
+ <h4 style="margin:14px 0 8px; font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;">TikTok</h4>
+ <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Posts</label><input type="number" id="mwTtPosts" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Views (k)</label><input type="number" id="mwTtViews" class="rp-comm-input" style="width:100%; text-align:left;" min="0" step="0.1" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Likes</label><input type="number" id="mwTtLikes" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">DM/Leads</label><input type="number" id="mwTtLeads" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ </div>
+
+ <h4 style="margin:14px 0 8px; font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;">Instagram</h4>
+ <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Posts</label><input type="number" id="mwIgPosts" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Views (k)</label><input type="number" id="mwIgViews" class="rp-comm-input" style="width:100%; text-align:left;" min="0" step="0.1" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Likes</label><input type="number" id="mwIgLikes" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">DM/Leads</label><input type="number" id="mwIgLeads" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ </div>
+
+ <h4 style="margin:14px 0 8px; font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;">Facebook</h4>
+ <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Posts</label><input type="number" id="mwFbPosts" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Reach (k)</label><input type="number" id="mwFbViews" class="rp-comm-input" style="width:100%; text-align:left;" min="0" step="0.1" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">Likes</label><input type="number" id="mwFbLikes" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ <div><label style="display:block; font-size:10px; color:#6B7280;">DM/Leads</label><input type="number" id="mwFbLeads" class="rp-comm-input" style="width:100%; text-align:left;" min="0" value="0"></div>
+ </div>
+
+ <h4 style="margin:14px 0 8px; font-size:12px; color:#374151; text-transform:uppercase; letter-spacing:0.5px;">Notes Tambahan</h4>
+ <textarea id="mwNotes" class="rp-manual-input" rows="3" placeholder="Cth: Promo Raya post viral 50k views, kerjasama 1 influencer outdoor, content idea minggu depan camping tent review"></textarea>
+
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+ <span class="rp-manual-status" id="mwStatus" style="font-size:11px; color:#6B7280;"></span>
+ <button class="rp-manual-save" onclick="window.__mwSubmit()"><i data-lucide="save" style="width:13px;height:13px;"></i> Simpan Data Minggu Ni</button>
+ </div>
+ </div>
+
+ <!-- KPI summary (last 4 weeks) -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="bar-chart" style="width:14px;height:14px;"></i> KPI Last 4 Weeks</h3>
+ <div class="rp-kpi-grid">
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Total Posts</div><div class="rp-kpi__val" id="mwTotalPosts">—</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Total Views (k)</div><div class="rp-kpi__val" id="mwTotalViews">—</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Total Engagement</div><div class="rp-kpi__val" id="mwTotalEng">—</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Total Leads</div><div class="rp-kpi__val" id="mwTotalLeads" style="color:#10B981;">—</div></div>
+ </div>
+ </div>
+
+ <!-- History table -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="history" style="width:14px;height:14px;"></i> History Weekly Data</h3>
+ <div id="mwHistoryWrap"><p style="color:#9CA3AF; padding:14px;">Memuatkan…</p></div>
  </div>
  </div>
  </div>
@@ -5745,7 +5828,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (121/121 · last 2026-05-26)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (122/122 · last 2026-05-26)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -5820,6 +5903,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_122', label:'Marketing Weekly Data Form — Phase 2 feature H (FINAL). Capture social media KPI manual sebab POS tak ada integrasi TikTok/IG/FB API. Irfan (Marketing Interim) atau marketing staff isi mingguan. (1) Sidebar item baharu "Marketing Data (Weekly)" dalam Marketing group (megaphone icon, visible to all staff supaya Irfan boleh akses). __tabToRail map admin_mktweekly → marketing. i18n sb_mkt_weekly. (2) Section: Week selector (auto compute Monday → Sunday range, week_end auto-set readonly), 3 platform sections (TikTok / Instagram / Facebook) — setiap satu 4 fields (Posts/Views (k)/Likes/DM-Leads). Notes textarea untuk content observations + campaign mentions. Save button hantar ke staff_report_submissions dengan submission_type=marketing_weekly + period_key=week_start_YYYY-MM-DD + payload JSONB {tiktok, instagram, facebook, notes}. (3) Auto-load existing entry kalau ada untuk week_start same — upsert UNIQUE constraint handle update. Status pill flash "Existing entry loaded · last update". (4) KPI Last 4 Weeks aggregates: Total Posts, Total Views k summed across 3 platforms, Total Engagement (likes), Total Leads. Pulled dari last 4 history rows. (5) History table 7 cols (Week / By / Posts total / Views k total / Likes total / Leads total / Notes truncated 50 chars). Order DESC by submitted_at, limit 20. (6) Reuses existing staff_report_submissions table (p1_114) — no new SQL needed. Bos baca via Posted Reports inbox same flow. (7) Future: integrate TikTok Business API atau IG Graph API untuk auto-pull (Phase 3, kompleks setup OAuth). For now manual form covers gap. Bump app.js v242→v243. ROADMAP_DATA 121/121→122/122. PHASE 2 COMPLETE 8/8: A Reorder ✓ B Channel ✓ C Digest ✓ D Margin ✓ E Brand ✓ F Supplier ✓ G Returns ✓ H Marketing ✓.', d:'done' },
  { id:'p1_121', label:'Returns/Damage Tracker — Phase 2 feature G. Log items rosak/customer pulangkan/hilang dengan reason. (1) sql/2026-05-26_returns_log.sql — table returns_log (BIGSERIAL id, sku, product_name, qty, type enum-like return|damaged|missing|expired, reason TEXT, notes, channel, order_ref, supplier, cost_impact NUMERIC, reported_by_id+name, reported_at, created_at). RLS auth read+insert + service_role. Indexes sku+reported_at, reported_at standalone, type. (2) Sidebar item baharu "Returns / Damage" dalam Inventory group (rotate-ccw icon). __tabToRail map inv_returns → inv. i18n sb_returns. (3) Section returnsSection: header dengan Log Item Baharu button + filter row (Period 30d/90d/180d/YTD/All, Type filter Semua/Return/Rosak/Hilang/Expired, Search SKU/supplier text). KPI 4 cards (Total Entries, Total Units Affected red, Total Cost Impact red, Top Reason). Problem SKUs table top 5 with red background tint dan supplier info. Full log table 7 cols (Tarikh/SKU/Type colored badge/Reason truncated/Qty/Channel/Reporter). Limit 100 rows. (4) Submit modal: 2x2 grid (SKU lookup with autocomplete, Qty number, Type dropdown, Channel dropdown), Reason dropdown 10 presets (defective/shipping damage/customer change mind/wrong item/size mismatch/packaging/cashier error/stock variance/expired/other) plus custom text input, Cost auto-fill dari masterProducts.cost_price on SKU lookup, Notes textarea (optional). Submit INSERT to returns_log. (5) Aggregations: tally per reason (top reason for KPI), per SKU (problem ranking by total qty), total entries + units + cost. (6) Use case: Cashier accept return → klik Log Item Baharu → form fill → save. Bos buka Returns section → tengok top problem SKU + reason → identify quality issue dengan supplier specific. (7) Future: cost_impact auto-deduct stock + create journal entry untuk accounting (Phase 2.5). Bump app.js v241→v242. ROADMAP_DATA 120/120→121/121. Phase 2: 7/8 done. Tinggal H Marketing Data Form.', d:'progress' },
  { id:'p1_120', label:'Supplier Performance dashboard — Phase 2 feature F. Track PO frequency + lead time + total spend per supplier untuk negotiation leverage. (1) Sidebar item baharu "Supplier Performance" dalam Inventory group (truck icon). __tabToRail map inv_supplier → inv. i18n sb_supplier_perf. (2) Section: 4 period pills (90d default / 180d / YTD / All Time). KPI 4 cards (Total Supplier, Total PO, Total Spend, Avg Lead Time). Main table 7 cols (Rank, Supplier name, PO Count, Total Spend, Avg Lead Time, SKU Unik, Last Delivery). (3) Aggregator: fetch purchase_orders dalam period range. Group by supplier (atau supplier_name field). Per supplier: count POs, sum total_cost, compute lead time = (received_at|completed_at - created_at) days, average — store leadDays array kalau valid (0-365 days range). Track unique SKUs from po.items JSON. Track lastDelivery date max. (4) Color coding: Avg Lead Time hijau ≤7d (excellent), amber 7-21d (OK), red >21d (slow). Last Delivery hijau dalam 30d (active), amber 30-90d, red >90d (stale). Top 3 rows highlighted amber background. (5) Use case Zaid: identify supplier paling laju (push lebih order), paling lambat (renegotiate / find alternative), paling stale (haven\'t ordered recently — maybe drop relationship). Bump app.js v240→v241. ROADMAP_DATA 119/119→120/120. Phase 2 progress 6/8 features shipped: A Reorder ✓, B Channel ✓, C Digest ✓, D Margin ✓, E Brand ✓, F Supplier ✓. Tinggal G Returns, H Marketing Data Form.', d:'done' },
  { id:'p1_119', label:'Brand Performance card — Phase 2 feature E. Per brand revenue/units/share/trend dashboard. (1) Sidebar item baharu "Brand Performance" dalam Marketing group (mgmt-only, award icon). __tabToRail map admin_brandperf → marketing. i18n sb_brand_perf. (2) Section brandPerfSection: 5 period pills (MTD/Bulan Lepas/30d/90d/YTD). KPI 4 cards (Total Brand, Total Revenue RM, Total Units, Top Brand name). Main table 7 cols (Rank/Brand/Revenue/Share % dengan progress bar/Units/SKU Aktif/Trend vs prev period). (3) Aggregator: build skuBrand map from masterProducts. Loop salesHistory dalam current period — scan items, lookup brand by SKU, sum revenue + units + skus Set per brand. Same for previous period (same span before start). (4) Trend computation: trendPct = (current - previous) / previous × 100. Show ↑ green / ↓ red / NEW kalau prev = 0. (5) Visual: rank badge dengan warna medal (1st gold, 2nd silver, 3rd bronze, others gray). Top 3 rows row background tint amber. Share % column ada inline progress bar visual proportional. (6) Use case Zaid: "Brand mana yang naik trend bulan ni? Brand mana cut?" Dashboard instantly answer dengan trend column + share progress bar. Identify push/cut candidate. Bump app.js v239→v240. ROADMAP_DATA 118/118→119/119 (last 2026-05-26).', d:'done' },
@@ -10308,7 +10392,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=242"></script>
+ <script src="app.js?v=243"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -1481,6 +1481,156 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
  if(typeof window.applyI18N === 'function') window.applyI18N();
 };
 
+// p1_122 — Marketing Weekly Data Form
+window.__mwGetWeekStart = function(d) {
+ const date = d ? new Date(d) : new Date();
+ const day = date.getDay() || 7; // Sunday=7
+ const monday = new Date(date);
+ monday.setDate(date.getDate() - (day - 1));
+ monday.setHours(0,0,0,0);
+ return monday;
+};
+window.__mwWeekKey = function(d) {
+ const start = window.__mwGetWeekStart(d);
+ return start.toISOString().slice(0, 10);
+};
+
+window.renderMktWeekly = async function() {
+ // Set default week
+ const now = new Date();
+ const monday = window.__mwGetWeekStart(now);
+ const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+ const startEl = document.getElementById('mwWeekStart');
+ const endEl = document.getElementById('mwWeekEnd');
+ if(startEl && !startEl.value) startEl.value = monday.toISOString().slice(0,10);
+ if(endEl) endEl.value = sunday.toISOString().slice(0,10);
+ if(startEl) startEl.onchange = () => {
+ const m = window.__mwGetWeekStart(startEl.value);
+ const s = new Date(m); s.setDate(m.getDate() + 6);
+ startEl.value = m.toISOString().slice(0,10);
+ endEl.value = s.toISOString().slice(0,10);
+ window.__mwLoadExisting();
+ };
+ await window.__mwLoadExisting();
+ await window.__mwLoadHistory();
+};
+
+window.__mwLoadExisting = async function() {
+ // Load existing entry untuk week_start ini kalau ada
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ const weekStart = document.getElementById('mwWeekStart').value;
+ const u = window.currentUser || {};
+ const { data } = await db.from('staff_report_submissions')
+ .select('payload')
+ .eq('submission_type', 'marketing_weekly')
+ .eq('period_key', weekStart)
+ .eq('staff_id', u.staff_id || 'unknown')
+ .maybeSingle();
+ if(data && data.payload) {
+ const p = data.payload;
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v || 0; };
+ set('mwTtPosts', p.tiktok?.posts); set('mwTtViews', p.tiktok?.views); set('mwTtLikes', p.tiktok?.likes); set('mwTtLeads', p.tiktok?.leads);
+ set('mwIgPosts', p.instagram?.posts); set('mwIgViews', p.instagram?.views); set('mwIgLikes', p.instagram?.likes); set('mwIgLeads', p.instagram?.leads);
+ set('mwFbPosts', p.facebook?.posts); set('mwFbViews', p.facebook?.views); set('mwFbLikes', p.facebook?.likes); set('mwFbLeads', p.facebook?.leads);
+ const notesEl = document.getElementById('mwNotes'); if(notesEl) notesEl.value = p.notes || '';
+ const status = document.getElementById('mwStatus');
+ if(status) status.textContent = `Existing entry loaded · last update ${new Date(data.payload.__updated_at || data.payload.submitted_at || Date.now()).toLocaleString('en-MY')}`;
+ } else {
+ ['mwTtPosts','mwTtViews','mwTtLikes','mwTtLeads','mwIgPosts','mwIgViews','mwIgLikes','mwIgLeads','mwFbPosts','mwFbViews','mwFbLikes','mwFbLeads'].forEach(id => { const el = document.getElementById(id); if(el) el.value = 0; });
+ const notesEl = document.getElementById('mwNotes'); if(notesEl) notesEl.value = '';
+ const status = document.getElementById('mwStatus');
+ if(status) status.textContent = 'Belum ada data untuk minggu ni — isi & save.';
+ }
+ } catch(e) { /* silent */ }
+};
+
+window.__mwLoadHistory = async function() {
+ const wrap = document.getElementById('mwHistoryWrap');
+ if(!wrap) return;
+ wrap.innerHTML = '<p style="color:#9CA3AF; padding:14px;">Memuatkan…</p>';
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const { data, error } = await db.from('staff_report_submissions')
+ .select('*')
+ .eq('submission_type', 'marketing_weekly')
+ .order('submitted_at', { ascending: false })
+ .limit(20);
+ if(error) throw error;
+ const rows = (data || []).filter(r => r.payload);
+ if(!rows.length) { wrap.innerHTML = '<p style="color:#9CA3AF; padding:14px;">Belum ada history.</p>'; return; }
+
+ // KPI last 4 weeks
+ const last4 = rows.slice(0, 4);
+ const sumField = (f1, f2) => last4.reduce((s, r) => s + (Number(r.payload[f1]?.[f2]) || 0), 0);
+ const totalPosts = sumField('tiktok','posts') + sumField('instagram','posts') + sumField('facebook','posts');
+ const totalViews = sumField('tiktok','views') + sumField('instagram','views') + sumField('facebook','views');
+ const totalLikes = sumField('tiktok','likes') + sumField('instagram','likes') + sumField('facebook','likes');
+ const totalLeads = sumField('tiktok','leads') + sumField('instagram','leads') + sumField('facebook','leads');
+ document.getElementById('mwTotalPosts').textContent = totalPosts;
+ document.getElementById('mwTotalViews').textContent = totalViews.toFixed(1) + 'k';
+ document.getElementById('mwTotalEng').textContent = totalLikes;
+ document.getElementById('mwTotalLeads').textContent = totalLeads;
+
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ wrap.innerHTML = `<table class="rp-comm-table">
+ <thead><tr><th>Week</th><th>By</th><th style="text-align:right;">Posts</th><th style="text-align:right;">Views (k)</th><th style="text-align:right;">Likes</th><th style="text-align:right;">Leads</th><th>Notes</th></tr></thead>
+ <tbody>
+ ${rows.map(r => {
+ const p = r.payload || {};
+ const posts = (Number(p.tiktok?.posts) || 0) + (Number(p.instagram?.posts) || 0) + (Number(p.facebook?.posts) || 0);
+ const views = (Number(p.tiktok?.views) || 0) + (Number(p.instagram?.views) || 0) + (Number(p.facebook?.views) || 0);
+ const likes = (Number(p.tiktok?.likes) || 0) + (Number(p.instagram?.likes) || 0) + (Number(p.facebook?.likes) || 0);
+ const leads = (Number(p.tiktok?.leads) || 0) + (Number(p.instagram?.leads) || 0) + (Number(p.facebook?.leads) || 0);
+ return `<tr>
+ <td style="font-size:12px;"><strong>${r.period_key}</strong></td>
+ <td style="font-size:11px; color:#6B7280;">${escAttr(r.staff_name)}</td>
+ <td style="text-align:right;">${posts}</td>
+ <td style="text-align:right;">${views.toFixed(1)}</td>
+ <td style="text-align:right;">${likes}</td>
+ <td style="text-align:right; color:${leads > 0 ? '#10B981' : '#6B7280'}; font-weight:${leads > 0 ? 700 : 400};">${leads}</td>
+ <td style="font-size:11px; color:#6B7280; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escAttr((p.notes || '').slice(0, 50))}</td>
+ </tr>`;
+ }).join('')}
+ </tbody>
+ </table>`;
+ } catch(e) {
+ wrap.innerHTML = '<p style="color:#EF4444; padding:14px;">Error: ' + e.message + '</p>';
+ }
+};
+
+window.__mwSubmit = async function() {
+ const get = (id) => Number(document.getElementById(id)?.value) || 0;
+ const weekStart = document.getElementById('mwWeekStart').value;
+ if(!weekStart) { if(typeof showToast === 'function') showToast('Week start wajib.', 'warn'); return; }
+ const u = window.currentUser || {};
+ const payload = {
+ tiktok: { posts: get('mwTtPosts'), views: get('mwTtViews'), likes: get('mwTtLikes'), leads: get('mwTtLeads') },
+ instagram: { posts: get('mwIgPosts'), views: get('mwIgViews'), likes: get('mwIgLikes'), leads: get('mwIgLeads') },
+ facebook: { posts: get('mwFbPosts'), views: get('mwFbViews'), likes: get('mwFbLikes'), leads: get('mwFbLeads') },
+ notes: document.getElementById('mwNotes').value.trim() || null,
+ __updated_at: new Date().toISOString()
+ };
+ try {
+ const { error } = await db.from('staff_report_submissions').upsert({
+ staff_id: u.staff_id || 'unknown',
+ staff_name: u.name || 'Unknown',
+ submission_type: 'marketing_weekly',
+ period_key: weekStart,
+ payload,
+ submitted_at: new Date().toISOString(),
+ bos_read_at: null
+ }, { onConflict: 'staff_id,submission_type,period_key' });
+ if(error) throw error;
+ if(typeof showToast === 'function') showToast('Marketing data disimpan untuk minggu ' + weekStart, 'success');
+ const status = document.getElementById('mwStatus');
+ if(status) status.textContent = 'Saved · ' + new Date().toLocaleString('en-MY');
+ setTimeout(() => window.__mwLoadHistory(), 200);
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Save failed: ' + e.message, 'error');
+ }
+};
+
 // p1_121 — Returns/Damage Tracker
 window.__rlAllRows = [];
 
@@ -3272,7 +3422,7 @@ window.__tabToRail = function(tab) {
  if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_pricehistory' || tab === 'inv_reorder' || tab === 'inv_supplier' || tab === 'inv_returns') return 'inv';
  if(tab.startsWith('hr_')) return 'hr';
  if(tab === 'admin_audit_alerts' || tab === 'admin_dashboard' || tab === 'admin_invoice' || tab === 'admin_bulk_ops') return 'admin';
- if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit' || tab === 'admin_brandperf') return 'marketing';
+ if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit' || tab === 'admin_brandperf' || tab === 'admin_mktweekly') return 'marketing';
  if(tab === 'report_my' || tab === 'report_team') return 'reports';
  if(tab === 'settings_hub' || tab.startsWith('finance_') || tab.startsWith('admin_settings') || tab === 'admin_payments' || tab === 'admin_sync' || tab === 'admin_test_guide' || tab === 'hq_permissions') return 'hq_setup';
  return null;
@@ -17549,6 +17699,7 @@ window.I18N = {
  sb_brand_perf: { bm: 'Brand Performance', en: 'Brand Performance' },
  sb_supplier_perf: { bm: 'Supplier Performance', en: 'Supplier Performance' },
  sb_returns: { bm: 'Returns / Damage', en: 'Returns / Damage' },
+ sb_mkt_weekly: { bm: 'Marketing Data (Weekly)', en: 'Marketing Data (Weekly)' },
  sb_all_customers: { bm: 'Semua Pelanggan', en: 'All Customers' },
  sb_b2b_accounts: { bm: 'Akaun B2B', en: 'B2B Accounts' },
  sb_cuti: { bm: 'Cuti', en: 'Leave' },
