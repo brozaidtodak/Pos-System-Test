@@ -648,7 +648,14 @@ window.__rpPeriodRange = function() {
 };
 
 // Map dept (actual) → template key
-window.__rpTemplateForDept = function(dept) {
+window.__rpTemplateForDept = function(deptOrUser) {
+ // p1_113: Per-staff simple-mode detection (Ariff/Fahmi need simpler reporting).
+ const u = (deptOrUser && typeof deptOrUser === 'object') ? deptOrUser : null;
+ if(u) {
+ if(u.staff_id === 'CMP006') return 'sales_simple';     // Ariff
+ if(u.staff_id === 'CMP009') return 'inventory_simple'; // Fahmi
+ }
+ const dept = u ? u.dept : deptOrUser;
  if(!dept) return null;
  const d = dept.toLowerCase();
  if(d.includes('administrative')) return 'admin';
@@ -678,12 +685,14 @@ window.renderMyReport = function() {
  if(nameEl) nameEl.textContent = u ? u.name : '—';
  if(periodEl) periodEl.textContent = range.label;
 
- const tpl = u ? window.__rpTemplateForDept(u.dept) : null;
+ const tpl = u ? window.__rpTemplateForDept(u) : null;
  const roleLabels = {
  admin: T('rp_role_admin','Admin Department'),
  sales: T('rp_role_sales','Sales & Product'),
+ sales_simple: T('rp_role_sales','Sales & Product'),
  marketing: T('rp_role_marketing','Marketing (Interim)'),
  inventory: T('rp_role_inventory','Inventory / Warehouse'),
+ inventory_simple: T('rp_role_inventory','Inventory / Warehouse'),
  bizdev: T('rp_role_bizdev','Business Development'),
  sysmgmt: T('rp_role_sysmgmt','System Management')
  };
@@ -700,6 +709,10 @@ window.renderMyReport = function() {
  window.__rpRenderBizdevTemplate(body, u, range);
  } else if(tpl === 'sysmgmt') {
  window.__rpRenderSysmgmtTemplate(body, u, range);
+ } else if(tpl === 'sales_simple') {
+ window.__rpRenderSalesSimpleTemplate(body, u, range);
+ } else if(tpl === 'inventory_simple') {
+ window.__rpRenderInventorySimpleTemplate(body, u, range);
  } else if(tpl) {
  // Other templates — placeholder coming soon
  body.innerHTML = '<div class="rp-section"><div class="rp-empty">Template untuk role ni akan datang Phase 1B.</div></div>';
@@ -1466,6 +1479,150 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
 
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  if(typeof window.applyI18N === 'function') window.applyI18N();
+};
+
+// p1_113 — Simplified Sales template (Ariff CMP006)
+// Strip complex tables. Big-number style: 1 main KPI + commission + manual notes + roadmap.
+window.__rpRenderSalesSimpleTemplate = function(body, u, range) {
+ const startMs = range.start.getTime();
+ const endMs = range.end.getTime();
+
+ // Aggregate own sales
+ let myOrders = 0, myRevenue = 0;
+ const skuTally = {};
+ try {
+ if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+ salesHistory.forEach(sale => {
+ const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
+ if(t < startMs || t > endMs) return;
+ if(!((sale.staff_id && sale.staff_id === u.staff_id) || (sale.cashier_name && sale.cashier_name === u.name))) return;
+ myOrders++;
+ myRevenue += Number(sale.total || sale.amount || 0);
+ const items = (() => { try { return JSON.parse(sale.items || '[]'); } catch(e) { return sale.items || []; } })();
+ (Array.isArray(items) ? items : []).forEach(it => {
+ const sku = (it.sku || '').toUpperCase();
+ if(!sku) return;
+ if(!skuTally[sku]) skuTally[sku] = { sku, name: it.name || sku, qty: 0 };
+ skuTally[sku].qty += Number(it.qty || 0);
+ });
+ });
+ }
+ } catch(e){}
+ const topSku = Object.values(skuTally).sort((a, b) => b.qty - a.qty)[0];
+
+ // Commission saved by Aliff
+ let myComm = null;
+ try {
+ const drafts = JSON.parse(localStorage.getItem('commissionDraft_' + (window.__rpPeriod || 'mtd')) || '{}');
+ myComm = drafts[u.staff_id] || null;
+ } catch(e){}
+
+ // Manual notes
+ const manualKey = 'reportManual_' + u.staff_id + '_' + (window.__rpPeriod || 'mtd');
+ const manualText = localStorage.getItem(manualKey) || '';
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ const fmtRM = (n) => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+ body.innerHTML = `
+ <!-- Big number hero -->
+ <div class="rp-section" style="text-align:center; padding:30px 20px;">
+ <div style="font-size:13px; color:#6B7280; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Jualan Saya — Period Ini</div>
+ <div style="font-size:48px; font-weight:900; color:var(--primary); letter-spacing:-2px; line-height:1.1;">${fmtRM(myRevenue)}</div>
+ <div style="font-size:14px; color:#6B7280; margin-top:10px;">${myOrders} pesanan ${topSku ? '· Top: ' + escAttr(topSku.sku) + ' (' + topSku.qty + ' unit)' : ''}</div>
+ </div>
+
+ <!-- Commission card (if Aliff dah kira) -->
+ ${myComm ? `
+ <div class="rp-section" style="background:rgba(16,185,129,.06); border-left:4px solid #10B981; text-align:center; padding:20px;">
+ <div style="font-size:12px; color:#065F46; font-weight:700; text-transform:uppercase; margin-bottom:6px;">Komisen Anggaran (menunggu approval Bos)</div>
+ <div style="font-size:32px; font-weight:800; color:#10B981;">${fmtRM(myComm.amount || 0)}</div>
+ <div style="font-size:11px; color:#6B7280; margin-top:4px;">${myComm.rate || '—'}% × jualan</div>
+ </div>
+ ` : `
+ <div class="rp-section" style="background:#F9FAFB; text-align:center; padding:20px;">
+ <div style="font-size:12px; color:#6B7280;">Komisen belum dikira Admin. Tunggu hujung bulan.</div>
+ </div>
+ `}
+
+ <!-- Manual notes — ONE BIG TEXTAREA -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="edit-3" style="width:14px;height:14px;"></i> Catatan Saya</h3>
+ <p class="rp-section__help">Tulis apa yang berlaku hari ni. Customer susah, produk laku, idea tambah baik — apa sahaja.</p>
+ <textarea id="rpManualText" class="rp-manual-input" placeholder="Cth: Hari ni layan 12 customer. Banyak tanya pasal tent BLACKDOG. Cadangan: stockkan lebih untuk weekend." style="min-height:140px; font-size:14px;">${escAttr(manualText)}</textarea>
+ <div class="rp-manual-foot">
+ <span class="rp-manual-status" id="rpManualStatus"></span>
+ <button class="rp-manual-save" onclick="window.__rpSaveManual('${escAttr(manualKey)}')"><i data-lucide="save" style="width:13px;height:13px;"></i> Simpan</button>
+ </div>
+ </div>
+ `;
+
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+// p1_113 — Simplified Inventory template (Fahmi CMP009)
+// Strip BIG table + multi-card grid. Focus: how many packed today + 1 backlog number + notes.
+window.__rpRenderInventorySimpleTemplate = function(body, u, range) {
+ const startMs = range.start.getTime();
+ const endMs = range.end.getTime();
+
+ let packed = 0;
+ try {
+ if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+ salesHistory.forEach(sale => {
+ const packedAt = sale.metadata && sale.metadata.ff_packed_at;
+ if(!packedAt) return;
+ const t = new Date(packedAt).getTime();
+ if(t >= startMs && t <= endMs) packed++;
+ });
+ }
+ } catch(e){}
+
+ let backlog = 0;
+ try {
+ if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+ backlog = salesHistory.filter(s => {
+ const meta = s.metadata || {};
+ if(meta.ff_packed_at) return false;
+ const ch = (s.channel || '').toLowerCase();
+ return ch.includes('tiktok') || ch.includes('shopee') || ch.includes('easystore') || ch.includes('web');
+ }).length;
+ }
+ } catch(e){}
+
+ const manualKey = 'reportManual_' + u.staff_id + '_' + (window.__rpPeriod || 'mtd');
+ const manualText = localStorage.getItem(manualKey) || '';
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+
+ body.innerHTML = `
+ <!-- 2 big numbers side-by-side -->
+ <div class="rp-section">
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+ <div style="text-align:center; padding:24px; background:rgba(16,185,129,.06); border-radius:12px; border:1px solid #BBF7D0;">
+ <div style="font-size:12px; color:#065F46; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Saya Dah Pack</div>
+ <div style="font-size:48px; font-weight:900; color:#10B981; letter-spacing:-2px; line-height:1;">${packed}</div>
+ <div style="font-size:12px; color:#6B7280; margin-top:6px;">pesanan period ini</div>
+ </div>
+ <div style="text-align:center; padding:24px; background:${backlog > 5 ? 'rgba(217,119,6,.08)' : 'rgba(107,114,128,.05)'}; border-radius:12px; border:1px solid ${backlog > 5 ? '#FCD34D' : '#E5E7EB'};">
+ <div style="font-size:12px; color:${backlog > 5 ? '#92400E' : '#6B7280'}; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Tunggu Pack</div>
+ <div style="font-size:48px; font-weight:900; color:${backlog > 5 ? '#D97706' : '#9CA3AF'}; letter-spacing:-2px; line-height:1;">${backlog}</div>
+ <div style="font-size:12px; color:#6B7280; margin-top:6px;">${backlog > 5 ? '⚠ banyak menumpuk' : 'pesanan menunggu'}</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Manual notes — ONE TEXTAREA -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="edit-3" style="width:14px;height:14px;"></i> Catatan Saya</h3>
+ <p class="rp-section__help">Tulis apa yang berlaku. Item rosak, stok kurang, masalah packing — apa sahaja.</p>
+ <textarea id="rpManualText" class="rp-manual-input" placeholder="Cth: Hari ni pack 25 pesanan. Item BD130 retak sebiji — dah set aside untuk reject. Cadangan: bagi staff baru training packing tent." style="min-height:140px; font-size:14px;">${escAttr(manualText)}</textarea>
+ <div class="rp-manual-foot">
+ <span class="rp-manual-status" id="rpManualStatus"></span>
+ <button class="rp-manual-save" onclick="window.__rpSaveManual('${escAttr(manualKey)}')"><i data-lucide="save" style="width:13px;height:13px;"></i> Simpan</button>
+ </div>
+ </div>
+ `;
+
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
 };
 
 // p1_111 — Price History Report
