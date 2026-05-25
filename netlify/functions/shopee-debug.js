@@ -79,25 +79,31 @@ exports.handler = async () => {
             },
             server_side_test: await (async () => {
                 const tries = { A: signA, B: signB, C: signC };
+                const hosts = {
+                    sandbox: 'https://partner.test-stable.shopeemobile.com',
+                    live: 'https://partner.shopeemobile.com'
+                };
                 const out = {};
-                for (const [name, s] of Object.entries(tries)) {
-                    if (!s) { out[name] = { skipped: 'no_sign' }; continue; }
-                    const url = `${HOST}${PATH}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${s}&redirect=${encodeURIComponent('https://pos.10camp.com/api/shopee-oauth')}`;
-                    try {
-                        const r = await fetch(url, { method: 'GET', redirect: 'manual' });
-                        const text = await r.text().catch(() => '');
-                        let parsed = null;
-                        try { parsed = JSON.parse(text); } catch(e) {}
-                        out[name] = {
-                            status: r.status,
-                            content_type: r.headers.get('content-type') || '',
-                            location: r.headers.get('location') || '',
-                            body_snippet: text.slice(0, 300),
-                            parsed_error: parsed?.error || null,
-                            parsed_message: parsed?.message || null
-                        };
-                    } catch(e) {
-                        out[name] = { fetch_error: String(e).slice(0, 200) };
+                for (const [hName, hUrl] of Object.entries(hosts)) {
+                    out[hName] = {};
+                    for (const [name, s] of Object.entries(tries)) {
+                        if (!s) { out[hName][name] = { skipped: 'no_sign' }; continue; }
+                        const url = `${hUrl}${PATH}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${s}&redirect=${encodeURIComponent('https://pos.10camp.com/api/shopee-oauth')}`;
+                        try {
+                            const r = await fetch(url, { method: 'GET', redirect: 'manual' });
+                            const text = await r.text().catch(() => '');
+                            let parsed = null;
+                            try { parsed = JSON.parse(text); } catch(e) {}
+                            out[hName][name] = {
+                                status: r.status,
+                                location: r.headers.get('location') || '',
+                                parsed_error: parsed?.error || null,
+                                parsed_message: parsed?.message || null,
+                                body_first_120: text.slice(0, 120)
+                            };
+                        } catch(e) {
+                            out[hName][name] = { fetch_error: String(e).slice(0, 200) };
+                        }
                     }
                 }
                 return out;
