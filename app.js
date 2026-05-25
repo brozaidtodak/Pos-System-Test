@@ -1481,6 +1481,127 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
  if(typeof window.applyI18N === 'function') window.applyI18N();
 };
 
+// p1_120 — Supplier Performance dashboard
+window.__spPeriod = '90d';
+window.__spSetPeriod = function(p, btn) {
+ window.__spPeriod = p;
+ document.querySelectorAll('[data-sp-period]').forEach(b => {
+ b.classList.toggle('sp-period-btn--active', b === btn);
+ if(b === btn) b.classList.remove('secondary');
+ else b.classList.add('secondary');
+ });
+ window.renderSupplierPerf();
+};
+
+window.renderSupplierPerf = async function() {
+ const wrap = document.getElementById('spTableWrap');
+ if(!wrap) return;
+ wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p>';
+
+ const now = new Date();
+ const p = window.__spPeriod;
+ let sinceDate = null;
+ if(p === '90d') sinceDate = new Date(now.getTime() - 90 * 86400000);
+ else if(p === '180d') sinceDate = new Date(now.getTime() - 180 * 86400000);
+ else if(p === 'ytd') sinceDate = new Date(now.getFullYear(), 0, 1);
+
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ let q = db.from('purchase_orders').select('*').order('created_at', { ascending: false }).limit(500);
+ if(sinceDate) q = q.gte('created_at', sinceDate.toISOString());
+ const { data: pos, error } = await q;
+ if(error) throw error;
+
+ // Aggregate per supplier
+ const supMap = {};
+ (pos || []).forEach(po => {
+ const sup = (po.supplier || po.supplier_name || 'Unknown').trim();
+ if(!supMap[sup]) supMap[sup] = { supplier: sup, poCount: 0, totalCost: 0, leadDays: [], skuCount: new Set(), lastDelivery: null };
+ supMap[sup].poCount++;
+ supMap[sup].totalCost += Number(po.total_cost || po.total || 0);
+ // Lead time: created_at → completed_at or received_at
+ const created = po.created_at ? new Date(po.created_at).getTime() : null;
+ const completed = po.received_at || po.completed_at || (po.status === 'Completed' ? po.updated_at : null);
+ if(created && completed) {
+ const days = (new Date(completed).getTime() - created) / 86400000;
+ if(days > 0 && days < 365) supMap[sup].leadDays.push(days);
+ }
+ if(completed) {
+ const c = new Date(completed);
+ if(!supMap[sup].lastDelivery || c > supMap[sup].lastDelivery) supMap[sup].lastDelivery = c;
+ }
+ // Items
+ try {
+ const items = typeof po.items === 'string' ? JSON.parse(po.items) : (po.items || []);
+ (Array.isArray(items) ? items : []).forEach(it => { if(it.sku) supMap[sup].skuCount.add(String(it.sku).toUpperCase()); });
+ } catch(e){}
+ });
+
+ const rows = Object.values(supMap).map(s => ({
+ supplier: s.supplier,
+ poCount: s.poCount,
+ totalCost: s.totalCost,
+ avgLead: s.leadDays.length > 0 ? s.leadDays.reduce((a,b) => a+b, 0) / s.leadDays.length : null,
+ skuCount: s.skuCount.size,
+ lastDelivery: s.lastDelivery
+ })).sort((a, b) => b.totalCost - a.totalCost);
+
+ // KPI
+ const totalSuppliers = rows.length;
+ const totalPO = rows.reduce((s, r) => s + r.poCount, 0);
+ const totalSpend = rows.reduce((s, r) => s + r.totalCost, 0);
+ const leadValues = rows.filter(r => r.avgLead != null).map(r => r.avgLead);
+ const avgLead = leadValues.length > 0 ? leadValues.reduce((a,b) => a+b, 0) / leadValues.length : 0;
+
+ document.getElementById('spTotalSuppliers').textContent = totalSuppliers;
+ document.getElementById('spTotalPO').textContent = totalPO;
+ document.getElementById('spTotalSpend').textContent = 'RM ' + Number(totalSpend).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ document.getElementById('spAvgLead').textContent = avgLead.toFixed(1) + ' hari';
+
+ if(!rows.length) {
+ wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Tiada Purchase Order dalam period ni.</p>';
+ return;
+ }
+
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ const fmtRMC = (n) => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ wrap.innerHTML = `<table class="rp-comm-table">
+ <thead>
+ <tr>
+ <th>Rank</th>
+ <th>Supplier</th>
+ <th style="text-align:right;">PO Count</th>
+ <th style="text-align:right;">Total Spend</th>
+ <th style="text-align:right;">Avg Lead Time</th>
+ <th style="text-align:right;">SKU Unik</th>
+ <th style="text-align:right;">Last Delivery</th>
+ </tr>
+ </thead>
+ <tbody>
+ ${rows.map((r, i) => {
+ const leadColor = r.avgLead == null ? '#9CA3AF' : (r.avgLead <= 7 ? '#10B981' : (r.avgLead <= 21 ? '#D97706' : '#EF4444'));
+ const leadStr = r.avgLead == null ? '—' : r.avgLead.toFixed(1) + ' hari';
+ const lastStr = r.lastDelivery ? r.lastDelivery.toLocaleDateString('en-MY') : '—';
+ const daysSinceLast = r.lastDelivery ? Math.floor((Date.now() - r.lastDelivery.getTime()) / 86400000) : null;
+ const lastColor = daysSinceLast == null ? '#9CA3AF' : (daysSinceLast > 90 ? '#EF4444' : (daysSinceLast > 30 ? '#D97706' : '#10B981'));
+ return `<tr ${i < 3 ? 'style="background:rgba(252,211,77,.04);"' : ''}>
+ <td>#${i+1}</td>
+ <td><strong>${escAttr(r.supplier)}</strong></td>
+ <td style="text-align:right;">${r.poCount}</td>
+ <td style="text-align:right; font-weight:700;">${fmtRMC(r.totalCost)}</td>
+ <td style="text-align:right; color:${leadColor}; font-weight:700;">${leadStr}</td>
+ <td style="text-align:right;">${r.skuCount}</td>
+ <td style="text-align:right; color:${lastColor};">${lastStr}${daysSinceLast != null ? ' <span style="font-size:10px; color:#9CA3AF;">(' + daysSinceLast + 'd ago)</span>' : ''}</td>
+ </tr>`;
+ }).join('')}
+ </tbody>
+ </table>`;
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ } catch(e) {
+ wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ }
+};
+
 // p1_119 — Brand Performance dashboard
 window.__bpPeriod = 'mtd';
 
@@ -2990,7 +3111,7 @@ window.__tabToRail = function(tab) {
  if(tab === 'roadmap') return 'roadmap';
  if(tab.startsWith('sales_')) return 'sales';
  if(tab.startsWith('customers_')) return 'customers';
- if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_pricehistory' || tab === 'inv_reorder') return 'inv';
+ if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_pricehistory' || tab === 'inv_reorder' || tab === 'inv_supplier') return 'inv';
  if(tab.startsWith('hr_')) return 'hr';
  if(tab === 'admin_audit_alerts' || tab === 'admin_dashboard' || tab === 'admin_invoice' || tab === 'admin_bulk_ops') return 'admin';
  if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit' || tab === 'admin_brandperf') return 'marketing';
@@ -17268,6 +17389,7 @@ window.I18N = {
  sb_reorder: { bm: 'Reorder Suggest', en: 'Reorder Suggest' },
  sb_channel_profit: { bm: 'Channel Profitability', en: 'Channel Profitability' },
  sb_brand_perf: { bm: 'Brand Performance', en: 'Brand Performance' },
+ sb_supplier_perf: { bm: 'Supplier Performance', en: 'Supplier Performance' },
  sb_all_customers: { bm: 'Semua Pelanggan', en: 'All Customers' },
  sb_b2b_accounts: { bm: 'Akaun B2B', en: 'B2B Accounts' },
  sb_cuti: { bm: 'Cuti', en: 'Leave' },

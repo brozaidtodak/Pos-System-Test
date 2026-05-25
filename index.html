@@ -1365,6 +1365,9 @@
  <i data-lucide="repeat" style="width:16px; height:16px;"></i> <span data-i18n="sb_reorder">Reorder Suggest</span>
  <span class="sidebar-badge" id="reorderBadge" style="display:none;">0</span>
  </div>
+ <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_supplier" onclick="switchHub(['supplierPerfSection'], 'Supplier Performance', this); if(typeof renderSupplierPerf==='function') renderSupplierPerf();">
+ <i data-lucide="truck" style="width:16px; height:16px;"></i> <span data-i18n="sb_supplier_perf">Supplier Performance</span>
+ </div>
 
  <!-- p1_70: Reports section removed from Inventory sidebar (Velocity, Aging, Valuation, Snapshot, Reservations). Section divs kekal untuk back-compat. -->
 
@@ -2951,6 +2954,61 @@
  <div class="rp-section">
  <h3 class="rp-section__title"><i data-lucide="trophy" style="width:14px;height:14px;"></i> Senarai Brand (sort by revenue)</h3>
  <div id="bpTableWrap"><p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ============================================== -->
+ <!-- p1_120 — SUPPLIER PERFORMANCE -->
+ <!-- ============================================== -->
+ <div id="supplierPerfSection" class="tab-section" style="display:none;">
+ <div class="rp-wrap">
+ <div class="rp-header">
+ <div>
+ <h2 class="rp-title"><i data-lucide="truck" style="width:22px; height:22px; color:var(--primary);"></i> Supplier Performance</h2>
+ <p class="rp-subtitle">Track PO frequency, total cost, lead time per supplier. Negotiation leverage + identify problem partners.</p>
+ </div>
+ <button class="sy-btn secondary" onclick="window.renderSupplierPerf()"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Refresh</button>
+ </div>
+
+ <!-- Period filter -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="calendar" style="width:14px;height:14px;"></i> Period</h3>
+ <div style="display:flex; gap:6px; flex-wrap:wrap;">
+ <button class="sy-btn sp-period-btn sp-period-btn--active" data-sp-period="90d" onclick="window.__spSetPeriod('90d', this)">90 Hari</button>
+ <button class="sy-btn secondary sp-period-btn" data-sp-period="180d" onclick="window.__spSetPeriod('180d', this)">180 Hari</button>
+ <button class="sy-btn secondary sp-period-btn" data-sp-period="ytd" onclick="window.__spSetPeriod('ytd', this)">YTD</button>
+ <button class="sy-btn secondary sp-period-btn" data-sp-period="all" onclick="window.__spSetPeriod('all', this)">All Time</button>
+ </div>
+ </div>
+
+ <!-- KPI summary -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="bar-chart" style="width:14px;height:14px;"></i> Ringkasan</h3>
+ <div class="rp-kpi-grid">
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Total Supplier</div>
+ <div class="rp-kpi__val" id="spTotalSuppliers">—</div>
+ </div>
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Total PO</div>
+ <div class="rp-kpi__val" id="spTotalPO">—</div>
+ </div>
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Total Spend</div>
+ <div class="rp-kpi__val" id="spTotalSpend">—</div>
+ </div>
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Avg Lead Time</div>
+ <div class="rp-kpi__val" id="spAvgLead">—</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Supplier table -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="list" style="width:14px;height:14px;"></i> Senarai Supplier (sort by total spend)</h3>
+ <div id="spTableWrap"><p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p></div>
  </div>
  </div>
  </div>
@@ -5537,7 +5595,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (119/119 · last 2026-05-26)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (120/120 · last 2026-05-26)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -5612,6 +5670,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_120', label:'Supplier Performance dashboard — Phase 2 feature F. Track PO frequency + lead time + total spend per supplier untuk negotiation leverage. (1) Sidebar item baharu "Supplier Performance" dalam Inventory group (truck icon). __tabToRail map inv_supplier → inv. i18n sb_supplier_perf. (2) Section: 4 period pills (90d default / 180d / YTD / All Time). KPI 4 cards (Total Supplier, Total PO, Total Spend, Avg Lead Time). Main table 7 cols (Rank, Supplier name, PO Count, Total Spend, Avg Lead Time, SKU Unik, Last Delivery). (3) Aggregator: fetch purchase_orders dalam period range. Group by supplier (atau supplier_name field). Per supplier: count POs, sum total_cost, compute lead time = (received_at|completed_at - created_at) days, average — store leadDays array kalau valid (0-365 days range). Track unique SKUs from po.items JSON. Track lastDelivery date max. (4) Color coding: Avg Lead Time hijau ≤7d (excellent), amber 7-21d (OK), red >21d (slow). Last Delivery hijau dalam 30d (active), amber 30-90d, red >90d (stale). Top 3 rows highlighted amber background. (5) Use case Zaid: identify supplier paling laju (push lebih order), paling lambat (renegotiate / find alternative), paling stale (haven\'t ordered recently — maybe drop relationship). Bump app.js v240→v241. ROADMAP_DATA 119/119→120/120. Phase 2 progress 6/8 features shipped: A Reorder ✓, B Channel ✓, C Digest ✓, D Margin ✓, E Brand ✓, F Supplier ✓. Tinggal G Returns, H Marketing Data Form.', d:'done' },
  { id:'p1_119', label:'Brand Performance card — Phase 2 feature E. Per brand revenue/units/share/trend dashboard. (1) Sidebar item baharu "Brand Performance" dalam Marketing group (mgmt-only, award icon). __tabToRail map admin_brandperf → marketing. i18n sb_brand_perf. (2) Section brandPerfSection: 5 period pills (MTD/Bulan Lepas/30d/90d/YTD). KPI 4 cards (Total Brand, Total Revenue RM, Total Units, Top Brand name). Main table 7 cols (Rank/Brand/Revenue/Share % dengan progress bar/Units/SKU Aktif/Trend vs prev period). (3) Aggregator: build skuBrand map from masterProducts. Loop salesHistory dalam current period — scan items, lookup brand by SKU, sum revenue + units + skus Set per brand. Same for previous period (same span before start). (4) Trend computation: trendPct = (current - previous) / previous × 100. Show ↑ green / ↓ red / NEW kalau prev = 0. (5) Visual: rank badge dengan warna medal (1st gold, 2nd silver, 3rd bronze, others gray). Top 3 rows row background tint amber. Share % column ada inline progress bar visual proportional. (6) Use case Zaid: "Brand mana yang naik trend bulan ni? Brand mana cut?" Dashboard instantly answer dengan trend column + share progress bar. Identify push/cut candidate. Bump app.js v239→v240. ROADMAP_DATA 118/118→119/119 (last 2026-05-26).', d:'done' },
  { id:'p1_118', label:'Daily Bos Digest auto-email — Phase 2 feature C. Cron 8am MYT scheduled function hantar HTML email Zaid dengan yesterday summary + alerts. (1) netlify/functions/daily-bos-digest.js — async aggregator + HTML builder + Resend send. Env vars required: RESEND_API_KEY (signup resend.com free 100/day), DIGEST_RECIPIENTS (comma-separated emails), DIGEST_FROM (verified domain atau onboarding@resend.dev untuk testing). (2) buildDigest(): compute yesterday range in MYT (UTC+8), fetch sales_history filter created_at/timestamp dalam window, aggregate total revenue + orders + AOV, group by channel sorted by revenue, tally top 5 SKU sold, count pending stock checks + sync errors today. (3) buildHTML(): branded gradient header (orange #CD7C32 → #A05F22), centered hero big number revenue 36px font, alerts banner amber bila pending stock check / sync errors > 0, channel table dengan revenue formatted, top 5 SKU list dengan rank, CTA "Buka POS Dashboard" link, footer auto-generated timestamp. Email-safe inline CSS (no external stylesheets). Max-width 600px mobile-friendly. (4) sendEmail() POST ke Resend /emails dengan from + to + subject + html. (5) netlify.toml — redirect /api/daily-bos-digest + schedule "0 0 * * *" (UTC midnight = 8am MYT). (6) Manual modes: ?preview=1 return HTML render in browser, ?send=1 force send now, no params return digest JSON for inspection. Use case Zaid: 7:55am wake up → 8am phone vibrate email → 1-min scan → done overview tanpa buka laptop. Critical for Bos remote ops. (7) Setup Zaid TODO: signup resend.com (free), get API key, add to Netlify env RESEND_API_KEY + DIGEST_RECIPIENTS=zaid@10camp.com + DIGEST_FROM. Test ?send=1 manual untuk verify, then cron auto-fires daily 8am. (8) Future enhancement: add comparison (today vs yesterday %), weekly summary Sunday digest, customizable sections (toggle alerts/channels/SKUs per recipient). Bump app.js v238→v239. ROADMAP_DATA 117/117→118/118.', d:'progress' },
  { id:'p1_117', label:'Margin Watcher real-time alert banner — Phase 2 feature D. Banner red gradient top-of-app yang auto-show kalau ada SKU dijual bawah floor price dalam 24 jam terakhir. (1) HTML banner div sebelum app-header — pink gradient bg, alert-triangle icon, message "<N> SKU dijual bawah floor price dalam 24 jam terakhir", action button "Tengok Detail" yang trigger inv_floorprice tab click + dismiss banner, X dismiss button standalone. Position relative z-index 99, fits above sidebar fixed position. (2) checkMarginWatcher() function: respect dismissedKey localStorage (per-day reset auto), gated mgmt/Bos only (role mgmt OR isBoss), scan masterProducts for floor_price > 0 → build floorMap. Scan salesHistory last 24h, parse items, check item.price < floorMap[sku] → add to violators Set. Show banner kalau violators > 0. (3) __mwDismiss() — save dismissedKey per-day (mwDismissed_YYYY-MM-DD). Banner kekal hidden sampai esok atau localStorage clear. (4) Auto-check: 2 saat selepas boot + setInterval 5 min. Visible terus selepas login + refresh setiap 5 min untuk pickup new violations. (5) Use case: Cashier accidentally apply discount terlalu besar pada checkout → SKU jual bawah floor → Margin Watcher detect dalam 5 min → Bos/Mgmt nampak banner top → klik Tengok Detail → check Floor Price section senarai SKU below floor + Loss/Unit → investigate. Builds on p1_109 Floor Price Calculator. Bump app.js v237→v238. ROADMAP_DATA 116/116→117/117.', d:'done' },
@@ -10098,7 +10157,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=240"></script>
+ <script src="app.js?v=241"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
