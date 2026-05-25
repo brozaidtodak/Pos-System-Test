@@ -95,10 +95,9 @@
   status = 200
   force = true
 
-# p1_104 — TikTok cron disabled by default sebab orders masih sync via EasyStore.
-# Activate bila ready cutover ke direct API (uncomment block bawah).
-# [functions."tiktok-sync-cron"]
-#   schedule = "*/15 * * * *"
+# p1_105 — TikTok cutover ke direct API 2026-05-25. Cron 15-min activated.
+[functions."tiktok-sync-cron"]
+  schedule = "*/15 * * * *"
 
 # p1_98 Fasa 2D — Cron auto-sync every 15 min
 [functions."shopee-sync-cron"]
