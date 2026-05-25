@@ -18580,3 +18580,41 @@ document.addEventListener('DOMContentLoaded', () => {
  setTimeout(installEsSyncHook, 4000); // backstop
 });
 
+// p3_1 Shopee Fasa 1 — Connect button handler
+window.connectShopee = async function() {
+ const status = document.getElementById('shopeeConnStatus');
+ const setStatus = (txt, color) => {
+ if(!status) return;
+ status.textContent = txt;
+ status.style.background = color === 'ok' ? 'rgba(16,185,129,.12)' : (color === 'err' ? 'rgba(239,68,68,.12)' : 'rgba(0,0,0,.06)');
+ status.style.color = color === 'ok' ? '#10B981' : (color === 'err' ? '#EF4444' : 'var(--text-muted)');
+ };
+ try {
+ setStatus('Loading auth link…', '');
+ const res = await fetch('/api/shopee-auth-link', { cache: 'no-store' });
+ const json = await res.json();
+ if(!json.ok || !json.url) {
+ setStatus('Setup tak lengkap', 'err');
+ if(typeof showToast === 'function') showToast('Shopee setup error: ' + (json.error || 'unknown'), 'error');
+ return;
+ }
+ setStatus('Buka tab Shopee…', '');
+ const w = window.open(json.url, '_blank', 'noopener');
+ if(!w) {
+ setStatus('Popup blocked', 'err');
+ if(typeof showToast === 'function') showToast('Browser block popup. Allow popup untuk pos.10camp.com lepas tu cuba lagi.', 'warn');
+ return;
+ }
+ setStatus('Tunggu authorize…', '');
+ if(typeof showToast === 'function') showToast('Tab Shopee terbuka. Login + klik Confirm Authorization.', 'info');
+ } catch(e) {
+ setStatus('Gagal connect', 'err');
+ if(typeof showToast === 'function') showToast('Error: ' + e.message, 'error');
+ }
+};
+
+window.__refreshTiktokConnStatus = function() {
+ const el = document.getElementById('tiktokConnStatus');
+ if(el) { el.textContent = 'Sila check Partner Center'; el.style.background = 'rgba(0,0,0,.06)'; el.style.color = 'var(--text-muted)'; }
+};
+

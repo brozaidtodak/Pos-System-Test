@@ -40,3 +40,15 @@
   to = "/.netlify/functions/tiktok-product-sync"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/shopee-auth-link"
+  to = "/.netlify/functions/shopee-auth-link"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/shopee-oauth"
+  to = "/.netlify/functions/shopee-oauth"
+  status = 200
+  force = true
