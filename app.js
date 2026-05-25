@@ -18618,3 +18618,39 @@ window.__refreshTiktokConnStatus = function() {
  if(el) { el.textContent = 'Sila check Partner Center'; el.style.background = 'rgba(0,0,0,.06)'; el.style.color = 'var(--text-muted)'; }
 };
 
+// p1_98 Fasa 2 — Pull Shopee orders into sales_history
+window.shopeeSyncOrders = async function(mode) {
+ const result = document.getElementById('shopeeSyncResult');
+ const setMsg = (txt, color) => {
+ if(!result) return;
+ result.style.display = '';
+ result.style.color = color || 'var(--text-muted)';
+ result.textContent = txt;
+ };
+ const verb = mode === 'import' ? 'Tarik orders…' : 'Preview orders…';
+ setMsg(verb);
+ try {
+ const res = await fetch(`/api/shopee-sync?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
+ const json = await res.json();
+ if(json.error) {
+ setMsg('Error: ' + json.error, '#EF4444');
+ return;
+ }
+ const lines = [
+ `Mode: ${json.mode} · env: ${json.env}`,
+ `Orders dijumpai: ${json.orders_found ?? 0}`,
+ `Mapped: ${json.mapped ?? 0} · Dah ada: ${json.already_imported ?? 0} · Baharu: ${json.new ?? 0}`
+ ];
+ if(json.mode === 'import' && typeof json.inserted === 'number') {
+ lines.push(`Inserted: ${json.inserted}`);
+ setMsg(lines.join(' · '), '#10B981');
+ if(typeof showToast === 'function') showToast(`Shopee: ${json.inserted} order baharu disimpan.`, 'success');
+ } else {
+ if(json.note) lines.push(json.note);
+ setMsg(lines.join(' · '));
+ }
+ } catch(e) {
+ setMsg('Network error: ' + e.message, '#EF4444');
+ }
+};
+

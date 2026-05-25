@@ -58,3 +58,9 @@
   to = "/.netlify/functions/shopee-debug"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/shopee-sync"
+  to = "/.netlify/functions/shopee-sync"
+  status = 200
+  force = true
