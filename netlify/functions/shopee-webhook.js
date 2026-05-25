@@ -192,10 +192,11 @@ exports.handler = async (event) => {
         // 4. Load token for this shop_id
         const tokenRows = await sb('GET', `/shopee_tokens?shop_id=eq.${shopId}&limit=1`);
         if (!tokenRows || !tokenRows.length) {
+            // Most common reason: Shopee "Push Test Data" sandbox button uses fake shop_id
+            // for delivery testing. Not a real error — sign verified ok, just no matching shop.
             await logEvent({
                 source: 'webhook', mode: 'import', environment: ENV,
-                error_message: `no token for shop_id ${shopId}`,
-                duration_ms: Date.now() - startMs
+                raw_response: { note: `Shopee test push or unauthorized shop_id ${shopId} — skipped`, code }
             });
             return { statusCode: 200, body: 'no token, ack' };
         }
