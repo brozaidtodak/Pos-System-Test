@@ -22,13 +22,19 @@ exports.handler = async () => {
     const timestamp = Math.floor(Date.now() / 1000);
     const baseString = `${PARTNER_ID}${PATH}${timestamp}`;
 
-    let sign = '';
-    let signError = '';
+    // Try 3 sign variants to identify which one Shopee accepts
+    let signA = '', signB = '', signC = '', signError = '';
+    const keyB = PARTNER_KEY.replace(/^shpk/, ''); // strip prefix
+    let keyC = null;
     try {
-        sign = crypto.createHmac('sha256', PARTNER_KEY).update(baseString).digest('hex');
+        signA = crypto.createHmac('sha256', PARTNER_KEY).update(baseString).digest('hex');
+        signB = crypto.createHmac('sha256', keyB).update(baseString).digest('hex');
+        try { keyC = Buffer.from(keyB, 'hex'); } catch(e){}
+        if (keyC) signC = crypto.createHmac('sha256', keyC).update(baseString).digest('hex');
     } catch(e) {
         signError = e.message;
     }
+    const sign = signA; // keep var name for downstream usage
 
     // Mask partner_key: show first 4 + last 4 chars + length, hide middle
     const keyLen = PARTNER_KEY.length;
@@ -61,11 +67,16 @@ exports.handler = async () => {
             sign_calc: {
                 timestamp,
                 base_string: baseString,
-                sign: sign,
-                sign_length: sign.length,
+                signA_full_key: signA,
+                signB_strip_shpk_prefix: signB,
+                signC_hex_decode_after_strip: signC,
                 sign_error: signError
             },
-            sample_auth_url: `${HOST}${PATH}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent('https://pos.10camp.com/api/shopee-oauth')}`
+            test_urls: {
+                A: `${HOST}${PATH}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${signA}&redirect=${encodeURIComponent('https://pos.10camp.com/api/shopee-oauth')}`,
+                B: `${HOST}${PATH}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${signB}&redirect=${encodeURIComponent('https://pos.10camp.com/api/shopee-oauth')}`,
+                C: `${HOST}${PATH}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${signC}&redirect=${encodeURIComponent('https://pos.10camp.com/api/shopee-oauth')}`
+            }
         }, null, 2)
     };
 };
