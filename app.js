@@ -1466,6 +1466,119 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
  if(typeof window.applyI18N === 'function') window.applyI18N();
 };
 
+// p1_109 — Floor Price Calculator handlers
+window.renderFloorPrice = function() {
+ // Populate datalist SKU options (reuse movementSkuList)
+ try {
+ const list = document.getElementById('movementSkuList');
+ if(list && (!list.children.length) && typeof masterProducts !== 'undefined') {
+ list.innerHTML = masterProducts.slice(0, 1000).map(p => `<option value="${p.sku || ''}">[${p.sku || ''}] ${p.name || ''}</option>`).join('');
+ }
+ } catch(e){}
+ // Compute overview stats
+ try {
+ const tot = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.length : 0;
+ const withFloor = masterProducts.filter(p => Number(p.floor_price || 0) > 0).length;
+ const without = tot - withFloor;
+ const below = masterProducts.filter(p => {
+ const fp = Number(p.floor_price || 0);
+ const sp = Number(p.price || p.selling_price || 0);
+ return fp > 0 && sp > 0 && sp < fp;
+ });
+ document.getElementById('fpTotalProducts').textContent = tot;
+ document.getElementById('fpWithFloor').textContent = withFloor;
+ document.getElementById('fpWithoutFloor').textContent = without;
+ document.getElementById('fpBelowFloor').textContent = below.length;
+ const belowList = document.getElementById('fpBelowList');
+ if(belowList && below.length) {
+ belowList.innerHTML = '<h4 style="margin:14px 0 8px; font-size:13px; color:#991B1B;">SKU Jual Bawah Floor:</h4><table class="rp-comm-table"><thead><tr><th>SKU</th><th>Nama</th><th style="text-align:right;">Floor</th><th style="text-align:right;">Selling</th><th style="text-align:right;">Loss/Unit</th></tr></thead><tbody>' +
+ below.slice(0, 20).map(p => {
+ const fp = Number(p.floor_price || 0);
+ const sp = Number(p.price || p.selling_price || 0);
+ const loss = fp - sp;
+ return `<tr style="background:#FEF2F2;"><td><strong>${p.sku}</strong></td><td style="font-size:12px;">${p.name || ''}</td><td style="text-align:right;">RM ${fp.toFixed(2)}</td><td style="text-align:right;">RM ${sp.toFixed(2)}</td><td style="text-align:right; color:#991B1B; font-weight:700;">-RM ${loss.toFixed(2)}</td></tr>`;
+ }).join('') + '</tbody></table>';
+ } else if(belowList) {
+ belowList.innerHTML = '<p style="font-size:12px; color:#10B981; margin-top:14px;">Tiada SKU jual bawah floor — bagus.</p>';
+ }
+ } catch(e){}
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+window.__fpLookup = function() {
+ const sku = (document.getElementById('fpSkuInput').value || '').toUpperCase().trim();
+ const info = document.getElementById('fpProductInfo');
+ if(!sku || typeof masterProducts === 'undefined') { info.style.display = 'none'; return; }
+ const p = masterProducts.find(x => (x.sku || '').toUpperCase() === sku);
+ if(!p) { info.style.display = 'none'; return; }
+ info.style.display = '';
+ document.getElementById('fpProductName').textContent = p.name || '(unnamed)';
+ document.getElementById('fpCurrentPrice').textContent = 'RM ' + Number(p.price || p.selling_price || 0).toFixed(2);
+ document.getElementById('fpCurrentFloor').textContent = p.floor_price ? 'RM ' + Number(p.floor_price).toFixed(2) : 'belum set';
+ // Auto-fill cost from existing data
+ const costInput = document.getElementById('fpCostInput');
+ if(costInput && !costInput.value) costInput.value = Number(p.cost_price || 0).toFixed(2);
+ // Auto-fill margin kalau dah ada
+ const mInput = document.getElementById('fpMarginInput');
+ if(mInput && p.floor_margin_pct) mInput.value = p.floor_margin_pct;
+ window.__fpCompute();
+ // Warning kalau current price < floor
+ const warn = document.getElementById('fpWarning');
+ const sp = Number(p.price || p.selling_price || 0);
+ const fp = Number(p.floor_price || 0);
+ if(fp > 0 && sp > 0 && sp < fp) {
+ warn.style.display = '';
+ warn.textContent = `WARNING — current selling price (RM ${sp.toFixed(2)}) di bawah floor (RM ${fp.toFixed(2)}). Loss RM ${(fp - sp).toFixed(2)}/unit.`;
+ } else { warn.style.display = 'none'; }
+};
+
+window.__fpCompute = function() {
+ const cost = parseFloat(document.getElementById('fpCostInput').value) || 0;
+ const margin = parseFloat(document.getElementById('fpMarginInput').value) || 0;
+ const floor = cost * (1 + margin / 100);
+ document.getElementById('fpFloorOutput').value = floor > 0 ? floor.toFixed(2) : '';
+};
+
+window.__fpReset = function() {
+ document.getElementById('fpSkuInput').value = '';
+ document.getElementById('fpCostInput').value = '';
+ document.getElementById('fpMarginInput').value = '30';
+ document.getElementById('fpFloorOutput').value = '';
+ document.getElementById('fpProductInfo').style.display = 'none';
+};
+
+window.__fpSave = async function() {
+ const sku = (document.getElementById('fpSkuInput').value || '').toUpperCase().trim();
+ const cost = parseFloat(document.getElementById('fpCostInput').value) || 0;
+ const margin = parseFloat(document.getElementById('fpMarginInput').value) || 0;
+ const floor = parseFloat(document.getElementById('fpFloorOutput').value) || 0;
+ if(!sku) { if(typeof showToast === 'function') showToast('Sila masuk SKU dulu.', 'warn'); return; }
+ if(floor <= 0) { if(typeof showToast === 'function') showToast('Floor price mesti > 0.', 'warn'); return; }
+ const u = window.currentUser || {};
+ const payload = {
+ cost_price: cost,
+ floor_price: floor,
+ floor_margin_pct: margin,
+ floor_set_by: u.name || 'Unknown',
+ floor_set_at: new Date().toISOString()
+ };
+ try {
+ if(typeof db !== 'undefined' && db && db.from) {
+ const { error } = await db.from('masterProducts').update(payload).eq('sku', sku);
+ if(error) throw error;
+ // Update in-memory
+ const idx = masterProducts.findIndex(p => (p.sku || '').toUpperCase() === sku);
+ if(idx >= 0) Object.assign(masterProducts[idx], payload);
+ if(typeof showToast === 'function') showToast(`Floor price disimpan untuk ${sku}: RM ${floor.toFixed(2)}`, 'success');
+ setTimeout(() => window.renderFloorPrice(), 200);
+ } else {
+ if(typeof showToast === 'function') showToast('DB tak available — simpan ke localStorage je.', 'warn');
+ }
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Save failed: ' + e.message, 'error');
+ }
+};
+
 // Save BizDev pipeline form data
 window.__rpSaveBizdev = function(bizKey) {
  const data = {};
@@ -1539,7 +1652,7 @@ window.__tabToRail = function(tab) {
  if(tab === 'roadmap') return 'roadmap';
  if(tab.startsWith('sales_')) return 'sales';
  if(tab.startsWith('customers_')) return 'customers';
- if(tab.startsWith('inv_') || tab === 'hr_roster') return 'inv';
+ if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice') return 'inv';
  if(tab.startsWith('hr_')) return 'hr';
  if(tab === 'admin_audit_alerts' || tab === 'admin_dashboard' || tab === 'admin_invoice' || tab === 'admin_bulk_ops') return 'admin';
  if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage') return 'marketing';
@@ -15811,6 +15924,7 @@ window.I18N = {
  sb_stock_take: { bm: 'Kiraan Stok', en: 'Stock Take' },
  sb_smart_picking: { bm: 'Picking Pintar', en: 'Smart Picking' },
  sb_barcode_labels: { bm: 'Label Barcode', en: 'Barcode Labels' },
+ sb_floor_price: { bm: 'Floor Price', en: 'Floor Price' },
  sb_all_customers: { bm: 'Semua Pelanggan', en: 'All Customers' },
  sb_b2b_accounts: { bm: 'Akaun B2B', en: 'B2B Accounts' },
  sb_cuti: { bm: 'Cuti', en: 'Leave' },
