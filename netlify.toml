@@ -83,6 +83,12 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/shopee-disconnect"
+  to = "/.netlify/functions/shopee-disconnect"
+  status = 200
+  force = true
+
 # p1_98 Fasa 2D — Cron auto-sync every 15 min
 [functions."shopee-sync-cron"]
   schedule = "*/15 * * * *"

@@ -18565,6 +18565,11 @@ document.addEventListener('DOMContentLoaded', () => {
  window.renderSyncSection = function() {
  const r = orig.apply(this, arguments);
  setTimeout(() => window.esSyncRefresh(), 50);
+ // p1_98 Fasa 3B — auto-load Shopee cron status + connection info
+ setTimeout(() => {
+ if(typeof window.shopeeRefreshCronStatus === 'function') window.shopeeRefreshCronStatus();
+ if(typeof window.shopeeRefreshConnInfo === 'function') window.shopeeRefreshConnInfo();
+ }, 100);
  if(window.__esSyncTimer) clearInterval(window.__esSyncTimer);
  window.__esSyncTimer = setInterval(() => {
  const sec = document.getElementById('syncSection');
@@ -18721,6 +18726,51 @@ window.shopeeRefreshCronStatus = async function() {
  } catch(e) {
  el.textContent = 'Network error';
  el.style.color = '#EF4444';
+ }
+};
+
+// p1_98 Fasa 3B — Refresh connection info (shop_id, token expiry, connect/disconnect status)
+window.shopeeRefreshConnInfo = async function() {
+ const el = document.getElementById('shopeeConnInfo');
+ const status = document.getElementById('shopeeConnStatus');
+ if(!el || !status) return;
+ try {
+ const res = await fetch('/api/shopee-disconnect', { cache: 'no-store' });
+ const json = await res.json();
+ if(json.count === 0) {
+ status.textContent = 'NOT CONNECTED';
+ status.style.background = 'rgba(0,0,0,.06)'; status.style.color = 'var(--text-muted)';
+ el.style.display = 'none';
+ return;
+ }
+ const c = json.connected[0];
+ const expIn = new Date(c.access_token_expire_at).getTime() - Date.now();
+ const expHr = Math.max(0, Math.floor(expIn / 3600000));
+ status.textContent = `CONNECTED (${json.env})`;
+ status.style.background = 'rgba(16,185,129,.12)'; status.style.color = '#10B981';
+ el.style.display = '';
+ el.textContent = `Shop ID: ${c.shop_id} · Token expire ${expHr}h · Connected: ${new Date(c.created_at).toLocaleDateString()}`;
+ } catch(e) { /* silent */ }
+};
+
+// p1_98 Fasa 3B — Disconnect shop (delete token row)
+window.shopeeDisconnect = async function() {
+ if(!confirm('Disconnect Shopee shop? Token akan dipadam dari POS. Untuk revoke fully, kena disconnect juga dari Shopee Seller Centre.')) return;
+ try {
+ const res = await fetch('/api/shopee-disconnect', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({})
+ });
+ const json = await res.json();
+ if(json.error) {
+ if(typeof showToast === 'function') showToast('Disconnect failed: ' + json.error, 'error');
+ return;
+ }
+ if(typeof showToast === 'function') showToast('Shopee shop disconnected. Token dipadam.', 'success');
+ setTimeout(() => window.shopeeRefreshConnInfo(), 300);
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Network error: ' + e.message, 'error');
  }
 };
 
