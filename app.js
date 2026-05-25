@@ -1481,6 +1481,146 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
  if(typeof window.applyI18N === 'function') window.applyI18N();
 };
 
+// p1_119 — Brand Performance dashboard
+window.__bpPeriod = 'mtd';
+
+window.__bpPeriodRange = function() {
+ const now = new Date();
+ const p = window.__bpPeriod;
+ if(p === 'lastmonth') {
+ const start = new Date(now.getFullYear(), now.getMonth()-1, 1);
+ const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+ return { start, end };
+ }
+ if(p === '30d') return { start: new Date(now.getTime() - 30*86400000), end: now };
+ if(p === '90d') return { start: new Date(now.getTime() - 90*86400000), end: now };
+ if(p === 'ytd') return { start: new Date(now.getFullYear(), 0, 1), end: now };
+ return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: now };
+};
+window.__bpSetPeriod = function(p, btn) {
+ window.__bpPeriod = p;
+ document.querySelectorAll('[data-bp-period]').forEach(b => {
+ b.classList.toggle('bp-period-btn--active', b === btn);
+ if(b === btn) b.classList.remove('secondary');
+ else b.classList.add('secondary');
+ });
+ window.renderBrandPerf();
+};
+
+window.renderBrandPerf = function() {
+ const range = window.__bpPeriodRange();
+ const startMs = range.start.getTime();
+ const endMs = range.end.getTime();
+ // Previous comparison range (same span before)
+ const span = endMs - startMs;
+ const prevStart = startMs - span;
+ const prevEnd = startMs;
+
+ // Build SKU→brand map from masterProducts
+ const skuBrand = {};
+ try {
+ if(typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+ masterProducts.forEach(p => {
+ const sku = (p.sku || '').toUpperCase();
+ if(sku) skuBrand[sku] = p.brand || 'Unknown';
+ });
+ }
+ } catch(e){}
+
+ // Aggregate current + previous period
+ const aggregate = (sMs, eMs) => {
+ const map = {};
+ if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return map;
+ salesHistory.forEach(sale => {
+ const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
+ if(t < sMs || t > eMs) return;
+ const items = (() => { try { return JSON.parse(sale.items || '[]'); } catch(e) { return sale.items || []; } })();
+ (Array.isArray(items) ? items : []).forEach(it => {
+ const sku = (it.sku || '').toUpperCase();
+ const brand = skuBrand[sku] || it.brand || 'Unknown';
+ const revenue = Number(it.qty || 0) * Number(it.price || 0);
+ const qty = Number(it.qty || 0);
+ if(!map[brand]) map[brand] = { brand, revenue: 0, units: 0, skus: new Set() };
+ map[brand].revenue += revenue;
+ map[brand].units += qty;
+ if(sku) map[brand].skus.add(sku);
+ });
+ });
+ return map;
+ };
+
+ const current = aggregate(startMs, endMs);
+ const previous = aggregate(prevStart, prevEnd);
+
+ const totalRevenue = Object.values(current).reduce((s, b) => s + b.revenue, 0);
+ const totalUnits = Object.values(current).reduce((s, b) => s + b.units, 0);
+ const rows = Object.values(current).map(b => {
+ const pr = previous[b.brand] ? previous[b.brand].revenue : 0;
+ const trendPct = pr > 0 ? ((b.revenue - pr) / pr) * 100 : (b.revenue > 0 ? 100 : 0);
+ return {
+ brand: b.brand,
+ revenue: b.revenue,
+ units: b.units,
+ skuCount: b.skus.size,
+ share: totalRevenue > 0 ? (b.revenue / totalRevenue) * 100 : 0,
+ prevRevenue: pr,
+ trendPct
+ };
+ }).sort((a, b) => b.revenue - a.revenue);
+
+ // KPI
+ document.getElementById('bpTotalBrands').textContent = rows.length;
+ document.getElementById('bpTotalRevenue').textContent = 'RM ' + Number(totalRevenue).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ document.getElementById('bpTotalUnits').textContent = totalUnits;
+ document.getElementById('bpTopBrand').textContent = rows[0] ? rows[0].brand : '—';
+
+ const wrap = document.getElementById('bpTableWrap');
+ const fmtRMC = (n) => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ if(!rows.length) {
+ wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Tiada sales dalam period ni.</p>';
+ return;
+ }
+ wrap.innerHTML = `<table class="rp-comm-table">
+ <thead>
+ <tr>
+ <th>Rank</th>
+ <th>Brand</th>
+ <th style="text-align:right;">Revenue</th>
+ <th style="text-align:right;">Share %</th>
+ <th style="text-align:right;">Units</th>
+ <th style="text-align:right;">SKU Aktif</th>
+ <th style="text-align:right;">vs Period Lepas</th>
+ </tr>
+ </thead>
+ <tbody>
+ ${rows.map((r, i) => {
+ const trendColor = r.trendPct > 0 ? '#10B981' : (r.trendPct < 0 ? '#EF4444' : '#6B7280');
+ const trendIcon = r.trendPct > 0 ? '↑' : (r.trendPct < 0 ? '↓' : '→');
+ const trendStr = r.prevRevenue > 0 ? `${trendIcon} ${Math.abs(r.trendPct).toFixed(1)}%` : 'NEW';
+ const rankColor = i === 0 ? '#FCD34D' : (i === 1 ? '#9CA3AF' : (i === 2 ? '#FB923C' : '#E5E7EB'));
+ return `<tr ${i < 3 ? 'style="background:rgba(252,211,77,.04);"' : ''}>
+ <td><span style="display:inline-block; width:24px; height:24px; line-height:24px; text-align:center; border-radius:50%; background:${rankColor}; color:#000; font-size:11px; font-weight:800;">${i+1}</span></td>
+ <td><strong style="font-size:13.5px;">${r.brand}</strong></td>
+ <td style="text-align:right; font-weight:700;">${fmtRMC(r.revenue)}</td>
+ <td style="text-align:right;">
+ <div style="display:inline-flex; align-items:center; gap:6px;">
+ <span>${r.share.toFixed(1)}%</span>
+ <div style="width:50px; height:6px; background:#E5E7EB; border-radius:50px; overflow:hidden;">
+ <div style="height:100%; width:${Math.min(100, r.share)}%; background:var(--primary);"></div>
+ </div>
+ </div>
+ </td>
+ <td style="text-align:right;">${r.units}</td>
+ <td style="text-align:right;">${r.skuCount}</td>
+ <td style="text-align:right; color:${trendColor}; font-weight:700;">${trendStr}</td>
+ </tr>`;
+ }).join('')}
+ </tbody>
+ </table>`;
+
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
 // p1_117 — Margin Watcher: detect SKU sold below floor price dalam 24h terakhir
 window.checkMarginWatcher = function() {
  const banner = document.getElementById('marginWatcherBanner');
@@ -2853,7 +2993,7 @@ window.__tabToRail = function(tab) {
  if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_pricehistory' || tab === 'inv_reorder') return 'inv';
  if(tab.startsWith('hr_')) return 'hr';
  if(tab === 'admin_audit_alerts' || tab === 'admin_dashboard' || tab === 'admin_invoice' || tab === 'admin_bulk_ops') return 'admin';
- if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit') return 'marketing';
+ if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit' || tab === 'admin_brandperf') return 'marketing';
  if(tab === 'report_my' || tab === 'report_team') return 'reports';
  if(tab === 'settings_hub' || tab.startsWith('finance_') || tab.startsWith('admin_settings') || tab === 'admin_payments' || tab === 'admin_sync' || tab === 'admin_test_guide' || tab === 'hq_permissions') return 'hq_setup';
  return null;
@@ -17127,6 +17267,7 @@ window.I18N = {
  sb_price_history: { bm: 'Sejarah Harga', en: 'Price History' },
  sb_reorder: { bm: 'Reorder Suggest', en: 'Reorder Suggest' },
  sb_channel_profit: { bm: 'Channel Profitability', en: 'Channel Profitability' },
+ sb_brand_perf: { bm: 'Brand Performance', en: 'Brand Performance' },
  sb_all_customers: { bm: 'Semua Pelanggan', en: 'All Customers' },
  sb_b2b_accounts: { bm: 'Akaun B2B', en: 'B2B Accounts' },
  sb_cuti: { bm: 'Cuti', en: 'Leave' },
