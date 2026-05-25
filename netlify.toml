@@ -102,3 +102,13 @@
 # p1_98 Fasa 2D — Cron auto-sync every 15 min
 [functions."shopee-sync-cron"]
   schedule = "*/15 * * * *"
+
+[[redirects]]
+  from = "/api/daily-bos-digest"
+  to = "/.netlify/functions/daily-bos-digest"
+  status = 200
+  force = true
+
+# p1_118 — Daily Bos Digest 8am MYT (00:00 UTC)
+[functions."daily-bos-digest"]
+  schedule = "0 0 * * *"
