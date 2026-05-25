@@ -1481,6 +1481,164 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
  if(typeof window.applyI18N === 'function') window.applyI18N();
 };
 
+// p1_121 — Returns/Damage Tracker
+window.__rlAllRows = [];
+
+window.renderReturnsLog = async function() {
+ const wrap = document.getElementById('rlTableWrap');
+ const problemWrap = document.getElementById('rlProblemSku');
+ if(!wrap) return;
+ wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p>';
+
+ const period = document.getElementById('rlPeriod').value || '30d';
+ const typeFilter = document.getElementById('rlType').value || 'all';
+ const search = (document.getElementById('rlSearch').value || '').toUpperCase().trim();
+
+ let sinceDate = null;
+ const now = new Date();
+ if(period === '30d') sinceDate = new Date(now.getTime() - 30 * 86400000);
+ else if(period === '90d') sinceDate = new Date(now.getTime() - 90 * 86400000);
+ else if(period === '180d') sinceDate = new Date(now.getTime() - 180 * 86400000);
+ else if(period === 'ytd') sinceDate = new Date(now.getFullYear(), 0, 1);
+
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ let q = db.from('returns_log').select('*').order('reported_at', { ascending: false }).limit(500);
+ if(sinceDate) q = q.gte('reported_at', sinceDate.toISOString());
+ const { data, error } = await q;
+ if(error) throw error;
+ let rows = (data || []);
+ if(typeFilter !== 'all') rows = rows.filter(r => r.type === typeFilter);
+ if(search) rows = rows.filter(r => (r.sku || '').toUpperCase().includes(search) || (r.supplier || '').toUpperCase().includes(search) || (r.product_name || '').toUpperCase().includes(search));
+ window.__rlAllRows = rows;
+
+ // KPI aggregations
+ const totalEntries = rows.length;
+ const totalUnits = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+ const totalCost = rows.reduce((s, r) => s + (Number(r.cost_impact) || 0) * (Number(r.qty) || 0), 0);
+ const reasonTally = {};
+ const skuTally = {};
+ rows.forEach(r => {
+ reasonTally[r.reason || 'other'] = (reasonTally[r.reason || 'other'] || 0) + 1;
+ const sku = (r.sku || '').toUpperCase();
+ if(sku) {
+ if(!skuTally[sku]) skuTally[sku] = { sku, name: r.product_name || sku, qty: 0, costImpact: 0, entries: 0, supplier: r.supplier || '' };
+ skuTally[sku].qty += Number(r.qty) || 0;
+ skuTally[sku].costImpact += (Number(r.cost_impact) || 0) * (Number(r.qty) || 0);
+ skuTally[sku].entries++;
+ }
+ });
+ const topReasonEntry = Object.entries(reasonTally).sort((a,b) => b[1] - a[1])[0];
+
+ document.getElementById('rlTotalEntries').textContent = totalEntries;
+ document.getElementById('rlTotalUnits').textContent = totalUnits;
+ document.getElementById('rlTotalCost').textContent = 'RM ' + Number(totalCost).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ document.getElementById('rlTopReason').textContent = topReasonEntry ? (topReasonEntry[0].slice(0, 20) + ' (' + topReasonEntry[1] + ')') : '—';
+
+ // Problem SKUs (top 5)
+ const problems = Object.values(skuTally).sort((a, b) => b.qty - a.qty).slice(0, 5);
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ const fmtRMC = (n) => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ if(problemWrap) {
+ if(!problems.length) problemWrap.innerHTML = '<p style="color:#10B981; padding:14px;">Tiada SKU bermasalah dalam period ni — bagus.</p>';
+ else problemWrap.innerHTML = `<table class="rp-comm-table">
+ <thead><tr><th>SKU</th><th>Nama / Supplier</th><th style="text-align:right;">Entries</th><th style="text-align:right;">Units</th><th style="text-align:right;">Cost Impact</th></tr></thead>
+ <tbody>${problems.map(p => `
+ <tr style="background:rgba(254,226,226,.3);">
+ <td><strong>${escAttr(p.sku)}</strong></td>
+ <td style="font-size:12px;">${escAttr(p.name).slice(0, 50)}<br><span style="color:#6B7280; font-size:11px;">Supplier: ${escAttr(p.supplier) || '—'}</span></td>
+ <td style="text-align:right;">${p.entries}</td>
+ <td style="text-align:right; color:#EF4444; font-weight:700;">${p.qty}</td>
+ <td style="text-align:right; color:#EF4444; font-weight:700;">${fmtRMC(p.costImpact)}</td>
+ </tr>`).join('')}</tbody></table>`;
+ }
+
+ // Full table
+ if(!rows.length) {
+ wrap.innerHTML = '<p style="color:#10B981; padding:20px; text-align:center;">Tiada entries — bagus.</p>';
+ return;
+ }
+ wrap.innerHTML = `<table class="rp-comm-table">
+ <thead><tr><th>Tarikh</th><th>SKU</th><th>Type</th><th>Reason</th><th style="text-align:right;">Qty</th><th>Channel</th><th>Reporter</th></tr></thead>
+ <tbody>
+ ${rows.slice(0, 100).map(r => {
+ const typeColor = { return:'#3B82F6', damaged:'#EF4444', missing:'#D97706', expired:'#7C3AED' }[r.type] || '#6B7280';
+ const typeLabel = { return:'Return', damaged:'Rosak', missing:'Hilang', expired:'Expired' }[r.type] || r.type;
+ return `<tr>
+ <td style="font-size:11px; color:#6B7280;">${new Date(r.reported_at).toLocaleString('en-MY', { dateStyle:'short', timeStyle:'short' })}</td>
+ <td><strong>${escAttr(r.sku)}</strong></td>
+ <td><span style="display:inline-block; padding:2px 8px; border-radius:50px; background:${typeColor}20; color:${typeColor}; font-size:10px; font-weight:700;">${typeLabel}</span></td>
+ <td style="font-size:12px;">${escAttr((r.reason || '').slice(0, 30))}</td>
+ <td style="text-align:right; font-weight:700;">${r.qty}</td>
+ <td style="font-size:11px;">${escAttr(r.channel || '—')}</td>
+ <td style="font-size:11px;">${escAttr(r.reported_by_name || '—')}</td>
+ </tr>`;
+ }).join('')}
+ </tbody>
+ </table>
+ ${rows.length > 100 ? `<p style="font-size:11px; color:#9CA3AF; text-align:center; margin-top:10px;">Papar 100 pertama dari ${rows.length} rows.</p>` : ''}`;
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ } catch(e) {
+ wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ }
+};
+
+window.__rlOpenSubmit = function() {
+ document.getElementById('rlSku').value = '';
+ document.getElementById('rlQty').value = '1';
+ document.getElementById('rlSubmitType').value = 'return';
+ document.getElementById('rlChannel').value = 'Walk-in Kedai';
+ document.getElementById('rlReasonSelect').value = '';
+ document.getElementById('rlReason').value = '';
+ document.getElementById('rlCost').value = '0';
+ document.getElementById('rlNotes').value = '';
+ document.getElementById('rlSubmitOverlay').style.display = 'flex';
+};
+window.__rlCloseSubmit = function() { document.getElementById('rlSubmitOverlay').style.display = 'none'; };
+
+window.__rlSkuLookup = function() {
+ const sku = (document.getElementById('rlSku').value || '').toUpperCase().trim();
+ if(!sku || typeof masterProducts === 'undefined') return;
+ const p = masterProducts.find(x => (x.sku || '').toUpperCase() === sku);
+ if(p) {
+ document.getElementById('rlCost').value = Number(p.cost_price || 0).toFixed(2);
+ }
+};
+
+window.__rlSubmit = async function() {
+ const sku = (document.getElementById('rlSku').value || '').toUpperCase().trim();
+ if(!sku) { if(typeof showToast === 'function') showToast('SKU wajib.', 'warn'); return; }
+ const u = window.currentUser || {};
+ let prodName = '';
+ let supplier = '';
+ try {
+ const p = (masterProducts || []).find(x => (x.sku || '').toUpperCase() === sku);
+ if(p) { prodName = p.name || ''; supplier = p.supplier_name || p.supplier || ''; }
+ } catch(e){}
+ const payload = {
+ sku,
+ product_name: prodName,
+ qty: parseInt(document.getElementById('rlQty').value || '1', 10),
+ type: document.getElementById('rlSubmitType').value,
+ reason: (document.getElementById('rlReason').value || document.getElementById('rlReasonSelect').value || 'other').trim(),
+ notes: document.getElementById('rlNotes').value.trim() || null,
+ channel: document.getElementById('rlChannel').value || null,
+ supplier,
+ cost_impact: parseFloat(document.getElementById('rlCost').value || '0') || 0,
+ reported_by_id: u.staff_id || 'unknown',
+ reported_by_name: u.name || 'Unknown'
+ };
+ try {
+ const { error } = await db.from('returns_log').insert([payload]);
+ if(error) throw error;
+ if(typeof showToast === 'function') showToast(`Logged: ${sku} × ${payload.qty}`, 'success');
+ window.__rlCloseSubmit();
+ setTimeout(() => window.renderReturnsLog(), 200);
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Save failed: ' + e.message, 'error');
+ }
+};
+
 // p1_120 — Supplier Performance dashboard
 window.__spPeriod = '90d';
 window.__spSetPeriod = function(p, btn) {
@@ -3111,7 +3269,7 @@ window.__tabToRail = function(tab) {
  if(tab === 'roadmap') return 'roadmap';
  if(tab.startsWith('sales_')) return 'sales';
  if(tab.startsWith('customers_')) return 'customers';
- if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_pricehistory' || tab === 'inv_reorder' || tab === 'inv_supplier') return 'inv';
+ if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_pricehistory' || tab === 'inv_reorder' || tab === 'inv_supplier' || tab === 'inv_returns') return 'inv';
  if(tab.startsWith('hr_')) return 'hr';
  if(tab === 'admin_audit_alerts' || tab === 'admin_dashboard' || tab === 'admin_invoice' || tab === 'admin_bulk_ops') return 'admin';
  if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit' || tab === 'admin_brandperf') return 'marketing';
@@ -17390,6 +17548,7 @@ window.I18N = {
  sb_channel_profit: { bm: 'Channel Profitability', en: 'Channel Profitability' },
  sb_brand_perf: { bm: 'Brand Performance', en: 'Brand Performance' },
  sb_supplier_perf: { bm: 'Supplier Performance', en: 'Supplier Performance' },
+ sb_returns: { bm: 'Returns / Damage', en: 'Returns / Damage' },
  sb_all_customers: { bm: 'Semua Pelanggan', en: 'All Customers' },
  sb_b2b_accounts: { bm: 'Akaun B2B', en: 'B2B Accounts' },
  sb_cuti: { bm: 'Cuti', en: 'Leave' },

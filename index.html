@@ -1368,6 +1368,9 @@
  <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_supplier" onclick="switchHub(['supplierPerfSection'], 'Supplier Performance', this); if(typeof renderSupplierPerf==='function') renderSupplierPerf();">
  <i data-lucide="truck" style="width:16px; height:16px;"></i> <span data-i18n="sb_supplier_perf">Supplier Performance</span>
  </div>
+ <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_returns" onclick="switchHub(['returnsSection'], 'Returns / Damage', this); if(typeof renderReturnsLog==='function') renderReturnsLog();">
+ <i data-lucide="rotate-ccw" style="width:16px; height:16px;"></i> <span data-i18n="sb_returns">Returns / Damage</span>
+ </div>
 
  <!-- p1_70: Reports section removed from Inventory sidebar (Velocity, Aging, Valuation, Snapshot, Reservations). Section divs kekal untuk back-compat. -->
 
@@ -3009,6 +3012,153 @@
  <div class="rp-section">
  <h3 class="rp-section__title"><i data-lucide="list" style="width:14px;height:14px;"></i> Senarai Supplier (sort by total spend)</h3>
  <div id="spTableWrap"><p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ============================================== -->
+ <!-- p1_121 — RETURNS / DAMAGE TRACKER -->
+ <!-- ============================================== -->
+ <div id="returnsSection" class="tab-section" style="display:none;">
+ <div class="rp-wrap">
+ <div class="rp-header">
+ <div>
+ <h2 class="rp-title"><i data-lucide="rotate-ccw" style="width:22px; height:22px; color:var(--primary);"></i> Returns / Damage</h2>
+ <p class="rp-subtitle">Log items rosak / customer pulangkan / hilang dengan reason. Identify SKU bermasalah + supplier QC issue.</p>
+ </div>
+ <button class="rp-manual-save" onclick="window.__rlOpenSubmit()"><i data-lucide="plus" style="width:13px;height:13px;"></i> Log Item Baharu</button>
+ </div>
+
+ <!-- Filters -->
+ <div class="rp-section">
+ <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px;">
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">PERIOD</label>
+ <select id="rlPeriod" class="rp-comm-input" style="width:100%; text-align:left;" onchange="window.renderReturnsLog()">
+ <option value="30d" selected>30 Hari</option>
+ <option value="90d">90 Hari</option>
+ <option value="180d">180 Hari</option>
+ <option value="ytd">YTD</option>
+ <option value="all">All Time</option>
+ </select>
+ </div>
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">JENIS</label>
+ <select id="rlType" class="rp-comm-input" style="width:100%; text-align:left;" onchange="window.renderReturnsLog()">
+ <option value="all">Semua</option>
+ <option value="return">Return Customer</option>
+ <option value="damaged">Rosak</option>
+ <option value="missing">Hilang</option>
+ <option value="expired">Expired</option>
+ </select>
+ </div>
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">CARI SKU / SUPPLIER</label>
+ <input type="text" id="rlSearch" class="rp-comm-input" style="width:100%; text-align:left;" placeholder="Search…" oninput="window.renderReturnsLog()">
+ </div>
+ </div>
+ </div>
+
+ <!-- KPI -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="bar-chart" style="width:14px;height:14px;"></i> Ringkasan</h3>
+ <div class="rp-kpi-grid">
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Total Entries</div>
+ <div class="rp-kpi__val" id="rlTotalEntries">—</div>
+ </div>
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Total Units Affected</div>
+ <div class="rp-kpi__val" id="rlTotalUnits" style="color:#EF4444;">—</div>
+ </div>
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Total Cost Impact</div>
+ <div class="rp-kpi__val" id="rlTotalCost" style="color:#EF4444;">—</div>
+ </div>
+ <div class="rp-kpi">
+ <div class="rp-kpi__lbl">Top Reason</div>
+ <div class="rp-kpi__val" id="rlTopReason" style="font-size:14px;">—</div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Problem SKUs -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Top SKU Bermasalah</h3>
+ <div id="rlProblemSku"><p style="color:#9CA3AF; padding:14px;">Memuatkan…</p></div>
+ </div>
+
+ <!-- Full log table -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="list" style="width:14px;height:14px;"></i> Senarai Penuh</h3>
+ <div id="rlTableWrap"></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Submit Modal -->
+ <div id="rlSubmitOverlay" class="fin-modal-overlay" style="display:none;" onclick="if(event.target===this) window.__rlCloseSubmit()">
+ <div class="fin-modal" style="max-width:600px;">
+ <div class="fin-modal__head">
+ <h3>Log Returns / Damage</h3>
+ <button class="fin-btn fin-btn--ghost" onclick="window.__rlCloseSubmit()">×</button>
+ </div>
+ <div class="fin-modal__body">
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+ <div>
+ <label class="fin-lbl">SKU</label>
+ <input type="text" id="rlSku" class="fin-input" placeholder="Cth: BD130" list="movementSkuList" oninput="window.__rlSkuLookup()">
+ </div>
+ <div>
+ <label class="fin-lbl">Kuantiti</label>
+ <input type="number" id="rlQty" class="fin-input" min="1" value="1">
+ </div>
+ <div>
+ <label class="fin-lbl">Jenis</label>
+ <select id="rlSubmitType" class="fin-input">
+ <option value="return">Return dari Customer</option>
+ <option value="damaged">Rosak (dalam stok)</option>
+ <option value="missing">Hilang / Tak Boleh Jumpa</option>
+ <option value="expired">Expired</option>
+ </select>
+ </div>
+ <div>
+ <label class="fin-lbl">Channel</label>
+ <select id="rlChannel" class="fin-input">
+ <option value="Walk-in Kedai">Walk-in Kedai</option>
+ <option value="Shopee">Shopee</option>
+ <option value="TikTok Shop">TikTok Shop</option>
+ <option value="Web EasyStore">Web EasyStore</option>
+ <option value="WhatsApp">WhatsApp</option>
+ <option value="">N/A (stock damage)</option>
+ </select>
+ </div>
+ </div>
+ <label class="fin-lbl">Sebab (pilih atau tulis)</label>
+ <select id="rlReasonSelect" class="fin-input" onchange="document.getElementById('rlReason').value = this.value">
+ <option value="">— pilih sebab —</option>
+ <option value="defective_from_supplier">Defective dari supplier (QC issue)</option>
+ <option value="damaged_in_shipping">Rosak masa shipping</option>
+ <option value="customer_change_mind">Customer tukar fikiran</option>
+ <option value="wrong_item_shipped">Wrong item shipped</option>
+ <option value="size_color_mismatch">Saiz / warna tak match</option>
+ <option value="packaging_damage">Packaging rosak</option>
+ <option value="cashier_error">Cashier error</option>
+ <option value="stock_take_variance">Stock take variance (hilang)</option>
+ <option value="expired_unsold">Expired tak laku</option>
+ <option value="other">Lain-lain</option>
+ </select>
+ <input type="text" id="rlReason" class="fin-input" placeholder="Atau tulis sendiri" style="margin-top:6px;">
+
+ <label class="fin-lbl" style="margin-top:10px;">Cost Impact RM (auto fill dari cost_price)</label>
+ <input type="number" id="rlCost" class="fin-input" step="0.01" min="0" value="0">
+
+ <label class="fin-lbl" style="margin-top:10px;">Order Ref / Notes (optional)</label>
+ <textarea id="rlNotes" class="fin-input" rows="2" placeholder="Cth: Order #10CES1758, customer return sebab tent zipper rosak"></textarea>
+ </div>
+ <div class="fin-modal__foot">
+ <button class="fin-btn fin-btn--ghost" onclick="window.__rlCloseSubmit()">Batal</button>
+ <button class="fin-btn fin-btn--gold" onclick="window.__rlSubmit()"><i data-lucide="save" style="width:13px;height:13px;"></i> Simpan Log</button>
  </div>
  </div>
  </div>
@@ -5595,7 +5745,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (120/120 · last 2026-05-26)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize', status:'done', goal:'Supabase migration & multi-role auth', eta:'Q2 2026 · Shipped (121/121 · last 2026-05-26)',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -5670,6 +5820,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_121', label:'Returns/Damage Tracker — Phase 2 feature G. Log items rosak/customer pulangkan/hilang dengan reason. (1) sql/2026-05-26_returns_log.sql — table returns_log (BIGSERIAL id, sku, product_name, qty, type enum-like return|damaged|missing|expired, reason TEXT, notes, channel, order_ref, supplier, cost_impact NUMERIC, reported_by_id+name, reported_at, created_at). RLS auth read+insert + service_role. Indexes sku+reported_at, reported_at standalone, type. (2) Sidebar item baharu "Returns / Damage" dalam Inventory group (rotate-ccw icon). __tabToRail map inv_returns → inv. i18n sb_returns. (3) Section returnsSection: header dengan Log Item Baharu button + filter row (Period 30d/90d/180d/YTD/All, Type filter Semua/Return/Rosak/Hilang/Expired, Search SKU/supplier text). KPI 4 cards (Total Entries, Total Units Affected red, Total Cost Impact red, Top Reason). Problem SKUs table top 5 with red background tint dan supplier info. Full log table 7 cols (Tarikh/SKU/Type colored badge/Reason truncated/Qty/Channel/Reporter). Limit 100 rows. (4) Submit modal: 2x2 grid (SKU lookup with autocomplete, Qty number, Type dropdown, Channel dropdown), Reason dropdown 10 presets (defective/shipping damage/customer change mind/wrong item/size mismatch/packaging/cashier error/stock variance/expired/other) plus custom text input, Cost auto-fill dari masterProducts.cost_price on SKU lookup, Notes textarea (optional). Submit INSERT to returns_log. (5) Aggregations: tally per reason (top reason for KPI), per SKU (problem ranking by total qty), total entries + units + cost. (6) Use case: Cashier accept return → klik Log Item Baharu → form fill → save. Bos buka Returns section → tengok top problem SKU + reason → identify quality issue dengan supplier specific. (7) Future: cost_impact auto-deduct stock + create journal entry untuk accounting (Phase 2.5). Bump app.js v241→v242. ROADMAP_DATA 120/120→121/121. Phase 2: 7/8 done. Tinggal H Marketing Data Form.', d:'progress' },
  { id:'p1_120', label:'Supplier Performance dashboard — Phase 2 feature F. Track PO frequency + lead time + total spend per supplier untuk negotiation leverage. (1) Sidebar item baharu "Supplier Performance" dalam Inventory group (truck icon). __tabToRail map inv_supplier → inv. i18n sb_supplier_perf. (2) Section: 4 period pills (90d default / 180d / YTD / All Time). KPI 4 cards (Total Supplier, Total PO, Total Spend, Avg Lead Time). Main table 7 cols (Rank, Supplier name, PO Count, Total Spend, Avg Lead Time, SKU Unik, Last Delivery). (3) Aggregator: fetch purchase_orders dalam period range. Group by supplier (atau supplier_name field). Per supplier: count POs, sum total_cost, compute lead time = (received_at|completed_at - created_at) days, average — store leadDays array kalau valid (0-365 days range). Track unique SKUs from po.items JSON. Track lastDelivery date max. (4) Color coding: Avg Lead Time hijau ≤7d (excellent), amber 7-21d (OK), red >21d (slow). Last Delivery hijau dalam 30d (active), amber 30-90d, red >90d (stale). Top 3 rows highlighted amber background. (5) Use case Zaid: identify supplier paling laju (push lebih order), paling lambat (renegotiate / find alternative), paling stale (haven\'t ordered recently — maybe drop relationship). Bump app.js v240→v241. ROADMAP_DATA 119/119→120/120. Phase 2 progress 6/8 features shipped: A Reorder ✓, B Channel ✓, C Digest ✓, D Margin ✓, E Brand ✓, F Supplier ✓. Tinggal G Returns, H Marketing Data Form.', d:'done' },
  { id:'p1_119', label:'Brand Performance card — Phase 2 feature E. Per brand revenue/units/share/trend dashboard. (1) Sidebar item baharu "Brand Performance" dalam Marketing group (mgmt-only, award icon). __tabToRail map admin_brandperf → marketing. i18n sb_brand_perf. (2) Section brandPerfSection: 5 period pills (MTD/Bulan Lepas/30d/90d/YTD). KPI 4 cards (Total Brand, Total Revenue RM, Total Units, Top Brand name). Main table 7 cols (Rank/Brand/Revenue/Share % dengan progress bar/Units/SKU Aktif/Trend vs prev period). (3) Aggregator: build skuBrand map from masterProducts. Loop salesHistory dalam current period — scan items, lookup brand by SKU, sum revenue + units + skus Set per brand. Same for previous period (same span before start). (4) Trend computation: trendPct = (current - previous) / previous × 100. Show ↑ green / ↓ red / NEW kalau prev = 0. (5) Visual: rank badge dengan warna medal (1st gold, 2nd silver, 3rd bronze, others gray). Top 3 rows row background tint amber. Share % column ada inline progress bar visual proportional. (6) Use case Zaid: "Brand mana yang naik trend bulan ni? Brand mana cut?" Dashboard instantly answer dengan trend column + share progress bar. Identify push/cut candidate. Bump app.js v239→v240. ROADMAP_DATA 118/118→119/119 (last 2026-05-26).', d:'done' },
  { id:'p1_118', label:'Daily Bos Digest auto-email — Phase 2 feature C. Cron 8am MYT scheduled function hantar HTML email Zaid dengan yesterday summary + alerts. (1) netlify/functions/daily-bos-digest.js — async aggregator + HTML builder + Resend send. Env vars required: RESEND_API_KEY (signup resend.com free 100/day), DIGEST_RECIPIENTS (comma-separated emails), DIGEST_FROM (verified domain atau onboarding@resend.dev untuk testing). (2) buildDigest(): compute yesterday range in MYT (UTC+8), fetch sales_history filter created_at/timestamp dalam window, aggregate total revenue + orders + AOV, group by channel sorted by revenue, tally top 5 SKU sold, count pending stock checks + sync errors today. (3) buildHTML(): branded gradient header (orange #CD7C32 → #A05F22), centered hero big number revenue 36px font, alerts banner amber bila pending stock check / sync errors > 0, channel table dengan revenue formatted, top 5 SKU list dengan rank, CTA "Buka POS Dashboard" link, footer auto-generated timestamp. Email-safe inline CSS (no external stylesheets). Max-width 600px mobile-friendly. (4) sendEmail() POST ke Resend /emails dengan from + to + subject + html. (5) netlify.toml — redirect /api/daily-bos-digest + schedule "0 0 * * *" (UTC midnight = 8am MYT). (6) Manual modes: ?preview=1 return HTML render in browser, ?send=1 force send now, no params return digest JSON for inspection. Use case Zaid: 7:55am wake up → 8am phone vibrate email → 1-min scan → done overview tanpa buka laptop. Critical for Bos remote ops. (7) Setup Zaid TODO: signup resend.com (free), get API key, add to Netlify env RESEND_API_KEY + DIGEST_RECIPIENTS=zaid@10camp.com + DIGEST_FROM. Test ?send=1 manual untuk verify, then cron auto-fires daily 8am. (8) Future enhancement: add comparison (today vs yesterday %), weekly summary Sunday digest, customizable sections (toggle alerts/channels/SKUs per recipient). Bump app.js v238→v239. ROADMAP_DATA 117/117→118/118.', d:'progress' },
@@ -10157,7 +10308,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=241"></script>
+ <script src="app.js?v=242"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
