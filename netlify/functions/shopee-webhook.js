@@ -26,6 +26,7 @@ const crypto = require('crypto');
 
 const PARTNER_ID   = process.env.SHOPEE_PARTNER_ID || '';
 const PARTNER_KEY  = process.env.SHOPEE_PARTNER_KEY || '';
+const PUSH_KEY     = process.env.SHOPEE_PUSH_KEY || ''; // Test/Live Push Partner Key — webhook signing
 const ENV          = (process.env.SHOPEE_ENV || 'sandbox').toLowerCase();
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || '';
@@ -59,11 +60,15 @@ function signShop(path, timestamp, accessToken, shopId) {
     return crypto.createHmac('sha256', PARTNER_KEY).update(base).digest('hex');
 }
 
+// Webhook sign uses Push Partner Key (separate from OAuth partner_key).
+// If SHOPEE_PUSH_KEY not set, skip verification (dev/initial-setup mode).
 function verifyWebhookSign(url, body, authHeader) {
-    const computed = crypto.createHmac('sha256', PARTNER_KEY)
+    if (!PUSH_KEY) return { ok: true, skipped: true, reason: 'PUSH_KEY not set — skipping verify' };
+    const computed = crypto.createHmac('sha256', PUSH_KEY)
         .update(`${url}|${body}`)
         .digest('hex');
-    return computed === (authHeader || '').trim();
+    const matched = computed === (authHeader || '').trim();
+    return { ok: matched, skipped: false };
 }
 
 async function shopeeGet(path, extraQuery, accessToken, shopId) {
@@ -143,18 +148,25 @@ exports.handler = async (event) => {
     const rawBody = event.body || '';
     const authHeader = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
 
-    // 1. Verify signature
-    if (!PARTNER_KEY) {
-        return { statusCode: 500, body: 'partner key not set' };
-    }
-    if (!verifyWebhookSign(WEBHOOK_URL, rawBody, authHeader)) {
+    // 1. Verify signature (uses SHOPEE_PUSH_KEY; skips check if env not set)
+    const verifyResult = verifyWebhookSign(WEBHOOK_URL, rawBody, authHeader);
+    if (!verifyResult.ok) {
         await logEvent({
             source: 'webhook', mode: 'import', environment: ENV,
             error_message: 'sign mismatch',
             duration_ms: Date.now() - startMs,
-            raw_response: { auth: authHeader.slice(0, 32), body_first: rawBody.slice(0, 200) }
+            raw_response: { auth: (authHeader || '').slice(0, 32), body_first: rawBody.slice(0, 200) }
         });
         return { statusCode: 401, body: 'invalid signature' };
+    }
+    if (verifyResult.skipped) {
+        // Log warning but accept — dev/setup mode without SHOPEE_PUSH_KEY env var.
+        await logEvent({
+            source: 'webhook', mode: 'import', environment: ENV,
+            error_message: 'WARNING: SHOPEE_PUSH_KEY not set, sign check skipped',
+            duration_ms: 0,
+            raw_response: { note: 'set SHOPEE_PUSH_KEY in Netlify env for production' }
+        });
     }
 
     // 2. Parse payload
