@@ -4576,25 +4576,69 @@ window.renderAuditCards = function() {
 // Global variable to keep track of audit timestamps per SKU
 let auditTimestamps = {};
 
+// p1_123 — Build SKU velocity map (units sold last 30 days) — single pass
+function __stBuildVelocity() {
+ const cutoff = Date.now() - 30 * 86400000;
+ const v = {};
+ try {
+ if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+ salesHistory.forEach(sale => {
+ const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
+ if(t < cutoff) return;
+ const items = (() => { try { return JSON.parse(sale.items || '[]'); } catch(e) { return sale.items || []; } })();
+ (Array.isArray(items) ? items : []).forEach(it => {
+ const sku = (it.sku || '').toUpperCase();
+ if(sku) v[sku] = (v[sku] || 0) + Number(it.qty || 0);
+ });
+ });
+ }
+ } catch(e){}
+ return v;
+}
+
 function renderStockTake() {
  const container = document.getElementById("auditCardsContainer");
  if(!container) return;
- 
+
  let searchTxt = (document.getElementById("auditSearchInput")?.value || "").toLowerCase();
  let filterVal = document.getElementById("auditFilterSelect")?.value || "all";
- 
+
+ // p1_123 — Velocity-based Fast/Dead classification (NOT current-stock-based).
+ // Fast-Moving = sold >5 units in last 30 days. Dead = sold 0. Slow = 1-5.
+ const velocity = __stBuildVelocity();
+
  let html = "";
- 
+
+ // p1_124 — Last audited filter
+ const lastFilterEl = document.getElementById('auditLastFilter');
+ const lastFilter = lastFilterEl ? lastFilterEl.value : 'all';
+ const nowMs = Date.now();
+
  let filteredProducts = masterProducts.filter(p => {
- let matchName = p.name.toLowerCase().includes(searchTxt);
- let matchSku = p.sku.toLowerCase().includes(searchTxt);
+ let matchName = (p.name || '').toLowerCase().includes(searchTxt);
+ let matchSku = (p.sku || '').toLowerCase().includes(searchTxt);
  if(!matchName && !matchSku) return false;
- 
- let qty = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining> 0).reduce((sum, b) => sum + b.qty_remaining, 0);
- 
- if(filterVal === "laku" && qty <= 10) return false; // fast moving is>10
- if(filterVal === "tak-laku" && qty> 10) return false; // dead stock is <=10
- 
+
+ const sku = (p.sku || '').toUpperCase();
+ const sold30 = velocity[sku] || 0;
+
+ if(filterVal === "laku" && sold30 < 5) return false;
+ if(filterVal === "tak-laku" && sold30 > 0) return false;
+
+ // p1_124 — Last audited filter
+ if(lastFilter !== 'all') {
+ const lastStamp = auditTimestamps[p.sku];
+ if(lastFilter === 'never') {
+ if(lastStamp) return false;
+ } else {
+ if(!lastStamp) return lastFilter === 'never';
+ const lastMs = Date.parse(lastStamp);
+ const ageDays = (nowMs - lastMs) / 86400000;
+ if(lastFilter === 'stale30' && ageDays <= 30) return false;
+ if(lastFilter === 'recent7' && ageDays > 7) return false;
+ }
+ }
+
  return true;
  });
 
@@ -4606,16 +4650,27 @@ function renderStockTake() {
  filteredProducts.forEach(p => {
  const myBatches = inventoryBatches.filter(b => b.sku === p.sku && b.qty_remaining> 0);
  const totalStock = myBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+ const sku = (p.sku || '').toUpperCase();
+ const sold30 = velocity[sku] || 0;
+
+ // p1_123 — Real SKU used as scan code (barcode generator uses SKU). No mock model number.
+ const scanCode = p.barcode || p.sku;
+ // Velocity-based status: >5 fast, 1-5 slow, 0 dead
+ let statusStok, statusColor;
+ if(sold30 > 5) { statusStok = 'Fast-Moving (Laku)'; statusColor = 'var(--success)'; }
+ else if(sold30 > 0) { statusStok = 'Slow-Moving'; statusColor = '#D97706'; }
+ else { statusStok = 'Dead Stock (Perlahan)'; statusColor = 'var(--danger)'; }
+ // p1_123 — Inline SVG fallback, no external via.placeholder dependency
+ const imgUrl = (p.images && p.images[0]) ? p.images[0] : 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150"><rect width="150" height="150" fill="%23F3F4F6"/><text x="75" y="80" text-anchor="middle" fill="%239CA3AF" font-family="sans-serif" font-size="12">No Image</text></svg>';
  
- // Mock properties based on user request:
- const modelNo = p.sku + "-X";
- const erpBarcode = "884" + p.sku.replace(/\D/g,'') + Math.floor(Math.random()*10);
- const locText = "Rak T" + ((p.sku.charCodeAt(2)||48)%3+1) + "/B" + ((p.sku.charCodeAt(3)||48)%6+1);
- const statusStok = totalStock> 10 ? "Fast-Moving (Laku)" : "Dead Stock (Perlahan)";
- const statusColor = totalStock> 10 ? "var(--success)" : "var(--danger)";
- const imgUrl = (p.images && p.images[0]) ? p.images[0] : "https://via.placeholder.com/150?text=No+Image";
- 
- let stampHtml = auditTimestamps[p.sku] ? `<p style="color:var(--success); font-size:11px; margin-top:5px; font-weight:bold;"> Disemak pada: ${auditTimestamps[p.sku]}</p>` : "";
+ // p1_125 — Audit stamp pill dengan age + status
+ let stampHtml = '';
+ if(auditTimestamps[p.sku]) {
+ const ageDays = Math.floor((Date.now() - Date.parse(auditTimestamps[p.sku])) / 86400000);
+ const ageColor = ageDays > 30 ? '#D97706' : (ageDays > 7 ? '#6B7280' : '#10B981');
+ const ageLabel = ageDays === 0 ? 'hari ini' : ageDays + ' hari lepas';
+ stampHtml = `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:5px; padding:3px 8px; background:rgba(16,185,129,.1); border-radius:50px; font-size:10.5px; font-weight:700; color:${ageColor};"><span>✓</span> Disemak ${ageLabel}</div>`;
+ }
 
  const currentLoc = p.location_bin || locText;
  const currentStatus = p.stock_status || statusStok;
@@ -4630,11 +4685,10 @@ function renderStockTake() {
  <div>
  <strong style="color:var(--primary); font-size:16px;">${p.sku}</strong>
  <p style="font-size:14px; font-weight:bold; margin-bottom:5px;">${p.name}</p>
- <p style="font-size:11px; color:#888; margin-bottom:2px;">Model No: ${modelNo}</p>
- <p style="font-size:11px; color:#888; margin-bottom:2px;">ERP Barcode: ${erpBarcode}</p>
+ <p style="font-size:11px; color:#888; margin-bottom:2px;">Brand: ${p.brand || '—'}</p>
+ <p style="font-size:11px; color:#888; margin-bottom:2px;">Scan code: <span style="font-family:monospace;">${scanCode}</span></p>
+ <p style="font-size:11px; color:${sold30 > 5 ? '#10B981' : (sold30 > 0 ? '#D97706' : '#9CA3AF')}; margin-bottom:2px; font-weight:600;">Sold 30d: ${sold30} unit</p>
  </div>
- 
-
  </div>
 
  <!-- Stock Location & Status (Middle) -->
@@ -4674,7 +4728,7 @@ function renderStockTake() {
  
  <div style="background:#e0f2fe; border:1px dashed #bae6fd; padding:10px; border-radius:6px; margin-bottom:10px; text-align:center;">
  <label style="font-size:11px; font-weight:bold; color:#0369a1; display:block; margin-bottom:5px;"> Tally Scan Fizikal (+1)</label>
- <input type="text" onkeyup="handleTallyScan(event, '${p.sku}', '${erpBarcode}')" class="login-input" style="width:100%; text-align:center; padding:6px; margin:0; border-color:#0ea5e9; font-size:12px;" placeholder="Tumpu di sini & scan barcode...">
+ <input type="text" onkeyup="handleTallyScan(event, '${p.sku}', '${scanCode}')" class="login-input" style="width:100%; text-align:center; padding:6px; margin:0; border-color:#0ea5e9; font-size:12px;" placeholder="Tumpu di sini & scan barcode...">
  </div>
 
  <input type="text" id="auditKomen-${p.sku}" oninput="window.stDraft && window.stDraft.save('${p.sku}', (document.getElementById('fizikalQty-${p.sku}')||{}).value || '', this.value)" class="login-input" style="margin:0; padding:8px; font-size:12px; margin-bottom:10px;" placeholder="Tulis catatan (Cth: 2 item rosak)...">
@@ -4705,7 +4759,75 @@ function renderStockTake() {
  });
  window.stDraft.renderCounter();
  }
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
 }
+
+// p1_124 — Bulk submit all drafted Kiraan Fizikal
+window.__stBulkSubmit = async function() {
+ if(!window.stDraft) return;
+ const drafts = window.stDraft.all();
+ const skus = Object.keys(drafts).filter(sku => drafts[sku].qty != null && drafts[sku].qty !== '');
+ if(!skus.length) {
+ if(typeof showToast === 'function') showToast('Tiada draft untuk submit.', 'info');
+ return;
+ }
+ if(!confirm(`Submit ${skus.length} draft kiraan sekaligus?`)) return;
+ let count = 0;
+ for(const sku of skus) {
+ try {
+ if(typeof window.submitAuditSingle === 'function') {
+ await window.submitAuditSingle(sku);
+ count++;
+ }
+ } catch(e){}
+ }
+ if(typeof showToast === 'function') showToast(`Submitted ${count} draft kiraan.`, 'success');
+ setTimeout(() => { if(typeof renderStockTake === 'function') renderStockTake(); }, 300);
+};
+
+// p1_124 — Submit current session aggregated summary ke Zack via stock_check_reports
+window.__stSubmitSessionToZack = async function() {
+ if(!window.stDraft && Object.keys(auditTimestamps).length === 0) {
+ if(typeof showToast === 'function') showToast('Tiada audit dibuat dalam session ini.', 'warn');
+ return;
+ }
+ // Build summary from auditTimestamps (submitted items) + current drafts
+ const submittedSkus = Object.keys(auditTimestamps);
+ const drafts = window.stDraft ? window.stDraft.all() : {};
+ const draftCount = Object.keys(drafts).filter(s => drafts[s].qty != null && drafts[s].qty !== '').length;
+ const itemsChecked = submittedSkus.length + draftCount;
+
+ // Estimate variance from drafts (qty diff vs system stock)
+ let variance = 0, rmVariance = 0;
+ Object.entries(drafts).forEach(([sku, d]) => {
+ if(d.qty == null || d.qty === '') return;
+ const p = (masterProducts || []).find(x => x.sku === sku);
+ if(!p) return;
+ const sysQty = (typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches))
+ ? inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).reduce((s, b) => s + Number(b.qty_remaining || 0), 0)
+ : 0;
+ const diff = Number(d.qty) - sysQty;
+ if(diff !== 0) {
+ variance++;
+ rmVariance += diff * Number(p.cost_price || 0);
+ }
+ });
+
+ // Auto-fill Stock Check Workflow form
+ if(typeof window.__scOpenSubmit === 'function') {
+ window.__scOpenSubmit();
+ setTimeout(() => {
+ // Pre-fill counters dengan aggregated values
+ const checkedEl = document.getElementById('scItemsChecked'); if(checkedEl) checkedEl.value = itemsChecked;
+ const varianceEl = document.getElementById('scItemsVariance'); if(varianceEl) varianceEl.value = variance;
+ const rmEl = document.getElementById('scRmVariance'); if(rmEl) rmEl.value = rmVariance.toFixed(2);
+ const summaryEl = document.getElementById('scSummary'); if(summaryEl) summaryEl.value = `Stock take session — ${itemsChecked} items checked, ${variance} variance found, RM ${rmVariance.toFixed(2)} cost impact. Drafts: ${draftCount}, Submitted: ${submittedSkus.length}.`;
+ if(typeof showToast === 'function') showToast('Form pre-filled. Edit + submit ke Zack.', 'success');
+ }, 200);
+ } else {
+ if(typeof showToast === 'function') showToast('Stock Check Workflow tak available. Buka manually dari sidebar.', 'warn');
+ }
+};
 
 window.openLocModal = function(sku) {
  let p = masterProducts.find(x => x.sku === sku);
