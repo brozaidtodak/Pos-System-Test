@@ -629,6 +629,15 @@ window.__rpPeriodRange = function() {
  const now = new Date();
  const period = window.__rpPeriod || 'mtd';
  const T = (k, fb) => (typeof window.t === 'function' ? window.t(k) : fb) || fb;
+ // p1_134 — today + 7d for daily standup view
+ if(period === 'today') {
+ const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+ return { start, end: now, label: 'Hari Ini' };
+ }
+ if(period === '7d') {
+ const start = new Date(now.getTime() - 7*24*3600*1000);
+ return { start, end: now, label: '7 Hari' };
+ }
  if(period === 'lastmonth') {
  const start = new Date(now.getFullYear(), now.getMonth()-1, 1);
  const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
@@ -645,6 +654,45 @@ window.__rpPeriodRange = function() {
  // mtd default
  const start = new Date(now.getFullYear(), now.getMonth(), 1);
  return { start, end: now, label: T('rp_period_mtd','Bulan Ini') };
+};
+
+// p1_134 — Print current report (open new tab dengan styled print view)
+window.__rpPrint = function() {
+ try {
+ const body = document.getElementById('rpBody');
+ if(!body) return;
+ const u = window.currentUser || {};
+ const period = (window.__rpPeriodRange && window.__rpPeriodRange().label) || '';
+ const stamp = new Date().toLocaleString('en-MY');
+ const html = `<!doctype html><html><head><meta charset="utf-8"><title>Laporan ${u.name || ''} · ${period}</title>
+ <style>
+ body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding:24px; color:#111827; }
+ h1 { font-size:18px; margin:0 0 4px; }
+ .meta { font-size:11px; color:#6B7280; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #E5E7EB; }
+ .rp-section { padding:14px 0; border-bottom:1px solid #F3F4F6; page-break-inside:avoid; }
+ .rp-section__title { font-size:13px; font-weight:800; margin:0 0 6px; }
+ .rp-section__help { font-size:11px; color:#6B7280; margin:0 0 8px; }
+ .rp-kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; }
+ .rp-kpi { padding:10px; border:1px solid #E5E7EB; border-radius:8px; }
+ .rp-kpi__lbl { font-size:10px; color:#6B7280; text-transform:uppercase; }
+ .rp-kpi__val { font-size:18px; font-weight:800; }
+ .rp-kpi__sub { font-size:10px; color:#9CA3AF; }
+ table { width:100%; border-collapse:collapse; font-size:11px; }
+ th, td { padding:6px 8px; border-bottom:1px solid #E5E7EB; text-align:left; }
+ button, .rp-comm-input, .rp-comm-btn, .rp-manual-save, .rp-manual-foot { display:none !important; }
+ textarea { border:1px solid #E5E7EB; width:100%; padding:8px; font-family:inherit; font-size:11px; }
+ i[data-lucide] { display:none; }
+ @media print { body { padding:0; } }
+ </style></head><body>
+ <h1>Laporan — ${(u.name || '')}</h1>
+ <div class="meta">${(u.dept || '')} · Period: ${period} · Dicetak ${stamp}</div>
+ ${body.innerHTML}
+ <script>setTimeout(() => window.print(), 400);<\/script>
+ </body></html>`;
+ const w = window.open('', '_blank');
+ if(!w) { if(typeof showToast === 'function') showToast('Browser block popup. Allow popup untuk print.', 'warn'); return; }
+ w.document.write(html); w.document.close();
+ } catch(e) { if(typeof showToast === 'function') showToast('Print error: ' + e.message, 'error'); }
 };
 
 // Map dept (actual) → template key
@@ -795,17 +843,27 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  invoiceCount = logs.filter(l => { const t = new Date(l.created_at || l.date || 0).getTime(); return t >= startMs && t <= endMs; }).length;
  } catch(e){}
 
+ // p1_132 — period-filter b2bTouched (was counting ALL B2B customers regardless of date)
  let b2bTouched = 0;
  try {
  if(typeof customersData !== 'undefined' && Array.isArray(customersData)) {
- b2bTouched = customersData.filter(c => c.is_b2b || (c.tags && /b2b/i.test(String(c.tags)))).length;
+ b2bTouched = customersData.filter(c => {
+ if(!(c.is_b2b || (c.tags && /b2b/i.test(String(c.tags))))) return false;
+ const t = new Date(c.updated_at || c.created_at || 0).getTime();
+ return t >= startMs && t <= endMs;
+ }).length;
  }
  } catch(e){}
 
+ // p1_132 — memos: add endMs bound (was open-ended >= startMs only)
  let memosApproved = 0;
  try {
  const memos = (typeof window.memoLoad === 'function') ? window.memoLoad() : [];
- memosApproved = memos.filter(m => m.status === 'approved' && new Date(m.approved_at || m.posted_at || 0).getTime() >= startMs).length;
+ memosApproved = memos.filter(m => {
+ if(m.status !== 'approved') return false;
+ const t = new Date(m.approved_at || m.posted_at || 0).getTime();
+ return t >= startMs && t <= endMs;
+ }).length;
  } catch(e){}
 
  // ---- 2. Approval workflow counts ----
@@ -854,6 +912,33 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  const manualKey = 'reportManual_' + (u ? u.staff_id : '') + '_' + (window.__rpPeriod || 'mtd');
  const manualText = localStorage.getItem(manualKey) || '';
 
+ // p1_133 — Risk Watch: margin violations dalam period (uses Floor Price p1_109)
+ let marginViolations = 0;
+ try {
+ const floorMap = {};
+ if(typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+ masterProducts.forEach(p => {
+ const sku = (p.sku || '').toUpperCase();
+ const fp = Number(p.floor_price || 0);
+ if(sku && fp > 0) floorMap[sku] = fp;
+ });
+ }
+ if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
+ const seen = new Set();
+ salesHistory.forEach(sale => {
+ const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
+ if(t < startMs || t > endMs) return;
+ const items = (() => { try { return JSON.parse(sale.items || '[]'); } catch(e) { return sale.items || []; } })();
+ (Array.isArray(items) ? items : []).forEach(it => {
+ const sku = (it.sku || '').toUpperCase();
+ const sold = Number(it.price || 0);
+ if(sku && floorMap[sku] && sold > 0 && sold < floorMap[sku]) seen.add(sku);
+ });
+ });
+ marginViolations = seen.size;
+ }
+ } catch(e){}
+
  // ---- RENDER ----
  const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
 
@@ -880,6 +965,29 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  </div>
  </div>
 
+ <!-- p1_133 — Risk Watch (Margin / Returns / Loss RM) -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="shield-alert" style="width:14px;height:14px;"></i> Risk Watch</h3>
+ <p class="rp-section__help">Aliff perlu pantau: berapa SKU dijual bawah floor, berapa pulang/rosak, jumlah kerugian.</p>
+ <div class="rp-kpi-grid">
+ <div class="rp-kpi" style="border-left:3px solid ${marginViolations > 0 ? '#EF4444' : '#10B981'};">
+ <div class="rp-kpi__lbl"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> Bawah Floor</div>
+ <div class="rp-kpi__val" style="color:${marginViolations > 0 ? '#EF4444' : '#10B981'};">${marginViolations}</div>
+ <div class="rp-kpi__sub">SKU jual bawah floor price</div>
+ </div>
+ <div class="rp-kpi" id="rpWatchReturnsCard" style="border-left:3px solid #9CA3AF;">
+ <div class="rp-kpi__lbl"><i data-lucide="package-x" style="width:12px;height:12px;"></i> Pulang / Rosak</div>
+ <div class="rp-kpi__val" id="rpWatchReturnsCount">—</div>
+ <div class="rp-kpi__sub">item dilaporkan</div>
+ </div>
+ <div class="rp-kpi" id="rpWatchLossCard" style="border-left:3px solid #9CA3AF;">
+ <div class="rp-kpi__lbl"><i data-lucide="receipt" style="width:12px;height:12px;"></i> Anggaran Loss</div>
+ <div class="rp-kpi__val" id="rpWatchLossRm">—</div>
+ <div class="rp-kpi__sub">cost impact returns</div>
+ </div>
+ </div>
+ </div>
+
  <!-- Section 2: Approval workflow -->
  <div class="rp-section">
  <h3 class="rp-section__title"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> <span data-i18n="rp_appr_title">Aliran Kelulusan</span></h3>
@@ -887,9 +995,10 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  <div class="rp-approval-card">
  <h4 class="rp-approval-card__title"><i data-lucide="calendar-x" style="width:13px;height:13px;"></i> <span data-i18n="rp_appr_cuti_title">Cuti</span></h4>
  <div class="rp-appr-row"><span data-i18n="rp_appr_pending">Menunggu Saya</span><strong class="${pendingRoster > 0 ? 'rp-warn' : ''}">${pendingRoster}</strong></div>
- <div class="rp-appr-row"><span data-i18n="rp_appr_approved">Diluluskan Bulan Ini</span><strong>—</strong></div>
- <div class="rp-appr-row"><span data-i18n="rp_appr_rejected">Ditolak</span><strong>—</strong></div>
- <div class="rp-appr-row"><span data-i18n="rp_appr_escalated">Eskalasi ke Bos</span><strong>—</strong></div>
+ <!-- p1_132 — wired to audit_logs LULUS/TOLAK in period (were hardcoded placeholder dashes) -->
+ <div class="rp-appr-row"><span data-i18n="rp_appr_approved">Diluluskan Bulan Ini</span><strong id="rpCutiApproved">—</strong></div>
+ <div class="rp-appr-row"><span data-i18n="rp_appr_rejected">Ditolak</span><strong id="rpCutiRejected">—</strong></div>
+ <div class="rp-appr-row"><span data-i18n="rp_appr_escalated">Eskalasi ke Bos</span><strong>0</strong></div>
  </div>
  <div class="rp-approval-card">
  <h4 class="rp-approval-card__title"><i data-lucide="receipt" style="width:13px;height:13px;"></i> <span data-i18n="rp_appr_claim_title">Tuntutan</span></h4>
@@ -947,6 +1056,38 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
 
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  if(typeof window.applyI18N === 'function') window.applyI18N();
+
+ // p1_132 + p1_133 — async fill Cuti approved/rejected + Returns count/loss (after first render)
+ (async () => {
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ const startIso = range.start.toISOString();
+ const endIso = range.end.toISOString();
+ const [appr, rej, returns] = await Promise.all([
+ db.from('audit_logs').select('id', { count: 'exact', head: true }).eq('action_type', 'LULUS').gte('created_at', startIso).lte('created_at', endIso),
+ db.from('audit_logs').select('id', { count: 'exact', head: true }).eq('action_type', 'TOLAK').gte('created_at', startIso).lte('created_at', endIso),
+ db.from('returns_log').select('qty,cost_impact').gte('reported_at', startIso).lte('reported_at', endIso)
+ ]);
+ const elA = document.getElementById('rpCutiApproved');
+ const elR = document.getElementById('rpCutiRejected');
+ if(elA) elA.textContent = (appr && appr.count != null) ? String(appr.count) : '0';
+ if(elR) elR.textContent = (rej && rej.count != null) ? String(rej.count) : '0';
+ // Returns + loss
+ const retRows = (returns && returns.data) || [];
+ const retCount = retRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+ const lossRm = retRows.reduce((sum, r) => sum + (Number(r.cost_impact) || 0), 0);
+ const elRC = document.getElementById('rpWatchReturnsCount');
+ const elLO = document.getElementById('rpWatchLossRm');
+ const cardR = document.getElementById('rpWatchReturnsCard');
+ const cardL = document.getElementById('rpWatchLossCard');
+ if(elRC) elRC.textContent = String(retCount);
+ if(elLO) elLO.textContent = 'RM ' + lossRm.toFixed(2);
+ if(cardR) cardR.style.borderLeftColor = retCount > 0 ? '#D97706' : '#10B981';
+ if(cardL) cardL.style.borderLeftColor = lossRm > 0 ? '#D97706' : '#10B981';
+ if(elRC) elRC.style.color = retCount > 0 ? '#D97706' : '#10B981';
+ if(elLO) elLO.style.color = lossRm > 0 ? '#D97706' : '#10B981';
+ } catch(e) { /* silent — keep dashes */ }
+ })();
 };
 
 // p1_106 — Sales template renderer (Ariff CMP006, Irfan CMP003 primary)
@@ -959,6 +1100,8 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  let myOrders = 0, myRevenue = 0;
  const customerSet = new Set();
  const skuTally = {};
+ // p1_133 — tally per-channel to show breakdown
+ const channelTally = {};
  try {
  if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
  salesHistory.forEach(sale => {
@@ -966,9 +1109,15 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  if(t < startMs || t > endMs) return;
  if(!((sale.staff_id && sale.staff_id === u.staff_id) || (sale.cashier_name && sale.cashier_name === u.name))) return;
  myOrders++;
- myRevenue += Number(sale.total || sale.amount || 0);
+ const rev = Number(sale.total || sale.amount || 0);
+ myRevenue += rev;
  if(sale.customer_phone) customerSet.add(sale.customer_phone);
  else if(sale.customer_name) customerSet.add(sale.customer_name);
+ // Channel tally
+ const ch = sale.channel || 'Walk-in Kedai';
+ if(!channelTally[ch]) channelTally[ch] = { channel: ch, orders: 0, revenue: 0 };
+ channelTally[ch].orders++;
+ channelTally[ch].revenue += rev;
  // Tally items
  const items = (() => { try { return JSON.parse(sale.items || '[]'); } catch(e) { return sale.items || []; } })();
  (Array.isArray(items) ? items : []).forEach(it => {
@@ -985,6 +1134,8 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  const topSkus = Object.values(skuTally).sort((a, b) => b.qty - a.qty).slice(0, 5);
  const topOne = topSkus[0];
  const customersServed = customerSet.size;
+ const channelRows = Object.values(channelTally).sort((a, b) => b.revenue - a.revenue);
+ const topChannel = channelRows[0];
 
  // ---- 2. Commission saved by Aliff (from localStorage commissionDraft) ----
  const commKey = 'commissionDraft_' + (window.__rpPeriod || 'mtd');
@@ -1075,6 +1226,35 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  <td style="text-align:right;">${s.qty}</td>
  <td style="text-align:right;">${fmtRM(s.revenue)}</td>
  </tr>`).join('')}
+ </tbody>
+ </table>
+ </div>` : ''}
+
+ <!-- p1_133 — Channel breakdown (kena tau jual paling banyak via mana) -->
+ ${channelRows.length > 0 ? `
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="layers" style="width:14px;height:14px;"></i> Channel Saya Jual</h3>
+ <p class="rp-section__help">Tahu kau jual paling banyak via mana — bantu Aliff plan kadar komisen channel-specific.</p>
+ <table class="rp-comm-table">
+ <thead>
+ <tr>
+ <th>Channel</th>
+ <th style="text-align:right;">Orders</th>
+ <th style="text-align:right;">Revenue</th>
+ <th style="text-align:right;">% Mix</th>
+ </tr>
+ </thead>
+ <tbody>
+ ${channelRows.map(c => {
+ const pct = myRevenue > 0 ? (c.revenue / myRevenue * 100).toFixed(0) : '0';
+ const isTop = topChannel && c.channel === topChannel.channel;
+ return `<tr ${isTop ? 'style="background:rgba(16,185,129,.05);"' : ''}>
+ <td><strong>${escAttr(c.channel)}</strong>${isTop ? ' <span style="background:#10B981; color:#FFF; padding:1px 6px; border-radius:50px; font-size:9px; font-weight:700;">TOP</span>' : ''}</td>
+ <td style="text-align:right;">${c.orders}</td>
+ <td style="text-align:right;">${fmtRM(c.revenue)}</td>
+ <td style="text-align:right;">${pct}%</td>
+ </tr>`;
+ }).join('')}
  </tbody>
  </table>
  </div>` : ''}
@@ -1249,6 +1429,12 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
  <div class="rp-kpi__val" style="color:${pendingPack > 5 ? '#D97706' : '#10B981'};">${pendingPack}</div>
  <div class="rp-kpi__sub">pesanan belum pack (current)</div>
  </div>
+ <!-- p1_133 — Returns / Damages KPI (async filled from returns_log) -->
+ <div class="rp-kpi" id="rpInvReturnsCard">
+ <div class="rp-kpi__lbl"><i data-lucide="package-x" style="width:12px;height:12px;"></i> Pulang / Rosak</div>
+ <div class="rp-kpi__val" id="rpInvReturnsCount">—</div>
+ <div class="rp-kpi__sub" id="rpInvReturnsSub">item dilaporkan period ini</div>
+ </div>
  </div>
  </div>
 
@@ -1318,6 +1504,28 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
 
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  if(typeof window.applyI18N === 'function') window.applyI18N();
+
+ // p1_133 — async fill Returns card from returns_log (after render)
+ (async () => {
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ const startIso = range.start.toISOString();
+ const endIso = range.end.toISOString();
+ const { data } = await db.from('returns_log').select('qty,cost_impact').gte('reported_at', startIso).lte('reported_at', endIso);
+ const rows = data || [];
+ const count = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+ const loss = rows.reduce((s, r) => s + (Number(r.cost_impact) || 0), 0);
+ const card = document.getElementById('rpInvReturnsCard');
+ const elN = document.getElementById('rpInvReturnsCount');
+ const elS = document.getElementById('rpInvReturnsSub');
+ if(elN) elN.textContent = String(count);
+ if(elS) elS.textContent = loss > 0 ? `RM ${loss.toFixed(2)} loss impact` : 'item dilaporkan period ini';
+ if(card) {
+ if(count > 0) card.style.border = '2px solid #D97706';
+ if(elN) elN.style.color = count > 0 ? '#D97706' : '#10B981';
+ }
+ } catch(e) { /* silent */ }
+ })();
 };
 
 // p1_108 — BizDev template renderer (Farhan CMP010)
@@ -2579,7 +2787,7 @@ window.__rpRenderInventorySimpleTemplate = function(body, u, range) {
  <div style="text-align:center; padding:24px; background:${backlog > 5 ? 'rgba(217,119,6,.08)' : 'rgba(107,114,128,.05)'}; border-radius:12px; border:1px solid ${backlog > 5 ? '#FCD34D' : '#E5E7EB'};">
  <div style="font-size:12px; color:${backlog > 5 ? '#92400E' : '#6B7280'}; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Tunggu Pack</div>
  <div style="font-size:48px; font-weight:900; color:${backlog > 5 ? '#D97706' : '#9CA3AF'}; letter-spacing:-2px; line-height:1;">${backlog}</div>
- <div style="font-size:12px; color:#6B7280; margin-top:6px;">${backlog > 5 ? '⚠ banyak menumpuk' : 'pesanan menunggu'}</div>
+ <div style="font-size:12px; color:#6B7280; margin-top:6px; display:inline-flex; align-items:center; gap:4px;">${backlog > 5 ? '<i data-lucide="alert-triangle" style="width:11px; height:11px; color:#D97706;"></i> banyak menumpuk' : 'pesanan menunggu'}</div>
  </div>
  </div>
  </div>
@@ -3230,15 +3438,34 @@ window.__rpCalcComm = function(staffId, revenue) {
  const rate = parseFloat(rateEl.value) || 0;
  if(rate > 0) amtEl.value = ((revenue * rate) / 100).toFixed(2);
 };
-window.__rpSaveComm = function(staffId) {
+window.__rpSaveComm = async function(staffId) {
  const rateEl = document.querySelector('[data-rate-for="' + staffId + '"]');
  const amtEl = document.querySelector('[data-amount-for="' + staffId + '"]');
  if(!rateEl || !amtEl) return;
- const key = 'commissionDraft_' + (window.__rpPeriod || 'mtd');
+ const period = window.__rpPeriod || 'mtd';
+ const key = 'commissionDraft_' + period;
  const draft = (function() { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) { return {}; } })();
  draft[staffId] = { rate: rateEl.value, amount: amtEl.value, saved_at: new Date().toISOString() };
  localStorage.setItem(key, JSON.stringify(draft));
  const T = (k, fb) => (typeof window.t === 'function' ? window.t(k) : fb) || fb;
+
+ // p1_132 — sync to Supabase so Bos sees commission drafts in Posted Reports inbox (was localStorage-only)
+ try {
+ if(typeof db !== 'undefined' && db) {
+ const actor = window.currentUser || {};
+ const target = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers.find(s => s.staff_id === staffId) : null;
+ await db.from('staff_report_submissions').upsert({
+ staff_id: staffId,
+ staff_name: (target && target.name) || staffId,
+ submission_type: 'commission_draft',
+ period_key: period,
+ payload: { rate: Number(rateEl.value) || 0, amount: Number(amtEl.value) || 0, prepared_by: actor.staff_id || 'unknown', prepared_by_name: actor.name || 'Unknown' },
+ submitted_at: new Date().toISOString(),
+ bos_read_at: null
+ }, { onConflict: 'staff_id,submission_type,period_key' });
+ }
+ } catch(e) { console.warn('commission sync failed:', e.message); }
+
  if(typeof showToast === 'function') showToast(T('rp_comm_saved','Komisen disimpan untuk approval Bos.'), 'success');
 };
 // Manual notes save — localStorage + Supabase sync for Bos inbox
@@ -3292,7 +3519,7 @@ window.renderTeamReports = async function() {
  if(typeof db !== 'undefined' && db) {
  let q = db.from('staff_report_submissions').select('*').order('submitted_at', { ascending: false }).limit(100);
  if(filter === 'unread') q = q.is('bos_read_at', null);
- else if(filter === 'manual_notes' || filter === 'bizdev_pipeline') q = q.eq('submission_type', filter);
+ else if(filter === 'manual_notes' || filter === 'bizdev_pipeline' || filter === 'commission_draft') q = q.eq('submission_type', filter);
  const { data, error } = await q;
  if(error) throw error;
  rows = data || [];
@@ -3312,13 +3539,14 @@ window.renderTeamReports = async function() {
  return `<span style="display:inline-block; padding:2px 8px; border-radius:50px; background:${cfg.bg}; color:${cfg.fg}; font-size:10px; font-weight:700;">${cfg.label}</span>`;
  };
 
- // Filter buttons
+ // Filter buttons (p1_133 — commission filter added)
  const filterBar = `
  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
  <button class="sy-btn ${filter === 'all' ? '' : 'secondary'}" onclick="window.__teamFilter='all'; window.renderTeamReports()">Semua</button>
  <button class="sy-btn ${filter === 'unread' ? '' : 'secondary'}" onclick="window.__teamFilter='unread'; window.renderTeamReports()">Belum Dibaca</button>
  <button class="sy-btn ${filter === 'manual_notes' ? '' : 'secondary'}" onclick="window.__teamFilter='manual_notes'; window.renderTeamReports()">Catatan</button>
  <button class="sy-btn ${filter === 'bizdev_pipeline' ? '' : 'secondary'}" onclick="window.__teamFilter='bizdev_pipeline'; window.renderTeamReports()">BizDev Pipeline</button>
+ <button class="sy-btn ${filter === 'commission_draft' ? '' : 'secondary'}" onclick="window.__teamFilter='commission_draft'; window.renderTeamReports()">Komisen Draf</button>
  <button class="sy-btn secondary" style="margin-left:auto;" onclick="window.__teamMarkAllRead()"><i data-lucide="check-check" style="width:13px;height:13px;"></i> Mark Semua Read</button>
  </div>`;
 
@@ -3343,6 +3571,13 @@ window.renderTeamReports = async function() {
  if(payload.partnerships) parts.push(`${payload.partnerships} partnerships`);
  if(payload.events) parts.push(`${payload.events} events`);
  preview = parts.join(' · ') || '(no data)';
+ }
+ // p1_133 — commission_draft preview
+ else if(r.submission_type === 'commission_draft') {
+ const rate = payload.rate || 0;
+ const amount = Number(payload.amount || 0);
+ const prep = payload.prepared_by_name || '';
+ preview = `Komisen RM ${amount.toFixed(2)} · ${rate}%${prep ? ' · disediakan ' + prep : ''}`;
  }
  const ago = (() => {
  const ms = Date.now() - new Date(r.submitted_at).getTime();
@@ -3375,24 +3610,83 @@ window.renderTeamReports = async function() {
  if(window.lucide && lucide.createIcons) lucide.createIcons();
 };
 
+// p1_134 — proper modal (replaces clunky alert prompt)
+window.__teamCloseModal = function() {
+ const el = document.getElementById('rpTeamModal');
+ if(el) el.remove();
+};
+window.__teamShowModal = function(data, bodyHtml) {
+ window.__teamCloseModal();
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ const typeLabel = ({ manual_notes:'Catatan', bizdev_pipeline:'BizDev Pipeline', commission_draft:'Komisen Draf' })[data.submission_type] || data.submission_type;
+ const dt = new Date(data.submitted_at);
+ const stamp = isNaN(dt.getTime()) ? '' : dt.toLocaleString('en-MY');
+ const html = `
+ <div id="rpTeamModal" style="position:fixed; inset:0; background:rgba(17,24,39,.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;" onclick="if(event.target===this) window.__teamCloseModal()">
+ <div style="background:#FFF; max-width:560px; width:100%; max-height:85vh; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 24px 48px rgba(0,0,0,.25);">
+ <div style="padding:16px 20px; border-bottom:1px solid #E5E7EB; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+ <div style="flex:1; min-width:0;">
+ <div style="font-size:15px; font-weight:800; color:#111827; margin-bottom:4px;">${escAttr(data.staff_name)} <span style="font-size:11px; color:#6B7280; font-weight:600;">· ${escAttr(data.period_key)}</span></div>
+ <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+ <span style="display:inline-block; padding:2px 8px; border-radius:50px; background:#EEF2FF; color:#3730A3; font-size:10px; font-weight:700;">${escAttr(typeLabel)}</span>
+ <span style="font-size:11px; color:#6B7280;">${escAttr(stamp)}</span>
+ </div>
+ </div>
+ <button onclick="window.__teamCloseModal()" style="background:none; border:none; cursor:pointer; padding:4px; color:#6B7280;" aria-label="Tutup"><i data-lucide="x" style="width:18px; height:18px;"></i></button>
+ </div>
+ <div style="padding:18px 20px; overflow:auto; flex:1;">
+ ${bodyHtml}
+ </div>
+ <div style="padding:12px 20px; border-top:1px solid #E5E7EB; display:flex; justify-content:flex-end; gap:8px;">
+ <button class="sy-btn secondary" onclick="window.__teamCloseModal()">Tutup</button>
+ </div>
+ </div>
+ </div>`;
+ document.body.insertAdjacentHTML('beforeend', html);
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
 window.__teamOpenSubmission = async function(id) {
- // Mark as read + show full content via alert/modal-lite
  try {
- if(typeof db !== 'undefined' && db) {
+ if(typeof db === 'undefined' || !db) return;
  const { data } = await db.from('staff_report_submissions').select('*').eq('id', id).single();
  if(!data) return;
  const payload = data.payload || {};
- let body = '';
- if(data.submission_type === 'manual_notes') body = payload.text || '(empty)';
- else if(data.submission_type === 'bizdev_pipeline') {
- body = Object.entries(payload).filter(([k]) => !k.startsWith('__')).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join('\n');
+ const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ let bodyHtml = '';
+ if(data.submission_type === 'manual_notes') {
+ const text = payload.text || '';
+ bodyHtml = text ? `<div style="white-space:pre-wrap; line-height:1.6; font-size:13.5px; color:#374151;">${escAttr(text)}</div>` : '<p style="color:#9CA3AF; font-style:italic;">(kosong)</p>';
+ } else if(data.submission_type === 'bizdev_pipeline') {
+ const fields = [
+ ['leads_contacted','Leads Dihubungi'],
+ ['followups','Followups'],
+ ['pipeline_rm','Pipeline (RM)'],
+ ['meetings','Meeting / Demo'],
+ ['partnerships','Partnership Outreach'],
+ ['events','Event / Expo']
+ ];
+ bodyHtml = '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 16px;">' +
+ fields.map(([k, lbl]) => {
+ const v = payload[k];
+ if(v == null || v === '') return '';
+ const display = k === 'pipeline_rm' ? 'RM ' + Number(v).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) : v;
+ return `<div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:2px;">${escAttr(lbl)}</div><div style="font-size:18px; font-weight:800; color:#111827;">${escAttr(display)}</div></div>`;
+ }).filter(Boolean).join('') + '</div>';
+ } else if(data.submission_type === 'commission_draft') {
+ const rate = payload.rate || 0;
+ const amount = Number(payload.amount || 0);
+ const prep = payload.prepared_by_name || 'Unknown';
+ bodyHtml = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+ <div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Kadar</div><div style="font-size:24px; font-weight:800; color:#111827;">${rate}%</div></div>
+ <div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Amaun</div><div style="font-size:24px; font-weight:800; color:#10B981;">RM ${amount.toFixed(2)}</div></div>
+ <div style="grid-column:1 / -1; padding-top:8px; border-top:1px solid #E5E7EB;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Disediakan oleh</div><div style="font-size:13px; color:#374151;">${escAttr(prep)}</div></div>
+ </div>`;
  }
  // Mark read
  await db.from('staff_report_submissions').update({ bos_read_at: new Date().toISOString(), bos_action: 'acknowledged' }).eq('id', id);
- // Show inline expanded — use prompt-like alert for now (Phase 2 boleh build modal)
- alert(`${data.staff_name} · ${data.period_key} · ${data.submission_type}\n\n${body}`);
+ window.__teamShowModal(data, bodyHtml);
  setTimeout(() => window.renderTeamReports(), 200);
- }
  } catch(e) {
  if(typeof showToast === 'function') showToast('Error: ' + e.message, 'error');
  }
@@ -3461,6 +3755,16 @@ window.refreshRailBadges = function() {
  const el = document.getElementById('auditAlertBadge');
  const txt = el ? parseInt(el.textContent || '0') : 0;
  setBadge('railBadgeAudit', isNaN(txt) ? 0 : txt);
+ } catch(e){}
+ // p1_133 — Reports rail: unread submissions for Bos/mgmt
+ try {
+ const u = window.currentUser;
+ const canSee = u && ((typeof window.isBoss === 'function' && window.isBoss(u)) || u.role === 'mgmt');
+ if(!canSee) { setBadge('railBadgeReportEscalation', 0); return; }
+ if(typeof db === 'undefined' || !db) return;
+ db.from('staff_report_submissions').select('id', { count: 'exact', head: true }).is('bos_read_at', null)
+ .then(({ count }) => setBadge('railBadgeReportEscalation', count || 0))
+ .catch(() => {});
  } catch(e){}
 };
 
