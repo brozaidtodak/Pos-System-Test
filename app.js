@@ -3936,7 +3936,14 @@ window.renderFeedbackInbox = async function() {
  </div>
  <label style="font-size:10px; color:#6B7280; font-weight:700; text-transform:uppercase;">Reply Bos (visible ke staff)</label>
  <textarea id="fbi-reply-${r.id}" class="rp-manual-input" rows="2" placeholder="Cth: Terima kasih, akan check thermal printer setting esok pagi" maxlength="1000" style="padding:6px; font-size:12px; margin-top:2px;">${escHtml(r.bos_reply || '')}</textarea>
- <div style="display:flex; gap:6px; margin-top:8px; justify-content:flex-end;">
+ <!-- p1_150 — quick-action buttons: one-click status transition (preserve typed reply/action) -->
+ <div style="display:flex; gap:6px; margin-top:8px; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+ <div style="display:flex; gap:4px; flex-wrap:wrap;">
+ ${r.status !== 'triaged' ? `<button class="rm-pill" onclick="window.__fbiQuickStatus(${r.id}, 'triaged')" style="font-size:11px; padding:5px 10px;" title="Tandai Triaged"><i data-lucide="eye" style="width:11px; height:11px;"></i> Triage</button>` : ''}
+ ${r.status !== 'in_progress' ? `<button class="rm-pill" onclick="window.__fbiQuickStatus(${r.id}, 'in_progress')" style="font-size:11px; padding:5px 10px; background:#FAE8FF; color:#86198F; border-color:#FAE8FF;" title="Tandai Dalam Progress"><i data-lucide="loader" style="width:11px; height:11px;"></i> Process</button>` : ''}
+ ${r.status !== 'resolved' ? `<button class="rm-pill" onclick="window.__fbiQuickStatus(${r.id}, 'resolved')" style="font-size:11px; padding:5px 10px; background:#D1FAE5; color:#065F46; border-color:#A7F3D0;" title="Tandai Resolved"><i data-lucide="check-circle" style="width:11px; height:11px;"></i> Tandai Resolved</button>` : ''}
+ ${r.status !== 'wontfix' ? `<button class="rm-pill" onclick="window.__fbiQuickStatus(${r.id}, 'wontfix')" style="font-size:11px; padding:5px 10px;" title="Tak akan fix"><i data-lucide="x-circle" style="width:11px; height:11px;"></i> Wontfix</button>` : ''}
+ </div>
  <button class="rp-manual-save" onclick="window.__fbiSave(${r.id})" style="font-size:11px; padding:6px 12px;"><i data-lucide="save" style="width:11px; height:11px;"></i> Simpan</button>
  </div>
  </div>
@@ -3962,6 +3969,29 @@ window.__fbiSave = async function(id) {
  window.renderFeedbackInbox();
  if(typeof window.refreshRailBadges === 'function') window.refreshRailBadges();
  } catch(e) { if(typeof showToast === 'function') showToast('Save gagal: ' + e.message, 'error'); }
+};
+
+// p1_150 — Quick-action status transitions. Preserves whatever Bos has typed in
+// the Tindakan + Reply fields (kalau ada), so click "Tandai Resolved" terus save.
+window.__fbiQuickStatus = async function(id, newStatus) {
+ try {
+ // Preserve currently typed reply + action (form values, not stale DB values)
+ const actionEl = document.getElementById('fbi-action-' + id);
+ const replyEl = document.getElementById('fbi-reply-' + id);
+ const action = actionEl ? (actionEl.value || '').trim() : '';
+ const reply = replyEl ? (replyEl.value || '').trim() : '';
+ const payload = { status: newStatus, updated_at: new Date().toISOString() };
+ if(action) payload.bos_action = action;
+ if(reply) payload.bos_reply = reply;
+ if(newStatus === 'triaged') payload.triaged_at = new Date().toISOString();
+ if(newStatus === 'resolved' || newStatus === 'wontfix') payload.resolved_at = new Date().toISOString();
+ const { error } = await db.from('staff_feedback').update(payload).eq('id', id);
+ if(error) throw error;
+ const label = ({ triaged:'Triaged', in_progress:'Dalam Progress', resolved:'Resolved', wontfix:'Wontfix' })[newStatus] || newStatus;
+ if(typeof showToast === 'function') showToast('Tandai ' + label + '.', 'success');
+ window.renderFeedbackInbox();
+ if(typeof window.refreshRailBadges === 'function') window.refreshRailBadges();
+ } catch(e) { if(typeof showToast === 'function') showToast('Update gagal: ' + e.message, 'error'); }
 };
 
 // Map data-tab → which rail it belongs to (used for auto-sync rail with current section)
