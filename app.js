@@ -4003,7 +4003,7 @@ window.__tabToRail = function(tab) {
  if(tab === 'roadmap') return 'roadmap';
  if(tab.startsWith('sales_')) return 'sales';
  if(tab.startsWith('customers_')) return 'customers';
- if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_check_history' || tab === 'inv_pricehistory' || tab === 'inv_reorder' || tab === 'inv_supplier' || tab === 'inv_returns') return 'inv';
+ if(tab.startsWith('inv_') || tab === 'hr_roster' || tab === 'inv_floorprice' || tab === 'inv_stockcheck' || tab === 'inv_check_history' || tab === 'inv_check_sessions' || tab === 'inv_pricehistory' || tab === 'inv_reorder' || tab === 'inv_supplier' || tab === 'inv_returns') return 'inv';
  if(tab.startsWith('hr_')) return 'hr';
  if(tab === 'admin_audit_alerts' || tab === 'admin_dashboard' || tab === 'admin_invoice' || tab === 'admin_bulk_ops') return 'admin';
  if(tab === 'admin_promotions' || tab === 'admin_wa_broadcast' || tab === 'admin_reengage' || tab === 'admin_channelprofit' || tab === 'admin_brandperf' || tab === 'admin_mktweekly') return 'marketing';
@@ -5327,6 +5327,292 @@ window.__hydrateAuditTimestamps = async function() {
 setTimeout(() => { if(typeof window.__hydrateAuditTimestamps === 'function') window.__hydrateAuditTimestamps(); }, 5000);
 
 // p1_156 — Stock Check History dashboard (Zack request — audit coverage tracker)
+// p1_167-169 — Stock Check Sessions workflow ====================================
+window.__scsFilter = 'all';
+window.__scsActiveSessionId = null;
+window.__scsSelectedLocations = new Set();
+window.__scsSelectedStaff = new Set();
+window.__scsLocations = [];
+
+window.__scsSetFilter = function(s, btn) {
+ window.__scsFilter = s;
+ document.querySelectorAll('[data-scs-filter]').forEach(b => b.classList.toggle('rm-pill--active', b.dataset.scsFilter === s));
+ window.renderCheckSessions();
+};
+
+window.renderCheckSessions = async function() {
+ const list = document.getElementById('scsList');
+ const stats = document.getElementById('scsStats');
+ if(!list) return;
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const { data, error } = await db.from('stock_check_sessions').select('*').order('created_at', { ascending: false }).limit(50);
+ if(error) throw error;
+ const rows = data || [];
+ // Stats — current session(s) status
+ if(stats) {
+ const active = rows.filter(s => s.status === 'active').length;
+ const review = rows.filter(s => s.status === 'review').length;
+ const forwarded = rows.filter(s => s.status === 'forwarded').length;
+ const approved = rows.filter(s => s.status === 'approved').length;
+ stats.innerHTML = `
+ <div style="background:#FEF3C7; padding:12px; border-radius:8px; border-left:4px solid #D97706;"><div style="font-size:10px; color:#92400E; text-transform:uppercase; font-weight:700;">Aktif</div><div style="font-size:22px; font-weight:900;">${active}</div><div style="font-size:11px; color:#6B7280;">sedang kira</div></div>
+ <div style="background:#DBEAFE; padding:12px; border-radius:8px; border-left:4px solid #2563EB;"><div style="font-size:10px; color:#1E40AF; text-transform:uppercase; font-weight:700;">Menunggu Review</div><div style="font-size:22px; font-weight:900;">${review}</div><div style="font-size:11px; color:#6B7280;">Zack semak</div></div>
+ <div style="background:#E0E7FF; padding:12px; border-radius:8px; border-left:4px solid #6366F1;"><div style="font-size:10px; color:#3730A3; text-transform:uppercase; font-weight:700;">Bos Inbox</div><div style="font-size:22px; font-weight:900;">${forwarded}</div><div style="font-size:11px; color:#6B7280;">menunggu Bos</div></div>
+ <div style="background:#D1FAE5; padding:12px; border-radius:8px; border-left:4px solid #10B981;"><div style="font-size:10px; color:#065F46; text-transform:uppercase; font-weight:700;">Approved</div><div style="font-size:22px; font-weight:900;">${approved}</div><div style="font-size:11px; color:#6B7280;">selesai</div></div>
+ `;
+ }
+ const filtered = window.__scsFilter === 'all' ? rows : rows.filter(s => s.status === window.__scsFilter);
+ if(!filtered.length) {
+ list.innerHTML = '<p style="color:#9CA3AF; padding:30px; text-align:center;">Tiada sesi padan filter. Klik <strong>Sesi Baharu</strong> untuk mulakan.</p>';
+ return;
+ }
+ const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ const u = window.currentUser || {};
+ const isMgmt = (typeof window.isBoss === 'function' && window.isBoss(u)) || u.role === 'mgmt';
+ const STATUS_LBL = { active:'Aktif', review:'Menunggu Review', forwarded:'Bos Acknowledged', approved:'Approved', rejected:'Rejected' };
+ const STATUS_BG = { active:'#FEF3C7', review:'#DBEAFE', forwarded:'#E0E7FF', approved:'#D1FAE5', rejected:'#FEE2E2' };
+ const STATUS_FG = { active:'#92400E', review:'#1E40AF', forwarded:'#3730A3', approved:'#065F46', rejected:'#991B1B' };
+
+ list.innerHTML = filtered.map(s => {
+ const pct = s.items_total > 0 ? Math.round((s.items_checked / s.items_total) * 100) : 0;
+ const ago = (() => {
+ const ms = Date.now() - new Date(s.created_at || 0).getTime();
+ const d = Math.floor(ms / 86400000);
+ if(d === 0) return 'hari ini';
+ if(d === 1) return 'semalam';
+ return d + ' hari lepas';
+ })();
+ const locStr = (s.locations || []).join(', ');
+ const assignStr = (s.assigned_to || []).join(', ');
+ return `<div class="rp-section" style="margin-bottom:10px;">
+ <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+ <div style="flex:1; min-width:200px;">
+ <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+ <strong style="font-size:14px;">${escHtml(s.name)}</strong>
+ <span style="padding:2px 8px; border-radius:50px; background:${STATUS_BG[s.status] || '#E5E7EB'}; color:${STATUS_FG[s.status] || '#374151'}; font-size:10px; font-weight:700;">${STATUS_LBL[s.status] || s.status}</span>
+ </div>
+ <div style="font-size:11.5px; color:#6B7280;">${escHtml(locStr)} · ${escHtml(assignStr || 'No assignee')} · ${ago}</div>
+ </div>
+ <div style="text-align:right;">
+ <div style="font-size:11px; color:#6B7280;">Progress</div>
+ <div style="font-size:18px; font-weight:900;">${s.items_checked}/${s.items_total} <span style="color:#9CA3AF; font-size:12px;">(${pct}%)</span></div>
+ </div>
+ </div>
+ <div style="height:6px; background:#F3F4F6; border-radius:50px; overflow:hidden; margin-bottom:10px;"><div style="height:100%; background:linear-gradient(90deg, var(--primary), #A05F22); width:${pct}%; transition:width .4s;"></div></div>
+ ${(s.items_variance || 0) > 0 ? `<div style="font-size:12px; color:#991B1B; margin-bottom:8px;"><i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-1px;"></i> ${s.items_variance} variance · RM ${Number(s.rm_variance||0).toFixed(2)} drift</div>` : ''}
+ <div style="display:flex; gap:6px; flex-wrap:wrap;">
+ <button class="sy-btn" onclick="window.__scsOpenSession(${s.id})" style="font-size:11px;"><i data-lucide="arrow-right" style="width:11px;height:11px;"></i> ${s.status === 'active' ? 'Buka & Kira' : 'Buka'}</button>
+ ${s.status === 'active' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsSubmitForReview(${s.id})" style="font-size:11px;"><i data-lucide="send" style="width:11px;height:11px;"></i> Submit ke Review</button>` : ''}
+ ${s.status === 'review' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsForwardToBos(${s.id})" style="font-size:11px;"><i data-lucide="forward" style="width:11px;height:11px;"></i> Forward ke Bos</button>` : ''}
+ ${s.status === 'forwarded' && (typeof window.isBoss === 'function' && window.isBoss(u)) ? `<button class="sy-btn secondary" onclick="window.__scsApprove(${s.id})" style="font-size:11px; background:#10B981; color:#FFF;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> Approve</button>` : ''}
+ </div>
+ </div>`;
+ }).join('');
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ } catch(e) {
+ list.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ }
+};
+
+// p1_169 — Create Session modal flow
+window.__scsOpenCreate = async function() {
+ const modal = document.getElementById('scsCreateModal');
+ if(!modal) return;
+ modal.style.display = 'flex';
+ // Default name
+ const nameEl = document.getElementById('scsName');
+ if(nameEl && !nameEl.value) {
+ const wk = Math.ceil((new Date().getDate()) / 7);
+ nameEl.value = 'Stock Check Week ' + (new Date().getFullYear()) + '-' + String(new Date().getMonth()+1).padStart(2,'0') + ' #' + wk;
+ }
+ // Load locations
+ window.__scsSelectedLocations.clear();
+ window.__scsSelectedStaff.clear();
+ try {
+ const { data } = await db.from('products_master').select('location_bin').not('location_bin', 'is', null);
+ const counts = {};
+ (data || []).forEach(r => { const l = (r.location_bin || '').trim(); if(l) counts[l] = (counts[l] || 0) + 1; });
+ window.__scsLocations = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+ const list = document.getElementById('scsLocationList');
+ if(list) {
+ list.innerHTML = window.__scsLocations.map(([loc, n]) => `
+ <label style="display:flex; align-items:center; gap:6px; padding:6px; background:#FFF; border-radius:6px; cursor:pointer; font-size:12px;">
+ <input type="checkbox" data-scs-loc="${loc.replace(/"/g,'&quot;')}" onchange="window.__scsToggleLoc('${loc.replace(/'/g, "\\'")}', this.checked)" style="cursor:pointer;">
+ <span style="flex:1;">${loc.replace(/</g,'&lt;')}</span><span style="color:#9CA3AF; font-size:11px;">${n}</span>
+ </label>`).join('');
+ }
+ // Staff list (inventory + mgmt)
+ const staffList = document.getElementById('scsAssignList');
+ if(staffList && typeof authUsers !== 'undefined') {
+ const eligible = authUsers.filter(u => u.role === 'inventory' || u.role === 'mgmt');
+ staffList.innerHTML = eligible.map(u => `
+ <label style="display:flex; align-items:center; gap:6px; padding:6px; background:#FFF; border-radius:6px; cursor:pointer; font-size:12px;">
+ <input type="checkbox" onchange="window.__scsToggleStaff('${u.name.replace(/'/g, "\\'")}', this.checked)" style="cursor:pointer;">
+ <span>${u.name} <span style="color:#9CA3AF;">· ${u.staff_id}</span></span>
+ </label>`).join('');
+ }
+ window.__scsUpdatePreview();
+ } catch(e) { console.warn('Load locations failed:', e.message); }
+};
+
+window.__scsToggleLoc = function(loc, checked) {
+ if(checked) window.__scsSelectedLocations.add(loc);
+ else window.__scsSelectedLocations.delete(loc);
+ window.__scsUpdatePreview();
+};
+window.__scsToggleStaff = function(name, checked) {
+ if(checked) window.__scsSelectedStaff.add(name);
+ else window.__scsSelectedStaff.delete(name);
+};
+window.__scsUpdatePreview = function() {
+ const prev = document.getElementById('scsPreview');
+ if(!prev) return;
+ const locs = Array.from(window.__scsSelectedLocations);
+ const count = window.__scsLocations.filter(([l]) => locs.includes(l)).reduce((sum, [, n]) => sum + n, 0);
+ if(locs.length === 0) {
+ prev.innerHTML = '<strong>Preview:</strong> Pilih location dulu untuk papar jumlah SKU.';
+ } else {
+ prev.innerHTML = `<strong>Preview:</strong> ${locs.length} location dipilih · <strong>${count}</strong> SKU akan included dalam sesi.`;
+ }
+};
+
+window.__scsConfirmCreate = async function() {
+ const name = (document.getElementById('scsName').value || '').trim();
+ const locs = Array.from(window.__scsSelectedLocations);
+ const staff = Array.from(window.__scsSelectedStaff);
+ if(!name || name.length < 5) { if(typeof showToast === 'function') showToast('Nama sesi perlu min 5 huruf.', 'warn'); return; }
+ if(locs.length === 0) { if(typeof showToast === 'function') showToast('Pilih sekurang-kurangnya 1 location.', 'warn'); return; }
+ try {
+ const u = window.currentUser || {};
+ // 1. Create session
+ const { data: sesData, error: sesErr } = await db.from('stock_check_sessions').insert([{
+ name, locations: locs, assigned_to: staff,
+ created_by_id: u.staff_id || 'unknown',
+ created_by_name: u.name || 'Unknown',
+ status: 'active'
+ }]).select().single();
+ if(sesErr) throw sesErr;
+ // 2. Fetch products in selected locations
+ const { data: prods, error: prodErr } = await db.from('products_master').select('sku,name,location_bin,stock').in('location_bin', locs);
+ if(prodErr) throw prodErr;
+ // 3. Bulk insert items
+ const items = (prods || []).map(p => ({
+ session_id: sesData.id,
+ sku: p.sku,
+ product_name: p.name || '',
+ location_bin: p.location_bin || '',
+ system_qty: p.stock || 0
+ }));
+ if(items.length > 0) {
+ // Insert in batches of 500 (Supabase row limit)
+ for(let i = 0; i < items.length; i += 500) {
+ const chunk = items.slice(i, i + 500);
+ const { error: itErr } = await db.from('stock_check_session_items').insert(chunk);
+ if(itErr) throw itErr;
+ }
+ // Update session items_total
+ await db.from('stock_check_sessions').update({ items_total: items.length }).eq('id', sesData.id);
+ }
+ if(typeof showToast === 'function') showToast(`Sesi "${name}" cipta · ${items.length} SKU loaded.`, 'success');
+ document.getElementById('scsCreateModal').style.display = 'none';
+ window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Cipta sesi gagal: ' + e.message, 'error');
+ console.error(e);
+ }
+};
+
+// p1_169 — open session detail (counting view)
+window.__scsOpenSession = async function(id) {
+ // Open Stock Take page in session mode
+ window.__scsActiveSessionId = id;
+ try { localStorage.setItem('scsActiveSession_v1', String(id)); } catch(e){}
+ if(typeof showToast === 'function') showToast('Sesi #' + id + ' aktif. Buka Stock Take untuk kira.', 'info');
+ // Switch to Stock Take section
+ const stockBtn = document.querySelector('[data-tab="inv_stocktake"]');
+ if(stockBtn) stockBtn.click();
+};
+
+window.__scsSubmitForReview = async function(id) {
+ if(!confirm('Submit sesi ini ke Zack untuk review?')) return;
+ try {
+ const u = window.currentUser || {};
+ // Compute summary from items
+ const { data: items } = await db.from('stock_check_session_items').select('*').eq('session_id', id);
+ const checked = (items || []).filter(i => i.counted_qty != null);
+ const variance = checked.filter(i => (i.variance || 0) !== 0);
+ const rmVar = variance.reduce((s, i) => s + (Math.abs(i.variance || 0) * 0), 0); // RM compute would need cost; placeholder
+ const summary = window.__scsAutoSummary(items || []);
+ await db.from('stock_check_sessions').update({
+ status: 'review',
+ items_checked: checked.length,
+ items_variance: variance.length,
+ summary_text: summary,
+ completed_at: new Date().toISOString()
+ }).eq('id', id);
+ if(typeof showToast === 'function') showToast('Sesi submitted ke Zack untuk review.', 'success');
+ window.renderCheckSessions();
+ } catch(e) { if(typeof showToast === 'function') showToast('Submit gagal: ' + e.message, 'error'); }
+};
+
+window.__scsForwardToBos = async function(id) {
+ if(!confirm('Forward sesi ini ke Bos?')) return;
+ try {
+ const u = window.currentUser || {};
+ await db.from('stock_check_sessions').update({
+ status: 'forwarded',
+ reviewer_id: u.staff_id || 'unknown',
+ reviewer_name: u.name || 'Unknown',
+ reviewed_at: new Date().toISOString(),
+ forwarded_at: new Date().toISOString()
+ }).eq('id', id);
+ if(typeof showToast === 'function') showToast('Forwarded ke Bos.', 'success');
+ window.renderCheckSessions();
+ } catch(e) { if(typeof showToast === 'function') showToast('Forward gagal: ' + e.message, 'error'); }
+};
+
+window.__scsApprove = async function(id) {
+ if(!confirm('Approve sesi ini?')) return;
+ try {
+ const u = window.currentUser || {};
+ await db.from('stock_check_sessions').update({
+ status: 'approved',
+ bos_action: 'approved',
+ bos_seen_at: new Date().toISOString(),
+ approved_at: new Date().toISOString()
+ }).eq('id', id);
+ if(typeof showToast === 'function') showToast('Sesi approved.', 'success');
+ window.renderCheckSessions();
+ } catch(e) { if(typeof showToast === 'function') showToast('Approve gagal: ' + e.message, 'error'); }
+};
+
+// Auto-generate summary text from items
+window.__scsAutoSummary = function(items) {
+ const checked = items.filter(i => i.counted_qty != null);
+ const variance = checked.filter(i => (i.variance || 0) !== 0);
+ const notFound = items.filter(i => i.flag === 'not_found');
+ const damaged = items.filter(i => i.flag === 'damaged');
+ const byLoc = {};
+ checked.forEach(i => { const l = i.location_bin || 'Unknown'; byLoc[l] = (byLoc[l] || 0) + 1; });
+ const lines = [
+ `Stock Check Session Summary`,
+ ``,
+ `Total SKU: ${items.length}`,
+ `Items checked: ${checked.length}`,
+ `Items with variance: ${variance.length}`,
+ `Items not found: ${notFound.length}`,
+ `Items damaged: ${damaged.length}`,
+ ``,
+ `By location:`,
+ ...Object.entries(byLoc).map(([l, n]) => `  · ${l}: ${n} items checked`),
+ ``,
+ `Top variance items (qty discrepancy):`,
+ ...variance.sort((a,b) => Math.abs(b.variance) - Math.abs(a.variance)).slice(0, 10).map(i => `  · ${i.sku} (${i.location_bin || '-'}): Sistem ${i.system_qty}, Kiraan ${i.counted_qty}, Selisih ${i.variance > 0 ? '+' : ''}${i.variance}${i.note ? ' — ' + i.note : ''}`)
+ ];
+ return lines.join('\n');
+};
+
 window.renderStockCheckHistory = async function() {
  const statsEl = document.getElementById('schStats');
  const timelineEl = document.getElementById('schTimeline');
@@ -5493,9 +5779,49 @@ function __stBuildVelocity() {
  return v;
 }
 
+// p1_168 — Stock Take session integration: hydrate active session on boot + show banner.
+window.__stHydrateActiveSession = async function() {
+ try {
+ const id = localStorage.getItem('scsActiveSession_v1');
+ if(!id) return;
+ if(typeof db === 'undefined' || !db) return;
+ const { data, error } = await db.from('stock_check_sessions').select('*').eq('id', id).single();
+ if(error || !data || data.status !== 'active') {
+ localStorage.removeItem('scsActiveSession_v1');
+ window.__stSessionData = null;
+ return;
+ }
+ window.__stSessionData = data;
+ if(typeof renderStockTake === 'function' && document.getElementById('stockTakeSection')?.style.display !== 'none') renderStockTake();
+ } catch(e) { /* silent */ }
+};
+setTimeout(() => { if(typeof window.__stHydrateActiveSession === 'function') window.__stHydrateActiveSession(); }, 4000);
+
+window.__stExitSession = function() {
+ if(!confirm('Keluar sesi aktif? Kau boleh sambung balik dari Stock Check Sessions page.')) return;
+ window.__stSessionData = null;
+ try { localStorage.removeItem('scsActiveSession_v1'); } catch(e){}
+ if(typeof renderStockTake === 'function') renderStockTake();
+ if(typeof showToast === 'function') showToast('Keluar sesi. Stock Take kembali mod penuh.', 'info');
+};
+
 function renderStockTake() {
  const container = document.getElementById("auditCardsContainer");
  if(!container) return;
+
+ // p1_168 — Session banner
+ const banner = document.getElementById('stSessionBanner');
+ if(banner) {
+ if(window.__stSessionData) {
+ banner.style.display = 'flex';
+ const nameEl = document.getElementById('stSessionName');
+ const progEl = document.getElementById('stSessionProgress');
+ if(nameEl) nameEl.textContent = window.__stSessionData.name;
+ if(progEl) progEl.textContent = `${window.__stSessionData.items_checked || 0} / ${window.__stSessionData.items_total || 0} dikira · Locations: ${(window.__stSessionData.locations || []).join(', ')}`;
+ } else {
+ banner.style.display = 'none';
+ }
+ }
 
  let searchTxt = (document.getElementById("auditSearchInput")?.value || "").toLowerCase();
  let filterVal = document.getElementById("auditFilterSelect")?.value || "all";
@@ -5509,7 +5835,13 @@ function renderStockTake() {
  // p1_124 — Last audited filter
  const lastFilterEl = document.getElementById('auditLastFilter');
  const lastFilter = lastFilterEl ? lastFilterEl.value : 'all';
+ // p1_168 — Location filter (uses products_master.location_bin)
+ const locFilterEl = document.getElementById('auditLocationFilter');
+ const locFilter = locFilterEl ? locFilterEl.value : 'all';
  const nowMs = Date.now();
+
+ // p1_168 — Session locations (when active session, restrict + auto-fill location dropdown)
+ const sessionLocations = window.__stSessionData ? (window.__stSessionData.locations || []) : null;
 
  let filteredProducts = masterProducts.filter(p => {
  let matchName = (p.name || '').toLowerCase().includes(searchTxt);
@@ -5536,8 +5868,24 @@ function renderStockTake() {
  }
  }
 
+ // p1_168 — Location filter
+ const pLoc = (p.location_bin || '').trim();
+ if(locFilter !== 'all' && pLoc !== locFilter) return false;
+ // Session restrict
+ if(sessionLocations && sessionLocations.length > 0 && !sessionLocations.includes(pLoc)) return false;
+
  return true;
  });
+
+ // p1_168 — Auto-populate location dropdown from masterProducts (once)
+ if(locFilterEl && !window.__stLocPopulated) {
+ const locs = new Set();
+ masterProducts.forEach(p => { const l = (p.location_bin || '').trim(); if(l) locs.add(l); });
+ const sorted = Array.from(locs).sort();
+ const current = locFilterEl.value;
+ locFilterEl.innerHTML = '<option value="all">Semua Lokasi</option>' + sorted.map(l => `<option value="${l.replace(/"/g, '&quot;')}" ${l === current ? 'selected' : ''}>${l}</option>`).join('');
+ window.__stLocPopulated = true;
+ }
 
  if(filteredProducts.length === 0) {
  container.innerHTML = "<p style='text-align:center; padding:20px; color:#888;'>Tiada produk dijumpai yang padan dengan tapisan.</p>";
@@ -5904,6 +6252,31 @@ window.submitAuditSingle = function(sku) {
  last_audited_qty: isNaN(qty) ? null : qty,
  last_audited_system_qty: isNaN(sysQty) ? null : sysQty
  }).eq('sku', sku).then(()=>{}).catch(()=>{});
+
+ // p1_168 — also write to session_items + bump session counters when active
+ if(window.__stSessionData) {
+ const variance = (isNaN(qty) || isNaN(sysQty)) ? null : (qty - sysQty);
+ db.from('stock_check_session_items').update({
+ counted_qty: isNaN(qty) ? null : qty,
+ variance: variance,
+ counted_by_id: u.staff_id || 'unknown',
+ counted_by_name: u.name || 'Unknown',
+ counted_at: today.toISOString()
+ }).eq('session_id', window.__stSessionData.id).eq('sku', sku).then(async () => {
+ // Update session counters
+ try {
+ const { data: items } = await db.from('stock_check_session_items').select('counted_qty,variance').eq('session_id', window.__stSessionData.id);
+ const checked = (items || []).filter(i => i.counted_qty != null);
+ const varCnt = checked.filter(i => (i.variance || 0) !== 0).length;
+ await db.from('stock_check_sessions').update({ items_checked: checked.length, items_variance: varCnt }).eq('id', window.__stSessionData.id);
+ // Sync in-memory
+ window.__stSessionData.items_checked = checked.length;
+ window.__stSessionData.items_variance = varCnt;
+ const progEl = document.getElementById('stSessionProgress');
+ if(progEl) progEl.textContent = `${checked.length} / ${window.__stSessionData.items_total || 0} dikira · Locations: ${(window.__stSessionData.locations || []).join(', ')}`;
+ } catch(e){}
+ }).catch(()=>{});
+ }
  }
  } catch(e){}
  

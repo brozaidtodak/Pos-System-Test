@@ -1367,6 +1367,11 @@
  <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_stocktake" onclick="switchHub(['stockTakeSection'], 'Stock Take', this)">
  <i data-lucide="clipboard-check" style="width:16px; height:16px;"></i> <span data-i18n="sb_stock_take">Stock Take</span>
  </div>
+ <!-- p1_169 — Stock Check Sessions (Zack create, Kael/Fahmi fill, Zack review, Bos approve) -->
+ <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_check_sessions" onclick="switchHub(['checkSessionsSection'], 'Stock Check Sessions', this); if(typeof renderCheckSessions==='function') renderCheckSessions();">
+ <i data-lucide="layers" style="width:16px; height:16px;"></i> Stock Check Sessions
+ <span class="rail-badge" id="sidebarSessionBadge" style="display:none;">0</span>
+ </div>
  <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_picking" onclick="switchHub(['pickingSection'], 'Smart Picking', this)">
  <i data-lucide="route" style="width:16px; height:16px;"></i> <span data-i18n="sb_smart_picking">Smart Picking</span>
  </div>
@@ -2500,6 +2505,24 @@
  <option value="recent7">Recent (<7 hari)</option>
  </select>
  </div>
+ <!-- p1_168 — Location filter for session-based stock check -->
+ <div style="flex:1;">
+ <label class="small-lbl">Lokasi</label>
+ <select id="auditLocationFilter" onchange="renderAuditCards()" class="login-input" style="margin:0;">
+ <option value="all">Semua Lokasi</option>
+ </select>
+ </div>
+ </div>
+ <!-- p1_168 — Active session banner -->
+ <div id="stSessionBanner" style="display:none; padding:12px 14px; background:linear-gradient(135deg, #FEF3C7 0%, #FED7AA 100%); border:1px solid #FCD34D; border-radius:8px; margin-bottom:14px; align-items:center; gap:12px; justify-content:space-between; flex-wrap:wrap;">
+ <div>
+ <div style="font-size:11px; color:#92400E; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:2px;"><i data-lucide="layers" style="width:11px; height:11px; vertical-align:-1px;"></i> Sesi Aktif</div>
+ <div id="stSessionName" style="font-size:14px; font-weight:700; color:#7C2D12;">—</div>
+ <div id="stSessionProgress" style="font-size:11.5px; color:#92400E; margin-top:2px;">— / —</div>
+ </div>
+ <div style="display:flex; gap:6px;">
+ <button onclick="window.__stExitSession()" class="sy-btn secondary" style="font-size:11px;"><i data-lucide="log-out" style="width:11px; height:11px;"></i> Keluar Sesi</button>
+ </div>
  </div>
 
  <div id="auditCardsContainer" style="display:flex; flex-direction:column; gap:15px;">
@@ -2707,6 +2730,58 @@
  </div>
  </div>
  <div id="fpBelowList" style="margin-top:14px;"></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- ============================================== -->
+ <!-- p1_167-169 — STOCK CHECK SESSIONS (Zack create → Kael/Fahmi fill → Zack review → Bos) -->
+ <!-- ============================================== -->
+ <div id="checkSessionsSection" class="tab-section" style="display:none;">
+ <div class="rp-wrap">
+ <div class="rp-header">
+ <div>
+ <h2 class="rp-title"><i data-lucide="layers" style="width:22px; height:22px; color:var(--primary);"></i> Stock Check Sessions</h2>
+ <p class="rp-subtitle">Sesi kira stok per location. Zack create → Kael+Fahmi kira → Zack review → Bos approve.</p>
+ </div>
+ <button class="rp-manual-save" onclick="window.__scsOpenCreate()" id="scsCreateBtn"><i data-lucide="plus" style="width:13px;height:13px;"></i> Sesi Baharu</button>
+ </div>
+ <!-- Stats row -->
+ <div id="scsStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+ <!-- Status filter tabs -->
+ <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+ <button class="rm-pill rm-pill--active" data-scs-filter="all" onclick="window.__scsSetFilter('all', this)">Semua</button>
+ <button class="rm-pill" data-scs-filter="active" onclick="window.__scsSetFilter('active', this)">Aktif</button>
+ <button class="rm-pill" data-scs-filter="review" onclick="window.__scsSetFilter('review', this)">Menunggu Review</button>
+ <button class="rm-pill" data-scs-filter="forwarded" onclick="window.__scsSetFilter('forwarded', this)">Bos Acknowledged</button>
+ <button class="rm-pill" data-scs-filter="approved" onclick="window.__scsSetFilter('approved', this)">Approved</button>
+ </div>
+ <div id="scsList"><p style="color:#9CA3AF; padding:40px; text-align:center;">Memuatkan…</p></div>
+ </div>
+ </div>
+
+ <!-- Create session modal -->
+ <div id="scsCreateModal" class="login-overlay" style="display:none; z-index:3700;">
+ <div class="login-box" style="max-width:560px; padding:28px; max-height:85vh; overflow-y:auto;">
+ <button onclick="document.getElementById('scsCreateModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
+ <h2 style="font-weight:800; font-size:20px; margin-bottom:6px;">Sesi Stock Check Baharu</h2>
+ <p style="color:#6B7280; font-size:12.5px; margin-bottom:18px;">Pilih location nak kira. System auto-include semua SKU dalam location terpilih.</p>
+ <label class="small-lbl">Nama Sesi *</label>
+ <input type="text" id="scsName" class="cp-input" placeholder="Cth: Stock Check Week 23 Jun 2026" maxlength="120">
+ <label class="small-lbl" style="margin-top:14px;">Locations (pilih satu atau lebih)</label>
+ <div id="scsLocationList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 14px; max-height:280px; overflow-y:auto; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
+ <p style="color:#9CA3AF; font-size:12px; padding:20px; text-align:center; grid-column:1/-1;">Memuatkan locations…</p>
+ </div>
+ <label class="small-lbl">Staff Assigned (pilih siapa kira)</label>
+ <div id="scsAssignList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 14px; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
+ <p style="color:#9CA3AF; font-size:12px; padding:20px; text-align:center; grid-column:1/-1;">Memuatkan staff…</p>
+ </div>
+ <div id="scsPreview" style="background:#F0F9FF; border:1px solid #BAE6FD; padding:12px; border-radius:8px; margin-bottom:14px; font-size:12.5px; color:#075985;">
+ <strong>Preview:</strong> Pilih location dulu untuk papar jumlah SKU.
+ </div>
+ <div style="display:flex; gap:8px;">
+ <button onclick="document.getElementById('scsCreateModal').style.display='none'" class="btn btn--secondary" style="flex:1;">Batal</button>
+ <button onclick="window.__scsConfirmCreate()" class="btn btn--primary" style="flex:2;"><i data-lucide="play-circle" style="width:13px; height:13px;"></i> Mulakan Sesi</button>
  </div>
  </div>
  </div>
@@ -6094,7 +6169,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (166/166 · last 2026-06-04) — Hero editorial channels + pricing color psychology (premium dark + green Jimat)',
+ { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (169/169 · last 2026-06-04) — Stock Check Sessions workflow (Zack → Kael/Fahmi → Zack → Bos) digitized',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -6169,6 +6244,9 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_169', label:'Stock Check Sessions p3/3: create flow + Stock Take session integration + auto-summary. (1) Sidebar entry "Stock Check Sessions" dalam Inventory group (layers icon). New tab inv_check_sessions routed to inv rail. (2) Section: header dengan "Sesi Baharu" button + 4 stat cards (Aktif amber / Menunggu Review biru / Bos Inbox indigo / Approved hijau) + 5 filter pills + sessions list (cards dengan name + status badge + locations + assignees + progress bar gradient + variance alert kalau ada + action buttons per status: Buka & Kira / Submit ke Review / Forward ke Bos / Approve). (3) Create modal: name input + locations checkbox grid (auto-populate from distinct location_bin counts, sort by SKU count DESC) + assigned staff checkbox grid (filter authUsers role inventory/mgmt) + live Preview "X locations dipilih · Y SKU akan included". On confirm: INSERT session row + bulk INSERT items (batched 500 untuk avoid Supabase row limit) + UPDATE items_total. (4) Auto-summary generator (__scsAutoSummary): walk items by status, group by location, top 10 variance items sort by abs(variance), produce text block "Stock Check Session Summary / Total SKU / Items checked / Variance / Top variance: [list]" untuk Zack copy-paste atau forward. (5) Stock Take section gain: Location dropdown filter (auto-populated dari distinct masterProducts.location_bin) + active session banner (amber gradient bg: "SESI AKTIF" pill + name + progress "X/Y dikira" + locations + "Keluar Sesi" button). Banner detection via window.__stSessionData populated by __stHydrateActiveSession boot fetch (localStorage scsActiveSession_v1 → fetch session row). Auto-restrict masterProducts.filter ke session.locations bila active. (6) submitAuditSingle integration: bila session active, juga UPDATE stock_check_session_items dengan counted_qty + variance + counted_by + counted_at, lepas tu fetch all items + compute checked count + variance count, UPDATE session row + sync window.__stSessionData + update banner progress. (7) Pre-work: bulk-update products_master.location_bin dari CSV WEEKLY 2026 Checkform sheet (Zaid Drive) — 582 SKUs normalized (I/IR/i/Ir → "Inventory Room", 1 → "Floor 1", T → "Top Floor", B → "Basement", G → "Ground Floor", combinations preserved). Coverage: 582/963. (8) Effect esok pagi: Zack login → klik "Sesi Baharu" → name "Stock Check Week 23" + tick "Inventory Room" + "Floor 1" → assign Kael+Fahmi → "Mulakan Sesi" → 471 SKUs loaded. Kael open Stock Check Sessions → klik "Buka & Kira" → Stock Take auto-filter ke session locations + banner papar progress. Kael scroll cards, type qty, Enter advance. Bila siap, Zack klik "Submit ke Review" → auto-summary generated + status flip review. Zack review, klik "Forward ke Bos" → status forwarded + Bos sees in inbox. Bump app.js v270→v271. ROADMAP_DATA 168→169.', d:'done' },
+ { id:'p1_168', label:'Stock Check Sessions p2/3: Stock Take section enhancements. (1) New Location filter dropdown beside Velocity + Audit filter — auto-populated from distinct products_master.location_bin values (sort A-Z, default "Semua Lokasi"). Filter logic skip products dengan location_bin tak match. (2) Active session banner — amber gradient (FEF3C7 → FED7AA) panel atas Stock Take cards. Papar "SESI AKTIF" label + session name strong + progress "X / Y dikira · Locations: [...]" + "Keluar Sesi" button. Display:flex toggle based on window.__stSessionData. (3) Stock Take card filter restrict — bila window.__stSessionData ada, masterProducts.filter additional check: only include products where location_bin dalam session.locations array. Combined dengan all other filters (search/velocity/audit timestamp/manual location). (4) __stExitSession handler — clear window.__stSessionData + localStorage scsActiveSession_v1 + re-render. Bila keluar, Stock Take revert ke mod penuh (semua SKU). (5) Auto-populate location dropdown once-on-render via window.__stLocPopulated flag (avoid re-populate every search keystroke). Production: 582 SKUs ada location_bin (Inventory Room 338, Floor 1 133, Top Floor 49, Basement 34). Coverage 60% — sufficient untuk MVP. ROADMAP_DATA 167→168.', d:'done' },
+ { id:'p1_167', label:'Stock Check Sessions p1/3: SQL schema. (1) stock_check_sessions table: id BIGSERIAL PK + name TEXT + locations TEXT[] + assigned_to TEXT[] + created_by_id/name + status TEXT default "active" (active/review/forwarded/approved/rejected) + items_total/checked/variance INT counters + rm_variance NUMERIC + summary_text + review_notes + reviewer_id/name/at + bos_action/seen_at + created_at + completed_at + forwarded_at + approved_at. Index status+created_at DESC. (2) stock_check_session_items table: id BIGSERIAL PK + session_id BIGINT FK CASCADE + sku TEXT + product_name + location_bin + system_qty INT + counted_qty INT + variance INT + flag TEXT (e.g. not_found/damaged/uncertain) + note TEXT + counted_by_id/name + counted_at TIMESTAMPTZ. UNIQUE constraint on (session_id, sku) for upsert idempotent. Indexes session_id+location_bin + partial unchecked (counted_qty IS NULL). RLS both tables: authenticated FULL CRUD + service_role catch-all. Workflow rationale: separate items table allows atomic per-SKU updates without locking session row + session counters denormalized for fast list rendering. ROADMAP_DATA 166→167.', d:'done' },
  { id:'p1_166', label:'Hero channels + pricing color psychology (Zaid: hero pill buttons + main red pricing tak best; "guna ilmu psikologi warna yang orang nak beli"). (1) Hero "Beli kami di" buttons (Shopee orange / TikTok hitam / WhatsApp hijau chunky pills) replaced dengan editorial text-link row: "Beli kami di" white-60% label + 3 inline channel links (icon + brand name) white-92% default + " · " separator white-30%. Hover: underline 1.5px offset 4px + brand tint (Shopee #FF7849 brighter for dark bg / TikTok pure white / WA #4ADE80 fresher green for hero). Mobile responsive 13px + gap 10px. Same minimal philosophy as product card editorial row. (2) Pricing color psychology rebuild — premium retail research: GREEN savings ("Jimat") = positive reinforcement (customer feels they gained), avoid aggressive red (cheap/discount-store association, signals "danger"), use DARK INK (#0F172A) for price (premium quality association like Allbirds, Patagonia, Apple). Apply: (a) lp-product-card sale price #0F172A dark ink (was #EF4444 red) 19px weight 800; was-price #94A3B8 subtle gray 1px line-through; --off span swapped from "-10%" red pill ke "Jimat RM 8.70" green text #059669 with "Jimat" prefix via CSS ::before content. (b) PDP modal price 30px dark ink, was-price 17px subtle, .lp-pdp__discount swap dari red badge ke green Jimat text. (c) Cashier product-card same scheme (style.css). (d) Corner promo badge dark ink (#0F172A) instead of red — premium "limited" feel, not cheap. (3) Render change: price--off now displays compareAt minus price RM amount (e.g. RM 8.70) instead of percentage. Customer membaca "Jimat RM 8.70" = direct value perception, lebih kuat psychology dari abstract "-10%". (4) PDP discount sama swap. Cashier juga. (5) Effect: card feels editorial premium (Allbirds vibe), sale visualization positive (green = save, gain), bukan aggressive (red = danger, discount). Lebih appropriate untuk premium camping brand vs supermarket sale. Bump app.js v269→v270, design-tokens.css v58→v59, style.css v38→v39. ROADMAP_DATA 165→166.', d:'done' },
  { id:'p1_165', label:'Marketplace funnel round 3 — editorial style per Zaid competitor screenshot (BLACKDOG cooler box product card showing "or 3 payments of RM99.67 with atome" + "Get Cashback when you pay with SHOPBACK Learn more" — minimalist text + inline brand marks, NO buttons/boxes). Drop badges entirely. Direction: text-based lines, brand names as plain underline-on-hover links, subtle Lucide icons inline. (1) Product card row: "Beli di" plain label 12px neutral-500 + 3 inline links (shopping-bag icon + "Shopee" / music-2 + "TikTok" / message-circle + "WhatsApp") font 12px weight 600 default color #6B7280. Hover: text-decoration underline 1.5px thickness offset 3px + color tukar ke brand color (Shopee #EE4D2D / TikTok #111827 / WA #1DA851). No border-top, no padding, no separators — feels like inline metadata. (2) PDP modal redesigned: 3 sentence lines stacked vertical 8px gap, each macam "[icon] Beli SKU BD005 di [Shopee] — free shipping voucher" dengan brand name jadi link (default color #111827 dark, underline on hover, color brand on hover). Tag suffix "— free shipping voucher" / "Mega Sale promo" / "stok / custom order" dalam neutral 13px lighter. Hover: underline + brand color. Walk-in footnote tetap kecil, plain text dengan map-pin icon. (3) Effect: card looks like editorial product page (Allbirds, Patagonia style) — clean type, brand recognition via icon + name, hover affordance via underline. PDP feels like a "Also available at" section in magazine. Drops aggressive visual weight. (4) lpUpdateCardForVariant + revert paths semua updated dengan text-link markup. Bump app.js v268→v269, design-tokens.css v57→v58. ROADMAP_DATA 164→165.', d:'done' },
  { id:'p1_164', label:'Marketplace funnel rebuild round 2 (Zaid: "audit lagi, tarik dari Canva ke, sumpah buruk" — p1_163 outline buttons masih chunky competing-blocks). Drop button-row approach entirely. Direction: minimalist + premium feel. (1) Product card — single horizontal row: "BELI DI" label uppercase 9.5px letter-spacing 0.8px neutral-400 + 3 tiny circle badges 30px diameter dengan brand-tinted bg (rgba 10% opacity) + brand-colored icon (14px stroke 2.4). Hover: scale 1.12 + bg fills brand color + icon turns white + soft brand-tinted shadow. Border-top 1px separator dari price. label uses margin-right:auto supaya push badges ke kanan. Result: minimalist row yang tak compete dengan product info. (2) PDP modal — premium stacked horizontal channel cards: "BELI {SKU} DI" header uppercase letter-spacing 1px, lalu .lp-pdp__buy-list flex-column gap 8px dengan 3 row items. Setiap row: 38px circle icon (brand-tinted bg, brand icon 18px) + flex text column (strong 14px brand name + 11.5px subtext tagline) + arrow-right chevron kanan. Default bg #FAFAFA dengan border #F3F4F6 subtle. Hover: translateX(+2px) + bg #FFFFFF + border #E5E7EB + soft shadow + icon-circle fills brand color. Chevron juga translateX(+2px) untuk arrow-momentum feel. Taglines: Shopee "Cari SKU automatik · Free shipping voucher", TikTok "Live stream promo · voucher Mega Sale", WhatsApp "Tanya stok · cadangan · custom order". (3) Walk-in footnote consistent: #FAFAFA bg, map-pin icon, "Atau singgah Kedai 10 CAMP Cyberjaya · Mon-Sat 10am-9pm". (4) Variant swap (lpUpdateCardForVariant) + sold-out revert paths semua updated dengan new HTML structure + lucide.createIcons calls. Bump app.js v267→v268, design-tokens.css v56→v57. ROADMAP_DATA 163→164.', d:'done' },
@@ -10796,7 +10874,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=270"></script>
+ <script src="app.js?v=271"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
