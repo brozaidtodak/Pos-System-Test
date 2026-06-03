@@ -8280,15 +8280,31 @@ window.lpSelectVariant = function(cardId, sku, btn) {
         if (parsed.variantName) { labelEl.textContent = parsed.variantName; labelEl.style.display = ''; }
         else { labelEl.style.display = 'none'; }
     }
-    const addBtn = card.querySelector('[data-role="add-btn"]');
-    if (addBtn) {
-        addBtn.dataset.sku = sku;
-        const myBatches = (typeof inventoryBatches !== 'undefined') ? inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0) : [];
-        const totalStock = myBatches.reduce((s, b) => s + b.qty_remaining, 0);
-        const soldOutLbl = (window.t ? window.t('lp_card_soldout') : 'Sold Out');
-        const addLbl = (window.t ? window.t('lp_card_add') : 'Add to Cart');
-        if (totalStock <= 0) { addBtn.disabled = true; addBtn.textContent = soldOutLbl; }
-        else { addBtn.disabled = false; addBtn.textContent = addLbl; }
+    // p1_160 — buy row replaces single Add to Cart button (no checkout flow on landing)
+    const buyRow = card.querySelector('.lp-product-card__buy');
+    const soldOutLbl = (window.t ? window.t('lp_card_soldout') : 'Sold Out');
+    const myBatches = (typeof inventoryBatches !== 'undefined') ? inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0) : [];
+    const totalStock = myBatches.reduce((s, b) => s + b.qty_remaining, 0);
+    if (totalStock <= 0) {
+        // Replace buy row with sold-out button
+        const oldBuyRow = card.querySelector('.lp-product-card__buy, [data-role="add-btn"]');
+        if (oldBuyRow) oldBuyRow.outerHTML = `<button class="lp-product-card__btn" data-role="add-btn" disabled>${soldOutLbl}</button>`;
+    } else if (buyRow) {
+        const waMsg = encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (parsed.title || sku) + ' (SKU ' + sku + ')');
+        buyRow.innerHTML = `<a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee">Shopee</a>
+            <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok">TikTok</a>
+            <a href="https://wa.me/601133109547?text=${waMsg}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa">WhatsApp</a>`;
+    } else {
+        // Card didn't have buy row (e.g. previously sold-out), inject one
+        const oldAddBtn = card.querySelector('[data-role="add-btn"]');
+        if (oldAddBtn) {
+            const waMsg = encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (parsed.title || sku) + ' (SKU ' + sku + ')');
+            oldAddBtn.outerHTML = `<div class="lp-product-card__buy">
+                <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee">Shopee</a>
+                <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok">TikTok</a>
+                <a href="https://wa.me/601133109547?text=${waMsg}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa">WhatsApp</a>
+            </div>`;
+        }
     }
 };
 
@@ -8456,14 +8472,19 @@ window.lpRenderPdp = function() {
             ${variantsHtml ? `<div class="lp-pdp__section"><h4 class="lp-pdp__section-title">Options (${state.variants.length})</h4><div class="lp-pdp__variants">${variantsHtml}</div></div>` : ''}
             ${descHtml}
             ${specsHtml}
-            <div class="lp-pdp__cta-row">
-                <div class="lp-pdp__qty">
-                    <button type="button" onclick="window.lpPdpQty(-1)" ${state.qty <= 1 ? 'disabled' : ''}>−</button>
-                    <input type="number" id="lpPdpQtyInput" value="${state.qty}" min="1" max="${Math.max(1, totalStock)}" onchange="window.lpPdpQtySet(this.value)">
-                    <button type="button" onclick="window.lpPdpQty(1)" ${state.qty >= totalStock ? 'disabled' : ''}>+</button>
-                </div>
-                <button class="lp-pdp__cta" onclick="window.lpPdpAddToCart()" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? 'Sold Out' : 'Add to Cart'}</button>
-            </div>
+            <!-- p1_160 — replaced single Add to Cart with marketplace funnel (no checkout on landing) -->
+            ${totalStock <= 0
+                ? `<div class="lp-pdp__cta-row"><button class="lp-pdp__cta" disabled>Sold Out</button></div>`
+                : `<div class="lp-pdp__buy-row">
+                    <div style="font-size:13px; color:#374151; margin-bottom:10px; font-weight:600;">Beli stok ini di:</div>
+                    <div class="lp-pdp__buy-grid">
+                        <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" class="lp-pdp__buy-btn lp-pdp__buy-btn--shopee"><strong>Shopee</strong><span>Free shipping</span></a>
+                        <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-pdp__buy-btn lp-pdp__buy-btn--tiktok"><strong>TikTok Shop</strong><span>Voucher promo</span></a>
+                        <a href="https://wa.me/601133109547?text=${encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (current.name || '') + ' (SKU ' + current.sku + ')')}" target="_blank" rel="noopener" class="lp-pdp__buy-btn lp-pdp__buy-btn--wa"><strong>WhatsApp</strong><span>Tanya kedai</span></a>
+                    </div>
+                    <div style="font-size:12px; color:#6B7280; margin-top:12px; padding:10px; background:#F9FAFB; border-radius:8px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:-1px;"></i> Atau singgah <strong>Kedai 10 CAMP Cyberjaya</strong> · Mon-Sat 10am-9pm</div>
+                </div>`
+            }
         </div>
     `;
 };
@@ -8673,7 +8694,15 @@ function renderPublicStorefront() {
                     <p class="lp-product-card__variant" data-role="variant-label" style="${parsed.variantName ? '' : 'display:none'}">${parsed.variantName || ''}</p>
                     <p class="lp-product-card__price" data-role="price">${onSale ? `<span class="lp-product-card__price--sale">${fmt(price)}</span><span class="lp-product-card__price--was">${fmt(compareAt)}</span><span class="lp-product-card__price--off">-${off}%</span>` : fmt(price)}</p>
                     ${chipsHtml}
-                    <button class="lp-product-card__btn" data-role="add-btn" data-sku="${skuEsc}" onclick="addToPublicCart(this.dataset.sku)" ${totalStock <= 0 ? 'disabled' : ''}>${totalStock <= 0 ? soldOutLabel : (window.t ? window.t('lp_card_add') : 'Add to Cart')}</button>
+                    <!-- p1_160 — replaced "Add to Cart" (no checkout flow on landing) with marketplace funnel buttons -->
+                    ${totalStock <= 0
+                        ? `<button class="lp-product-card__btn" data-role="add-btn" disabled>${soldOutLabel}</button>`
+                        : `<div class="lp-product-card__buy">
+                            <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee">Shopee</a>
+                            <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok">TikTok</a>
+                            <a href="https://wa.me/601133109547?text=${encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (parsed.title || skuEsc) + ' (SKU ' + skuEsc + ')')}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa">WhatsApp</a>
+                        </div>`
+                    }
                 </div>
             </div>
         `;

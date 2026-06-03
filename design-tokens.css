@@ -826,6 +826,15 @@
 .lp-variant-more:hover { background: #FFEDD5; border-color: var(--primary-500); }
 /* p1_51: button always at bottom regardless of body content height */
 .lp-product-card__btn { width: 100%; padding: 10px; background: #111827; color: #FFF; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.15s; margin-top: auto; }
+/* p1_160 — marketplace funnel buttons (no checkout on landing) */
+.lp-product-card__buy { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: auto; }
+.lp-product-card__buy-btn { display: flex; align-items: center; justify-content: center; padding: 8px 4px; border-radius: 8px; font-size: 11.5px; font-weight: 800; text-decoration: none; color: #FFF; transition: 0.15s; letter-spacing: 0.3px; text-align: center; }
+.lp-product-card__buy-btn--shopee { background: #EE4D2D; }
+.lp-product-card__buy-btn--shopee:hover { background: #D9381F; }
+.lp-product-card__buy-btn--tiktok { background: #111827; }
+.lp-product-card__buy-btn--tiktok:hover { background: #25282F; }
+.lp-product-card__buy-btn--wa { background: #25D366; }
+.lp-product-card__buy-btn--wa:hover { background: #1DA851; }
 .lp-product-card__btn:hover { background: var(--primary-600); }
 .lp-product-card__btn:disabled { background: #D1D5DB; cursor: not-allowed; color: #6B7280; }
 /* p1_51: clickable card surfaces (media + name) open the customer PDP */
@@ -882,6 +891,18 @@
 .lp-pdp__qty input { width: 46px; height: 40px; border: none; text-align: center; font-size: 14px; font-weight: 700; outline: none; -moz-appearance: textfield; }
 .lp-pdp__qty input::-webkit-outer-spin-button, .lp-pdp__qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .lp-pdp__cta { flex: 1; padding: 14px; background: #111827; color: #FFF; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.15s; }
+/* p1_160 — PDP marketplace funnel (no checkout on landing) */
+.lp-pdp__buy-row { margin-top: auto; padding-top: 14px; border-top: 1px solid #F3F4F6; }
+.lp-pdp__buy-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.lp-pdp__buy-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 6px; border-radius: 10px; text-decoration: none; color: #FFF; transition: 0.15s; gap: 2px; min-height: 64px; }
+.lp-pdp__buy-btn strong { font-size: 13.5px; font-weight: 800; letter-spacing: 0.3px; }
+.lp-pdp__buy-btn span { font-size: 10.5px; font-weight: 500; opacity: 0.85; }
+.lp-pdp__buy-btn--shopee { background: #EE4D2D; }
+.lp-pdp__buy-btn--shopee:hover { background: #D9381F; }
+.lp-pdp__buy-btn--tiktok { background: #111827; }
+.lp-pdp__buy-btn--tiktok:hover { background: #25282F; }
+.lp-pdp__buy-btn--wa { background: #25D366; }
+.lp-pdp__buy-btn--wa:hover { background: #1DA851; }
 .lp-pdp__cta:hover:not(:disabled) { background: var(--primary-600); }
 .lp-pdp__cta:disabled { background: #D1D5DB; color: #6B7280; cursor: not-allowed; }
 
