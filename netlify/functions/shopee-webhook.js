@@ -148,6 +148,27 @@ exports.handler = async (event) => {
     const rawBody = event.body || '';
     const authHeader = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
 
+    // Shopee Push Mechanism URL verification (code=0): echo the verify message back.
+    // Shopee sends {"code":0,"data":{"verify_info":"..."}} when admin clicks "Verify" on
+    // the Push Mechanism page. The expected response is the same JSON echoed back with
+    // 2xx status — no signature check on either side. Without this branch the regular
+    // HMAC verify rejects the ping and Push setup never enables.
+    try {
+        const probe = JSON.parse(rawBody || '{}');
+        if (probe && probe.code === 0 && probe.data && typeof probe.data.verify_info === 'string') {
+            await logEvent({
+                source: 'webhook', mode: 'import', environment: ENV,
+                raw_response: { note: 'verify_info echoed for Push setup', verify_info: probe.data.verify_info },
+                duration_ms: Date.now() - startMs
+            });
+            return {
+                statusCode: 200,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: 0, data: { verify_info: probe.data.verify_info } })
+            };
+        }
+    } catch (_) { /* fall through to normal sign verify */ }
+
     // 1. Verify signature (uses SHOPEE_PUSH_KEY; skips check if env not set)
     const verifyResult = verifyWebhookSign(WEBHOOK_URL, rawBody, authHeader);
     if (!verifyResult.ok) {
