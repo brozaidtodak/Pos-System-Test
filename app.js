@@ -4407,6 +4407,9 @@ function switchHub(sectionIds, title, btnElement) {
 
  if(sectionIds.includes('mgmtPlaceholders')) renderMgmtPlaceholders();
  if(sectionIds.includes('rosterSection')) renderStaffSchedule();
+ // p1_179 — Product Master section explicit render (was relying on DOMContentLoaded
+ // click listener with 100ms setTimeout; Zaid reported white screen).
+ if(sectionIds.includes('databaseSection') && typeof renderProductDatabase === 'function') renderProductDatabase();
 }
 window.switchHub = switchHub;
 
@@ -20059,7 +20062,7 @@ window.I18N = {
  sb_check_history: { bm: 'Stock Check History', en: 'Stock Check History' },
  sb_pesanan_online: { bm: 'Pesanan Online', en: 'Online Orders' },
  sb_jadual_operasi: { bm: 'Jadual Operasi', en: 'Operations Schedule' },
- sb_browse_products: { bm: 'Senarai Produk', en: 'Browse Products' },
+ sb_browse_products: { bm: 'Product Master', en: 'Product Master' },
  sb_purchase_orders: { bm: 'Pesanan Belian', en: 'Purchase Orders' },
  sb_warehouse_hub: { bm: 'Pusat Gudang', en: 'Warehouse Hub' },
  sb_stock_take: { bm: 'Kiraan Stok', en: 'Stock Take' },
@@ -20273,7 +20276,7 @@ window.I18N = {
  bc_preview_empty: { bm: 'Prebiu label akan dipaparkan di sini.', en: 'Label preview will appear here.' },
 
  // Browse Products (Product Database)
- db_title: { bm: 'Pangkalan Data Produk', en: 'Product Database' },
+ db_title: { bm: 'Product Master', en: 'Product Master' },
  db_products_word: { bm: 'produk', en: 'products' },
  db_live_word: { bm: 'aktif', en: 'live' },
  db_draft_word: { bm: 'draf', en: 'draft' },
