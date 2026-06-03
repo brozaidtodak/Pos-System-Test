@@ -5187,6 +5187,21 @@ window.renderAuditCards = function() {
 // Global variable to keep track of audit timestamps per SKU
 let auditTimestamps = {};
 
+// p1_155 — Boot hydrate auditTimestamps from products_master.last_audited_at (was in-memory only,
+// lost on every refresh). Now cross-device + historical (jan 2026 import via Sheet seeded 607 SKUs).
+window.__hydrateAuditTimestamps = async function() {
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ const { data, error } = await db.from('products_master').select('sku,last_audited_at').not('last_audited_at', 'is', null).limit(5000);
+ if(error) throw error;
+ (data || []).forEach(r => { if(r.sku && r.last_audited_at) auditTimestamps[r.sku] = r.last_audited_at; });
+ if(typeof renderStockTake === 'function' && document.getElementById('stockTakeSection')?.style.display !== 'none') {
+ renderStockTake();
+ }
+ } catch(e) { /* silent */ }
+};
+setTimeout(() => { if(typeof window.__hydrateAuditTimestamps === 'function') window.__hydrateAuditTimestamps(); }, 3000);
+
 // p1_152 — Express Mode: persist toggle in localStorage (default: express ON for staff speed).
 window.__stExpress = (function(){
  try {
@@ -5659,9 +5674,24 @@ window.submitAuditSingle = function(sku) {
  return;
  }
  
- // Save timestamp
+ // Save timestamp (ISO format for accurate age compute)
  let today = new Date();
- auditTimestamps[sku] = today.toLocaleString('en-MY', { weekday:'short', day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
+ auditTimestamps[sku] = today.toISOString();
+ // p1_155 — persist to Supabase products_master so cross-device + survives refresh
+ try {
+ if(typeof db !== 'undefined' && db) {
+ const qty = parseInt(fizDom.value, 10);
+ const sysQtyEl = document.getElementById('sysQty-' + sku);
+ const sysQty = sysQtyEl ? parseInt(sysQtyEl.textContent, 10) : null;
+ const u = window.currentUser || {};
+ db.from('products_master').update({
+ last_audited_at: today.toISOString(),
+ last_audited_by: (u.name || 'Unknown') + ' (' + (u.staff_id || '?') + ')',
+ last_audited_qty: isNaN(qty) ? null : qty,
+ last_audited_system_qty: isNaN(sysQty) ? null : sysQty
+ }).eq('sku', sku).then(()=>{}).catch(()=>{});
+ }
+ } catch(e){}
  
  // Refresh that component
  let stampWrap = document.getElementById("stampWrapper-"+sku);
