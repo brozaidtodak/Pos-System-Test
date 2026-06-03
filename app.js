@@ -502,6 +502,8 @@ let moyySettings = {
  commRate: 5
 };
 
+// p1_144 — staffProfiles now Supabase-backed (was hardcoded literal — leave balance reset on refresh).
+// Boot hydrates from Supabase; mutations persisted via window.staffProfileSync().
 let staffProfiles = [
  { name: "Aliff", leave_balance: 14 },
  { name: "Farhan Moyy", leave_balance: 14 },
@@ -511,6 +513,41 @@ let staffProfiles = [
  { name: "Tarmizi", leave_balance: 8 },
  { name: "Fahmi", leave_balance: 8 }
 ];
+
+// p1_144 — persist single profile to Supabase (call after every leave_balance mutation)
+window.staffProfileSync = async function(profile) {
+ try {
+ if(!profile || typeof db === 'undefined' || !db) return;
+ await db.from('staff_profiles').upsert({
+ name: profile.name,
+ leave_balance: Number(profile.leave_balance) || 0,
+ updated_at: new Date().toISOString()
+ }, { onConflict: 'name' });
+ } catch(e) { console.warn('staff_profile sync failed:', e.message); }
+};
+
+// p1_144 — boot hydrate (Supabase is source-of-truth; overrides hardcoded defaults).
+window.staffProfilesHydrate = async function() {
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ const { data, error } = await db.from('staff_profiles').select('name,leave_balance');
+ if(error) throw error;
+ if(!data || !data.length) return;
+ // Merge: remote values override local, but keep any local-only entries
+ const byName = {};
+ staffProfiles.forEach(p => { byName[p.name] = p; });
+ data.forEach(r => {
+ if(byName[r.name]) byName[r.name].leave_balance = Number(r.leave_balance) || 0;
+ else byName[r.name] = { name: r.name, leave_balance: Number(r.leave_balance) || 0 };
+ });
+ staffProfiles.length = 0;
+ Object.values(byName).forEach(p => staffProfiles.push(p));
+ // Re-render anything dependant
+ if(typeof window.renderLeaveBalance === 'function') try { window.renderLeaveBalance(); } catch(e){}
+ if(typeof window._hrcRender === 'function') try { window._hrcRender(); } catch(e){}
+ } catch(e) { console.warn('staffProfiles hydrate failed:', e.message); }
+};
+setTimeout(() => { if(typeof window.staffProfilesHydrate === 'function') window.staffProfilesHydrate(); }, 2000);
 
 let inventoryBatches = [];
 
@@ -9089,7 +9126,11 @@ document.getElementById("saveScheduleBtn")?.addEventListener('click', async () =
  let oldObj = staffSchedules[existingIndex];
  if(oldObj.shift === 'AL') {
  let profile = staffProfiles.find(p => p.name === name);
- if(profile) profile.leave_balance += 1;
+ if(profile) {
+ profile.leave_balance += 1;
+ // p1_144 — persist refund
+ if(typeof window.staffProfileSync === 'function') window.staffProfileSync(profile);
+ }
  }
  // Buang rekod lama (Overwrite)
  await db.from('roster_schedules').delete().eq('id', oldObj.id);
@@ -9102,7 +9143,11 @@ document.getElementById("saveScheduleBtn")?.addEventListener('click', async () =
  if(profile && profile.leave_balance <= 0) {
  if(!confirm(`Baki cuti (AL) ${name} telah habis! Teruskan potong baki negatif?`)) return;
  }
- if(profile) profile.leave_balance -= 1;
+ if(profile) {
+ profile.leave_balance -= 1;
+ // p1_144 — persist
+ if(typeof window.staffProfileSync === 'function') window.staffProfileSync(profile);
+ }
  }
 
  // MC logic
@@ -9632,15 +9677,21 @@ window.renderStaffSchedule = function() {
  let existingNames = staffProfiles.map(p => p.name);
  staffSchedules.forEach(s => {
  if(!existingNames.includes(s.staff_name)) {
- staffProfiles.push({ name: s.staff_name, leave_balance: 0 });
+ const np = { name: s.staff_name, leave_balance: 0 };
+ staffProfiles.push(np);
  existingNames.push(s.staff_name);
+ // p1_144 — persist auto-added profile
+ if(typeof window.staffProfileSync === 'function') window.staffProfileSync(np);
  }
  });
  // Fix: also from pendingSchedules so they appear in leave balances even if not approved yet
  pendingSchedules.forEach(s => {
  if(!existingNames.includes(s.staff_name)) {
- staffProfiles.push({ name: s.staff_name, leave_balance: 0 });
+ const np = { name: s.staff_name, leave_balance: 0 };
+ staffProfiles.push(np);
  existingNames.push(s.staff_name);
+ // p1_144 — persist
+ if(typeof window.staffProfileSync === 'function') window.staffProfileSync(np);
  }
  });
 
@@ -9925,7 +9976,11 @@ window.approveRequest = async function(id) {
  let oldSched = staffSchedules[existingIndex];
  if(oldSched.shift === 'AL') {
  let profile = staffProfiles.find(p => p.name === req.staff_name);
- if(profile) profile.leave_balance += 1;
+ if(profile) {
+ profile.leave_balance += 1;
+ // p1_144 — persist refund
+ if(typeof window.staffProfileSync === 'function') window.staffProfileSync(profile);
+ }
  }
  await db.from('roster_schedules').delete().eq('id', oldSched.id);
  staffSchedules.splice(existingIndex, 1);
@@ -9936,7 +9991,11 @@ window.approveRequest = async function(id) {
  if(profile && profile.leave_balance <= 0) {
  if(!confirm(`Baki AL pemohon habis! Teruskan meluluskan AL (baki jadi negatif)?`)) return;
  }
- if(profile) profile.leave_balance -= 1;
+ if(profile) {
+ profile.leave_balance -= 1;
+ // p1_144 — persist deduct
+ if(typeof window.staffProfileSync === 'function') window.staffProfileSync(profile);
+ }
  }
 
  let newSched = {
@@ -10188,6 +10247,66 @@ window.memoSaveAll = function(arr) {
  // both reflect the new memo state (submit/approve/reject/delete funnel through here).
  try { if(typeof window.__renderDashOverview === 'function') window.__renderDashOverview(); } catch(e){}
 };
+
+// p1_143 — Supabase sync helpers (cross-device memo visibility).
+// localStorage stays primary for speed/offline; Supabase is source-of-truth on boot.
+window.memoUpsertRemote = async function(memo) {
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ await db.from('memos').upsert({
+ id: memo.id,
+ department: memo.department || 'general',
+ title: memo.title,
+ body: memo.body,
+ pinned: !!memo.pinned,
+ status: memo.status || 'pending',
+ posted_by_id: memo.posted_by_id || null,
+ posted_by_name: memo.posted_by_name || null,
+ posted_at: memo.posted_at || new Date().toISOString(),
+ approved_by_name: memo.approved_by_name || null,
+ approved_at: memo.approved_at || null,
+ reject_reason: memo.reject_reason || null,
+ updated_at: new Date().toISOString()
+ }, { onConflict: 'id' });
+ } catch(e) { console.warn('memo sync to Supabase failed:', e.message); }
+};
+window.memoDeleteRemote = async function(id) {
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ await db.from('memos').delete().eq('id', id);
+ } catch(e) { console.warn('memo remote delete failed:', e.message); }
+};
+window.memoHydrateFromRemote = async function() {
+ // On boot: pull latest 200 memos from Supabase, merge into localStorage cache.
+ // If Supabase has memos newer than local OR not in local, take them.
+ try {
+ if(typeof db === 'undefined' || !db) return;
+ const { data, error } = await db.from('memos').select('*').order('posted_at', { ascending: false }).limit(200);
+ if(error) throw error;
+ const remote = data || [];
+ if(!remote.length) return;
+ const local = window.memoLoad();
+ const byId = {};
+ local.forEach(m => { byId[m.id] = m; });
+ // Remote wins on collision (it's the source of truth for cross-device sync)
+ remote.forEach(m => {
+ byId[m.id] = {
+ id: m.id, department: m.department, title: m.title, body: m.body,
+ pinned: m.pinned, status: m.status,
+ posted_by_id: m.posted_by_id, posted_by_name: m.posted_by_name,
+ posted_at: m.posted_at,
+ approved_by_name: m.approved_by_name, approved_at: m.approved_at,
+ reject_reason: m.reject_reason
+ };
+ });
+ const merged = Object.values(byId).sort((a, b) => (b.posted_at || '').localeCompare(a.posted_at || ''));
+ try { localStorage.setItem(window.MEMO_KEY, JSON.stringify(merged)); } catch(e){}
+ if(typeof window.renderMemoBoard === 'function') try { window.renderMemoBoard(); } catch(e){}
+ if(typeof window.refreshRailBadges === 'function') try { window.refreshRailBadges(); } catch(e){}
+ } catch(e) { console.warn('memo hydrate failed:', e.message); }
+};
+// Hydrate on boot after a short delay (lets auth/db settle first)
+setTimeout(() => { if(typeof window.memoHydrateFromRemote === 'function') window.memoHydrateFromRemote(); }, 2500);
 window.memoCurrentUser = function() {
  return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
 };
@@ -10238,6 +10357,8 @@ window.memoSubmit = function() {
  };
  memos.unshift(memo);
  window.memoSaveAll(memos);
+ // p1_143 — sync to Supabase for cross-device
+ if(typeof window.memoUpsertRemote === 'function') window.memoUpsertRemote(memo);
  window.memoCloseSubmit();
  if(typeof showToast === 'function') {
  showToast(isSuperior
@@ -10261,6 +10382,8 @@ window.memoApprove = function(id) {
  m.approved_at = new Date().toISOString();
  m.reject_reason = null;
  window.memoSaveAll(memos);
+ // p1_143 — sync to Supabase
+ if(typeof window.memoUpsertRemote === 'function') window.memoUpsertRemote(m);
  if(typeof showToast === 'function') showToast(' Memo approved: ' + m.title, 'success');
  window.renderMemoBoard();
  // Audit log (best-effort)
@@ -10306,6 +10429,8 @@ window.memoConfirmReject = function() {
  m.approved_at = new Date().toISOString();
  m.reject_reason = reason;
  window.memoSaveAll(memos);
+ // p1_143 — sync to Supabase
+ if(typeof window.memoUpsertRemote === 'function') window.memoUpsertRemote(m);
  window.memoCloseReject();
  if(typeof showToast === 'function') showToast('Memo rejected', 'success');
  window.renderMemoBoard();
@@ -10334,6 +10459,8 @@ window.memoDelete = function(id) {
  if(!confirm('Padam memo "' + m.title + '"?')) return;
  const filtered = memos.filter(x => x.id !== id);
  window.memoSaveAll(filtered);
+ // p1_143 — sync delete to Supabase
+ if(typeof window.memoDeleteRemote === 'function') window.memoDeleteRemote(id);
  if(typeof showToast === 'function') showToast('Memo dipadam', 'success');
  window.renderMemoBoard();
 };
