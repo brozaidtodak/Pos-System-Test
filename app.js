@@ -8331,9 +8331,9 @@ window.lpSelectVariant = function(cardId, sku, btn) {
         const waMsg = encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (parsed.title || sku) + ' (SKU ' + sku + ')');
         const skuParam = encodeURIComponent(sku);
         buyRow.innerHTML = `<span class="lp-product-card__buy-label">Beli di</span>
-            <a href="https://shopee.com.my/10camp.os?searchKeyword=${skuParam}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee" aria-label="Shopee" title="Cari ${sku} di Shopee 10 CAMP"><i data-lucide="shopping-bag"></i></a>
-            <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok" aria-label="TikTok Shop" title="Buka TikTok Shop 10 CAMP (cari ${sku})"><i data-lucide="music-2"></i></a>
-            <a href="https://wa.me/601133109547?text=${waMsg}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa" aria-label="WhatsApp" title="Tanya kedai via WhatsApp"><i data-lucide="message-circle"></i></a>`;
+            <a href="https://shopee.com.my/10camp.os?searchKeyword=${skuParam}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee" title="Cari ${sku} di Shopee 10 CAMP"><i data-lucide="shopping-bag"></i>Shopee</a>
+            <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok" title="Buka TikTok Shop 10 CAMP (cari ${sku})"><i data-lucide="music-2"></i>TikTok</a>
+            <a href="https://wa.me/601133109547?text=${waMsg}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa" title="Tanya kedai via WhatsApp"><i data-lucide="message-circle"></i>WhatsApp</a>`;
         if(window.lucide && lucide.createIcons) lucide.createIcons();
     } else {
         // Card didn't have buy row (e.g. previously sold-out), inject one
@@ -8343,9 +8343,9 @@ window.lpSelectVariant = function(cardId, sku, btn) {
             const skuParam = encodeURIComponent(sku);
             oldAddBtn.outerHTML = `<div class="lp-product-card__buy">
                 <span class="lp-product-card__buy-label">Beli di</span>
-                <a href="https://shopee.com.my/10camp.os?searchKeyword=${skuParam}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee" aria-label="Shopee"><i data-lucide="shopping-bag"></i></a>
-                <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok" aria-label="TikTok"><i data-lucide="music-2"></i></a>
-                <a href="https://wa.me/601133109547?text=${waMsg}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa" aria-label="WhatsApp"><i data-lucide="message-circle"></i></a>
+                <a href="https://shopee.com.my/10camp.os?searchKeyword=${skuParam}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee"><i data-lucide="shopping-bag"></i>Shopee</a>
+                <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok"><i data-lucide="music-2"></i>TikTok</a>
+                <a href="https://wa.me/601133109547?text=${waMsg}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa"><i data-lucide="message-circle"></i>WhatsApp</a>
             </div>`;
             if(window.lucide && lucide.createIcons) lucide.createIcons();
         }
@@ -8516,27 +8516,14 @@ window.lpRenderPdp = function() {
             ${variantsHtml ? `<div class="lp-pdp__section"><h4 class="lp-pdp__section-title">Options (${state.variants.length})</h4><div class="lp-pdp__variants">${variantsHtml}</div></div>` : ''}
             ${descHtml}
             ${specsHtml}
-            <!-- p1_164 — PDP rebuild: horizontal stacked channel cards (premium minimalist). -->
+            <!-- p1_165 — Editorial style: text lines with inline brand links (competitor reference). -->
             ${totalStock <= 0
                 ? `<div class="lp-pdp__cta-row"><button class="lp-pdp__cta" disabled>Sold Out</button></div>`
                 : `<div class="lp-pdp__buy-row">
-                    <span class="lp-pdp__buy-label">Beli ${current.sku} di</span>
                     <div class="lp-pdp__buy-list">
-                        <a href="https://shopee.com.my/10camp.os?searchKeyword=${encodeURIComponent(current.sku)}" target="_blank" rel="noopener" class="lp-pdp__buy-row-item lp-pdp__buy-row-item--shopee" title="Cari ${current.sku} di Shopee 10 CAMP">
-                            <span class="lp-pdp__buy-icon"><i data-lucide="shopping-bag"></i></span>
-                            <span class="lp-pdp__buy-text"><strong>Shopee</strong><span>Cari SKU automatik · Free shipping voucher</span></span>
-                            <span class="lp-pdp__buy-chev"><i data-lucide="arrow-right"></i></span>
-                        </a>
-                        <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-pdp__buy-row-item lp-pdp__buy-row-item--tiktok" title="Buka TikTok Shop (cari ${current.sku})">
-                            <span class="lp-pdp__buy-icon"><i data-lucide="music-2"></i></span>
-                            <span class="lp-pdp__buy-text"><strong>TikTok Shop</strong><span>Live stream promo · voucher Mega Sale</span></span>
-                            <span class="lp-pdp__buy-chev"><i data-lucide="arrow-right"></i></span>
-                        </a>
-                        <a href="https://wa.me/601133109547?text=${encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (current.name || '') + ' (SKU ' + current.sku + ')')}" target="_blank" rel="noopener" class="lp-pdp__buy-row-item lp-pdp__buy-row-item--wa">
-                            <span class="lp-pdp__buy-icon"><i data-lucide="message-circle"></i></span>
-                            <span class="lp-pdp__buy-text"><strong>WhatsApp Kedai</strong><span>Tanya stok · cadangan · custom order</span></span>
-                            <span class="lp-pdp__buy-chev"><i data-lucide="arrow-right"></i></span>
-                        </a>
+                        <div class="lp-pdp__buy-line lp-pdp__buy-line--shopee"><i data-lucide="shopping-bag"></i>Beli SKU ${current.sku} di <a href="https://shopee.com.my/10camp.os?searchKeyword=${encodeURIComponent(current.sku)}" target="_blank" rel="noopener">Shopee</a> <span class="lp-pdp__buy-tag">— free shipping voucher</span></div>
+                        <div class="lp-pdp__buy-line lp-pdp__buy-line--tiktok"><i data-lucide="music-2"></i>Atau tonton live di <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener">TikTok Shop</a> <span class="lp-pdp__buy-tag">— Mega Sale promo</span></div>
+                        <div class="lp-pdp__buy-line lp-pdp__buy-line--wa"><i data-lucide="message-circle"></i>Tanya kedai via <a href="https://wa.me/601133109547?text=${encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (current.name || '') + ' (SKU ' + current.sku + ')')}" target="_blank" rel="noopener">WhatsApp</a> <span class="lp-pdp__buy-tag">— stok / custom order</span></div>
                     </div>
                     <div class="lp-pdp__buy-walk-in"><i data-lucide="map-pin"></i> Atau singgah <strong>Kedai 10 CAMP Cyberjaya</strong> · Mon-Sat 10am-9pm</div>
                 </div>`
@@ -8750,14 +8737,14 @@ function renderPublicStorefront() {
                     <p class="lp-product-card__variant" data-role="variant-label" style="${parsed.variantName ? '' : 'display:none'}">${parsed.variantName || ''}</p>
                     <p class="lp-product-card__price" data-role="price">${onSale ? `<span class="lp-product-card__price--sale">${fmt(price)}</span><span class="lp-product-card__price--was">${fmt(compareAt)}</span><span class="lp-product-card__price--off">-${off}%</span>` : fmt(price)}</p>
                     ${chipsHtml}
-                    <!-- p1_164 — Minimalist: "BELI DI" label + 3 circle brand badges. Hover scale + brand fill. -->
+                    <!-- p1_165 — Editorial text links (competitor reference). No buttons, no boxes. -->
                     ${totalStock <= 0
                         ? `<button class="lp-product-card__btn" data-role="add-btn" disabled>${soldOutLabel}</button>`
                         : `<div class="lp-product-card__buy">
                             <span class="lp-product-card__buy-label">Beli di</span>
-                            <a href="https://shopee.com.my/10camp.os?searchKeyword=${encodeURIComponent(skuEsc)}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee" aria-label="Shopee" title="Cari ${skuEsc} di Shopee 10 CAMP"><i data-lucide="shopping-bag"></i></a>
-                            <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok" aria-label="TikTok Shop" title="Buka TikTok Shop 10 CAMP (cari ${skuEsc})"><i data-lucide="music-2"></i></a>
-                            <a href="https://wa.me/601133109547?text=${encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (parsed.title || skuEsc) + ' (SKU ' + skuEsc + ')')}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa" aria-label="WhatsApp" title="Tanya kedai via WhatsApp"><i data-lucide="message-circle"></i></a>
+                            <a href="https://shopee.com.my/10camp.os?searchKeyword=${encodeURIComponent(skuEsc)}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--shopee" title="Cari ${skuEsc} di Shopee 10 CAMP"><i data-lucide="shopping-bag"></i>Shopee</a>
+                            <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--tiktok" title="Buka TikTok Shop 10 CAMP (cari ${skuEsc})"><i data-lucide="music-2"></i>TikTok</a>
+                            <a href="https://wa.me/601133109547?text=${encodeURIComponent('Hi 10 CAMP, saya berminat dengan ' + (parsed.title || skuEsc) + ' (SKU ' + skuEsc + ')')}" target="_blank" rel="noopener" class="lp-product-card__buy-btn lp-product-card__buy-btn--wa" title="Tanya kedai via WhatsApp"><i data-lucide="message-circle"></i>WhatsApp</a>
                         </div>`
                     }
                 </div>
