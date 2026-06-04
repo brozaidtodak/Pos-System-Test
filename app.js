@@ -6889,6 +6889,98 @@ window.__stToggleNote = function(sku) {
 };
 
 // p1_170 — Quick flag: "Tak Jumpa" sets qty=0 + flag=not_found + auto-note + submits + advances.
+// p1_212 — Stock Take Senarai SKU column view: filter ikut session locations kalau aktif,
+// papar status badge Telah Check (ikut age — Recent/Aging/Stale) / Belum Check.
+window.__stToggleSkuList = function() {
+ const box = document.getElementById('stSkuListView');
+ const btn = document.getElementById('stSkuListToggle');
+ if(!box) return;
+ if(box.style.display === 'block') {
+ box.style.display = 'none';
+ if(btn) btn.innerHTML = '<i data-lucide="list" style="width:13px; height:13px;"></i> Tunjuk Senarai SKU (Telah / Belum Check)';
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ return;
+ }
+ box.style.display = 'block';
+ if(btn) btn.innerHTML = '<i data-lucide="chevron-up" style="width:13px; height:13px;"></i> Sembunyi Senarai SKU';
+ window.__stRenderSkuList();
+};
+
+window.__stRenderSkuList = function() {
+ const box = document.getElementById('stSkuListView');
+ if(!box) return;
+ if(typeof masterProducts === 'undefined' || !Array.isArray(masterProducts)) {
+ box.innerHTML = '<p style="font-size:11.5px; color:#9CA3AF; padding:12px 0; text-align:center;">masterProducts belum loaded.</p>';
+ return;
+ }
+ // Filter by session locations if active session set
+ const sessionLocations = window.__stSessionData ? (window.__stSessionData.locations || []) : null;
+ let products = masterProducts.slice();
+ if(sessionLocations && sessionLocations.length) {
+ products = products.filter(p => sessionLocations.includes((p.location_bin || '').trim()));
+ }
+ // Sort: Belum Check first, then by SKU asc
+ products.sort((a, b) => {
+ const ta = auditTimestamps[a.sku] ? 1 : 0;
+ const tb = auditTimestamps[b.sku] ? 1 : 0;
+ if(ta !== tb) return ta - tb;
+ return (a.sku || '').localeCompare(b.sku || '');
+ });
+ const checked = products.filter(p => !!auditTimestamps[p.sku]);
+ const pending = products.filter(p => !auditTimestamps[p.sku]);
+ const totalPct = products.length ? Math.round(checked.length / products.length * 100) : 0;
+ const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ const now = Date.now();
+ const rows = products.slice(0, 500).map(p => {
+ const ts = auditTimestamps[p.sku];
+ let badgeBg, badgeFg, badgeTxt, badgeIcon;
+ let ageDays = null;
+ if(ts) {
+ ageDays = Math.floor((now - Date.parse(ts)) / 86400000);
+ if(ageDays > 30) { badgeBg = '#FED7AA'; badgeFg = '#9A3412'; badgeTxt = 'Stale ' + ageDays + 'd'; badgeIcon = 'alert-triangle'; }
+ else if(ageDays > 7) { badgeBg = '#FEF3C7'; badgeFg = '#92400E'; badgeTxt = ageDays + ' hari lepas'; badgeIcon = 'clock'; }
+ else { badgeBg = '#D1FAE5'; badgeFg = '#065F46'; badgeTxt = ageDays === 0 ? 'Hari ini' : ageDays + 'd lepas'; badgeIcon = 'check-circle'; }
+ } else {
+ badgeBg = '#F3F4F6'; badgeFg = '#6B7280'; badgeTxt = 'Belum Check'; badgeIcon = 'circle-dashed';
+ }
+ const lastQty = p.last_audited_qty;
+ const lastBy = p.last_audited_by ? String(p.last_audited_by).slice(0, 20) : '';
+ return `<tr style="border-bottom:1px solid #F3F4F6;${ts ? '' : 'background:#FFFBEB;'}">
+ <td style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(p.sku || '-')}</td>
+ <td style="padding:8px 10px; font-size:11.5px; color:#374151;">${escHtml((p.name || '').slice(0, 60))}</td>
+ <td style="padding:8px 10px; font-size:11px; color:#6B7280;">${escHtml(p.location_bin || '-')}</td>
+ <td style="padding:8px 10px; text-align:right; font-size:11.5px;">${lastQty != null ? lastQty : '<span style="color:#D1D5DB;">—</span>'}</td>
+ <td style="padding:8px 10px; font-size:10.5px; color:#6B7280;">${escHtml(lastBy || '-')}</td>
+ <td style="padding:8px 10px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:${badgeBg}; color:${badgeFg}; font-size:10px; font-weight:700;"><i data-lucide="${badgeIcon}" style="width:10px;height:10px;"></i> ${badgeTxt}</span></td>
+ </tr>`;
+ }).join('');
+ const trimmed = products.length > 500 ? `<p style="font-size:10.5px; color:#9CA3AF; padding:6px 0; text-align:center;">Tunjuk 500 pertama daripada ${products.length}.</p>` : '';
+ box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
+ <div style="font-size:12px; color:#6B7280;">
+ Total: <strong style="color:#111;">${products.length}</strong>${sessionLocations ? ' (dalam lokasi sesi)' : ''} ·
+ <span style="color:#10B981;">${checked.length} dah check</span> ·
+ <span style="color:#92400E;">${pending.length} belum</span>
+ </div>
+ <div style="font-size:13px; color:var(--primary); font-weight:800;">${totalPct}%</div>
+ </div>
+ <div style="overflow-x:auto; border:1px solid var(--border-color); border-radius:6px; max-height:60vh; overflow-y:auto;">
+ <table style="width:100%; border-collapse:collapse; font-size:12px;">
+ <thead style="background:#F9FAFB; position:sticky; top:0;">
+ <tr>
+ <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">SKU</th>
+ <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Nama</th>
+ <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Lokasi</th>
+ <th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Last Qty</th>
+ <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Last By</th>
+ <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Status</th>
+ </tr>
+ </thead>
+ <tbody>${rows}</tbody>
+ </table>
+ </div>${trimmed}`;
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
 window.__stMarkNotFound = async function(sku) {
  const fizDom = document.getElementById('fizikalQty-' + sku);
  const komenDom = document.getElementById('auditKomen-' + sku);
@@ -7515,6 +7607,11 @@ window.submitAuditSingle = function(sku) {
 
  // p1_35: drop draft now that the count is submitted
  if (window.stDraft) window.stDraft.clear(sku);
+ // p1_212 — refresh SKU list if open
+ const stSkuView = document.getElementById('stSkuListView');
+ if(stSkuView && stSkuView.style.display === 'block' && typeof window.__stRenderSkuList === 'function') {
+ window.__stRenderSkuList();
+ }
 }
 
 window.handleTallyScan = function(e, correctSku, correctErp) {
