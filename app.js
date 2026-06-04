@@ -4083,12 +4083,7 @@ window.renderFeedbackSection = async function() {
  }
  try {
  const wrap = document.getElementById('fbMyList');
- if(!wrap) {
- console.warn('[Aduan] fbMyList missing — section HTML stripped?');
- // Inject visible diagnostic so Zaid can see what's wrong rather than blank
- if(sec) sec.insertAdjacentHTML('beforeend', '<div style="margin:20px; padding:16px; background:#FEE2E2; border:1px solid #FCA5A5; border-radius:8px; color:#991B1B; font-size:13px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px;"></i> Diagnostic: #fbMyList element missing dari DOM. HTML section mungkin rosak. Refresh page (Cmd+Shift+R) atau hubungi support.</div>');
- return;
- }
+ if(!wrap) { console.warn('[Aduan] fbMyList missing'); return; }
  const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
  if(!u) {
  wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Login dulu untuk lihat aduan anda. Submit form di atas masih boleh diguna selepas login.</p>';
@@ -4593,113 +4588,32 @@ function switchHub(sectionIds, title, btnElement) {
  }
 }
 
-// p1_187 — NUCLEAR panic-show. Zaid screenshot 2026-06-04 12:10 showed Reports
-// section blank on both laptop + iPad. Breadcrumb stuck on "Laporan Saya" tapi
-// content kosong. Suspect switchHub may throw silently or CSS suppress all
-// children. This bypass forces inline-styled visibility + scrolls into view +
-// surfaces visible diagnostic banner so Zaid never sees pure blank.
+// p1_194 — Boot cleanup: remove any stale beacon/banner left over from earlier
+// debug code. Safe no-op if elements don't exist.
+document.addEventListener('DOMContentLoaded', () => {
+ const beacon = document.getElementById('panicBeacon');
+ if(beacon) beacon.remove();
+ document.querySelectorAll('[data-panic-banner]').forEach(b => b.remove());
+});
+
+// p1_194 — Cleanup: remove __panicShow diagnostic + RED beacon + YELLOW banner.
+// Root cause was unclosed divs in floorPriceSection (p1_193). HTML fix made
+// switchHub work normally again. Keep a no-op shim so sidebar onclicks that
+// still reference __panicShow fall through to switchHub gracefully.
 window.__panicShow = function(sectionId, title) {
- console.log('[PANIC] showing', sectionId);
- try {
- // p1_188 — ROOT CAUSE FOUND. Zaid was in Landing preview mode where
- // posAppLayout is display:none. Clicking staff sidebar items shows the
- // section (display:block) but parent is hidden, so nothing visible.
- // Auto-exit Landing preview when any staff sidebar item is clicked.
- const shop = document.getElementById('shopAppLayout');
- const pos = document.getElementById('posAppLayout');
- const previewBanner = document.getElementById('previewBackBanner');
- if(shop) { shop.style.display = 'none'; shop.style.paddingTop = ''; }
- if(pos) pos.style.display = 'block';
- if(previewBanner) previewBanner.style.display = 'none';
- // p1_189 — auto-close sidebar drawer (overlay mode on iPad/narrow window).
- // Without this, the drawer covers the content area after click.
- const sidebar = document.getElementById('appSidebar');
- const sidebarOverlay = document.getElementById('sidebarOverlay');
- if(sidebar && sidebar.classList.contains('open')) sidebar.classList.remove('open');
- if(sidebarOverlay && sidebarOverlay.classList.contains('active')) sidebarOverlay.classList.remove('active');
- // p1_190 — REAL ROOT CAUSE. <div id="main-content" class="app-container">
- // wraps all sections (line 1702 HTML). But class="main-content" ALSO matches
- // CSS rule `.main-content { display: flex }` from style.css line 49 (intended
- // for the POS cashier layout, not the sections wrapper). Flex on the wrapper
- // breaks block-level child rendering. Force back to display:block.
- const mc = document.getElementById('main-content');
- if(mc) {
- mc.style.display = 'block';
- console.log('[PANIC] #main-content computed display now:', getComputedStyle(mc).display);
- } else {
- console.warn('[PANIC] #main-content NOT FOUND');
- }
- console.log('[PANIC] forced posAppLayout visible, shopAppLayout hidden, drawer closed, main-content block');
- document.querySelectorAll('.tab-section').forEach(s => {
- s.style.cssText = 'display:none';
- });
- const sec = document.getElementById(sectionId);
- if(!sec) {
- alert('[PANIC] Section #' + sectionId + ' tak wujud dalam DOM. Page rosak — refresh.');
- return;
- }
- // p1_193 — ROOT CAUSE was unclosed divs in floorPriceSection making sections
- // nested children of floorPriceSection (display:none). HTML structure fixed.
- // Revert to natural block flow now that nesting is correct.
- sec.style.cssText = 'display:block !important; visibility:visible !important; opacity:1 !important;';
- sec.removeAttribute('hidden');
- // Log computed styles AFTER our override — proves if !important won
- const cs = getComputedStyle(sec);
- console.log('[PANIC] section computed: position=', cs.position, 'display=', cs.display, 'visibility=', cs.visibility, 'opacity=', cs.opacity, 'top=', cs.top, 'left=', cs.left, 'width=', cs.width, 'height=', cs.height, 'z-index=', cs.zIndex);
- console.log('[PANIC] section getBoundingClientRect:', JSON.stringify(sec.getBoundingClientRect()));
- console.log('[PANIC] section parent:', sec.parentElement ? sec.parentElement.id || sec.parentElement.tagName : 'NONE');
- console.log('[PANIC] section parent display:', sec.parentElement ? getComputedStyle(sec.parentElement).display : 'NONE');
- // Find any element covering the center of viewport at section top — if anything other than html/body, that's the overlay
- try {
- const elAtSectionCenter = document.elementFromPoint(window.innerWidth / 2, 200);
- console.log('[PANIC] elementFromPoint(center, 200) =', elAtSectionCenter ? (elAtSectionCenter.tagName + '#' + elAtSectionCenter.id + '.' + elAtSectionCenter.className).slice(0, 120) : 'NULL');
- } catch(e) {}
- // NUCLEAR: also inject a body-level red beacon — if THIS still doesn't show,
- // problem is at <body> or <html> level (overlay, modal, full-page covering).
- let beacon = document.getElementById('panicBeacon');
- if(!beacon) {
- beacon = document.createElement('div');
- beacon.id = 'panicBeacon';
- document.body.appendChild(beacon);
- }
- beacon.style.cssText = 'position:fixed !important; top:80px !important; left:20px !important; right:20px !important; z-index:99999 !important; background:#DC2626 !important; color:#fff !important; padding:14px 18px !important; border-radius:8px !important; font-size:14px !important; font-weight:700 !important; box-shadow:0 8px 24px rgba(0,0,0,.3) !important;';
- beacon.innerHTML = '[BEACON] ' + sectionId + ' rendered at ' + new Date().toLocaleTimeString('en-MY') + '. Section getBoundingClientRect top=' + Math.round(sec.getBoundingClientRect().top) + ', height=' + Math.round(sec.getBoundingClientRect().height) + ', innerHTML.length=' + sec.innerHTML.length + '. Click to dismiss.';
- beacon.onclick = function() { beacon.style.display = 'none'; };
- // Inject visible heartbeat banner at top so Zaid sees the click landed
- let banner = sec.querySelector('[data-panic-banner]');
- if(!banner) {
- banner = document.createElement('div');
- banner.setAttribute('data-panic-banner', '1');
- banner.style.cssText = 'background:#FEF3C7; border:1px solid #F59E0B; color:#92400E; padding:10px 14px; margin:10px; border-radius:8px; font-size:12px; font-weight:600;';
- banner.innerHTML = '[PANIC ON] Section: <strong>' + sectionId + '</strong> · ' + new Date().toLocaleTimeString('en-MY') + ' · Kalau nampak banner ni je tapi takda content lain, bermakna section static HTML pun missing. Hit Cmd+Shift+R.';
- sec.insertBefore(banner, sec.firstChild);
- } else {
- banner.innerHTML = '[PANIC ON] Section: <strong>' + sectionId + '</strong> · ' + new Date().toLocaleTimeString('en-MY') + ' · refreshed';
- }
- // Update breadcrumb manually
- const oldTitle = document.getElementById('pageTitle');
- if(oldTitle) oldTitle.textContent = title || sectionId;
- if(typeof updateBreadcrumb === 'function') { try { updateBreadcrumb(title || sectionId); } catch(e){} }
- // Section-specific render dispatch
+ // Remove any leftover beacon from previous debug runs
+ const oldBeacon = document.getElementById('panicBeacon');
+ if(oldBeacon) oldBeacon.remove();
+ document.querySelectorAll('[data-panic-banner]').forEach(b => b.remove());
+ // Delegate to the normal switchHub flow
+ switchHub([sectionId], title || sectionId, null);
+ // Trigger the appropriate render
  try {
  if(sectionId === 'feedbackSection' && typeof renderFeedbackSection === 'function') renderFeedbackSection();
  else if(sectionId === 'reportsSection' && typeof renderMyReport === 'function') renderMyReport();
  else if(sectionId === 'reportsTeamSection' && typeof renderTeamReports === 'function') renderTeamReports();
  else if(sectionId === 'feedbackInboxSection' && typeof renderFeedbackInbox === 'function') renderFeedbackInbox();
- } catch(e) {
- console.error('[PANIC] render failed:', e);
- banner.innerHTML += '<br><strong>Render error:</strong> ' + (e && e.message ? e.message : String(e));
- banner.style.background = '#FEE2E2';
- banner.style.borderColor = '#DC2626';
- banner.style.color = '#991B1B';
- }
- // Scroll into view
- sec.scrollIntoView({behavior:'smooth', block:'start'});
- console.log('[PANIC] done. Section displayed:', sec.style.display, 'innerHTML.length:', sec.innerHTML.length);
- } catch(outer) {
- alert('[PANIC] fatal: ' + outer.message);
- console.error('[PANIC] fatal:', outer);
- }
+ } catch(e) { /* silent */ }
 };
 window.switchHub = switchHub;
 
