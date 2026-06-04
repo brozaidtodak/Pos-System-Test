@@ -15654,6 +15654,41 @@ window.deleteMasterProduct = async function() {
  }
 };
 
+// p1_227 — Clean HTML soup (EasyStore export soup → readable plain text)
+window.mpCleanDescriptionHtml = function() {
+ const ta = document.getElementById('mpDescription');
+ if(!ta) return;
+ const raw = ta.value || '';
+ if(!raw.trim()) { if(typeof showToast === 'function') showToast('Description kosong.', 'warn'); return; }
+ if(!confirm('Strip semua HTML tags + EasyStore sheets data dari description?\n\nTeks plain je akan tinggal. Boleh undo dengan klik Reset + Load semula.')) return;
+ try {
+ // 1) Strip EasyStore prefix marker like [EASYSTORE-ID:xxx-Vxxx]
+ let s = raw.replace(/\[EASYSTORE-ID:[^\]]*\]\s*/g, '');
+ // 2) Parse via DOMParser, extract textContent (browser handles entities + nested tags safely)
+ const doc = new DOMParser().parseFromString(s, 'text/html');
+ // Convert <li>, </p>, <br> to line breaks BEFORE extracting text — preserve structure
+ doc.querySelectorAll('li').forEach(li => li.insertAdjacentText('beforebegin', '\n• '));
+ doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div').forEach(p => p.insertAdjacentText('afterend', '\n'));
+ doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+ // Remove <span> with data-sheets-* attributes entirely (Google Sheets paste artifacts) — but keep their text
+ // (textContent already includes their text, so we don't need to explicitly drop them)
+ let text = doc.body.textContent || '';
+ // 3) Collapse 3+ blank lines to 2, trim trailing spaces, collapse 2+ spaces to 1
+ text = text
+ .replace(/ /g, ' ') // nbsp -> space
+ .replace(/[ \t]+/g, ' ') // collapse spaces
+ .replace(/\n[ \t]+/g, '\n') // strip leading spaces per line
+ .replace(/\n{3,}/g, '\n\n') // collapse blank lines
+ .trim();
+ if(!text) { if(typeof showToast === 'function') showToast('Lepas clean, kosong. Original kekal.', 'warn'); return; }
+ ta.value = text;
+ if(typeof showToast === 'function') showToast(`Clean HTML — ${raw.length} → ${text.length} char.`, 'success');
+ } catch(e) {
+ console.error('Clean HTML error:', e);
+ if(typeof showToast === 'function') showToast('Clean gagal: ' + e.message, 'error');
+ }
+};
+
 // p1_226 — Add blank option line to variant textarea
 window.mpAddVariantOption = function() {
  const ta = document.getElementById('mpVariantOptions');
