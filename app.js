@@ -7795,6 +7795,53 @@ document.getElementById("exportExcelBtn").onclick = function() {
 // POS CASHIER FRONTEND
 // ===================================
 // p1_130 — Quick-Sell pills (top 5 most-sold SKUs last 30d)
+// p1_209 — Brand quick-filter pills (top 8 brands by product count). Click toggles
+// filter; click again same pill clears. Sync state via window.__posBrandFilter.
+window.__bpRenderBrandPills = function() {
+ const wrap = document.getElementById('brandPillsWrap');
+ const pillsEl = document.getElementById('brandPills');
+ if(!wrap || !pillsEl) return;
+ if(typeof masterProducts === 'undefined' || !Array.isArray(masterProducts)) return;
+ const tally = {};
+ masterProducts.forEach(p => {
+ if(!isPublished(p)) return;
+ const b = (p.brand || '').trim();
+ if(!b) return;
+ tally[b] = (tally[b] || 0) + 1;
+ });
+ const top = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 8);
+ if(!top.length) { wrap.style.display = 'none'; return; }
+ wrap.style.display = '';
+ const active = (window.__posBrandFilter || '').toLowerCase();
+ pillsEl.innerHTML = top.map(([brand, count]) => {
+ const isActive = active === brand.toLowerCase();
+ const bg = isActive ? 'var(--primary)' : '#FFF';
+ const color = isActive ? '#FFF' : '#374151';
+ const border = isActive ? '1.5px solid var(--primary)' : '1.5px solid #E5E7EB';
+ return '<button class="bp-pill" onclick="window.__posToggleBrand(' + JSON.stringify(brand).replace(/"/g, '&quot;') + ')" style="background:' + bg + '; color:' + color + '; border:' + border + '; padding:6px 12px; border-radius:50px; font-size:11.5px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:0.15s;">' + brand + ' <span style="font-weight:500; opacity:.6;">(' + count + ')</span></button>';
+ }).join('');
+};
+
+window.__posToggleBrand = function(brand) {
+ const current = window.__posBrandFilter || '';
+ window.__posBrandFilter = (current.toLowerCase() === brand.toLowerCase()) ? '' : brand;
+ window.__bpRendered = false; // force re-render to update active state
+ window.__bpRenderBrandPills();
+ window.__bpRendered = true;
+ renderPOS((document.getElementById('searchInput') || {}).value || '');
+};
+
+window.__posResetSearch = function() {
+ window.__posBrandFilter = '';
+ const inp = document.getElementById('searchInput');
+ if(inp) inp.value = '';
+ window.__bpRendered = false;
+ window.__bpRenderBrandPills();
+ window.__bpRendered = true;
+ renderPOS('');
+ if(inp) inp.focus();
+};
+
 window.__qsRenderPills = function() {
  const wrap = document.getElementById('quickSellWrap');
  const pillsEl = document.getElementById('quickSellPills');
@@ -7843,6 +7890,16 @@ function renderPOS(searchTerm = "") {
  window.__qsRenderPills();
  window.__qsRendered = true;
  }
+ // p1_209 — Brand quick-filter pills (top brands by product count, first render only)
+ if(typeof window.__bpRenderBrandPills === 'function' && !window.__bpRendered) {
+ window.__bpRenderBrandPills();
+ window.__bpRendered = true;
+ }
+ // p1_209 — Active brand filter (toggled by brand pills, separate from search term)
+ const activeBrand = (window.__posBrandFilter || '').toLowerCase();
+ // Clear (X) button visibility toggle
+ const clearBtn = document.getElementById('posSearchClear');
+ if(clearBtn) clearBtn.style.display = (searchTerm || activeBrand) ? 'flex' : 'none';
 
  // Reset page if searching
  if(searchTerm !== lastPosSearchTerm) {
@@ -7850,9 +7907,33 @@ function renderPOS(searchTerm = "") {
  posCurrentPage = 1;
  }
 
+ // p1_209 — Barcode auto-add: if input is numeric 8+ digits and matches exactly
+ // ONE product by erp_barcode → addToCart + clear input (POS scan flow).
+ if(searchTerm && /^\d{8,}$/.test(searchTerm.trim())) {
+ const barcode = searchTerm.trim();
+ const exactMatches = masterProducts.filter(p => (p.erp_barcode || '').toString().trim() === barcode);
+ if(exactMatches.length === 1) {
+ const m = exactMatches[0];
+ if(isPublished(m)) {
+ window.addToCart(m.sku);
+ const inp = document.getElementById('searchInput');
+ if(inp) inp.value = '';
+ if(typeof showToast === 'function') showToast('Scanned: ' + m.sku + ' → cart', 'success');
+ setTimeout(() => renderPOS(''), 50);
+ return;
+ }
+ }
+ }
+
+ const term = searchTerm.toLowerCase();
  let filtered = masterProducts.filter(p => {
  if(!isPublished(p)) return false;
- if(searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase()) && !p.sku.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+ if(activeBrand && (p.brand || '').toLowerCase() !== activeBrand) return false;
+ if(term) {
+ // p1_209 — Expanded search: name, sku, brand, erp_barcode, category, parent_sku
+ const hay = (p.name || '').toLowerCase() + ' ' + (p.sku || '').toLowerCase() + ' ' + (p.brand || '').toLowerCase() + ' ' + (p.erp_barcode || '').toString().toLowerCase() + ' ' + (p.category || '').toLowerCase() + ' ' + (p.parent_sku || '').toLowerCase();
+ if(!hay.includes(term)) return false;
+ }
  return true;
  });
 
@@ -7861,6 +7942,18 @@ function renderPOS(searchTerm = "") {
  if(posCurrentPage < 1) posCurrentPage = 1;
 
  let sliced = filtered.slice((posCurrentPage - 1) * itemsPerPage, posCurrentPage * itemsPerPage);
+
+ // p1_209 — Empty state with reset link
+ if(filtered.length === 0) {
+ const ctx = [searchTerm ? '"' + searchTerm + '"' : '', activeBrand ? 'brand "' + activeBrand + '"' : ''].filter(Boolean).join(' + ');
+ list.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px 20px; color:#9CA3AF;">'
+ + '<i data-lucide="package-x" style="width:36px; height:36px; opacity:0.4; margin-bottom:8px;"></i>'
+ + '<p style="font-size:14px; margin:4px 0;">Tiada produk padan' + (ctx ? ' dengan ' + ctx : '') + '.</p>'
+ + '<button onclick="window.__posResetSearch()" style="background:var(--primary); color:#FFF; border:none; padding:8px 18px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; margin-top:10px;"><i data-lucide="rotate-ccw" style="width:11px;height:11px;vertical-align:-1px;"></i> Reset / Tunjuk Semua</button>'
+ + '</div>';
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ return;
+ }
 
  sliced.forEach(p => {
 
@@ -8575,6 +8668,12 @@ document.addEventListener('keydown', function(e) {
  } else if(e.key === 'Escape') {
  const pay = document.getElementById('checkoutPaymentModal');
  if(pay && pay.style.display === 'flex') { pay.style.display = 'none'; e.preventDefault(); return; }
+ // p1_209 — ESC on searchInput clears search + brand filter
+ if(e.target && e.target.id === 'searchInput') {
+ e.preventDefault();
+ if(typeof window.__posResetSearch === 'function') window.__posResetSearch();
+ return;
+ }
  if(inField && e.target) try { e.target.blur(); } catch(err){}
  } else if(e.key === '/' && !inField) {
  e.preventDefault();
