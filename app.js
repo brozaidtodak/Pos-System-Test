@@ -6790,13 +6790,19 @@ window.__scsConfirmCreate = async function() {
 
 // p1_169 — open session detail (counting view)
 window.__scsOpenSession = async function(id) {
- // Open Stock Take page in session mode
+ // p1_219 — Stock Take sidebar entry removed; call switchHub + render directly.
  window.__scsActiveSessionId = id;
  try { localStorage.setItem('scsActiveSession_v1', String(id)); } catch(e){}
- if(typeof showToast === 'function') showToast('Sesi #' + id + ' aktif. Buka Stock Take untuk kira.', 'info');
- // Switch to Stock Take section
- const stockBtn = document.querySelector('[data-tab="inv_stocktake"]');
- if(stockBtn) stockBtn.click();
+ if(typeof showToast === 'function') showToast('Sesi #' + id + ' aktif. Buka untuk kira.', 'info');
+ // Direct navigate (was: querySelector + click on removed sidebar entry)
+ if(typeof switchHub === 'function') {
+ try { switchHub(['stockTakeSection'], 'Sesi #' + id, null); } catch(e){}
+ }
+ if(typeof renderAuditCards === 'function') {
+ try { renderAuditCards(); } catch(e){}
+ } else if(typeof renderStockTake === 'function') {
+ try { renderStockTake(); } catch(e){}
+ }
 };
 
 window.__scsSubmitForReview = async function(id) {
