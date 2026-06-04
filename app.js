@@ -9815,6 +9815,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
 });
 
+// p1_181 — Password visibility toggle (eye icon). Auto-attach to every
+// <input type="password"> on boot + on demand. Idempotent (data-pwd-toggled marker).
+window.togglePwd = function(targetId, btn) {
+ const input = document.getElementById(targetId);
+ if(!input || !btn) return;
+ const showing = input.type === 'text';
+ input.type = showing ? 'password' : 'text';
+ btn.innerHTML = '<i data-lucide="' + (showing ? 'eye' : 'eye-off') + '" style="width:16px;height:16px;"></i>';
+ btn.setAttribute('aria-label', showing ? 'Tunjuk password' : 'Sembunyi password');
+ btn.setAttribute('title', showing ? 'Tunjuk' : 'Sembunyi');
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+window.__autoAttachPwdToggles = function() {
+ document.querySelectorAll('input[type="password"]:not([data-no-pwd-toggle])').forEach(input => {
+ if(input.dataset.pwdToggled === '1') return;
+ if(!input.id) input.id = '__pwd_' + Math.random().toString(36).slice(2, 9);
+ input.dataset.pwdToggled = '1';
+ // Wrap with .pwd-wrap
+ const wrapper = document.createElement('span');
+ wrapper.className = 'pwd-wrap';
+ // Preserve any margin-bottom from input style on the wrapper so layout doesn't collapse
+ const inlineStyle = input.getAttribute('style') || '';
+ const mbMatch = inlineStyle.match(/margin-bottom:\s*([^;]+)/i);
+ if(mbMatch) {
+ wrapper.style.marginBottom = mbMatch[1].trim();
+ input.style.marginBottom = '0';
+ }
+ // Match width of input if explicitly 100%
+ if(/width:\s*100%/i.test(inlineStyle)) wrapper.style.width = '100%';
+ input.parentNode.insertBefore(wrapper, input);
+ wrapper.appendChild(input);
+ // Add eye button
+ const btn = document.createElement('button');
+ btn.type = 'button';
+ btn.className = 'pwd-toggle';
+ btn.tabIndex = -1;
+ btn.setAttribute('aria-label', 'Tunjuk password');
+ btn.setAttribute('title', 'Tunjuk');
+ btn.innerHTML = '<i data-lucide="eye" style="width:16px;height:16px;"></i>';
+ btn.addEventListener('click', (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ window.togglePwd(input.id, btn);
+ });
+ wrapper.appendChild(btn);
+ });
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+ window.__autoAttachPwdToggles();
+ // Backstop for inputs added dynamically (modals rendered later)
+ setTimeout(window.__autoAttachPwdToggles, 1500);
+ setTimeout(window.__autoAttachPwdToggles, 4000);
+});
+
 let publicCart = [];
 
 window.togglePublicCart = function() {

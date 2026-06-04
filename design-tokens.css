@@ -923,6 +923,13 @@
 .ps-tier-card__compare { font-size: 12px; color: #94A3B8; text-decoration: line-through; margin-left: 8px; }
 .ps-tier-card__markup { font-size: 11px; color: #059669; font-weight: 700; margin-top: 4px; }
 .ps-tier-card__formula { font-size: 11px; color: #6B7280; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #E5E7EB; line-height: 1.5; }
+/* p1_181 — Password visibility toggle (eye icon) */
+.pwd-wrap { position: relative; display: block; }
+.pwd-wrap > input { padding-right: 38px !important; }
+.pwd-toggle { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); background: none; border: none; padding: 6px; cursor: pointer; color: #9CA3AF; line-height: 0; border-radius: 4px; transition: color 0.12s, background 0.12s; }
+.pwd-toggle:hover { color: var(--primary); background: rgba(205,124,50,0.08); }
+.pwd-toggle:focus { outline: none; color: var(--primary); }
+
 /* p1_177 — Pricing Setup Calculator (compact single-panel: hero / formula / tier pills) */
 .ps-calc-panel { display: flex; flex-direction: column; gap: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; }
 
