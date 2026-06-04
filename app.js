@@ -6498,8 +6498,8 @@ window.renderCheckSessions = async function() {
  <div style="height:6px; background:#F3F4F6; border-radius:50px; overflow:hidden; margin-bottom:10px;"><div style="height:100%; background:linear-gradient(90deg, var(--primary), #A05F22); width:${pct}%; transition:width .4s;"></div></div>
  ${(s.items_variance || 0) > 0 ? `<div style="font-size:12px; color:#991B1B; margin-bottom:8px;"><i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-1px;"></i> ${s.items_variance} variance · RM ${Number(s.rm_variance||0).toFixed(2)} drift</div>` : ''}
  <div style="display:flex; gap:6px; flex-wrap:wrap;">
- <button class="sy-btn" onclick="window.__scsOpenSession(${s.id})" style="font-size:11px;"><i data-lucide="arrow-right" style="width:11px;height:11px;"></i> ${s.status === 'active' ? 'Buka & Kira' : 'Buka'}</button>
- <button class="sy-btn secondary" onclick="window.__scsToggleSkuList(${s.id})" style="font-size:11px;"><i data-lucide="list" style="width:11px;height:11px;"></i> Senarai SKU</button>
+ <!-- p1_224 — Buka & Kira dibuang; Senarai SKU jadi primary action sebab dah ada inline edit -->
+ <button class="sy-btn" onclick="window.__scsToggleSkuList(${s.id})" style="font-size:11px;"><i data-lucide="list" style="width:11px;height:11px;"></i> ${s.status === 'active' ? 'Buka & Kira' : 'Tunjuk SKU'}</button>
  ${(s.status === 'active' || s.status === 'review') ? `<button class="sy-btn secondary" onclick="window.__scsEditSession(${s.id})" style="font-size:11px;"><i data-lucide="edit-3" style="width:11px;height:11px;"></i> Edit / Tambah SKU</button>` : ''}
  ${s.status === 'active' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsSubmitForReview(${s.id})" style="font-size:11px;"><i data-lucide="send" style="width:11px;height:11px;"></i> Submit ke Review</button>` : ''}
  ${s.status === 'review' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsForwardToBos(${s.id})" style="font-size:11px;"><i data-lucide="forward" style="width:11px;height:11px;"></i> Forward ke Bos</button>` : ''}
