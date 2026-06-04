@@ -15410,6 +15410,36 @@ window.calculateEditableTotal = function() {
 // ===================================
 // PRODUCT REGISTRATION MODE
 // ===================================
+// p1_226 — All Master Product form field IDs (for clear/load/save loops)
+window.__mpAllFieldIds = [
+ 'mpName','mpSku','mpBrand','mpCategory','mpModelNo','mpParentSku','mpUnit','mpPrice','mpCostPrice','mpInitQty',
+ 'mpVariantColor','mpVariantSize','mpErpBarcode','mpVariantOptions','mpHasVariants','mpDefaultVariantSku',
+ 'mpWeightKg','mpLengthCm','mpWidthCm','mpHeightCm','mpLocationBin',
+ 'mpDescription','mpImageUrl','mpCommissionRate','mpIsPublished',
+ 'mpVendor','mpCollection','mpTags','mpNotes',
+ 'mpSeoTitle','mpSeoDescription','mpSeoSlug',
+ 'mpReorderPoint','mpReorderQty','mpLeadTimeDays'
+];
+
+// p1_226 — Parse variant options textarea ("Name: v1, v2, v3" per line) → array
+window.__mpParseVariantOptions = function(raw) {
+ if(!raw || !raw.trim()) return [];
+ return raw.split('\n').map(line => {
+ const i = line.indexOf(':');
+ if(i < 0) return null;
+ const name = line.slice(0, i).trim();
+ const values = line.slice(i + 1).split(',').map(v => v.trim()).filter(Boolean);
+ if(!name || !values.length) return null;
+ return { name, values };
+ }).filter(Boolean);
+};
+
+// p1_226 — Serialize variant options array back to textarea text (for Load)
+window.__mpStringifyVariantOptions = function(arr) {
+ if(!Array.isArray(arr) || !arr.length) return '';
+ return arr.map(o => `${o.name}: ${(o.values || []).join(', ')}`).join('\n');
+};
+
 window.saveMasterProduct = async function() {
  const get = (id) => (document.getElementById(id)?.value || '').trim();
  const getNum = (id) => {
@@ -15425,11 +15455,29 @@ window.saveMasterProduct = async function() {
  return showToast('Nama, SKU, Harga Jualan wajib diisi.', 'warn');
  }
 
- if(masterProducts.find(p => p.sku === sku)) {
- return showToast(`SKU "${sku}" sudah wujud. Guna Edit untuk update.`, 'warn');
- }
+ const existingProd = masterProducts.find(p => p.sku === sku);
+ const isEdit = !!existingProd;
 
  const imageUrl = get('mpImageUrl');
+ // p1_226 — pack extra fields into metadata JSONB (preserves any existing keys via merge)
+ const prevMeta = (existingProd && existingProd.metadata && typeof existingProd.metadata === 'object') ? existingProd.metadata : {};
+ const tagsArr = get('mpTags').split(',').map(t => t.trim()).filter(Boolean);
+ const metadata = {
+ ...prevMeta,
+ vendor: get('mpVendor') || null,
+ collection: get('mpCollection') || null,
+ tags: tagsArr.length ? tagsArr : null,
+ notes: get('mpNotes') || null,
+ seo: {
+ title: get('mpSeoTitle') || null,
+ description: get('mpSeoDescription') || null,
+ slug: get('mpSeoSlug') || null
+ },
+ variants: window.__mpParseVariantOptions(get('mpVariantOptions')),
+ has_variants: get('mpHasVariants') === 'true',
+ default_variant_sku: get('mpDefaultVariantSku').toUpperCase() || null
+ };
+
  const payload = {
  sku, name,
  unit: get('mpUnit') || 'pcs',
@@ -15453,52 +15501,182 @@ window.saveMasterProduct = async function() {
  reorder_qty: getNum('mpReorderQty'),
  lead_time_days: getNum('mpLeadTimeDays'),
  images: imageUrl ? [imageUrl] : null,
- is_published: get('mpIsPublished') === 'true'
+ is_published: get('mpIsPublished') === 'true',
+ metadata
  };
 
- // Strip null fields so PG defaults / nulls land cleanly
+ // Strip null fields so PG defaults / nulls land cleanly (but keep metadata even if internal keys null)
  const cleaned = {};
  for(const [k, v] of Object.entries(payload)) {
+ if(k === 'metadata') { cleaned[k] = v; continue; }
  if(v !== null && v !== '' && !(typeof v === 'number' && isNaN(v))) cleaned[k] = v;
  }
 
- const { data: newProd, error } = await db.from('products_master').insert([cleaned]).select();
- if(error) {
- console.error('Master Product insert error:', error);
- return showToast('Ralat: ' + error.message, 'error');
+ let saveError = null;
+ let savedProd = null;
+ if(isEdit) {
+ const { data, error } = await db.from('products_master').update(cleaned).eq('sku', sku).select();
+ saveError = error; savedProd = data && data[0];
+ } else {
+ const { data, error } = await db.from('products_master').insert([cleaned]).select();
+ saveError = error; savedProd = data && data[0];
  }
- if(newProd && newProd.length> 0) masterProducts.push(newProd[0]);
+ if(saveError) {
+ console.error('Master Product save error:', saveError);
+ return showToast('Ralat: ' + saveError.message, 'error');
+ }
+ // Sync in-memory cache
+ if(savedProd) {
+ const idx = masterProducts.findIndex(p => p.sku === sku);
+ if(idx >= 0) masterProducts[idx] = savedProd; else masterProducts.push(savedProd);
+ }
+
+ // p1_226 — Initial Quantity → inventory_batches insert (only for NEW products + qty > 0)
+ const initQty = getNum('mpInitQty');
+ if(!isEdit && initQty != null && initQty > 0) {
+ try {
+ await db.from('inventory_batches').insert([{
+ sku, qty_received: initQty, qty_remaining: initQty,
+ unit_cost_rm: cleaned.cost_price || 0,
+ received_at: new Date().toISOString(),
+ received_by: currentUser ? currentUser.name : 'System',
+ note: 'Initial stock dari Master Product registration'
+ }]);
+ } catch(e) { console.warn('Initial batch insert failed:', e); }
+ }
 
  try {
  await db.from('audit_logs').insert([{
- action_type: 'master_product_create',
+ action_type: isEdit ? 'master_product_update' : 'master_product_create',
  actor_name: currentUser ? currentUser.name : 'System',
  details: JSON.stringify({ sku, name, brand: cleaned.brand, price, published: cleaned.is_published }),
  created_at: new Date().toISOString()
  }]);
  } catch(_){}
 
- showToast(`Profil "${name}" (${sku}) berjaya dicipta!`, 'success');
-
- // Clear all fields
- ['mpName','mpSku','mpBrand','mpCategory','mpModelNo','mpParentSku','mpPrice','mpCostPrice',
- 'mpVariantColor','mpVariantSize','mpErpBarcode','mpWeightKg','mpLengthCm','mpWidthCm','mpHeightCm',
- 'mpLocationBin','mpDescription','mpImageUrl','mpCommissionRate',
- 'mpReorderPoint','mpReorderQty','mpLeadTimeDays'
-].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
- const unitEl = document.getElementById('mpUnit'); if(unitEl) unitEl.value = 'pcs';
- const pubEl = document.getElementById('mpIsPublished'); if(pubEl) pubEl.value = 'false';
+ showToast(`${isEdit ? 'Update' : 'Daftar'} "${name}" (${sku}) berjaya!`, 'success');
+ window.clearMpForm();
+ if(typeof window.refreshMpDatalists === 'function') window.refreshMpDatalists();
 };
 
-// Auto-populate brand & category datalists from existing products
+// p1_226 — Load existing product into form for edit
+window.loadMasterProductForEdit = async function() {
+ const sku = (document.getElementById('mpSearchSku')?.value || '').trim().toUpperCase();
+ if(!sku) return showToast('Taip SKU dulu untuk Load.', 'warn');
+ const p = masterProducts.find(x => x.sku === sku);
+ if(!p) return showToast(`SKU "${sku}" tak jumpa dalam Master.`, 'warn');
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+ set('mpName', p.name); set('mpSku', p.sku);
+ set('mpBrand', p.brand); set('mpCategory', p.category);
+ set('mpModelNo', p.model_no); set('mpParentSku', p.parent_sku);
+ set('mpUnit', p.unit || 'pcs');
+ set('mpPrice', p.price); set('mpCostPrice', p.cost_price);
+ set('mpInitQty', ''); // edit mode tak override stock
+ set('mpVariantColor', p.variant_color); set('mpVariantSize', p.variant_size);
+ set('mpErpBarcode', p.erp_barcode);
+ set('mpWeightKg', p.weight_kg); set('mpLengthCm', p.length_cm);
+ set('mpWidthCm', p.width_cm); set('mpHeightCm', p.height_cm);
+ set('mpLocationBin', p.location_bin);
+ set('mpDescription', p.description);
+ set('mpImageUrl', (p.images && p.images[0]) ? p.images[0] : '');
+ set('mpCommissionRate', p.commission_rate);
+ set('mpIsPublished', p.is_published ? 'true' : 'false');
+ set('mpReorderPoint', p.reorder_point); set('mpReorderQty', p.reorder_qty);
+ set('mpLeadTimeDays', p.lead_time_days);
+ // Metadata-backed fields
+ const m = (p.metadata && typeof p.metadata === 'object') ? p.metadata : {};
+ set('mpVendor', m.vendor);
+ set('mpCollection', m.collection);
+ set('mpTags', Array.isArray(m.tags) ? m.tags.join(', ') : '');
+ set('mpNotes', m.notes);
+ set('mpSeoTitle', m.seo?.title);
+ set('mpSeoDescription', m.seo?.description);
+ set('mpSeoSlug', m.seo?.slug);
+ set('mpVariantOptions', window.__mpStringifyVariantOptions(m.variants));
+ set('mpHasVariants', m.has_variants ? 'true' : 'false');
+ set('mpDefaultVariantSku', m.default_variant_sku);
+ // Show edit badge
+ const badge = document.getElementById('mpEditModeBadge');
+ if(badge) badge.style.display = 'inline-block';
+ // Lock SKU field (cannot rename via this flow)
+ const skuField = document.getElementById('mpSku');
+ if(skuField) { skuField.readOnly = true; skuField.style.background = '#F3F4F6'; }
+ showToast(`Loaded ${sku} — edit semua field, klik Daftar untuk simpan.`, 'success');
+ // Scroll to form
+ document.getElementById('mpName')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+// p1_226 — Reset form (untuk balik ke mode baru)
+window.clearMpForm = function() {
+ (window.__mpAllFieldIds || []).forEach(id => {
+ const el = document.getElementById(id); if(!el) return;
+ if(el.tagName === 'SELECT') el.value = el.querySelector('option[selected]')?.value || el.options[0]?.value || '';
+ else el.value = '';
+ });
+ const search = document.getElementById('mpSearchSku'); if(search) search.value = '';
+ const badge = document.getElementById('mpEditModeBadge'); if(badge) badge.style.display = 'none';
+ const skuField = document.getElementById('mpSku');
+ if(skuField) { skuField.readOnly = false; skuField.style.background = ''; }
+};
+
+// p1_226 — Delete master product (with safety checks)
+window.deleteMasterProduct = async function() {
+ const sku = (document.getElementById('mpSearchSku')?.value || document.getElementById('mpSku')?.value || '').trim().toUpperCase();
+ if(!sku) return showToast('Taip SKU dulu (atas atau dalam form) untuk Delete.', 'warn');
+ const p = masterProducts.find(x => x.sku === sku);
+ if(!p) return showToast(`SKU "${sku}" tak jumpa.`, 'warn');
+ if(!confirm(`AMARAN: Padam SKU "${sku}" (${p.name}) dari Master?\n\nIni tak boleh undo. Kalau ada inventory batch / sales history / session items reference SKU ni, Supabase akan tolak DELETE (FK constraint).\n\nTeruskan?`)) return;
+ try {
+ const { error } = await db.from('products_master').delete().eq('sku', sku);
+ if(error) {
+ if(error.code === '23503' || /foreign key/i.test(error.message)) {
+ return showToast(`Tak boleh delete — masih ada reference (inventory/sales/session). Soft-delete: tukar Status ke Draft je.`, 'error');
+ }
+ throw error;
+ }
+ // Remove from in-memory cache
+ const idx = masterProducts.findIndex(x => x.sku === sku);
+ if(idx >= 0) masterProducts.splice(idx, 1);
+ try {
+ await db.from('audit_logs').insert([{
+ action_type: 'master_product_delete',
+ actor_name: currentUser ? currentUser.name : 'System',
+ details: JSON.stringify({ sku, name: p.name }),
+ created_at: new Date().toISOString()
+ }]);
+ } catch(_){}
+ showToast(`SKU "${sku}" dah padam dari Master.`, 'success');
+ window.clearMpForm();
+ if(typeof window.refreshMpDatalists === 'function') window.refreshMpDatalists();
+ } catch(e) {
+ console.error('Delete master product error:', e);
+ showToast('Delete gagal: ' + e.message, 'error');
+ }
+};
+
+// p1_226 — Add blank option line to variant textarea
+window.mpAddVariantOption = function() {
+ const ta = document.getElementById('mpVariantOptions');
+ if(!ta) return;
+ const placeholder = 'Option Name: nilai1, nilai2';
+ ta.value = (ta.value && !ta.value.endsWith('\n')) ? ta.value + '\n' + placeholder : ta.value + placeholder;
+ ta.focus();
+ // Select the placeholder so staff terus type ganti
+ const start = ta.value.length - placeholder.length;
+ ta.setSelectionRange(start, ta.value.length);
+};
+
+// Auto-populate brand & category & vendor & collection & SKU datalists from existing products
 window.refreshMpDatalists = function() {
- const bList = document.getElementById('mpBrandList');
- const cList = document.getElementById('mpCategoryList');
- if(!bList || !cList || typeof masterProducts === 'undefined') return;
- const brands = [...new Set(masterProducts.map(p => p.brand).filter(Boolean))].sort();
- const cats = [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort();
- bList.innerHTML = brands.map(b => `<option value="${b}">`).join('');
- cList.innerHTML = cats.map(c => `<option value="${c}">`).join('');
+ if(typeof masterProducts === 'undefined') return;
+ const fill = (id, vals) => { const el = document.getElementById(id); if(el) el.innerHTML = vals.map(v => `<option value="${String(v).replace(/"/g, '&quot;')}">`).join(''); };
+ fill('mpBrandList', [...new Set(masterProducts.map(p => p.brand).filter(Boolean))].sort());
+ fill('mpCategoryList', [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort());
+ // p1_226 — datalists for new metadata-backed fields
+ const metas = masterProducts.map(p => (p.metadata && typeof p.metadata === 'object') ? p.metadata : {});
+ fill('mpVendorList', [...new Set(metas.map(m => m.vendor).filter(Boolean))].sort());
+ fill('mpCollectionList', [...new Set(metas.map(m => m.collection).filter(Boolean))].sort());
+ fill('mpAllSkusList', masterProducts.map(p => p.sku).filter(Boolean).sort());
 };
 window.saveProductRegistration = async function() {
  let shipmentNo = document.getElementById("prShipmentNo").value.trim();
