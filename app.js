@@ -3231,6 +3231,12 @@ window.__psRenderList = function() {
  const brands = Array.from(new Set(masterProducts.map(p => (p.brand || '').trim()).filter(Boolean))).sort();
  brandSel.innerHTML = '<option value="">Semua brand</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
  }
+ // p1_214 — Populate location dropdown (CSV codes seperti C-IV, A-IR etc)
+ const locSel = document.getElementById('psListLocation');
+ if(locSel && locSel.options.length <= 1) {
+ const locs = Array.from(new Set(masterProducts.map(p => (p.location_bin || '').trim()).filter(Boolean))).sort();
+ locSel.innerHTML = '<option value="">Semua lokasi</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('');
+ }
  window.__psListFilter();
 };
 
@@ -3241,9 +3247,11 @@ window.__psListFilter = function() {
  const q = ((document.getElementById('psListSearch') && document.getElementById('psListSearch').value) || '').toLowerCase().trim();
  const brand = (document.getElementById('psListBrand') && document.getElementById('psListBrand').value) || '';
  const status = (document.getElementById('psListStatus') && document.getElementById('psListStatus').value) || '';
+ const loc = (document.getElementById('psListLocation') && document.getElementById('psListLocation').value) || '';
  const all = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
  const rows = all.filter(p => {
  if(brand && (p.brand || '') !== brand) return false;
+ if(loc && (p.location_bin || '') !== loc) return false;
  if(q) {
  const sku = (p.sku || '').toLowerCase();
  const nm = (p.name || '').toLowerCase();
@@ -3278,11 +3286,13 @@ window.__psListFilter = function() {
  const skuSafe = escHtml(skuRaw);
  const skuArg = skuRaw.replace(/'/g, "\\'");
  const imgSrc = (p.images && p.images[0]) ? p.images[0] : window.__psNoImg;
+ const loc = (p.location_bin || '').trim();
  return `<tr class="ps-list-row" onclick="window.__psLoadFromList('${skuArg}')">`
  + `<td class="ps-list-cell" style="padding:6px 10px;"><img src="${escHtml(imgSrc)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=window.__psNoImg;" style="width:80px; height:80px; object-fit:cover; border-radius:6px; border:1px solid #E5E7EB; display:block;" alt=""></td>`
  + `<td class="ps-list-cell" style="padding:10px; font-family:'SF Mono', Menlo, ui-monospace, monospace; font-weight:700; color:var(--primary);">${skuSafe}</td>`
  + `<td class="ps-list-cell" style="padding:10px; line-height:1.4;">${escHtml((p.name || '').slice(0, 80))}</td>`
  + `<td class="ps-list-cell" style="padding:10px; color:#6B7280;">${escHtml(p.brand || '—')}</td>`
+ + `<td class="ps-list-cell" style="padding:10px;">${loc ? `<span style="display:inline-block; padding:2px 8px; border-radius:4px; background:#FEF3C7; color:#92400E; font-size:10.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(loc)}</span>` : `<span style="color:#D1D5DB; font-size:11px;">—</span>`}</td>`
  + `<td class="ps-list-cell" style="padding:10px; text-align:right; font-weight:${price > 0 ? '700' : '400'}; color:${price > 0 ? '#111827' : '#9CA3AF'};">${price > 0 ? 'RM ' + price.toFixed(2) : '—'}</td>`
  + `<td class="ps-list-cell" style="padding:10px; text-align:right; color:${cost > 0 ? '#111827' : '#9CA3AF'};">${cost > 0 ? '¥ ' + cost.toFixed(2) : '—'}</td>`
  + `<td class="ps-list-cell" style="padding:10px; text-align:right; color:${stock <= 0 ? '#EF4444' : '#111827'}; font-weight:600;">${stock}</td>`
@@ -3294,6 +3304,7 @@ window.__psListFilter = function() {
  + '<th style="text-align:left;">SKU</th>'
  + '<th style="text-align:left;">Nama</th>'
  + '<th style="text-align:left;">Brand</th>'
+ + '<th style="text-align:left;">Lokasi</th>'
  + '<th style="text-align:right;">Harga Skrg</th>'
  + '<th style="text-align:right;">Cost RMB</th>'
  + '<th style="text-align:right;">Stok</th>'
