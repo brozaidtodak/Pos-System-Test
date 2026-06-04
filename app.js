@@ -2614,6 +2614,7 @@ window.renderReorderSuggest = function() {
  const estCost = suggestedQty * cost;
  rows.push({
  sku, name: p.name || '', brand: p.brand || '', category: p.category || '',
+ location_bin: p.location_bin || '',
  currentStock: cur,
  sold, dailyAvg,
  daysTillStockout,
@@ -2672,6 +2673,7 @@ window.__rsApplyFilter = function() {
  <tr>
  <th>SKU</th>
  <th>Brand / Nama</th>
+ <th>Lokasi</th>
  <th style="text-align:right;">Stok</th>
  <th style="text-align:right;">Sold (${parseInt(document.getElementById('rsWindow').value || '30', 10)}d)</th>
  <th style="text-align:right;">Avg/Hari</th>
@@ -2685,9 +2687,11 @@ window.__rsApplyFilter = function() {
  const riskColor = r.isOutOfStock ? '#991B1B' : (r.isUrgent ? '#EF4444' : (r.daysTillStockout < 14 ? '#D97706' : '#10B981'));
  const riskLabel = r.isOutOfStock ? 'OUT' : (r.daysTillStockout >= 999 ? '—' : r.daysTillStockout + 'd');
  const rowBg = r.isOutOfStock ? 'background:#FEE2E2;' : (r.isUrgent ? 'background:#FEF2F2;' : '');
+ const locPill = r.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escAttr(r.location_bin)}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>';
  return `<tr style="${rowBg}">
  <td><strong>${escAttr(r.sku)}</strong></td>
  <td style="font-size:12px;"><strong>${escAttr(r.brand)}</strong><br><span style="color:#6B7280;">${escAttr(r.name).slice(0, 60)}</span></td>
+ <td>${locPill}</td>
  <td style="text-align:right; color:${r.isOutOfStock ? '#991B1B' : '#374151'}; font-weight:${r.isOutOfStock ? 700 : 400};">${r.currentStock}</td>
  <td style="text-align:right;">${r.sold}</td>
  <td style="text-align:right;">${r.dailyAvg.toFixed(2)}</td>
@@ -8352,6 +8356,7 @@ function renderPOS(searchTerm = "") {
  <span class="sku-badge">${p.sku}</span>
  ${p.brand ? `<span class="cat-badge">${p.brand}</span>` : (p.category ? `<span class="cat-badge">${p.category}</span>` : '')}
  ${isOnSale ? `<span class="cat-badge" style="background:#0F172A; color:#FFFFFF;">-${offPct}%</span>` : ''}
+ ${p.location_bin ? `<span class="cat-badge" style="background:#FEF3C7; color:#92400E; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;" title="Lokasi gudang">${p.location_bin}</span>` : ''}
  </div>
  <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
@@ -17532,7 +17537,7 @@ window.renderInventoryAging = function() {
  bk.qty += b.qty_remaining;
  bk.cost += lineCost;
  bk.retail += lineRetail;
- bk.items.push({ sku: b.sku, name: prod?.name || '?', age: ageDays, qty: b.qty_remaining, cost: lineCost, batch: b });
+ bk.items.push({ sku: b.sku, name: prod?.name || '?', location_bin: prod?.location_bin || '', age: ageDays, qty: b.qty_remaining, cost: lineCost, batch: b });
  break;
  }
  }
@@ -17595,12 +17600,13 @@ window.showAgingDrilldown = function(bucketLabel) {
  <p style="font-size:12px; color:#666; margin-bottom:10px;">${bucket.items.length} item · ${bucket.qty} unit · modal RM ${bucket.cost.toFixed(2)}</p>
  <div class="table-responsive" style="max-height:400px;">
  <table class="data-table" style="font-size:12px;">
- <thead><tr><th>SKU</th><th>Nama</th><th style="text-align:right;">Age (hari)</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Total Modal</th></tr></thead>
+ <thead><tr><th>SKU</th><th>Nama</th><th>Lokasi</th><th style="text-align:right;">Age (hari)</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Total Modal</th></tr></thead>
  <tbody>
  ${top20.map(it => `
  <tr>
  <td><strong>${it.sku}</strong></td>
  <td>${(it.name || '').slice(0, 60)}</td>
+ <td>${it.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${it.location_bin}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>'}</td>
  <td style="text-align:right;">${it.age}</td>
  <td style="text-align:right;">${it.qty}</td>
  <td style="text-align:right;">RM ${it.cost.toFixed(2)}</td>
@@ -21271,7 +21277,7 @@ window.renderProductDatabase = function() {
  <div class="pd-card__body">
  <span class="pd-card__brand">${p.brand || p.category || '·'}</span>
  <span class="pd-card__title">${(p.name || '').slice(0, 90)}</span>
- <span class="pd-card__sku">${p.sku}</span>
+ <span class="pd-card__sku">${p.sku}${p.location_bin ? ` · <span style="background:#FEF3C7; color:#92400E; padding:1px 6px; border-radius:3px; font-size:9.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${p.location_bin}</span>` : ''}</span>
  <span class="pd-card__price">RM ${(p.price || 0).toFixed(2)}${cost ? `<span class="pd-card__price-sub">cost RM ${cost}</span>` : ''}</span>
  </div>
  <div class="pd-card__footer">
@@ -21299,6 +21305,7 @@ window.renderProductDatabase = function() {
  <td><span class="pd-row-name">${(p.name||'').slice(0, 70)}</span><span class="pd-row-meta">${p.sku}${p.erp_barcode ? ' · '+p.erp_barcode : ''}</span></td>
  <td>${p.brand || '—'}</td>
  <td>${p.category || '—'}</td>
+ <td>${p.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 7px; border-radius:4px; font-size:10.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${p.location_bin}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>'}</td>
  <td style="text-align:right;" class="pd-row-price">RM ${(p.price||0).toFixed(2)}</td>
  <td style="text-align:right; color:${stockColor}; font-weight:var(--weight-bold);">${stock}</td>
  <td style="text-align:center;">${pub ? '<span class="badge badge--success">Live</span>' : '<span class="badge badge--warning">Draft</span>'}</td>
