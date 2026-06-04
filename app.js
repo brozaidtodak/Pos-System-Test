@@ -8041,6 +8041,11 @@ window.posOpenProductDetail = function(sku) {
         addBtn.disabled = false;
         addBtn.innerHTML = '<i data-lucide="shopping-cart" style="width:16px;height:16px;flex-shrink:0;"></i><span>Add to Cart</span>';
     }
+    // p1_202 — Reset discount inputs + preview on PDP open
+    const dAmt = document.getElementById('pdDiscAmt'); if(dAmt) dAmt.value = '';
+    const dType = document.getElementById('pdDiscType'); if(dType) dType.value = 'rm';
+    const dReason = document.getElementById('pdDiscReason'); if(dReason) dReason.value = '';
+    const dPrev = document.getElementById('pdDiscPreview'); if(dPrev) dPrev.style.display = 'none';
 
     // Render gallery
     window.__pdRenderGallery();
@@ -8081,17 +8086,85 @@ window.posDetailQty = function(delta) {
     window.__pdState.qty = next;
 };
 
+// p1_202 — Compute per-item discount preview from PDP inputs.
+window.__pdComputeDiscount = function() {
+    const sku = window.__pdState ? window.__pdState.sku : null;
+    if(!sku) return;
+    const p = (typeof masterProducts !== 'undefined') ? masterProducts.find(x => x.sku === sku) : null;
+    if(!p) return;
+    const original = Number(p.price || 0);
+    const type = (document.getElementById('pdDiscType') || {}).value || 'rm';
+    const amt = parseFloat((document.getElementById('pdDiscAmt') || {}).value) || 0;
+    let discount = 0;
+    if(amt > 0) discount = type === 'pct' ? round2(original * amt / 100) : round2(amt);
+    if(discount > original) discount = original;
+    const finalPrice = round2(original - discount);
+    const previewEl = document.getElementById('pdDiscPreview');
+    if(!previewEl) return;
+    if(discount > 0) {
+        previewEl.style.display = 'block';
+        const oEl = document.getElementById('pdDiscOriginal'); if(oEl) oEl.textContent = 'RM ' + original.toFixed(2);
+        const fEl = document.getElementById('pdDiscFinal'); if(fEl) fEl.textContent = 'RM ' + finalPrice.toFixed(2);
+        const sEl = document.getElementById('pdDiscSaved'); if(sEl) sEl.textContent = '-RM ' + discount.toFixed(2);
+    } else {
+        previewEl.style.display = 'none';
+    }
+    return { original, discount, finalPrice };
+};
+
 window.posDetailAddToCart = function() {
     const sku = window.__pdState.sku;
     if(!sku) return;
     const qty = Math.max(1, parseInt(document.getElementById('pdQtyInput').value) || 1);
-    for(let i = 0; i < qty; i++) {
-        if(typeof window.addToCart === 'function') window.addToCart(sku);
+    // p1_202 — Read per-item discount
+    const p = masterProducts.find(x => x.sku === sku);
+    const original = Number(p ? p.price : 0);
+    const type = (document.getElementById('pdDiscType') || {}).value || 'rm';
+    const amt = parseFloat((document.getElementById('pdDiscAmt') || {}).value) || 0;
+    const reason = ((document.getElementById('pdDiscReason') || {}).value || '').trim();
+    let discount = 0;
+    if(amt > 0) discount = type === 'pct' ? round2(original * amt / 100) : round2(amt);
+    if(discount > original) discount = original;
+    const finalPrice = round2(original - discount);
+    if(discount > 0) {
+        // Push directly with discounted price (bypass addToCart so price override sticks)
+        const totalAvail = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining > 0).reduce((s, b) => s + b.qty_remaining, 0);
+        const want = qty;
+        if(totalAvail < want) {
+            if(typeof showToast === 'function') showToast('Stok tak cukup', 'warning');
+            return;
+        }
+        const existing = cart.find(c => c.sku === sku);
+        if(existing) {
+            existing.quantity += want;
+            existing.price = finalPrice;
+            existing.original_price = original;
+            existing.discount_amount = discount;
+            existing.discount_type = type;
+            existing.discount_input = amt;
+            existing.discount_reason = reason || null;
+        } else {
+            cart.push({
+                sku, name: p.name, price: finalPrice,
+                original_price: original,
+                discount_amount: discount,
+                discount_type: type,
+                discount_input: amt,
+                discount_reason: reason || null,
+                quantity: want
+            });
+        }
+        renderCart();
+    } else {
+        for(let i = 0; i < qty; i++) {
+            if(typeof window.addToCart === 'function') window.addToCart(sku);
+        }
     }
     window.posCloseProductDetail();
     if(typeof showToast === 'function') {
-        const p = masterProducts.find(x => x.sku === sku);
-        showToast((p ? p.name : sku) + ' (×' + qty + ') added to cart', 'success');
+        const pInfo = masterProducts.find(x => x.sku === sku);
+        const discMsg = discount > 0 ? ' · diskaun -RM ' + discount.toFixed(2) + ' apply' : '';
+        showToast((pInfo ? pInfo.name : sku) + ' (×' + qty + ')' + discMsg + ' added to cart', 'success');
     }
 };
 
@@ -8181,7 +8254,7 @@ function renderCart() {
  : '';
  return `
  <div class="cart-item" style="${belowFloor ? 'border-left:3px solid #EF4444; background:rgba(254,226,226,.15);' : ''}">
- <div style="flex:1;"><strong style="font-size:13px; color:#111;">[${item.sku}] ${item.name}</strong><br><small style="color:#666;">RM${item.price.toFixed(2)} x ${item.quantity}</small> ${floorBadge}</div>
+ <div style="flex:1;"><strong style="font-size:13px; color:#111;">[${item.sku}] ${item.name}</strong><br><small style="color:#666;">${(item.discount_amount && item.original_price) ? `<s style="color:#9CA3AF;">RM${item.original_price.toFixed(2)}</s> ` : ''}RM${item.price.toFixed(2)} x ${item.quantity}</small> ${(item.discount_amount && item.discount_amount > 0) ? `<span style="display:inline-block; margin-left:5px; padding:1px 6px; background:#FEF3C7; color:#92400E; border-radius:50px; font-size:10px; font-weight:700;" title="${item.discount_reason || 'Diskaun manual'}">-RM ${item.discount_amount.toFixed(2)}</span>` : ''} ${floorBadge}</div>
  <div style="display:flex; gap:8px; align-items:center;">
  <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
  <span style="font-weight:bold;">${item.quantity}</span>
