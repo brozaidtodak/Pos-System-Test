@@ -7596,7 +7596,10 @@ window.openPaymentModal = function() {
 
 window.setPaymentMethod = function(method, btnElement) {
  document.getElementById('paymentMethod').value = method;
- let btns = document.querySelectorAll('#checkoutPaymentModal.pay-btn');
+ // p1_185 — selector was '#checkoutPaymentModal.pay-btn' (compound class) → matched
+ // nothing. Should be descendant: '#checkoutPaymentModal .pay-btn'. Visual feedback
+ // broken: tapping a payment button never deactivated siblings.
+ let btns = document.querySelectorAll('#checkoutPaymentModal .pay-btn');
  btns.forEach(b => {
  b.classList.remove('active');
  b.style.border = "1px solid var(--border-color)";
@@ -7857,7 +7860,10 @@ window.processNewCheckout = async function() {
  const custPhoneText = document.getElementById("customerPhone").value.trim();
 
  // E-Wallet manual-confirm: require provider + ref number with format validation (B11)
+ // p1_185 — keep pm as canonical "E-Wallet" so Reports filter (startsWith 'E-Wallet')
+ // works correctly. Full "Provider (Ref: ...)" string goes to payment_method_detail.
  let ewalletRef = null, ewalletProvider = null;
+ let pmDetail = pm; // detail = canonical method by default
  if (pm === 'E-Wallet') {
  ewalletProvider = document.getElementById("ewalletProvider").value;
  ewalletRef = document.getElementById("ewalletRef").value.trim();
@@ -7870,7 +7876,8 @@ window.processNewCheckout = async function() {
  const patterns = window.__ewalletPatterns || {};
  const meta = patterns[ewalletProvider];
  if (meta && !meta.pattern.test(ewalletRef)) { fail('Ref # format tak match '+ewalletProvider+' ('+meta.hint+'). Verify dengan customer.'); return; }
- pm = ewalletProvider + ' (Ref: ' + ewalletRef + ')';
+ // canonical pm stays 'E-Wallet'; full provider+ref goes to pmDetail
+ pmDetail = ewalletProvider + ' (Ref: ' + ewalletRef + ')';
  }
  // B14: optional buyer TIN for e-Invoice
  const buyerTin = (document.getElementById("customerBuyerTin")?.value || '').trim();
@@ -7927,13 +7934,18 @@ window.processNewCheckout = async function() {
  }
 
  // p1_180 — upload payment proof to Storage before insert (skip if Cash or no file)
+ // p1_185 — surface upload failure to user (was silent — staff may not realize
+ // resit dah hilang). Sale still inserts; staff can re-upload from Reports.
  let proofUrl = null, proofUploadedAt = null, proofUploadedBy = null;
- if(pm !== 'Cash' && window.__proofState && window.__proofState.file && typeof window.__proofUploadToStorage === 'function') {
+ const hasFile = !!(window.__proofState && window.__proofState.file);
+ if(pm !== 'Cash' && hasFile && typeof window.__proofUploadToStorage === 'function') {
  const url = await window.__proofUploadToStorage(null);
  if(url) {
  proofUrl = url;
  proofUploadedAt = new Date().toISOString();
  proofUploadedBy = (currentUser && currentUser.name) ? currentUser.name : 'Unknown';
+ } else {
+ if(typeof showToast === 'function') showToast('Resit pembayaran gagal upload — sale tetap simpan. Upload manual dari Reports → Payment Proofs.', 'warn');
  }
  }
 
@@ -7946,7 +7958,7 @@ window.processNewCheckout = async function() {
  payment_proof_url: proofUrl,
  payment_proof_uploaded_at: proofUploadedAt,
  payment_proof_uploaded_by: proofUploadedBy,
- payment_method_detail: pm
+ payment_method_detail: pmDetail
  }]);
  // Use finalTotal downstream
  totalVal = finalTotal;
@@ -7971,6 +7983,15 @@ window.processNewCheckout = async function() {
  // p1_180 — clear proof state after checkout
  if(typeof window.__proofClearFile === 'function') window.__proofClearFile();
  const proofSec = document.getElementById('proofUploadSection'); if (proofSec) proofSec.style.display = 'none';
+ // p1_185 — reset payment method to Cash default + reactivate Cash button visual
+ const pmHidden = document.getElementById('paymentMethod'); if(pmHidden) pmHidden.value = 'Cash';
+ document.querySelectorAll('#checkoutPaymentModal .pay-btn').forEach(b => {
+ const isCash = b.getAttribute('data-pay-key') === 'Cash';
+ b.classList.toggle('active', isCash);
+ b.style.border = isCash ? '2px solid var(--primary)' : '1px solid var(--border-color)';
+ b.style.background = isCash ? '#FFF5eb' : '#FFF';
+ b.style.color = isCash ? 'var(--text-main)' : 'var(--text-muted)';
+ });
  document.getElementById('checkoutPaymentModal').style.display = 'none';
  await initApp(); 
  renderCart();
