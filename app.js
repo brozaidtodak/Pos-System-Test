@@ -8139,7 +8139,17 @@ function handleLogin() {
  const mins = Math.ceil((gl.lockedUntil - Date.now()) / 60000);
  if(errEl) { errEl.textContent = `Device dikunci. Cuba semula dalam ~${mins} minit.`; errEl.style.color = '#dc2626'; }
  }
- setTimeout(() => { if(pinInput) pinInput.focus(); }, 50);
+ // p1_184 — pre-fill saved email login creds when overlay shown
+ try { window.__prefillSavedLogin && window.__prefillSavedLogin(); } catch(e){}
+ setTimeout(() => {
+ const emailInput = document.getElementById('emailLoginEmail');
+ const emailForm = document.getElementById('emailLoginForm');
+ const isEmailVisible = emailForm && emailForm.style.display !== 'none';
+ if(isEmailVisible && emailInput) {
+ const targetId = emailInput.value ? 'emailLoginPassword' : 'emailLoginEmail';
+ const t = document.getElementById(targetId); if(t) t.focus();
+ } else if(pinInput) pinInput.focus();
+ }, 50);
 }
 
 // Per-staff lockout: 5 wrong attempts -> locked for 5 minutes.
@@ -8288,7 +8298,83 @@ window.__showEmailLogin = function() {
  const emailForm = document.getElementById('emailLoginForm');
  if(pinForm) pinForm.style.display = 'none';
  if(emailForm) emailForm.style.display = 'block';
- setTimeout(() => { const i = document.getElementById('emailLoginEmail'); if(i) i.focus(); }, 50);
+ // p1_184 — pre-fill saved credentials
+ window.__prefillSavedLogin();
+ setTimeout(() => {
+ const emailInput = document.getElementById('emailLoginEmail');
+ const pwInput = document.getElementById('emailLoginPassword');
+ // Focus password if email already filled, else focus email
+ const targetId = (emailInput && emailInput.value) ? 'emailLoginPassword' : 'emailLoginEmail';
+ const target = document.getElementById(targetId);
+ if(target) target.focus();
+ }, 50);
+};
+
+// p1_184 — Saved login (email + password optional). Two keys:
+//   lastLoginEmail_v1 — always saved on success (low risk, convenience)
+//   savedLogin_v1     — only saved if "Ingat saya" checked (email + base64 pw)
+// Base64 isn't real crypto — it's obfuscation against casual reads. Real
+// security for shared devices is Supabase session persistence (already on)
+// + screen lock at the OS level.
+const REMEMBER_KEY = 'savedLogin_v1';
+const LAST_EMAIL_KEY = 'lastLoginEmail_v1';
+
+window.__prefillSavedLogin = function() {
+ const emailEl = document.getElementById('emailLoginEmail');
+ const pwEl = document.getElementById('emailLoginPassword');
+ const chk = document.getElementById('rememberMeChk');
+ const forgetBtn = document.getElementById('forgetLoginBtn');
+ if(!emailEl) return;
+ try {
+ const remembered = localStorage.getItem(REMEMBER_KEY);
+ if(remembered) {
+ const obj = JSON.parse(remembered);
+ if(obj && obj.email) {
+ emailEl.value = obj.email;
+ if(pwEl && obj.pw) {
+ try { pwEl.value = atob(obj.pw); } catch(e){}
+ }
+ if(chk) chk.checked = true;
+ if(forgetBtn) forgetBtn.style.display = 'inline-block';
+ return;
+ }
+ }
+ // Fallback: at least pre-fill last-used email
+ const lastEmail = localStorage.getItem(LAST_EMAIL_KEY);
+ if(lastEmail) emailEl.value = lastEmail;
+ } catch(e) { /* localStorage may be disabled */ }
+};
+
+window.__saveLoginCreds = function(email, password) {
+ try {
+ // Always remember email (convenience)
+ if(email) localStorage.setItem(LAST_EMAIL_KEY, email);
+ // Only save password if "Ingat saya" checked
+ const chk = document.getElementById('rememberMeChk');
+ if(chk && chk.checked && email && password) {
+ localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, pw: btoa(password), saved_at: new Date().toISOString() }));
+ } else {
+ // Unchecked → clear any prior saved password
+ localStorage.removeItem(REMEMBER_KEY);
+ }
+ } catch(e) {}
+};
+
+window.__forgetSavedLogin = function() {
+ try {
+ localStorage.removeItem(REMEMBER_KEY);
+ localStorage.removeItem(LAST_EMAIL_KEY);
+ } catch(e) {}
+ const emailEl = document.getElementById('emailLoginEmail');
+ const pwEl = document.getElementById('emailLoginPassword');
+ const chk = document.getElementById('rememberMeChk');
+ const forgetBtn = document.getElementById('forgetLoginBtn');
+ if(emailEl) emailEl.value = '';
+ if(pwEl) pwEl.value = '';
+ if(chk) chk.checked = false;
+ if(forgetBtn) forgetBtn.style.display = 'none';
+ if(typeof showToast === 'function') showToast('Login tersimpan dibuang.', 'info');
+ if(emailEl) emailEl.focus();
 };
 
 window.__showPinFallback = function() {
@@ -8425,6 +8511,8 @@ window.submitEmailLogin = async function() {
  window.__openSetPasswordModal({ source: 'first_login' });
  return;
  }
+ // p1_184 — Save creds before clearing fields (respects "Ingat saya")
+ try { window.__saveLoginCreds(email, password); } catch(e) {}
  // Success — clear, close, boot session
  pwEl.value = '';
  emailEl.value = '';
