@@ -2953,23 +2953,65 @@
  </div>
 
  <!-- Create session modal -->
- <div id="scsCreateModal" class="login-overlay" style="display:none; z-index:3700;">
- <div class="login-box" style="max-width:560px; padding:28px; max-height:85vh; overflow-y:auto;">
+ <div id="scsCreateModal" class="login-overlay" style="display:none; z-index:3700; align-items:flex-start; overflow-y:auto; padding:20px 10px;">
+ <div class="login-box" style="max-width:900px; padding:24px 28px; max-height:none; margin:auto;">
  <button onclick="document.getElementById('scsCreateModal').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted);">×</button>
  <h2 style="font-weight:800; font-size:20px; margin-bottom:6px;">Sesi Stock Check Baharu</h2>
- <p style="color:#6B7280; font-size:12.5px; margin-bottom:18px;">Pilih location nak kira. System auto-include semua SKU dalam location terpilih.</p>
+ <p style="color:#6B7280; font-size:12.5px; margin-bottom:14px;">Pilih SKU yang nak dicheck. Filter atas mempercepat — bulk tick / template untuk reuse selection.</p>
+
+ <!-- p1_213 — Template selector (load existing template + save new) -->
+ <div style="background:#FEF7ED; border:1px dashed #FCD34D; border-radius:8px; padding:12px; margin-bottom:14px; display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+ <div style="flex:1; min-width:200px;">
+ <label class="small-lbl" style="color:#92400E;">Template (reuse selection sebelum)</label>
+ <select id="scsTemplateSelect" class="cp-input" onchange="window.__scsApplyTemplate(this.value)" style="margin:0;">
+ <option value="">— Tiada template (pilih manual) —</option>
+ </select>
+ </div>
+ <button type="button" onclick="window.__scsSaveTemplate()" class="sy-btn secondary" style="font-size:11px;"><i data-lucide="save" style="width:11px;height:11px;"></i> Simpan jadi template</button>
+ </div>
+
  <label class="small-lbl">Nama Sesi *</label>
  <input type="text" id="scsName" class="cp-input" placeholder="Cth: Stock Check Week 23 Jun 2026" maxlength="120">
- <label class="small-lbl" style="margin-top:14px;">Locations (pilih satu atau lebih)</label>
- <div id="scsLocationList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 14px; max-height:280px; overflow-y:auto; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
- <p style="color:#9CA3AF; font-size:12px; padding:20px; text-align:center; grid-column:1/-1;">Memuatkan locations…</p>
+
+ <!-- Picker filter row -->
+ <label class="small-lbl" style="margin-top:14px;">Filter SKU (sempit-kan pilihan)</label>
+ <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px; margin:6px 0 8px;">
+ <div>
+ <input type="text" id="scsPickerSearch" class="cp-input" placeholder="Cari SKU / Nama / Barcode…" oninput="window.__scsRenderPicker()" style="margin:0; padding:8px 10px; font-size:12px;">
  </div>
- <label class="small-lbl">Staff Assigned (pilih siapa kira)</label>
- <div id="scsAssignList" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0 14px; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
+ <div>
+ <select id="scsPickerLocation" class="cp-input" onchange="window.__scsRenderPicker()" style="margin:0; padding:8px 10px; font-size:12px;">
+ <option value="">Semua Location</option>
+ </select>
+ </div>
+ <div>
+ <select id="scsPickerCategory" class="cp-input" onchange="window.__scsRenderPicker()" style="margin:0; padding:8px 10px; font-size:12px;">
+ <option value="">Semua Category</option>
+ </select>
+ </div>
+ <div>
+ <select id="scsPickerBrand" class="cp-input" onchange="window.__scsRenderPicker()" style="margin:0; padding:8px 10px; font-size:12px;">
+ <option value="">Semua Brand</option>
+ </select>
+ </div>
+ </div>
+ <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+ <button type="button" onclick="window.__scsBulkSelect(true)" class="sy-btn secondary" style="font-size:11px;"><i data-lucide="check-square" style="width:11px;height:11px;"></i> Pilih Semua (visible)</button>
+ <button type="button" onclick="window.__scsBulkSelect(false)" class="sy-btn secondary" style="font-size:11px;"><i data-lucide="square" style="width:11px;height:11px;"></i> Buang Semua (visible)</button>
+ <span id="scsPickerCount" style="font-size:11.5px; color:#6B7280; margin-left:auto;"></span>
+ </div>
+
+ <!-- Picker table -->
+ <div id="scsPickerWrap" style="max-height:45vh; overflow:auto; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
+ <p style="color:#9CA3AF; font-size:12px; padding:30px; text-align:center;">Memuatkan products…</p>
+ </div>
+
+ <label class="small-lbl" style="margin-top:14px;">Staff Assigned (pilih siapa kira)</label>
+ <div id="scsAssignList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:6px; margin:6px 0 14px; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
  <p style="color:#9CA3AF; font-size:12px; padding:20px; text-align:center; grid-column:1/-1;">Memuatkan staff…</p>
  </div>
  <div id="scsPreview" style="background:#F0F9FF; border:1px solid #BAE6FD; padding:12px; border-radius:8px; margin-bottom:14px; font-size:12.5px; color:#075985;">
- <strong>Preview:</strong> Pilih location dulu untuk papar jumlah SKU.
+ <strong>Preview:</strong> Tiada SKU dipilih lagi.
  </div>
  <div style="display:flex; gap:8px;">
  <button onclick="document.getElementById('scsCreateModal').style.display='none'" class="btn btn--secondary" style="flex:1;">Batal</button>
@@ -6443,7 +6485,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (212/212 · last 2026-06-04) — Stock Take Senarai SKU view sama pattern macam Stock Check Sessions. Column table dengan Belum Check / Hari ini / N hari lepas / Stale status, honors session location filter, auto-refresh on submit.',
+ { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (213/213 · last 2026-06-04) — Stock Check Sessions create modal rewrite: granular SKU picker (filter Search/Location/Category/Brand + table dengan checkbox per row + Pilih Semua/Buang bulk) + saved templates (reuse selection, Supabase stock_check_templates table).',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -6518,6 +6560,7 @@
  { id:'p1_70', label:'Sidebar restructure — buang Reports dari Inventory + cipta Marketing Department. (1) Inventory Department: seksyen "— Reports —" (5 entri: Velocity & Sales, Stock Aging, Stock Valuation, Period Snapshot, Stock Reservations) DIBUANG dari sidebar — Operasi tinggal kerja harian (Pesanan Online, Jadual Operasi, Browse Products, Purchase Orders, Warehouse Hub, Stock Take, Smart Picking, Barcode Labels). Section divs (productSalesSection/agingSection/valuationSection/snapshotSection/reservationsSection) kekal dalam DOM untuk back-compat — boleh kembalikan kemudian jika perlu. (2) Marketing Department BARU dicipta sebagai group sidebar berasingan (sebelum Finance, selepas Admin). 3 entri (data-group="marketing"): Promotions & Vouchers + WhatsApp Broadcast + Re-engage Campaign — dipindah keluar dari Admin Dept (sub-header "— Marketing —" dibuang dari Admin). data-tab kekal sama (admin_promotions/admin_wa_broadcast/admin_reengage) untuk back-compat dengan staffSidebarAccess_v1 overlay. Manager-access tier sama macam Admin', d:'done' },
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
+ { id:'p1_213', label:'Stock Check Sessions create rewrite — granular SKU picker + templates (Zaid: "zakwan kata tak semua product dia nak stock check, dia nak pilih products yang nak je. tolong plan" → AskUserQuestion answer = full table picker with checkboxes + save templates). Zaid hantar CSV "WEEKLY 2026 Checkform List" untuk reference (676 SKU, location codes A-IR/B-IV/C-IV etc + Category + Dead Stock flag). Build: (1) SQL migration sql/2026-06-04_stock_check_templates.sql — CREATE TABLE stock_check_templates dengan sku_list[] + filter_locations[] + filter_categories[] + filter_brands[] + created_by_id/name + use_count + last_used_at + 2 indexes (created_at DESC + last_used_at NULLS LAST). RLS authenticated full CRUD. (2) HTML scsCreateModal rewrite — max-width 560→900px, align-items flex-start + overflow-y scroll padding 20px 10px (sebelum ni terlalu tinggi pada small viewport). New template selector warm cream box (dropdown + "Simpan jadi template" button). Replace location-only checkbox grid dengan 4-col filter row (Search input / Location select / Category select / Brand select) + bulk buttons row (Pilih Semua visible / Buang Semua visible / counter "X dipilih · Tunjuk Y / Z"). Full picker table dengan sticky header — checkbox / SKU monospace / Nama (50 char trunc) / Brand / Location / Stock (merah kalau 0). Click row → toggle checkbox. Render cap 500 dengan trim note. (3) JS __scsRenderPicker — filter masterProducts ikut Q+loc+cat+brand, generate checkable rows, sync check-all state. __scsTogglePickerSku lightweight add/remove from Set, update count tanpa full re-render. __scsBulkSelect iterate visible tbody rows. __scsUpdatePreview update bottom "X SKU dipilih". (4) __scsLoadTemplates fetch stock_check_templates ORDER BY last_used_at DESC NULLS LAST, populate dropdown dengan "name (N SKU · used Mx)". __scsApplyTemplate set selectedSkus = Set(template.sku_list) + re-render picker. __scsSaveTemplate prompt nama + INSERT row dengan current selection. (5) __scsConfirmCreate REWRITE — use selectedSkus directly (not bulk fetch by location). Build items array from Set with stock from inventoryBatches (bukan p.stock denormalized). Locations array auto-computed from selected SKUs untuk session metadata (downstream filter purposes). (6) Removed old __scsToggleLoc + __scsLocationList loader (location now a filter, not primary selection). app.js v313→v314.', d:'done' },
  { id:'p1_212', label:'Stock Take Senarai SKU view (Zaid: "buat sama untuk stock take section"). Same pattern macam p1_211 Stock Check Sessions — tapi context = Stock Take page (semua products dengan auditTimestamps tracking last_audited_at). Build: (1) Tunjuk Senarai SKU toggle button atas auditCardsContainer di stockTakeSection. Button label flip antara "Tunjuk Senarai SKU" (list icon) dan "Sembunyi Senarai SKU" (chevron-up). (2) #stSkuListView hidden div initial. (3) __stToggleSkuList toggle visibility + call __stRenderSkuList kalau buka. (4) __stRenderSkuList logic: filter masterProducts ikut window.__stSessionData.locations kalau active session (constrain to session locations); sort ascending — Belum Check items first (so staff tahu apa yang outstanding). 6 cols: SKU monospace bold, Nama 60-char trunc, Lokasi bin, Last Qty (— kalau null), Last By 20-char trunc, Status badge. (5) Status badge logic dari auditTimestamps map: takda timestamp → "Belum Check" kelabu circle-dashed icon + row warm yellow bg (#FFFBEB highlight); age <=7d → "Hari ini" / "N d lepas" hijau check-circle; 8-30d → "N hari lepas" kuning clock; >30d → "Stale Nd" oren alert-triangle. Same age thresholds as existing p1_125 stamp color. (6) Summary header tunjuk total / dah check / belum + % primary. Mention "(dalam lokasi sesi)" kalau filtering. (7) Sticky header + max-height 60vh + overflow-y auto + max 500 rows render dengan trim note ("Tunjuk 500 pertama daripada N"). (8) Auto-refresh hook: submitAuditSingle tambah check kalau stSkuListView display:block → re-render — supaya status badge update instant lepas staff submit kiraan. app.js v312→v313.', d:'done' },
  { id:'p1_211', label:'Stock Check Session — per-session SKU list with check status (Zaid: "fokus inventori. Tambah List of SKU untuk stock check. Buat dalam Column Format. Tujuan: untuk rujukan staff, lihat SKU apa yang perlu di check pada session checking tersebut. Tunjukkan status — telah check / belum check"). Build: (1) Per session card di renderCheckSessions tambah button "Tunjuk Senarai SKU" (lucide list icon, secondary style) sebelah existing "Buka & Kira" button. (2) Hidden div `scsSkuList-${id}` injected dalam card markup, default display:none dengan "Loading…" placeholder. (3) __scsToggleSkuList(sessionId) handler — toggle visibility; first open lazy-load dari `stock_check_session_items` ORDER BY sku ASC. Cache via dataset.loaded="1" supaya tak re-query kalau toggle balik. (4) Summary header tunjuk total / dah check / belum + % progress (primary color). (5) Column table 6 cols: SKU monospace bold, Nama (60 char trunc), Lokasi bin, Sistem qty kelabu, Dikira qty (bold bila ada value, kelabu — bila kosong), Status badge. (6) Status badge logic — flag=not_found → merah "Tak Jumpa" (search-x icon); flag=damaged → orange "Rosak" (alert-triangle); counted_qty != null + variance=0 → hijau "Tepat" (check-circle); variance>0 → kuning "+N Lebih" (trending-up); variance<0 → merah "N Kurang" (trending-down); counted_qty=null + tiada flag → kelabu "Belum Check" (clock). app.js v311→v312.', d:'done' },
  { id:'p1_210', label:'Inbox Aduan visible to all staff with read-only mode for non-Bos (Zaid: "tolong buat aduan report tu visible dekat semua orang"). Previously p1_147 ship dengan mgmt-only — only Bos saw inbox dan workflow controls. Sekarang transparency mandate (same theme p1_200 Payment Proofs + p1_201 Customer tabs): semua staff nampak inbox aduan supaya visibility ke aduan rakan sekerja + reply Bos. Fix 3 places: (a) sidebar entry line 1560 remove `mgmt-only` class. (b) __initMode bypass list line ~19724 tambah `feedback_inbox` ke existing list bersama sidebarRoadmapBtn + memo_board + report_my + staff_feedback + payment_proofs + customers_*. Bypass jamin visible regardless mode. (c) renderFeedbackInbox role-gate: check `_isBoss = isBoss(currentUser)` at start. Workflow controls (status dropdown, action input, reply textarea, quick-action buttons triage/process/resolved/wontfix, Simpan button) wrap dalam ternary — hanya render kalau _isBoss true. Non-Bos: render alternative read-only panel hijau dengan "Reply Bos" label + reply text + tindakan kalau ada bos_reply atau bos_action. Kalau takda reply: italic placeholder "Belum ada reply dari Bos." Stats grid (Total/Baru/Critical Open/Dalam Progress/Resolved) + filter pills (Semua/Baru/Triaged/In Progress/Resolved/Critical) kekal visible to all. app.js v310→v311.', d:'done' },
@@ -11191,7 +11234,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=313"></script>
+ <script src="app.js?v=314"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -6502,6 +6502,10 @@ window.renderCheckSessions = async function() {
 };
 
 // p1_169 — Create Session modal flow
+// p1_213 — Stock Check create flow REWRITE: granular SKU picker + templates.
+// Zaid: "tak semua product nak stock check, dia nak pilih products yang nak je"
+window.__scsSelectedSkus = new Set();
+
 window.__scsOpenCreate = async function() {
  const modal = document.getElementById('scsCreateModal');
  if(!modal) return;
@@ -6512,22 +6516,29 @@ window.__scsOpenCreate = async function() {
  const wk = Math.ceil((new Date().getDate()) / 7);
  nameEl.value = 'Stock Check Week ' + (new Date().getFullYear()) + '-' + String(new Date().getMonth()+1).padStart(2,'0') + ' #' + wk;
  }
- // Load locations
- window.__scsSelectedLocations.clear();
+ // Reset state
+ window.__scsSelectedSkus.clear();
  window.__scsSelectedStaff.clear();
+ // Populate filter dropdowns from masterProducts
  try {
- const { data } = await db.from('products_master').select('location_bin').not('location_bin', 'is', null);
- const counts = {};
- (data || []).forEach(r => { const l = (r.location_bin || '').trim(); if(l) counts[l] = (counts[l] || 0) + 1; });
- window.__scsLocations = Object.entries(counts).sort((a,b) => b[1]-a[1]);
- const list = document.getElementById('scsLocationList');
- if(list) {
- list.innerHTML = window.__scsLocations.map(([loc, n]) => `
- <label style="display:flex; align-items:center; gap:6px; padding:6px; background:#FFF; border-radius:6px; cursor:pointer; font-size:12px;">
- <input type="checkbox" data-scs-loc="${loc.replace(/"/g,'&quot;')}" onchange="window.__scsToggleLoc('${loc.replace(/'/g, "\\'")}', this.checked)" style="cursor:pointer;">
- <span style="flex:1;">${loc.replace(/</g,'&lt;')}</span><span style="color:#9CA3AF; font-size:11px;">${n}</span>
- </label>`).join('');
+ if(typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+ const locs = new Set(), cats = new Set(), brands = new Set();
+ masterProducts.forEach(p => {
+ const l = (p.location_bin || '').trim(); if(l) locs.add(l);
+ const c = (p.category || '').trim(); if(c) cats.add(c);
+ const b = (p.brand || '').trim(); if(b) brands.add(b);
+ });
+ const locSel = document.getElementById('scsPickerLocation');
+ if(locSel) locSel.innerHTML = '<option value="">Semua Location</option>' + Array.from(locs).sort().map(l => `<option value="${l.replace(/"/g,'&quot;')}">${l.replace(/</g,'&lt;')}</option>`).join('');
+ const catSel = document.getElementById('scsPickerCategory');
+ if(catSel) catSel.innerHTML = '<option value="">Semua Category</option>' + Array.from(cats).sort().map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c.replace(/</g,'&lt;')}</option>`).join('');
+ const brandSel = document.getElementById('scsPickerBrand');
+ if(brandSel) brandSel.innerHTML = '<option value="">Semua Brand</option>' + Array.from(brands).sort().map(b => `<option value="${b.replace(/"/g,'&quot;')}">${b.replace(/</g,'&lt;')}</option>`).join('');
  }
+ // Render initial table
+ window.__scsRenderPicker();
+ // Load templates dropdown
+ window.__scsLoadTemplates();
  // Staff list (inventory + mgmt)
  const staffList = document.getElementById('scsAssignList');
  if(staffList && typeof authUsers !== 'undefined') {
@@ -6539,38 +6550,191 @@ window.__scsOpenCreate = async function() {
  </label>`).join('');
  }
  window.__scsUpdatePreview();
- } catch(e) { console.warn('Load locations failed:', e.message); }
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ } catch(e) { console.warn('Open create modal failed:', e.message); }
 };
 
-window.__scsToggleLoc = function(loc, checked) {
- if(checked) window.__scsSelectedLocations.add(loc);
- else window.__scsSelectedLocations.delete(loc);
+window.__scsRenderPicker = function() {
+ const wrap = document.getElementById('scsPickerWrap');
+ if(!wrap || typeof masterProducts === 'undefined') return;
+ const q = ((document.getElementById('scsPickerSearch') || {}).value || '').toLowerCase().trim();
+ const loc = (document.getElementById('scsPickerLocation') || {}).value || '';
+ const cat = (document.getElementById('scsPickerCategory') || {}).value || '';
+ const brand = (document.getElementById('scsPickerBrand') || {}).value || '';
+ const stockMap = new Map();
+ (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+ stockMap.set(b.sku, (stockMap.get(b.sku) || 0) + (b.qty_remaining || 0));
+ });
+ const filtered = masterProducts.filter(p => {
+ if(loc && (p.location_bin || '') !== loc) return false;
+ if(cat && (p.category || '') !== cat) return false;
+ if(brand && (p.brand || '') !== brand) return false;
+ if(q) {
+ const hay = (p.sku || '').toLowerCase() + ' ' + (p.name || '').toLowerCase() + ' ' + (p.erp_barcode || '').toString().toLowerCase() + ' ' + (p.brand || '').toLowerCase();
+ if(!hay.includes(q)) return false;
+ }
+ return true;
+ });
+ const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+ const MAX = 500;
+ const slice = filtered.slice(0, MAX);
+ const rows = slice.map(p => {
+ const sku = p.sku || '';
+ const checked = window.__scsSelectedSkus.has(sku) ? 'checked' : '';
+ const stock = stockMap.get(sku) || 0;
+ return `<tr style="border-bottom:1px solid #F3F4F6; cursor:pointer;" onclick="const c=this.querySelector('input[type=checkbox]'); if(c && event.target.tagName !== 'INPUT'){c.checked=!c.checked; window.__scsTogglePickerSku('${sku.replace(/'/g, "\\'")}', c.checked);}">
+ <td style="padding:6px 8px; text-align:center;"><input type="checkbox" ${checked} onchange="window.__scsTogglePickerSku('${sku.replace(/'/g, "\\'")}', this.checked)" style="cursor:pointer; width:16px; height:16px;"></td>
+ <td style="padding:6px 8px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;">${escHtml(sku)}</td>
+ <td style="padding:6px 8px; font-size:11.5px;">${escHtml((p.name || '').slice(0, 50))}</td>
+ <td style="padding:6px 8px; font-size:11px; color:#6B7280;">${escHtml(p.brand || '-')}</td>
+ <td style="padding:6px 8px; font-size:11px; color:#6B7280;">${escHtml(p.location_bin || '-')}</td>
+ <td style="padding:6px 8px; text-align:right; font-size:11.5px; color:${stock <= 0 ? '#DC2626' : '#111'};">${stock}</td>
+ </tr>`;
+ }).join('');
+ wrap.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:12px;">
+ <thead style="background:#F9FAFB; position:sticky; top:0; z-index:1;">
+ <tr>
+ <th style="padding:8px; width:36px; text-align:center;"><input type="checkbox" id="scsPickerCheckAll" onchange="window.__scsBulkSelect(this.checked)" style="cursor:pointer; width:16px; height:16px;"></th>
+ <th style="text-align:left; padding:8px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">SKU</th>
+ <th style="text-align:left; padding:8px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Nama</th>
+ <th style="text-align:left; padding:8px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Brand</th>
+ <th style="text-align:left; padding:8px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Location</th>
+ <th style="text-align:right; padding:8px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Stock</th>
+ </tr>
+ </thead><tbody>${rows || '<tr><td colspan="6" style="text-align:center; padding:30px; color:#9CA3AF;">Tiada padanan filter.</td></tr>'}</tbody></table>` + (filtered.length > MAX ? `<p style="padding:8px; text-align:center; color:#9CA3AF; font-size:10.5px;">Tunjuk ${MAX} pertama daripada ${filtered.length}. Tapis lebih halus untuk lihat selebihnya.</p>` : '');
+ // Update counter + Check All state
+ const countEl = document.getElementById('scsPickerCount');
+ if(countEl) countEl.innerHTML = `<strong>${window.__scsSelectedSkus.size}</strong> dipilih · Tunjuk ${slice.length} / ${filtered.length}`;
+ // Sync check-all checkbox state to whether all visible are selected
+ const checkAllEl = document.getElementById('scsPickerCheckAll');
+ if(checkAllEl) {
+ const visibleSkus = slice.map(p => p.sku);
+ const allChecked = visibleSkus.length > 0 && visibleSkus.every(s => window.__scsSelectedSkus.has(s));
+ checkAllEl.checked = allChecked;
+ }
  window.__scsUpdatePreview();
 };
+
+window.__scsTogglePickerSku = function(sku, checked) {
+ if(checked) window.__scsSelectedSkus.add(sku);
+ else window.__scsSelectedSkus.delete(sku);
+ // Avoid full re-render — just update count + preview
+ const countEl = document.getElementById('scsPickerCount');
+ if(countEl) {
+ // Re-read filtered count cheap-ish
+ const visibleCountSpan = countEl.querySelector('strong');
+ if(visibleCountSpan) visibleCountSpan.textContent = window.__scsSelectedSkus.size;
+ }
+ window.__scsUpdatePreview();
+};
+
+window.__scsBulkSelect = function(select) {
+ const wrap = document.getElementById('scsPickerWrap');
+ if(!wrap) return;
+ const rows = wrap.querySelectorAll('tbody tr');
+ rows.forEach(tr => {
+ const cb = tr.querySelector('input[type="checkbox"]');
+ if(!cb) return;
+ const skuCell = tr.querySelector('td:nth-child(2)');
+ const sku = skuCell ? skuCell.textContent.trim() : '';
+ if(!sku) return;
+ cb.checked = select;
+ if(select) window.__scsSelectedSkus.add(sku);
+ else window.__scsSelectedSkus.delete(sku);
+ });
+ const countEl = document.getElementById('scsPickerCount');
+ if(countEl) {
+ const filtered = wrap.querySelectorAll('tbody tr').length;
+ countEl.innerHTML = `<strong>${window.__scsSelectedSkus.size}</strong> dipilih · Tunjuk ${filtered}`;
+ }
+ window.__scsUpdatePreview();
+};
+
 window.__scsToggleStaff = function(name, checked) {
  if(checked) window.__scsSelectedStaff.add(name);
  else window.__scsSelectedStaff.delete(name);
 };
+
 window.__scsUpdatePreview = function() {
  const prev = document.getElementById('scsPreview');
  if(!prev) return;
- const locs = Array.from(window.__scsSelectedLocations);
- const count = window.__scsLocations.filter(([l]) => locs.includes(l)).reduce((sum, [, n]) => sum + n, 0);
- if(locs.length === 0) {
- prev.innerHTML = '<strong>Preview:</strong> Pilih location dulu untuk papar jumlah SKU.';
+ const n = window.__scsSelectedSkus.size;
+ if(n === 0) {
+ prev.innerHTML = '<strong>Preview:</strong> Tiada SKU dipilih lagi. Pakai filter + tick checkbox untuk pilih.';
  } else {
- prev.innerHTML = `<strong>Preview:</strong> ${locs.length} location dipilih · <strong>${count}</strong> SKU akan included dalam sesi.`;
+ prev.innerHTML = `<strong>Preview:</strong> <strong>${n}</strong> SKU dipilih untuk sesi ni.`;
+ }
+};
+
+// p1_213 — Templates: load + apply + save
+window.__scsLoadTemplates = async function() {
+ const sel = document.getElementById('scsTemplateSelect');
+ if(!sel || typeof db === 'undefined' || !db) return;
+ try {
+ const { data, error } = await db.from('stock_check_templates').select('id,name,sku_list,use_count').order('last_used_at', { ascending: false, nullsLast: true }).order('created_at', { ascending: false }).limit(50);
+ if(error) return;
+ const opts = ['<option value="">— Tiada template (pilih manual) —</option>'];
+ (data || []).forEach(t => {
+ opts.push(`<option value="${t.id}">${(t.name || '').replace(/</g,'&lt;')} (${(t.sku_list || []).length} SKU${t.use_count ? ' · used ' + t.use_count + 'x' : ''})</option>`);
+ });
+ sel.innerHTML = opts.join('');
+ window.__scsTemplates = data || [];
+ } catch(e) { /* silent */ }
+};
+
+window.__scsApplyTemplate = function(id) {
+ if(!id) { window.__scsSelectedSkus.clear(); window.__scsRenderPicker(); return; }
+ const tpl = (window.__scsTemplates || []).find(t => String(t.id) === String(id));
+ if(!tpl) return;
+ window.__scsSelectedSkus = new Set(tpl.sku_list || []);
+ if(typeof showToast === 'function') showToast(`Template "${tpl.name}" loaded · ${(tpl.sku_list || []).length} SKU ticked.`, 'success');
+ window.__scsRenderPicker();
+};
+
+window.__scsSaveTemplate = async function() {
+ if(window.__scsSelectedSkus.size === 0) { if(typeof showToast === 'function') showToast('Tiada SKU dipilih untuk save.', 'warn'); return; }
+ const name = (prompt('Nama template (cth: Weekly Top 50, BlackDog Audit):', '') || '').trim();
+ if(!name) return;
+ if(name.length < 4) { if(typeof showToast === 'function') showToast('Nama template min 4 huruf.', 'warn'); return; }
+ try {
+ const u = window.currentUser || {};
+ const skuList = Array.from(window.__scsSelectedSkus);
+ const { error } = await db.from('stock_check_templates').insert([{
+ name,
+ sku_list: skuList,
+ created_by_id: u.staff_id || 'unknown',
+ created_by_name: u.name || 'Unknown'
+ }]);
+ if(error) throw error;
+ if(typeof showToast === 'function') showToast(`Template "${name}" disimpan · ${skuList.length} SKU.`, 'success');
+ window.__scsLoadTemplates();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Save template gagal: ' + e.message, 'error');
  }
 };
 
 window.__scsConfirmCreate = async function() {
  const name = (document.getElementById('scsName').value || '').trim();
- const locs = Array.from(window.__scsSelectedLocations);
+ // p1_213 — use explicit picker selection instead of location-based bulk include
+ const selectedSkus = Array.from(window.__scsSelectedSkus || []);
  const staff = Array.from(window.__scsSelectedStaff);
  if(!name || name.length < 5) { if(typeof showToast === 'function') showToast('Nama sesi perlu min 5 huruf.', 'warn'); return; }
- if(locs.length === 0) { if(typeof showToast === 'function') showToast('Pilih sekurang-kurangnya 1 location.', 'warn'); return; }
+ if(selectedSkus.length === 0) { if(typeof showToast === 'function') showToast('Pilih sekurang-kurangnya 1 SKU dari picker.', 'warn'); return; }
  try {
  const u = window.currentUser || {};
+ // Compute locations from selected products (for downstream filter purposes)
+ const stockMap = new Map();
+ (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+ stockMap.set(b.sku, (stockMap.get(b.sku) || 0) + (b.qty_remaining || 0));
+ });
+ const skuToProduct = {};
+ (typeof masterProducts !== 'undefined' ? masterProducts : []).forEach(p => { skuToProduct[p.sku] = p; });
+ const locsSet = new Set();
+ selectedSkus.forEach(sku => {
+ const p = skuToProduct[sku];
+ if(p && p.location_bin) locsSet.add(p.location_bin.trim());
+ });
+ const locs = Array.from(locsSet);
  // 1. Create session
  const { data: sesData, error: sesErr } = await db.from('stock_check_sessions').insert([{
  name, locations: locs, assigned_to: staff,
@@ -6579,25 +6743,23 @@ window.__scsConfirmCreate = async function() {
  status: 'active'
  }]).select().single();
  if(sesErr) throw sesErr;
- // 2. Fetch products in selected locations
- const { data: prods, error: prodErr } = await db.from('products_master').select('sku,name,location_bin,stock').in('location_bin', locs);
- if(prodErr) throw prodErr;
- // 3. Bulk insert items
- const items = (prods || []).map(p => ({
+ // 2. Build items from selectedSkus (bypass location-wide query)
+ const items = selectedSkus.map(sku => {
+ const p = skuToProduct[sku] || {};
+ return {
  session_id: sesData.id,
- sku: p.sku,
+ sku,
  product_name: p.name || '',
  location_bin: p.location_bin || '',
- system_qty: p.stock || 0
- }));
+ system_qty: stockMap.get(sku) || 0
+ };
+ });
  if(items.length > 0) {
- // Insert in batches of 500 (Supabase row limit)
  for(let i = 0; i < items.length; i += 500) {
  const chunk = items.slice(i, i + 500);
  const { error: itErr } = await db.from('stock_check_session_items').insert(chunk);
  if(itErr) throw itErr;
  }
- // Update session items_total
  await db.from('stock_check_sessions').update({ items_total: items.length }).eq('id', sesData.id);
  }
  if(typeof showToast === 'function') showToast(`Sesi "${name}" cipta · ${items.length} SKU loaded.`, 'success');
