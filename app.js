@@ -6878,16 +6878,22 @@ window.__scsToggleSkuList = async function(sessionId) {
  else { badgeBg = '#FEE2E2'; badgeFg = '#991B1B'; badgeTxt = variance + ' Kurang'; badgeIcon = 'trending-down'; }
  }
  else { badgeBg = '#F3F4F6'; badgeFg = '#6B7280'; badgeTxt = 'Belum Check'; badgeIcon = 'clock'; }
+ // p1_223 — inline qty + catatan input (no popup); Enter or onBlur saves
+ const skuEsc = escHtml(i.sku || '').replace(/'/g, "\\'");
+ const sysQtyArg = i.system_qty != null ? i.system_qty : 'null';
+ const saveOnEnter = `if(event.key==='Enter'){event.preventDefault(); window.__scsInlineSave(${i.id}, ${sessionId}, '${skuEsc}', ${sysQtyArg});}`;
  return `<tr style="border-bottom:1px solid #F3F4F6;">
  <td style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(i.sku || '-')}</td>
- <td style="padding:8px 10px; font-size:11.5px; color:#374151;">${escHtml((i.name || '').slice(0, 60))}${i.note ? `<div style="margin-top:3px; padding:3px 6px; background:#FEF9C3; border-left:2px solid #CA8A04; font-size:10.5px; color:#713F12; font-style:italic; line-height:1.4;"><i data-lucide="message-square" style="width:9px;height:9px; vertical-align:-1px; margin-right:3px;"></i>${escHtml(i.note)}</div>` : ''}</td>
+ <td style="padding:8px 10px; font-size:11.5px; color:#374151;">${escHtml((i.name || '').slice(0, 60))}</td>
  <td style="padding:8px 10px; font-size:11px;">${i.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(i.location_bin)}</span>` : '<span style="color:#D1D5DB;">—</span>'}</td>
  <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#9CA3AF;">${i.system_qty != null ? i.system_qty : '-'}</td>
- <td style="padding:8px 10px; text-align:right; font-size:11.5px; font-weight:${isChecked ? '700' : '400'}; color:${isChecked ? '#111' : '#D1D5DB'};">${isChecked ? i.counted_qty : `<button onclick="window.__scsKeyInCount(${i.id}, ${sessionId}, '${escHtml(i.sku || '').replace(/'/g, "\\'")}', ${i.system_qty != null ? i.system_qty : 'null'})" title="Key in kiraan fizikal" style="background:var(--primary); border:none; color:#fff; padding:4px 10px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="edit-3" style="width:10px;height:10px;"></i> Key In</button>`}</td>
+ <td style="padding:8px 10px; text-align:right; font-size:11.5px; font-weight:${isChecked ? '700' : '400'}; color:${isChecked ? '#111' : '#D1D5DB'};">${isChecked ? i.counted_qty : `<input type="number" min="0" id="scsQtyInput-${i.id}" placeholder="qty" onkeydown="${saveOnEnter}" style="width:64px; padding:5px 6px; border:1px solid var(--border-color); border-radius:5px; font-size:12px; text-align:right;">`}</td>
+ <td style="padding:8px 10px; font-size:11px;">${isChecked ? (i.note ? `<span style="display:inline-block; padding:3px 6px; background:#FEF9C3; border-left:2px solid #CA8A04; color:#713F12; font-style:italic; line-height:1.4;"><i data-lucide="message-square" style="width:9px;height:9px; vertical-align:-1px; margin-right:3px;"></i>${escHtml(i.note)}</span>` : '<span style="color:#D1D5DB;">—</span>') : `<input type="text" id="scsNoteInput-${i.id}" placeholder="catatan (optional)" onkeydown="${saveOnEnter}" style="width:100%; min-width:140px; padding:5px 8px; border:1px solid var(--border-color); border-radius:5px; font-size:11.5px;">`}</td>
  <td style="padding:8px 10px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:${badgeBg}; color:${badgeFg}; font-size:10px; font-weight:700;"><i data-lucide="${badgeIcon}" style="width:10px;height:10px;"></i> ${badgeTxt}</span></td>
  <td style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `
- <button onclick="window.__scsMarkNotFound(${i.id}, ${sessionId}, '${escHtml(i.sku || '').replace(/'/g, "\\'")}', ${i.system_qty != null ? i.system_qty : 'null'})" title="Tak jumpa item ni di lokasi" style="background:#FEE2E2; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700; margin-right:3px;"><i data-lucide="search-x" style="width:9px;height:9px;"></i> Tak Jumpa</button>
- <button onclick="window.__scsMarkDamaged(${i.id}, ${sessionId}, '${escHtml(i.sku || '').replace(/'/g, "\\'")}', ${i.system_qty != null ? i.system_qty : 'null'})" title="Tandai unit rosak" style="background:#FED7AA; border:1px solid #FB923C; color:#9A3412; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700; margin-right:3px;"><i data-lucide="alert-triangle" style="width:9px;height:9px;"></i> Rosak</button>
+ <button onclick="window.__scsInlineSave(${i.id}, ${sessionId}, '${skuEsc}', ${sysQtyArg})" title="Simpan kiraan" style="background:var(--primary); border:none; color:#fff; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700; margin-right:3px;"><i data-lucide="check" style="width:10px;height:10px;"></i> Simpan</button>
+ <button onclick="window.__scsMarkNotFound(${i.id}, ${sessionId}, '${skuEsc}', ${sysQtyArg})" title="Tak jumpa item ni di lokasi" style="background:#FEE2E2; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700; margin-right:3px;"><i data-lucide="search-x" style="width:9px;height:9px;"></i> Tak Jumpa</button>
+ <button onclick="window.__scsMarkDamaged(${i.id}, ${sessionId}, '${skuEsc}', ${sysQtyArg})" title="Tandai unit rosak" style="background:#FED7AA; border:1px solid #FB923C; color:#9A3412; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700; margin-right:3px;"><i data-lucide="alert-triangle" style="width:9px;height:9px;"></i> Rosak</button>
  <button onclick="window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>
  `}</td>
  </tr>`;
@@ -6909,6 +6915,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Lokasi</th>
  <th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Sistem</th>
  <th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Dikira</th>
+ <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Catatan</th>
  <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Status</th>
  <th style="padding:8px 6px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Aksi</th>
  </tr>
@@ -6923,8 +6930,50 @@ window.__scsToggleSkuList = async function(sessionId) {
  }
 };
 
-// p1_220 — Inline Key In count from Senarai SKU (staff buat kiraan tanpa pergi Buka & Kira)
-// p1_222 — Optional catatan staff untuk Zakwan (special cases: kotak rosak tapi item OK, label fade, etc.)
+// p1_223 — Pure inline save (baca qty + catatan dari input field; no popup)
+window.__scsInlineSave = async function(itemId, sessionId, sku, systemQty) {
+ const qtyEl = document.getElementById('scsQtyInput-' + itemId);
+ const noteEl = document.getElementById('scsNoteInput-' + itemId);
+ if(!qtyEl) return;
+ const raw = (qtyEl.value || '').trim();
+ if(!raw) { if(typeof showToast === 'function') showToast('Sila masukkan qty dulu.', 'warn'); qtyEl.focus(); return; }
+ const qty = parseInt(raw, 10);
+ if(isNaN(qty) || qty < 0) { if(typeof showToast === 'function') showToast('Qty mesti nombor >= 0.', 'warn'); qtyEl.focus(); return; }
+ const noteText = (noteEl && noteEl.value && noteEl.value.trim()) ? noteEl.value.trim() : null;
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const u = window.currentUser || {};
+ const nowIso = new Date().toISOString();
+ const variance = (systemQty != null && !isNaN(systemQty)) ? (qty - systemQty) : null;
+ const { error: e1 } = await db.from('stock_check_session_items').update({
+ counted_qty: qty,
+ variance: variance,
+ note: noteText,
+ counted_by_id: u.staff_id || 'unknown',
+ counted_by_name: u.name || 'Unknown',
+ counted_at: nowIso
+ }).eq('id', itemId);
+ if(e1) throw e1;
+ await db.from('products_master').update({
+ last_audited_at: nowIso,
+ last_audited_by: (u.name || 'Unknown') + ' (' + (u.staff_id || '?') + ')',
+ last_audited_qty: qty,
+ last_audited_system_qty: (systemQty != null && !isNaN(systemQty)) ? systemQty : null
+ }).eq('sku', sku);
+ const { data: items } = await db.from('stock_check_session_items').select('counted_qty,variance').eq('session_id', sessionId);
+ const checked = (items || []).filter(i => i.counted_qty != null);
+ const varCnt = checked.filter(i => (i.variance || 0) !== 0).length;
+ await db.from('stock_check_sessions').update({ items_checked: checked.length, items_variance: varCnt }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast(`${sku} = ${qty}${noteText ? ' (catatan disimpan)' : ''}`, 'success');
+ const box = document.getElementById('scsSkuList-' + sessionId);
+ if(box) { box.dataset.loaded = ''; window.__scsToggleSkuList(sessionId); window.__scsToggleSkuList(sessionId); }
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Simpan gagal: ' + e.message, 'error');
+ }
+};
+
+// p1_220 — Inline Key In count from Senarai SKU (kept for back-compat; not called from UI after p1_223)
 window.__scsKeyInCount = async function(itemId, sessionId, sku, systemQty) {
  const raw = prompt(`Key in kiraan fizikal untuk ${sku}:\n(Sistem: ${systemQty != null ? systemQty : '-'})`);
  if(raw === null) return; // cancelled
@@ -6984,9 +7033,9 @@ window.__scsMarkNotFound = async function(itemId, sessionId, sku, systemQty) {
  if(row) loc = row.location_bin || '';
  } catch(e){}
  let noteText = `Tak jumpa${loc ? ' di ' + loc : ''} · ${u.name || '?'} · ${stamp}`;
- // p1_222 — optional staff addendum
- const addRaw = prompt(`Catatan tambahan untuk Zakwan? (boleh kosongkan)\n\nContoh: "lokasi mungkin salah", "dah cari semua rak", "kemungkinan dah jual"`, '');
- if(addRaw && addRaw.trim()) noteText += ' — ' + addRaw.trim();
+ // p1_223 — read addendum from inline Catatan input (no popup)
+ const inlineNoteEl = document.getElementById('scsNoteInput-' + itemId);
+ if(inlineNoteEl && inlineNoteEl.value && inlineNoteEl.value.trim()) noteText += ' — ' + inlineNoteEl.value.trim();
  const variance = (systemQty != null && !isNaN(systemQty)) ? (0 - systemQty) : null;
  const { error: e1 } = await db.from('stock_check_session_items').update({
  counted_qty: 0,
@@ -7035,9 +7084,9 @@ window.__scsMarkDamaged = async function(itemId, sessionId, sku, systemQty) {
  if(row) loc = row.location_bin || '';
  } catch(e){}
  let noteText = `${damaged} unit ROSAK${loc ? ' (' + loc + ')' : ''} · baki good ${goodQty} · ${u.name || '?'} · ${stamp}`;
- // p1_222 — optional staff addendum
- const addRaw = prompt(`Catatan tambahan untuk Zakwan? (boleh kosongkan)\n\nContoh: "tear di seam", "zip patah", "stain di sleeve"`, '');
- if(addRaw && addRaw.trim()) noteText += ' — ' + addRaw.trim();
+ // p1_223 — read addendum from inline Catatan input (no popup)
+ const inlineNoteEl = document.getElementById('scsNoteInput-' + itemId);
+ if(inlineNoteEl && inlineNoteEl.value && inlineNoteEl.value.trim()) noteText += ' — ' + inlineNoteEl.value.trim();
  const variance = goodQty - sysQty;
  const { error: e1 } = await db.from('stock_check_session_items').update({
  counted_qty: goodQty,
