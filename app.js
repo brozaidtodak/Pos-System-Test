@@ -6955,7 +6955,7 @@ window.renderStockCheckHistory = async function() {
  try {
  if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
  // Single fetch — all products dengan audit fields
- const { data, error } = await db.from('products_master').select('sku,name,last_audited_at,last_audited_by,last_audited_qty,last_audited_system_qty').limit(5000);
+ const { data, error } = await db.from('products_master').select('sku,name,location_bin,last_audited_at,last_audited_by,last_audited_qty,last_audited_system_qty').limit(5000);
  if(error) throw error;
  const rows = data || [];
  const now = Date.now();
@@ -7012,8 +7012,10 @@ window.renderStockCheckHistory = async function() {
  if(!b.last_audited_at) return 1;
  return a.last_audited_at.localeCompare(b.last_audited_at);
  }).slice(0, 20);
- staleEl.innerHTML = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">SKU</th><th style="text-align:left; padding:8px;">Nama</th><th style="text-align:left; padding:8px;">Last Audit</th><th style="text-align:left; padding:8px;">Auditor</th></tr></thead><tbody>` +
- staleSorted.map(r => `<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:8px;"><strong>${escHtml(r.sku)}</strong></td><td style="padding:8px; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml((r.name || '').slice(0, 60))}</td><td style="padding:8px; color:${r.last_audited_at ? '#D97706' : '#9CA3AF'};">${r.last_audited_at ? fmtAge(r.last_audited_at) : 'BELUM PERNAH'}</td><td style="padding:8px; font-size:11px; color:#6B7280;">${escHtml(r.last_audited_by || '-')}</td></tr>`).join('') + '</tbody></table>';
+ // p1_215 — Tambah Lokasi column dengan warm yellow pill
+ const locPill = (l) => l ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(l)}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>';
+ staleEl.innerHTML = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">SKU</th><th style="text-align:left; padding:8px;">Nama</th><th style="text-align:left; padding:8px;">Lokasi</th><th style="text-align:left; padding:8px;">Last Audit</th><th style="text-align:left; padding:8px;">Auditor</th></tr></thead><tbody>` +
+ staleSorted.map(r => `<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:8px;"><strong>${escHtml(r.sku)}</strong></td><td style="padding:8px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml((r.name || '').slice(0, 60))}</td><td style="padding:8px;">${locPill(r.location_bin)}</td><td style="padding:8px; color:${r.last_audited_at ? '#D97706' : '#9CA3AF'};">${r.last_audited_at ? fmtAge(r.last_audited_at) : 'BELUM PERNAH'}</td><td style="padding:8px; font-size:11px; color:#6B7280;">${escHtml(r.last_audited_by || '-')}</td></tr>`).join('') + '</tbody></table>';
 
  // Variance items (top 30 with variance)
  const varianceRows = rows.filter(r => r.last_audited_qty != null && r.last_audited_system_qty != null && r.last_audited_qty !== r.last_audited_system_qty)
@@ -7022,11 +7024,11 @@ window.renderStockCheckHistory = async function() {
  if(varianceRows.length === 0) {
  varianceEl.innerHTML = '<p style="color:#10B981; padding:20px; text-align:center; font-weight:600;"><i data-lucide="check-circle" style="width:14px; height:14px; vertical-align:-2px;"></i> Tiada variance dilaporkan. Semua kiraan matched.</p>';
  } else {
- varianceEl.innerHTML = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">SKU</th><th style="text-align:left; padding:8px;">Nama</th><th style="text-align:right; padding:8px;">Sistem</th><th style="text-align:right; padding:8px;">Fizikal</th><th style="text-align:right; padding:8px;">Selisih</th><th style="text-align:left; padding:8px;">Audited</th></tr></thead><tbody>` +
+ varianceEl.innerHTML = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">SKU</th><th style="text-align:left; padding:8px;">Nama</th><th style="text-align:left; padding:8px;">Lokasi</th><th style="text-align:right; padding:8px;">Sistem</th><th style="text-align:right; padding:8px;">Fizikal</th><th style="text-align:right; padding:8px;">Selisih</th><th style="text-align:left; padding:8px;">Audited</th></tr></thead><tbody>` +
  varianceRows.map(r => {
  const diff = r.last_audited_qty - r.last_audited_system_qty;
  const diffColor = diff < 0 ? '#EF4444' : '#10B981';
- return `<tr style="border-bottom:1px solid #F3F4F6; background:${Math.abs(diff) >= 5 ? '#FEF2F2' : 'transparent'};"><td style="padding:8px;"><strong>${escHtml(r.sku)}</strong></td><td style="padding:8px; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml((r.name || '').slice(0, 50))}</td><td style="text-align:right; padding:8px;">${r.last_audited_system_qty}</td><td style="text-align:right; padding:8px; font-weight:700;">${r.last_audited_qty}</td><td style="text-align:right; padding:8px; color:${diffColor}; font-weight:800;">${diff > 0 ? '+' : ''}${diff}</td><td style="padding:8px; font-size:11px; color:#6B7280;">${r.last_audited_at ? fmtAge(r.last_audited_at) : '-'}</td></tr>`;
+ return `<tr style="border-bottom:1px solid #F3F4F6; background:${Math.abs(diff) >= 5 ? '#FEF2F2' : 'transparent'};"><td style="padding:8px;"><strong>${escHtml(r.sku)}</strong></td><td style="padding:8px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml((r.name || '').slice(0, 50))}</td><td style="padding:8px;">${locPill(r.location_bin)}</td><td style="text-align:right; padding:8px;">${r.last_audited_system_qty}</td><td style="text-align:right; padding:8px; font-weight:700;">${r.last_audited_qty}</td><td style="text-align:right; padding:8px; color:${diffColor}; font-weight:800;">${diff > 0 ? '+' : ''}${diff}</td><td style="padding:8px; font-size:11px; color:#6B7280;">${r.last_audited_at ? fmtAge(r.last_audited_at) : '-'}</td></tr>`;
  }).join('') + '</tbody></table>';
  }
  if(window.lucide && lucide.createIcons) lucide.createIcons();
@@ -7410,7 +7412,10 @@ function renderStockTake() {
  <div class="st-card admin-card" data-st-sku="${p.sku}" style="padding:14px; border-left:5px solid var(--primary); background:#fff; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
  <img src="${imgUrl}" loading="lazy" decoding="async" style="width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color); flex-shrink:0;">
  <div style="flex:1; min-width:160px;">
+ <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:2px;">
  <strong style="color:var(--primary); font-size:15px;">${p.sku}</strong>
+ ${p.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:4px; font-size:10.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;"><i data-lucide="map-pin" style="width:9px; height:9px; vertical-align:-1px;"></i> ${p.location_bin}</span>` : ''}
+ </div>
  <p style="font-size:13px; font-weight:600; margin:2px 0 4px;">${p.name}</p>
  <p style="font-size:11px; color:${sold30 > 5 ? '#10B981' : (sold30 > 0 ? '#D97706' : '#9CA3AF')}; margin:0; font-weight:600;">Sold 30d: ${sold30} unit</p>
  ${stampHtml}
