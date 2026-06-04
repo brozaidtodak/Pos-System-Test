@@ -4611,7 +4611,13 @@ window.__panicShow = function(sectionId, title) {
  if(shop) { shop.style.display = 'none'; shop.style.paddingTop = ''; }
  if(pos) pos.style.display = 'block';
  if(previewBanner) previewBanner.style.display = 'none';
- console.log('[PANIC] forced posAppLayout visible, shopAppLayout hidden');
+ // p1_189 — auto-close sidebar drawer (overlay mode on iPad/narrow window).
+ // Without this, the drawer covers the content area after click.
+ const sidebar = document.getElementById('appSidebar');
+ const sidebarOverlay = document.getElementById('sidebarOverlay');
+ if(sidebar && sidebar.classList.contains('open')) sidebar.classList.remove('open');
+ if(sidebarOverlay && sidebarOverlay.classList.contains('active')) sidebarOverlay.classList.remove('active');
+ console.log('[PANIC] forced posAppLayout visible, shopAppLayout hidden, drawer closed');
  document.querySelectorAll('.tab-section').forEach(s => {
  s.style.cssText = 'display:none';
  });
