@@ -4220,10 +4220,9 @@ window.renderPaymentProofs = async function() {
  <td style="padding:8px 10px; text-align:right; font-weight:700;">RM ${amt.toFixed(2)}</td>
  <td style="padding:8px 10px; text-align:center;">${thumbCell}${uploadedBy}</td>
  <td style="padding:8px 10px; white-space:nowrap;">
- <button onclick="window.__sendReceiptWhatsApp(${r.id})" title="Hantar resit via WhatsApp" style="background:#DCFCE7; border:1px solid #86EFAC; color:#166534; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="send" style="width:11px;height:11px;vertical-align:-1px;"></i> WhatsApp</button>
- <button onclick="window.__copyReceiptText(${r.id})" title="Copy resit text" style="background:#F3F4F6; border:1px solid #D1D5DB; color:#374151; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="copy" style="width:11px;height:11px;vertical-align:-1px;"></i></button>
- <button onclick="window.__printReceiptForSale(${r.id})" title="Print resit" style="background:#F3F4F6; border:1px solid #D1D5DB; color:#374151; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="printer" style="width:11px;height:11px;vertical-align:-1px;"></i></button>
- <button onclick="window.__ppUploadFor(${r.id})" style="background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="upload" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.payment_proof_url ? 'Tukar' : 'Upload'}</button>
+ <button onclick="window.__openReceiptPDF(${r.id})" title="Buka resit official (PDF print)" style="background:#FEF7ED; border:1px solid #FCD34D; color:#92400E; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="file-text" style="width:11px;height:11px;vertical-align:-1px;"></i> Resit PDF</button>
+ <button onclick="window.__sendReceiptWhatsApp(${r.id})" title="Quick send text resit via WhatsApp" style="background:#DCFCE7; border:1px solid #86EFAC; color:#166534; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="send" style="width:11px;height:11px;vertical-align:-1px;"></i> WA Text</button>
+ <button onclick="window.__ppUploadFor(${r.id})" title="Upload bukti bayar dari customer" style="background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="upload" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.payment_proof_url ? 'Tukar' : 'Upload'}</button>
  </td>
  </tr>`;
  }).join('');
@@ -4330,18 +4329,141 @@ window.__copyReceiptText = async function(saleId) {
  }
 };
 
-window.__printReceiptForSale = async function(saleId) {
+// p1_198 — Proper PDF-style receipt: opens formatted HTML with 10 CAMP logo,
+// itemised table, totals, customer info, footer. User Cmd+P → "Save as PDF"
+// to get official receipt file. Replaces plain text print.
+window.__openReceiptPDF = async function(saleId) {
  if(!saleId) return;
  try {
  if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
- const { data, error } = await db.from('sales_history').select('*').eq('id', saleId).single();
+ const { data: sale, error } = await db.from('sales_history').select('*').eq('id', saleId).single();
  if(error) throw error;
- const text = window.__buildReceiptText(data);
- const w = window.open('', '_blank', 'width=400,height=600');
- w.document.write('<html><head><title>Resit #' + saleId + '</title><style>body{font-family:monospace;padding:20px;font-size:13px;white-space:pre-wrap;line-height:1.5;}h1{font-size:14px;text-align:center;margin:0 0 10px;}</style></head><body>' + text.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '<script>window.print();</script></body></html>');
+ if(!sale) throw new Error('Sale #' + saleId + ' tak jumpa');
+ const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name: '10 CAMP' };
+ const items = Array.isArray(sale.items) ? sale.items : [];
+ const dt = sale.created_at ? new Date(sale.created_at) : new Date();
+ const dtStr = dt.toLocaleString('en-MY', { dateStyle: 'long', timeStyle: 'short' });
+ const total = Number(sale.total_amount || sale.total || 0);
+ const esc = (s) => String(s == null ? '' : s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+ // Compute subtotal from items
+ let subtotal = 0;
+ const itemRows = items.map(c => {
+ const qty = Number(c.quantity || c.qty || 1);
+ const price = Number(c.price || 0);
+ const line = qty * price;
+ subtotal += line;
+ return `<tr><td class="col-name">${esc(c.name || c.sku || 'Item')}${c.sku ? `<br><span style="font-size:10px;color:#888;">${esc(c.sku)}</span>` : ''}</td><td class="col-qty">${qty}</td><td class="col-price">${price.toFixed(2)}</td><td class="col-total">${line.toFixed(2)}</td></tr>`;
+ }).join('');
+ const discount = subtotal > total ? (subtotal - total) : 0;
+ const logoUrl = window.location.origin + '/assets/brand/logo/10camp-logo-color.png';
+ const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Resit #${sale.id} — ${esc(shop.name)}</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 420px; margin: 30px auto; padding: 0 20px 40px; color: #1a1a1a; background: #fff; }
+.no-print { text-align: center; margin: 0 0 20px; padding: 14px; background: #FEF7ED; border: 1px solid #FCD34D; border-radius: 8px; }
+.no-print button { background: #CD7C32; color: white; border: none; padding: 10px 22px; border-radius: 6px; cursor: pointer; font-weight: 700; margin: 0 4px; font-size: 13px; }
+.no-print button.secondary { background: #6B7280; }
+.no-print button:hover { filter: brightness(1.05); }
+.no-print .hint { display: block; margin-top: 8px; font-size: 11px; color: #92400E; }
+.logo-wrap { text-align: center; margin-bottom: 12px; }
+.logo-wrap img { width: 100px; height: auto; }
+.logo-wrap .logo-fallback { font-size: 28px; font-weight: 900; letter-spacing: -1px; color: #CD7C32; }
+.shop-info { text-align: center; margin-bottom: 20px; }
+.shop-info h1 { font-size: 18px; font-weight: 900; letter-spacing: 1px; color: #CD7C32; margin: 0 0 4px; }
+.shop-info .addr { font-size: 11px; color: #666; line-height: 1.5; }
+.receipt-header { border-top: 2px solid #CD7C32; border-bottom: 1px dashed #D1D5DB; padding: 12px 0; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: baseline; }
+.receipt-header .receipt-no { font-size: 14px; font-weight: 800; letter-spacing: 0.5px; }
+.receipt-header .receipt-date { font-size: 11px; color: #6B7280; text-align: right; }
+.customer-row { font-size: 12px; padding: 10px 14px; background: #F9FAFB; border-radius: 6px; margin-bottom: 16px; }
+.customer-row strong { color: #374151; }
+.customer-row .sub { color: #6B7280; font-size: 11px; margin-top: 2px; }
+table.items-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0 0; }
+table.items-table th { text-align: left; padding: 8px 4px; border-bottom: 2px solid #1a1a1a; font-size: 10px; color: #1a1a1a; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; }
+table.items-table td { padding: 10px 4px; border-bottom: 1px dashed #E5E7EB; vertical-align: top; }
+table.items-table .col-name { font-weight: 600; }
+table.items-table .col-qty { text-align: center; width: 14%; }
+table.items-table .col-price { text-align: right; width: 18%; }
+table.items-table .col-total { text-align: right; width: 22%; font-weight: 600; }
+.totals { padding-top: 12px; margin-top: 10px; border-top: 1px solid #1a1a1a; }
+.totals .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.totals .row.discount { color: #DC2626; }
+.totals .grand { font-size: 18px; font-weight: 900; padding-top: 10px; margin-top: 6px; border-top: 2px solid #1a1a1a; color: #CD7C32; letter-spacing: 0.3px; }
+.pay-info { background: #FEF7ED; border: 1px solid rgba(205,124,50,0.3); padding: 10px 14px; border-radius: 6px; margin-top: 16px; font-size: 12px; }
+.pay-info .label { color: #6B7280; font-weight: 600; }
+.pay-info .value { color: #1a1a1a; font-weight: 700; }
+.footer { text-align: center; font-size: 11px; color: #6B7280; margin-top: 24px; padding-top: 16px; border-top: 1px dashed #D1D5DB; line-height: 1.6; }
+.footer strong { color: #CD7C32; }
+.footer .meta { margin-top: 10px; font-size: 10px; color: #9CA3AF; }
+@media print {
+ body { margin: 0; padding: 10mm; max-width: 100%; }
+ .no-print { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="no-print">
+ <button onclick="window.print()">Print / Save PDF</button>
+ <button class="secondary" onclick="window.close()">Close</button>
+ <span class="hint">Tekan "Print / Save PDF" → pilih destination "Save as PDF" untuk dapatkan fail PDF official.</span>
+</div>
+
+<div class="logo-wrap">
+ <img src="${esc(logoUrl)}" alt="${esc(shop.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+ <div class="logo-fallback" style="display:none;">${esc(shop.name)}</div>
+</div>
+
+<div class="shop-info">
+ <h1>${esc(shop.name)}</h1>
+ <p class="addr">
+ ${esc(shop.address || 'Lot 123, Jln Cyber, 63000 Cyberjaya, Selangor')}<br>
+ ${esc(shop.phone || '+60 11-3310 9547')} · ${esc(shop.website || 'www.10camp.com')}
+ </p>
+</div>
+
+<div class="receipt-header">
+ <div class="receipt-no">RESIT #${sale.id}</div>
+ <div class="receipt-date">${esc(dtStr)}<br>${esc(sale.channel || 'Walk-in Kedai')}</div>
+</div>
+
+<div class="customer-row">
+ <strong>${esc(sale.customer_name || 'Walk-In Customer')}</strong>
+ ${sale.customer_phone ? `<div class="sub">${esc(sale.customer_phone)}</div>` : ''}
+ ${sale.buyer_tin ? `<div class="sub">TIN: ${esc(sale.buyer_tin)}</div>` : ''}
+</div>
+
+<table class="items-table">
+ <thead><tr><th>Item</th><th class="col-qty">Qty</th><th class="col-price">Harga</th><th class="col-total">Jumlah</th></tr></thead>
+ <tbody>${itemRows || '<tr><td colspan="4" style="text-align:center; padding:14px; color:#9CA3AF;">(Tiada items dalam record)</td></tr>'}</tbody>
+</table>
+
+<div class="totals">
+ ${discount > 0 ? `<div class="row"><span>Subtotal</span><span>RM ${subtotal.toFixed(2)}</span></div><div class="row discount"><span>Diskaun</span><span>-RM ${discount.toFixed(2)}</span></div>` : ''}
+ <div class="row grand"><span>JUMLAH BAYAR</span><span>RM ${total.toFixed(2)}</span></div>
+</div>
+
+<div class="pay-info">
+ <span class="label">Kaedah Bayaran:</span> <span class="value">${esc(sale.payment_method_detail || sale.payment_method || 'Cash')}</span><br>
+ ${sale.staff_name ? `<span class="label">Cashier:</span> <span class="value">${esc(sale.staff_name)}</span>` : ''}
+</div>
+
+<div class="footer">
+ Terima kasih sebab beli barang dari <strong>${esc(shop.name)}</strong>!
+ <br>Jumpa lagi.
+ <div class="meta">Resit ini sah sebagai bukti pembelian.<br>Untuk pulangan, sila hubungi kami dalam 7 hari.</div>
+</div>
+</body>
+</html>`;
+ const w = window.open('', '_blank');
+ if(!w) { if(typeof showToast === 'function') showToast('Popup blocked. Allow popups untuk www.10camp.com', 'error'); return; }
+ w.document.open();
+ w.document.write(html);
  w.document.close();
  } catch(e) {
- if(typeof showToast === 'function') showToast('Print gagal: ' + e.message, 'error');
+ if(typeof showToast === 'function') showToast('Resit gagal: ' + e.message, 'error');
  }
 };
 
