@@ -9253,6 +9253,21 @@ function renderCart() {
  const iEl = document.getElementById("mobileCartItemCount");
  if(tEl) tEl.textContent = t.toFixed(2);
  if(iEl) iEl.textContent = i.toString();
+ // p1_239 — disable mobile floating BAYAR SEKARANG button when cart empty
+ const bayarBtn = document.getElementById("mobileCartBayarBtn");
+ if(bayarBtn) {
+ if(i === 0) {
+ bayarBtn.disabled = true;
+ bayarBtn.style.opacity = '0.5';
+ bayarBtn.style.cursor = 'not-allowed';
+ bayarBtn.style.boxShadow = 'none';
+ } else {
+ bayarBtn.disabled = false;
+ bayarBtn.style.opacity = '';
+ bayarBtn.style.cursor = 'pointer';
+ bayarBtn.style.boxShadow = '0 6px 20px rgba(16,185,129,0.35)';
+ }
+ }
  };
 
  if(cart.length === 0) {

@@ -138,38 +138,33 @@ body.pos-mobile-mode .desktop-cart-title {
 body.pos-mobile-mode .mobile-cart-header {
     display: flex !important;
 }
+/* p1_239 — Mobile floating cart bar restructure: GREEN BAYAR SEKARANG atas, ORANGE Lihat Troli bawah (stacked vertical).
+   Sebelum ni 1 row pill dengan green button kanan kecik — staff susah tap. Sekarang dua row separate, BAYAR penuh selebar. */
 body.pos-mobile-mode #mobileCartFloatingBar {
     display: flex !important;
+    flex-direction: column;
+    gap: 8px;
     position: fixed;
-    bottom: 20px;
-    left: 20px;
-    right: 20px;
-    background: var(--primary);
-    color: white;
-    padding: 16px 20px;
-    border-radius: var(--radius-pill);
-    justify-content: space-between;
-    align-items: center;
-    font-size: 15px;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: transparent;
+    padding: 0;
     z-index: 4999;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-    cursor: pointer;
-    transition: transform 0.2s;
+    cursor: default;
 }
-body.pos-mobile-mode #mobileCartFloatingBar:active {
+body.pos-mobile-mode #mobileCartFloatingBar > button {
+    width: 100%;
+    border: none;
+    cursor: pointer;
+}
+body.pos-mobile-mode #mobileCartFloatingBar > button:active {
     transform: scale(0.98);
 }
 
-/* p1_238 — Hide orange floating bar when cart drawer terbuka (sebab BAYAR SEKARANG dalam drawer dah cukup).
-   Sebelum ni orange bar overlap dengan BAYAR SEKARANG button kat bawah drawer, staff susah tap. */
+/* p1_239 — Hide ENTIRE floating bar bila drawer terbuka (drawer dah ada sticky BAYAR di dalam) */
 body.pos-mobile-mode .cart-section.drawer-open ~ #mobileCartFloatingBar,
 body.pos-mobile-mode #posCartDrawer.drawer-open ~ #mobileCartFloatingBar {
-    display: none !important;
-}
-
-/* p1_238 — Buang green "Bayar →" button kanan orange bar (redundant dengan BAYAR SEKARANG dalam drawer).
-   Orange bar tap to open drawer je, single CTA dalam drawer. */
-body.pos-mobile-mode #mobileCartFloatingBar > button {
     display: none !important;
 }
 
@@ -183,6 +178,11 @@ body.pos-mobile-mode .cart-section > div:last-child {
     padding-bottom: 30px;
     border-top: 1px solid #E5E7EB;
     box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
+}
+
+/* p1_239 — Main content padding bigger sebab floating area sekarang ~140px tinggi (BAYAR + Lihat Troli + gap) */
+body.pos-mobile-mode .main-content {
+    padding-bottom: 160px !important;
 }
 
 /* PRINT MEDIA FOR BARCODE LABELS (THERMAL PRINTER FORMAT) */
