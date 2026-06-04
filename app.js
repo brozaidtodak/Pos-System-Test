@@ -4782,6 +4782,66 @@ window.__ppEditSale = async function(saleId) {
  }
 };
 
+// p1_235 — Customer autocomplete dalam Edit Sale modal (Zaid: "masa ariff edit sales, dia tak keluar memori customer")
+window.__ppEditAcResults = [];
+
+window.__ppEditCustAutocomplete = function() {
+ const inp = document.getElementById('ppEditCustName');
+ const dd = document.getElementById('ppEditCustAcDropdown');
+ if(!inp || !dd) return;
+ const q = (inp.value || '').trim().toLowerCase();
+ const list = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
+ if(!list.length) { dd.style.display = 'none'; return; }
+ let results;
+ if(!q) {
+ results = [...list].sort((a,b) => (b.total_spent||0) - (a.total_spent||0)).slice(0, 8);
+ } else {
+ results = list.filter(c => {
+ const hay = `${c.name||''} ${c.phone||''} ${c.email||''}`.toLowerCase();
+ return hay.includes(q);
+ }).slice(0, 8);
+ }
+ window.__ppEditAcResults = results;
+ if(results.length === 0) {
+ dd.innerHTML = '<div style="padding:10px; font-size:12px; color:#9CA3AF; text-align:center;">Tiada match — kosongkan field atau klik "Cari / Daftar Baru" untuk register</div>';
+ dd.style.display = 'block';
+ return;
+ }
+ const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ dd.innerHTML = results.map((c, i) => {
+ const pts = parseInt(c.points || 0);
+ const badge = c.is_member ? '<span style="background:#FEF3C7; color:#92400E; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:700; margin-left:4px;">VIP</span>' : '';
+ return `<div onmousedown="window.__ppEditCustPick(${i})" style="padding:8px 12px; border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+ <div style="font-size:12.5px; font-weight:700; color:#111;">${escHtml(c.name || '(no name)')}${badge}</div>
+ <div style="font-size:10.5px; color:#6B7280; margin-top:2px;">${escHtml(c.phone || '-')}${c.email ? ' · ' + escHtml(c.email.slice(0,30)) : ''} · ${c.total_orders||0} orders · RM${(c.total_spent||0).toFixed(0)}</div>
+ </div>`;
+ }).join('');
+ dd.style.display = 'block';
+};
+
+window.__ppEditCustAcClose = function() {
+ const dd = document.getElementById('ppEditCustAcDropdown');
+ if(dd) dd.style.display = 'none';
+};
+
+window.__ppEditCustPick = function(i) {
+ const c = (window.__ppEditAcResults || [])[i];
+ if(!c) return;
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+ set('ppEditCustName', c.name);
+ set('ppEditCustPhone', c.phone);
+ set('ppEditCustEmail', c.email);
+ window.__ppEditCustAcClose();
+ if(typeof showToast === 'function') showToast(`${c.name || c.phone} loaded.`, 'success');
+};
+
+// p1_235 — Open customer picker modal dari Edit Sale modal (untuk daftar baru atau search luas)
+window.__ppEditOpenPicker = function() {
+ // Open the existing customer picker modal (p1_229) — but intercept cpkPick/cpkAddNewCustomer to sync to ppEdit fields ganti posCustomer
+ window.__ppEditPickerActive = true;
+ if(typeof window.posAttachCustomer === 'function') window.posAttachCustomer();
+};
+
 window.__ppSaveEdit = async function() {
  if(typeof db === 'undefined' || !db) return;
  const get = (id) => (document.getElementById(id)?.value || '').trim();
@@ -9575,6 +9635,17 @@ window.cpkPickCustomer = function(id) {
  const list = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
  const c = list.find(x => x.id === id);
  if(!c) return;
+ // p1_235 — kalau picker dibuka dari Edit Sale modal, sync ke ppEdit fields (bukan posCustomer)
+ if(window.__ppEditPickerActive) {
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+ set('ppEditCustName', c.name);
+ set('ppEditCustPhone', c.phone);
+ set('ppEditCustEmail', c.email);
+ window.__ppEditPickerActive = false;
+ document.getElementById('customerPickerModal').style.display = 'none';
+ if(typeof showToast === 'function') showToast(`Customer loaded: ${c.name || c.phone || '-'}`, 'success');
+ return;
+ }
  window.posSetCustomer(c);
  // p1_234 — kalau checkout panel terbuka, sync ke cpCustName/Phone/Email terus
  if(typeof window.cpSyncCustomerFromPos === 'function') window.cpSyncCustomerFromPos();
@@ -9596,6 +9667,17 @@ window.cpkAddNewCustomer = async function() {
  if(error) throw error;
  // Sync in-memory cache
  if(typeof customersData !== 'undefined' && Array.isArray(customersData)) customersData.push(data);
+ // p1_235 — kalau dari Edit Sale modal, sync ke ppEdit fields (bukan posCustomer)
+ if(window.__ppEditPickerActive) {
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+ set('ppEditCustName', data.name);
+ set('ppEditCustPhone', data.phone);
+ set('ppEditCustEmail', data.email);
+ window.__ppEditPickerActive = false;
+ document.getElementById('customerPickerModal').style.display = 'none';
+ if(typeof showToast === 'function') showToast(`Customer baru "${data.name || data.phone}" dah dibuat & loaded.`, 'success');
+ return;
+ }
  window.posSetCustomer(data);
  // p1_234 — sync ke checkout panel kalau open
  if(typeof window.cpSyncCustomerFromPos === 'function') window.cpSyncCustomerFromPos();
