@@ -4238,7 +4238,8 @@ window.renderPaymentProofs = async function() {
  <button onclick="window.__openReceiptPDF(${r.id})" title="Buka resit official (preview + send)" style="background:#FEF7ED; border:1px solid #FCD34D; color:#92400E; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="file-text" style="width:11px;height:11px;vertical-align:-1px;"></i> Resit</button>
  <button onclick="window.__sendReceiptPdfWhatsApp(${r.id})" title="Hantar resit PDF via WhatsApp" style="background:#DCFCE7; border:1px solid #86EFAC; color:#166534; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="message-circle" style="width:11px;height:11px;vertical-align:-1px;"></i> WhatsApp</button>
  <button onclick="window.__sendReceiptPdfEmail(${r.id})" title="Hantar resit PDF via Email" style="background:#E0E7FF; border:1px solid #A5B4FC; color:#3730A3; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="mail" style="width:11px;height:11px;vertical-align:-1px;"></i> Email</button>
- <button onclick="window.__ppUploadFor(${r.id})" title="Upload bukti bayar dari customer" style="background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="upload" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.payment_proof_url ? 'Tukar' : 'Upload'}</button>
+ <button onclick="window.__ppUploadFor(${r.id})" title="Upload bukti bayar dari customer" style="background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="upload" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.payment_proof_url ? 'Tukar' : 'Upload'}</button>
+ <button onclick="window.__ppEditSale(${r.id})" title="Edit maklumat customer / method / amount" style="background:#F3E8FF; border:1px solid #C4B5FD; color:#5B21B6; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="edit-3" style="width:11px;height:11px;vertical-align:-1px;"></i> Edit</button>
  </td>
  </tr>`;
  }).join('');
@@ -4751,6 +4752,79 @@ table.items-table .col-total { text-align: right; width: 22%; font-weight: 600; 
 };
 
 // Late-upload (or replace) proof for an existing sale from Reports
+// p1_233 — Edit sale row from Payment Proofs (customer/method/channel/amount/status)
+window.__ppEditSale = async function(saleId) {
+ if(typeof db === 'undefined' || !db) return;
+ try {
+ const { data: row, error } = await db.from('sales_history').select('*').eq('id', saleId).single();
+ if(error) throw error;
+ if(!row) return;
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+ set('ppEditId', row.id);
+ const dt = new Date(row.created_at);
+ const dtStr = dt.toLocaleString('en-MY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
+ const idEl = document.getElementById('ppEditSaleId'); if(idEl) idEl.textContent = row.id;
+ const dateEl = document.getElementById('ppEditSaleDate'); if(dateEl) dateEl.textContent = dtStr;
+ set('ppEditCustName', row.customer_name);
+ set('ppEditCustPhone', row.customer_phone);
+ set('ppEditCustEmail', row.customer_email);
+ set('ppEditMethod', row.payment_method || 'Cash');
+ set('ppEditChannel', row.channel || 'Walk-in Kedai');
+ set('ppEditTotal', row.total_amount != null ? row.total_amount : (row.total != null ? row.total : ''));
+ set('ppEditStatus', row.status || 'Completed');
+ set('ppEditBuyerTin', row.buyer_tin);
+ set('ppEditNote', '');
+ const modal = document.getElementById('ppEditModal');
+ if(modal) modal.style.display = 'flex';
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Edit gagal load: ' + e.message, 'error');
+ }
+};
+
+window.__ppSaveEdit = async function() {
+ if(typeof db === 'undefined' || !db) return;
+ const get = (id) => (document.getElementById(id)?.value || '').trim();
+ const saleId = parseInt(get('ppEditId'), 10);
+ if(!saleId) return;
+ const totalRaw = get('ppEditTotal');
+ const total = parseFloat(totalRaw);
+ if(totalRaw !== '' && (isNaN(total) || total < 0)) {
+ if(typeof showToast === 'function') showToast('Total amount tak valid.', 'warn'); return;
+ }
+ const editNote = get('ppEditNote');
+ const u = window.currentUser || {};
+ // Build update payload + audit entry
+ const payload = {
+ customer_name: get('ppEditCustName') || 'Walk-In',
+ customer_phone: get('ppEditCustPhone') || null,
+ customer_email: get('ppEditCustEmail') || null,
+ payment_method: get('ppEditMethod') || 'Cash',
+ channel: get('ppEditChannel') || 'Walk-in Kedai',
+ status: get('ppEditStatus') || 'Completed',
+ buyer_tin: get('ppEditBuyerTin') || null
+ };
+ if(!isNaN(total)) { payload.total_amount = total; payload.total = total; }
+ try {
+ const { error } = await db.from('sales_history').update(payload).eq('id', saleId);
+ if(error) throw error;
+ // Audit log
+ try {
+ await db.from('audit_logs').insert([{
+ action_type: 'sale_edit',
+ actor_name: u.name || 'System',
+ details: JSON.stringify({ sale_id: saleId, changes: payload, note: editNote || null }),
+ created_at: new Date().toISOString()
+ }]);
+ } catch(_){}
+ if(typeof showToast === 'function') showToast(`Sale #${saleId} updated.`, 'success');
+ document.getElementById('ppEditModal').style.display = 'none';
+ if(typeof window.renderPaymentProofs === 'function') window.renderPaymentProofs();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Simpan gagal: ' + e.message, 'error');
+ }
+};
+
 window.__ppUploadFor = function(saleId) {
  const input = document.createElement('input');
  input.type = 'file';
