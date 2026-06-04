@@ -6499,9 +6499,11 @@ window.renderCheckSessions = async function() {
  ${(s.items_variance || 0) > 0 ? `<div style="font-size:12px; color:#991B1B; margin-bottom:8px;"><i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-1px;"></i> ${s.items_variance} variance · RM ${Number(s.rm_variance||0).toFixed(2)} drift</div>` : ''}
  <div style="display:flex; gap:6px; flex-wrap:wrap;">
  <button class="sy-btn" onclick="window.__scsOpenSession(${s.id})" style="font-size:11px;"><i data-lucide="arrow-right" style="width:11px;height:11px;"></i> ${s.status === 'active' ? 'Buka & Kira' : 'Buka'}</button>
- <button class="sy-btn secondary" onclick="window.__scsToggleSkuList(${s.id})" style="font-size:11px;"><i data-lucide="list" style="width:11px;height:11px;"></i> Tunjuk Senarai SKU</button>
+ <button class="sy-btn secondary" onclick="window.__scsToggleSkuList(${s.id})" style="font-size:11px;"><i data-lucide="list" style="width:11px;height:11px;"></i> Senarai SKU</button>
+ ${(s.status === 'active' || s.status === 'review') ? `<button class="sy-btn secondary" onclick="window.__scsEditSession(${s.id})" style="font-size:11px;"><i data-lucide="edit-3" style="width:11px;height:11px;"></i> Edit / Tambah SKU</button>` : ''}
  ${s.status === 'active' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsSubmitForReview(${s.id})" style="font-size:11px;"><i data-lucide="send" style="width:11px;height:11px;"></i> Submit ke Review</button>` : ''}
  ${s.status === 'review' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsForwardToBos(${s.id})" style="font-size:11px;"><i data-lucide="forward" style="width:11px;height:11px;"></i> Forward ke Bos</button>` : ''}
+ ${isMgmt && s.status !== 'approved' ? `<button class="sy-btn secondary" onclick="window.__scsCancelSession(${s.id})" style="font-size:11px; color:#991B1B; border-color:#FCA5A5;"><i data-lucide="x-circle" style="width:11px;height:11px;"></i> Batal Sesi</button>` : ''}
  ${s.status === 'forwarded' && (typeof window.isBoss === 'function' && window.isBoss(u)) ? `<button class="sy-btn secondary" onclick="window.__scsApprove(${s.id})" style="font-size:11px; background:#10B981; color:#FFF;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> Approve</button>` : ''}
  </div>
  <!-- p1_211 — Per-session SKU list (collapsed by default, lazy-loaded on click) -->
@@ -6873,10 +6875,11 @@ window.__scsToggleSkuList = async function(sessionId) {
  return `<tr style="border-bottom:1px solid #F3F4F6;">
  <td style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(i.sku || '-')}</td>
  <td style="padding:8px 10px; font-size:11.5px; color:#374151;">${escHtml((i.name || '').slice(0, 60))}</td>
- <td style="padding:8px 10px; font-size:11px; color:#6B7280;">${escHtml(i.location_bin || '-')}</td>
+ <td style="padding:8px 10px; font-size:11px;">${i.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(i.location_bin)}</span>` : '<span style="color:#D1D5DB;">—</span>'}</td>
  <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#9CA3AF;">${i.system_qty != null ? i.system_qty : '-'}</td>
  <td style="padding:8px 10px; text-align:right; font-size:11.5px; font-weight:${isChecked ? '700' : '400'}; color:${isChecked ? '#111' : '#D1D5DB'};">${i.counted_qty != null ? i.counted_qty : '—'}</td>
  <td style="padding:8px 10px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:${badgeBg}; color:${badgeFg}; font-size:10px; font-weight:700;"><i data-lucide="${badgeIcon}" style="width:10px;height:10px;"></i> ${badgeTxt}</span></td>
+ <td style="padding:8px 6px; text-align:center;">${isChecked ? `<button onclick="window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
  </tr>`;
  }).join('');
  box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
@@ -6897,6 +6900,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  <th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Sistem</th>
  <th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Dikira</th>
  <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Status</th>
+ <th style="padding:8px 6px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Aksi</th>
  </tr>
  </thead>
  <tbody>${rows}</tbody>
@@ -6906,6 +6910,166 @@ window.__scsToggleSkuList = async function(sessionId) {
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
  box.innerHTML = '<p style="color:#EF4444; font-size:11.5px; padding:10px;">Error: ' + e.message + '</p>';
+ }
+};
+
+// p1_217 — Stock Check Session edit/review/cancel handlers
+window.__scsResetItem = async function(itemId, sessionId) {
+ if(!confirm('Reset count untuk item ni? counted_qty + variance + flag akan dikosongkan.')) return;
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const { error } = await db.from('stock_check_session_items').update({ counted_qty: null, variance: null, flag: null, note: null }).eq('id', itemId);
+ if(error) throw error;
+ // Recount session.items_checked + items_variance
+ const { data: allItems } = await db.from('stock_check_session_items').select('counted_qty,variance').eq('session_id', sessionId);
+ const itemsChecked = (allItems || []).filter(i => i.counted_qty != null).length;
+ const itemsVariance = (allItems || []).filter(i => (i.variance || 0) !== 0).length;
+ await db.from('stock_check_sessions').update({ items_checked: itemsChecked, items_variance: itemsVariance }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast('Reset · item kini "Belum Check".', 'success');
+ // Refresh expanded SKU list view + parent sessions render
+ const box = document.getElementById('scsSkuList-' + sessionId);
+ if(box) { box.dataset.loaded = ''; window.__scsToggleSkuList(sessionId); window.__scsToggleSkuList(sessionId); }
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Reset gagal: ' + e.message, 'error');
+ }
+};
+
+window.__scsRemoveItem = async function(itemId, sessionId) {
+ if(!confirm('Buang SKU ni dari sesi? (cuma boleh kalau belum counted)')) return;
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ // Safety: only delete if counted_qty IS NULL
+ const { data: row } = await db.from('stock_check_session_items').select('counted_qty').eq('id', itemId).single();
+ if(row && row.counted_qty != null) { if(typeof showToast === 'function') showToast('Tak boleh buang — item dah counted. Reset dulu.', 'warn'); return; }
+ const { error } = await db.from('stock_check_session_items').delete().eq('id', itemId);
+ if(error) throw error;
+ // Update items_total
+ const { count } = await db.from('stock_check_session_items').select('id', { count: 'exact', head: true }).eq('session_id', sessionId);
+ await db.from('stock_check_sessions').update({ items_total: count || 0 }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast('SKU dibuang dari sesi.', 'success');
+ const box = document.getElementById('scsSkuList-' + sessionId);
+ if(box) { box.dataset.loaded = ''; window.__scsToggleSkuList(sessionId); window.__scsToggleSkuList(sessionId); }
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Buang gagal: ' + e.message, 'error');
+ }
+};
+
+window.__scsCancelSession = async function(sessionId) {
+ if(!confirm('Batal sesi ni? Sesi akan ditandai sebagai cancelled. Kiraan yang dah submit akan kekal tapi sesi tak boleh diteruskan.')) return;
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ await db.from('stock_check_sessions').update({ status: 'cancelled' }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast('Sesi dibatalkan.', 'success');
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Batal gagal: ' + e.message, 'error');
+ }
+};
+
+// Edit session — reuse create modal in edit mode
+window.__scsEditSessionId = null;
+window.__scsEditSession = async function(sessionId) {
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ // Fetch session + existing items
+ const { data: ses, error: sesErr } = await db.from('stock_check_sessions').select('*').eq('id', sessionId).single();
+ if(sesErr) throw sesErr;
+ const { data: existingItems } = await db.from('stock_check_session_items').select('sku,counted_qty').eq('session_id', sessionId);
+ // Track which SKUs already counted (cannot be removed via picker uncheck)
+ window.__scsEditOriginalSkus = new Set((existingItems || []).map(i => i.sku));
+ window.__scsEditCountedSkus = new Set((existingItems || []).filter(i => i.counted_qty != null).map(i => i.sku));
+ window.__scsEditSessionId = sessionId;
+ // Reuse create modal
+ await window.__scsOpenCreate();
+ // Pre-fill: name, selected SKUs, assigned staff
+ const nameEl = document.getElementById('scsName');
+ if(nameEl) nameEl.value = ses.name || '';
+ window.__scsSelectedSkus = new Set(window.__scsEditOriginalSkus);
+ (ses.assigned_to || []).forEach(s => window.__scsSelectedStaff.add(s));
+ // Tick staff checkboxes
+ document.querySelectorAll('#scsAssignList input[type="checkbox"]').forEach(cb => {
+ const label = cb.parentElement.querySelector('span');
+ if(!label) return;
+ const name = label.textContent.split('·')[0].trim();
+ if((ses.assigned_to || []).includes(name)) cb.checked = true;
+ });
+ // Update title + button to indicate edit mode
+ const h2 = document.querySelector('#scsCreateModal h2');
+ if(h2) h2.textContent = 'Edit Sesi Stock Check';
+ const submitBtn = document.querySelector('#scsCreateModal button[onclick="window.__scsConfirmCreate()"]');
+ if(submitBtn) {
+ submitBtn.innerHTML = '<i data-lucide="save" style="width:13px; height:13px;"></i> Simpan Perubahan';
+ submitBtn.setAttribute('onclick', `window.__scsConfirmEdit(${sessionId})`);
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ }
+ window.__scsRenderPicker();
+ if(typeof showToast === 'function') showToast(`Edit mode · ${window.__scsEditCountedSkus.size} SKU dah counted (locked).`, 'info');
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Open edit gagal: ' + e.message, 'error');
+ }
+};
+
+window.__scsConfirmEdit = async function(sessionId) {
+ const name = (document.getElementById('scsName').value || '').trim();
+ const selectedSkus = window.__scsSelectedSkus || new Set();
+ const staff = Array.from(window.__scsSelectedStaff);
+ if(!name || name.length < 5) { if(typeof showToast === 'function') showToast('Nama sesi perlu min 5 huruf.', 'warn'); return; }
+ if(selectedSkus.size === 0) { if(typeof showToast === 'function') showToast('Pilih min 1 SKU.', 'warn'); return; }
+ // Safety: cannot remove counted SKUs
+ const removedCounted = Array.from(window.__scsEditCountedSkus || new Set()).filter(s => !selectedSkus.has(s));
+ if(removedCounted.length > 0) {
+ if(!confirm('AMARAN: ' + removedCounted.length + ' SKU dah counted akan kekal dalam sesi (tak boleh remove). Continue?')) return;
+ removedCounted.forEach(s => selectedSkus.add(s));
+ }
+ try {
+ // Diff: new = selectedSkus - original; removed = original - selectedSkus (only uncounted)
+ const original = window.__scsEditOriginalSkus || new Set();
+ const toAdd = Array.from(selectedSkus).filter(s => !original.has(s));
+ const toRemove = Array.from(original).filter(s => !selectedSkus.has(s) && !(window.__scsEditCountedSkus || new Set()).has(s));
+ // Apply DB changes
+ const skuToProduct = {};
+ (typeof masterProducts !== 'undefined' ? masterProducts : []).forEach(p => { skuToProduct[p.sku] = p; });
+ const stockMap = new Map();
+ (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+ stockMap.set(b.sku, (stockMap.get(b.sku) || 0) + (b.qty_remaining || 0));
+ });
+ if(toAdd.length > 0) {
+ const newItems = toAdd.map(sku => {
+ const p = skuToProduct[sku] || {};
+ return { session_id: sessionId, sku, product_name: p.name || '', location_bin: p.location_bin || '', system_qty: stockMap.get(sku) || 0 };
+ });
+ const { error: addErr } = await db.from('stock_check_session_items').insert(newItems);
+ if(addErr) throw addErr;
+ }
+ if(toRemove.length > 0) {
+ const { error: delErr } = await db.from('stock_check_session_items').delete().in('sku', toRemove).eq('session_id', sessionId).is('counted_qty', null);
+ if(delErr) throw delErr;
+ }
+ // Update session row
+ const { count } = await db.from('stock_check_session_items').select('id', { count: 'exact', head: true }).eq('session_id', sessionId);
+ await db.from('stock_check_sessions').update({
+ name, assigned_to: staff,
+ items_total: count || 0,
+ updated_at: new Date().toISOString()
+ }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast(`Sesi diupdate · +${toAdd.length} SKU · -${toRemove.length}. Refresh page kalau perlu.`, 'success');
+ document.getElementById('scsCreateModal').style.display = 'none';
+ // Reset edit state
+ window.__scsEditSessionId = null;
+ window.__scsEditOriginalSkus = null;
+ window.__scsEditCountedSkus = null;
+ // Reset modal title/button for next create
+ const h2 = document.querySelector('#scsCreateModal h2'); if(h2) h2.textContent = 'Sesi Stock Check Baharu';
+ const btn = document.querySelector('#scsCreateModal button[onclick^="window.__scsConfirmEdit"]');
+ if(btn) {
+ btn.innerHTML = '<i data-lucide="play-circle" style="width:13px; height:13px;"></i> Mulakan Sesi';
+ btn.setAttribute('onclick', 'window.__scsConfirmCreate()');
+ }
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Save edit gagal: ' + e.message, 'error');
  }
 };
 
