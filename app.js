@@ -4071,16 +4071,29 @@ window.submitFeedback = async function() {
 };
 
 window.renderFeedbackSection = async function() {
- // p1_182 — defensive: ensure section is visible (covers cases where switchHub
- // didn't run, e.g., direct call). Without this the static form may not be
- // shown depending on how the section was entered.
+ // p1_186 — fully defensive: force visible + outer try-catch wrap the entire
+ // function (was: only DB query was in try; lookups for user/wrap could throw
+ // silently and section stays blank).
  const sec = document.getElementById('feedbackSection');
- if(sec && sec.style.display === 'none') sec.style.display = 'block';
- const wrap = document.getElementById('fbMyList');
- if(!wrap) { console.warn('[Aduan] fbMyList missing — section HTML not rendered?'); return; }
- const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
- if(!u) { wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Login dulu.</p>'; return; }
+ if(sec) {
+ sec.style.display = 'block';
+ sec.style.visibility = 'visible';
+ sec.style.opacity = '1';
+ sec.removeAttribute('hidden');
+ }
  try {
+ const wrap = document.getElementById('fbMyList');
+ if(!wrap) {
+ console.warn('[Aduan] fbMyList missing — section HTML stripped?');
+ // Inject visible diagnostic so Zaid can see what's wrong rather than blank
+ if(sec) sec.insertAdjacentHTML('beforeend', '<div style="margin:20px; padding:16px; background:#FEE2E2; border:1px solid #FCA5A5; border-radius:8px; color:#991B1B; font-size:13px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px;"></i> Diagnostic: #fbMyList element missing dari DOM. HTML section mungkin rosak. Refresh page (Cmd+Shift+R) atau hubungi support.</div>');
+ return;
+ }
+ const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+ if(!u) {
+ wrap.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Login dulu untuk lihat aduan anda. Submit form di atas masih boleh diguna selepas login.</p>';
+ return;
+ }
  if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
  const { data, error } = await db.from('staff_feedback').select('*').eq('staff_id', u.staff_id).order('posted_at', { ascending: false }).limit(50);
  if(error) throw error;
@@ -4121,7 +4134,11 @@ window.renderFeedbackSection = async function() {
  }).join('');
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ // p1_186 — wrap is block-scoped to try; re-query for safety. Show RED panel
+ // so Zaid sees real error instead of blank screen.
+ const errWrap = document.getElementById('fbMyList');
+ if(errWrap) errWrap.innerHTML = '<p style="color:#991B1B; padding:20px; background:#FEE2E2; border-radius:8px; margin:8px;"><strong>Error render Aduan:</strong> ' + (e && e.message ? e.message : String(e)) + '<br><small style="color:#7F1D1D;">Refresh page (Cmd+Shift+R). Kalau masih error, screenshot bagi Zaid.</small></p>';
+ console.error('[Aduan] renderFeedbackSection failed:', e);
  }
 };
 
@@ -4548,6 +4565,20 @@ function switchHub(sectionIds, title, btnElement) {
  // p1_179 — Product Master section explicit render (was relying on DOMContentLoaded
  // click listener with 100ms setTimeout; Zaid reported white screen).
  if(sectionIds.includes('databaseSection') && typeof renderProductDatabase === 'function') renderProductDatabase();
+ // p1_186 — Aduan & Cadangan defense in depth (Zaid: still blank). Force visible
+ // attributes (some style cascade may keep block from rendering) + call render.
+ if(sectionIds.includes('feedbackSection')) {
+ const fs = document.getElementById('feedbackSection');
+ if(fs) {
+ fs.style.display = 'block';
+ fs.style.visibility = 'visible';
+ fs.style.opacity = '1';
+ fs.removeAttribute('hidden');
+ }
+ if(typeof renderFeedbackSection === 'function') {
+ try { renderFeedbackSection(); } catch(e) { console.error('[Aduan] render threw:', e); }
+ }
+ }
 }
 window.switchHub = switchHub;
 
