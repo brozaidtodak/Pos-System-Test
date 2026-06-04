@@ -9284,14 +9284,17 @@ window.setPaymentMethod = function(method, btnElement) {
  if(typeof window.__proofClearFile === 'function') window.__proofClearFile();
  }
  }
+ // p1_230 — Snap Resit camera button manual (Zaid recall: "tak nak auto buka camera, sediakan button je")
  if(window.lucide && lucide.createIcons) lucide.createIcons();
 }
 
 // p1_180 — Payment proof file upload state
 window.__proofState = { file: null, dataUrl: null };
 
-window.__proofPickFile = function() {
- const input = document.getElementById('proofFileInput');
+window.__proofPickFile = function(inputEl) {
+ // p1_230 — accept input element argument; default to proofFileInput (file picker)
+ // Camera input (#proofCameraInput) passes its own ref via onchange="window.__proofPickFile(this)"
+ const input = inputEl || document.getElementById('proofFileInput');
  const preview = document.getElementById('proofPreview');
  const img = document.getElementById('proofPreviewImg');
  const meta = document.getElementById('proofPreviewMeta');
@@ -9323,16 +9326,22 @@ window.__proofPickFile = function() {
  preview.style.display = 'block';
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  }
+ // p1_230 — sync cpFormView badge + toast feedback
+ if(typeof window.cpRefreshProofBadge === 'function') window.cpRefreshProofBadge();
+ if(typeof showToast === 'function') showToast(`Resit ditangkap: ${f.name} (${(f.size / 1024).toFixed(0)} KB)`, 'success');
  };
  reader.readAsDataURL(f);
 };
 
 window.__proofClearFile = function() {
- const input = document.getElementById('proofFileInput');
+ // p1_230 — clear BOTH inputs (camera + file picker)
+ const inputs = [document.getElementById('proofFileInput'), document.getElementById('proofCameraInput')];
+ inputs.forEach(i => { if(i) i.value = ''; });
  const preview = document.getElementById('proofPreview');
- if(input) input.value = '';
  if(preview) preview.style.display = 'none';
  window.__proofState = { file: null, dataUrl: null };
+ // p1_230 — sync cpFormView badge
+ if(typeof window.cpRefreshProofBadge === 'function') window.cpRefreshProofBadge();
 };
 
 // Upload to Supabase Storage payment-proofs bucket. Returns public URL or null.
@@ -21534,6 +21543,28 @@ window.cpSetPayment = function(method) {
  } else {
  ewl.classList.add('is-hidden');
  }
+ // p1_230 — Refresh cpFormView proof badge (Snap/Pilih buttons manual)
+ if(method !== 'Cash' && typeof window.cpRefreshProofBadge === 'function') window.cpRefreshProofBadge();
+ else { const badge = document.getElementById('cpProofStatusBadge'); if(badge) badge.style.display = 'none'; }
+};
+
+// p1_230 — Resit status badge dalam cpFormView (sebab cpFormView takde proof section)
+window.cpRefreshProofBadge = function() {
+ const badge = document.getElementById('cpProofStatusBadge');
+ if(!badge) return;
+ const method = document.getElementById('cpPaymentMethod')?.value || 'Cash';
+ if(method === 'Cash') { badge.style.display = 'none'; return; }
+ const hasProof = !!(window.__proofState && window.__proofState.file);
+ badge.style.display = 'flex';
+ if(hasProof) {
+ const f = window.__proofState.file;
+ badge.style.background = '#D1FAE5'; badge.style.borderColor = '#10B981'; badge.style.color = '#065F46';
+ badge.innerHTML = `<i data-lucide="camera" style="width:14px;height:14px;"></i> Resit ditangkap (${(f.size / 1024).toFixed(0)} KB) — <button type="button" onclick="document.getElementById('proofCameraInput').click(); return false;" style="background:none; border:none; color:#065F46; text-decoration:underline; cursor:pointer; padding:0; font-size:11.5px;">snap semula</button>`;
+ } else {
+ badge.style.background = '#FEF3C7'; badge.style.borderColor = '#F59E0B'; badge.style.color = '#92400E';
+ badge.innerHTML = `<i data-lucide="alert-circle" style="width:14px;height:14px;"></i> Belum ada resit — <button type="button" onclick="document.getElementById('proofCameraInput').click(); return false;" style="background:none; border:none; color:#92400E; text-decoration:underline; cursor:pointer; padding:0; font-size:11.5px;">Snap Camera</button> · <button type="button" onclick="document.getElementById('proofFileInput').click(); return false;" style="background:none; border:none; color:#92400E; text-decoration:underline; cursor:pointer; padding:0; font-size:11.5px;">Pilih Fail</button>`;
+ }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
 window.cpPopulateEwallets = function() {
