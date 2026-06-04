@@ -21531,6 +21531,9 @@ window.openCheckoutPanel = function() {
  if(panel) {
  panel.classList.add('is-open');
  panel.setAttribute('aria-hidden', 'false');
+ // p1_232 — Hide mobile floating bar (orange "Lihat Troli · Bayar →") yang overlap dgn green Sahkan button
+ const mfb = document.getElementById('mobileCartFloatingBar');
+ if(mfb) { mfb.dataset.prevDisplay = mfb.style.display || ''; mfb.style.display = 'none'; }
  } else {
  console.error('[checkout] checkoutPanel element not found!');
  if(typeof showToast === 'function') showToast('Checkout panel tak boleh buka — refresh halaman dan cuba semula.', 'error');
@@ -21555,10 +21558,12 @@ window.openCheckoutPanel = function() {
 };
 
 window.closeCheckoutPanel = function() {
- document.getElementById('checkoutPanelOverlay').classList.remove('is-open');
+ const ov = document.getElementById('checkoutPanelOverlay'); if(ov) ov.classList.remove('is-open');
  const panel = document.getElementById('checkoutPanel');
- panel.classList.remove('is-open');
- panel.setAttribute('aria-hidden', 'true');
+ if(panel) { panel.classList.remove('is-open'); panel.setAttribute('aria-hidden', 'true'); }
+ // p1_232 — Restore mobile floating bar (CSS media query controls actual visibility)
+ const mfb = document.getElementById('mobileCartFloatingBar');
+ if(mfb) { mfb.style.display = mfb.dataset.prevDisplay || ''; delete mfb.dataset.prevDisplay; }
 };
 
 window.cpSetPayment = function(method) {
