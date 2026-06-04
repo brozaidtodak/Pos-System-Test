@@ -4617,7 +4617,19 @@ window.__panicShow = function(sectionId, title) {
  const sidebarOverlay = document.getElementById('sidebarOverlay');
  if(sidebar && sidebar.classList.contains('open')) sidebar.classList.remove('open');
  if(sidebarOverlay && sidebarOverlay.classList.contains('active')) sidebarOverlay.classList.remove('active');
- console.log('[PANIC] forced posAppLayout visible, shopAppLayout hidden, drawer closed');
+ // p1_190 — REAL ROOT CAUSE. <div id="main-content" class="app-container">
+ // wraps all sections (line 1702 HTML). But class="main-content" ALSO matches
+ // CSS rule `.main-content { display: flex }` from style.css line 49 (intended
+ // for the POS cashier layout, not the sections wrapper). Flex on the wrapper
+ // breaks block-level child rendering. Force back to display:block.
+ const mc = document.getElementById('main-content');
+ if(mc) {
+ mc.style.display = 'block';
+ console.log('[PANIC] #main-content computed display now:', getComputedStyle(mc).display);
+ } else {
+ console.warn('[PANIC] #main-content NOT FOUND');
+ }
+ console.log('[PANIC] forced posAppLayout visible, shopAppLayout hidden, drawer closed, main-content block');
  document.querySelectorAll('.tab-section').forEach(s => {
  s.style.cssText = 'display:none';
  });
@@ -4628,6 +4640,20 @@ window.__panicShow = function(sectionId, title) {
  }
  sec.style.cssText = 'display:block !important; visibility:visible !important; opacity:1 !important; position:relative !important; z-index:10 !important; min-height:60vh; background:#fff;';
  sec.removeAttribute('hidden');
+ console.log('[PANIC] section getBoundingClientRect:', JSON.stringify(sec.getBoundingClientRect()));
+ console.log('[PANIC] section parent:', sec.parentElement ? sec.parentElement.id || sec.parentElement.tagName : 'NONE');
+ console.log('[PANIC] section parent display:', sec.parentElement ? getComputedStyle(sec.parentElement).display : 'NONE');
+ // NUCLEAR: also inject a body-level red beacon — if THIS still doesn't show,
+ // problem is at <body> or <html> level (overlay, modal, full-page covering).
+ let beacon = document.getElementById('panicBeacon');
+ if(!beacon) {
+ beacon = document.createElement('div');
+ beacon.id = 'panicBeacon';
+ document.body.appendChild(beacon);
+ }
+ beacon.style.cssText = 'position:fixed !important; top:80px !important; left:20px !important; right:20px !important; z-index:99999 !important; background:#DC2626 !important; color:#fff !important; padding:14px 18px !important; border-radius:8px !important; font-size:14px !important; font-weight:700 !important; box-shadow:0 8px 24px rgba(0,0,0,.3) !important;';
+ beacon.innerHTML = '[BEACON] ' + sectionId + ' rendered at ' + new Date().toLocaleTimeString('en-MY') + '. Section getBoundingClientRect top=' + Math.round(sec.getBoundingClientRect().top) + ', height=' + Math.round(sec.getBoundingClientRect().height) + ', innerHTML.length=' + sec.innerHTML.length + '. Click to dismiss.';
+ beacon.onclick = function() { beacon.style.display = 'none'; };
  // Inject visible heartbeat banner at top so Zaid sees the click landed
  let banner = sec.querySelector('[data-panic-banner]');
  if(!banner) {
