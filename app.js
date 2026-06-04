@@ -4220,8 +4220,9 @@ window.renderPaymentProofs = async function() {
  <td style="padding:8px 10px; text-align:right; font-weight:700;">RM ${amt.toFixed(2)}</td>
  <td style="padding:8px 10px; text-align:center;">${thumbCell}${uploadedBy}</td>
  <td style="padding:8px 10px; white-space:nowrap;">
- <button onclick="window.__openReceiptPDF(${r.id})" title="Buka resit official (PDF print)" style="background:#FEF7ED; border:1px solid #FCD34D; color:#92400E; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="file-text" style="width:11px;height:11px;vertical-align:-1px;"></i> Resit PDF</button>
- <button onclick="window.__sendReceiptWhatsApp(${r.id})" title="Quick send text resit via WhatsApp" style="background:#DCFCE7; border:1px solid #86EFAC; color:#166534; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="send" style="width:11px;height:11px;vertical-align:-1px;"></i> WA Text</button>
+ <button onclick="window.__openReceiptPDF(${r.id})" title="Buka resit official (preview + send)" style="background:#FEF7ED; border:1px solid #FCD34D; color:#92400E; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="file-text" style="width:11px;height:11px;vertical-align:-1px;"></i> Resit</button>
+ <button onclick="window.__sendReceiptPdfWhatsApp(${r.id})" title="Hantar resit PDF via WhatsApp" style="background:#DCFCE7; border:1px solid #86EFAC; color:#166534; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="message-circle" style="width:11px;height:11px;vertical-align:-1px;"></i> WhatsApp</button>
+ <button onclick="window.__sendReceiptPdfEmail(${r.id})" title="Hantar resit PDF via Email" style="background:#E0E7FF; border:1px solid #A5B4FC; color:#3730A3; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; margin-right:4px;"><i data-lucide="mail" style="width:11px;height:11px;vertical-align:-1px;"></i> Email</button>
  <button onclick="window.__ppUploadFor(${r.id})" title="Upload bukti bayar dari customer" style="background:#EFF6FF; border:1px solid #BFDBFE; color:#1E40AF; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="upload" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.payment_proof_url ? 'Tukar' : 'Upload'}</button>
  </td>
  </tr>`;
@@ -4282,37 +4283,98 @@ window.__buildReceiptText = function(sale) {
  return lines.join('\n');
 };
 
-window.__sendReceiptWhatsApp = async function(saleId) {
+// p1_199 — Send PDF receipt via WhatsApp. Generates PDF + uploads + opens
+// wa.me with download link.
+window.__sendReceiptPdfWhatsApp = async function(saleId) {
  if(!saleId) return;
+ const toast = (m, t) => { if(typeof showToast === 'function') showToast(m, t || 'info'); };
  try {
- if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
- const { data, error } = await db.from('sales_history').select('*').eq('id', saleId).single();
- if(error) throw error;
- if(!data) throw new Error('Sale #' + saleId + ' tak jumpa');
- const phone = (data.customer_phone || '').replace(/[^\d+]/g, '');
+ toast('Sediakan resit PDF…', 'info');
+ const { sale, url, cached } = await window.__ensureReceiptPdfUrl(saleId);
+ let phone = (sale.customer_phone || '').replace(/[^\d+]/g, '');
  if(!phone) {
- const ask = prompt('Customer tak ada phone number simpan. Masukkan WhatsApp number (atau cancel):', '');
+ const ask = prompt('Customer tak ada phone number. Masukkan WhatsApp number (cth: 0134567890):', '');
  if(!ask) return;
- const cleaned = ask.replace(/[^\d+]/g, '');
- if(!cleaned) { if(typeof showToast === 'function') showToast('Phone invalid', 'warn'); return; }
- data.customer_phone = cleaned;
- // Save back to sales_history for future
- try { await db.from('sales_history').update({ customer_phone: cleaned }).eq('id', saleId); } catch(_) {}
+ phone = ask.replace(/[^\d+]/g, '');
+ if(!phone) { toast('Phone invalid', 'warn'); return; }
+ try { await db.from('sales_history').update({ customer_phone: phone }).eq('id', saleId); } catch(_) {}
  }
  // Normalize to international: 0XXXXXXX → 60XXXXXXX
- let target = (data.customer_phone || '').replace(/[^\d+]/g, '');
- if(target.startsWith('0')) target = '60' + target.slice(1);
- else if(target.startsWith('+')) target = target.slice(1);
- const text = window.__buildReceiptText(data);
- const url = target
- ? 'https://wa.me/' + target + '?text=' + encodeURIComponent(text)
- : 'https://wa.me/?text=' + encodeURIComponent(text);
- window.open(url, '_blank');
- if(typeof showToast === 'function') showToast('WhatsApp dibuka dengan resit untuk #' + saleId, 'success');
+ if(phone.startsWith('0')) phone = '60' + phone.slice(1);
+ else if(phone.startsWith('+')) phone = phone.slice(1);
+ const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name: '10 CAMP' };
+ const total = Number(sale.total_amount || sale.total || 0);
+ const text = [
+ 'Hi ' + (sale.customer_name || 'there') + ',',
+ '',
+ 'Terima kasih sudi beli barang dari *' + shop.name + '*!',
+ '',
+ 'Resit: *#' + sale.id + '*',
+ 'Jumlah: *RM ' + total.toFixed(2) + '*',
+ '',
+ 'Download resit PDF:',
+ url,
+ '',
+ 'Sila simpan untuk rekod anda.',
+ '',
+ 'Terima kasih!'
+ ].join('\n');
+ const waUrl = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text);
+ window.open(waUrl, '_blank');
+ try { await db.from('sales_history').update({ receipt_sent_whatsapp_at: new Date().toISOString() }).eq('id', saleId); } catch(_) {}
+ toast('WhatsApp dibuka — resit ' + (cached ? 'reuse' : 'fresh') + ' PDF link siap.', 'success');
  } catch(e) {
- if(typeof showToast === 'function') showToast('Hantar resit gagal: ' + e.message, 'error');
+ toast('Hantar WhatsApp gagal: ' + e.message, 'error');
  }
 };
+
+// p1_199 — Send PDF receipt via Email (mailto fallback until Resend setup).
+window.__sendReceiptPdfEmail = async function(saleId) {
+ if(!saleId) return;
+ const toast = (m, t) => { if(typeof showToast === 'function') showToast(m, t || 'info'); };
+ try {
+ toast('Sediakan resit PDF…', 'info');
+ const { sale, url } = await window.__ensureReceiptPdfUrl(saleId);
+ const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name: '10 CAMP' };
+ let email = (sale.customer_email || '').trim();
+ if(!email) {
+ const ask = prompt('Customer tak ada email simpan. Masukkan email (atau cancel):', '');
+ if(!ask) return;
+ email = ask.trim();
+ if(!email || !email.includes('@')) { toast('Email invalid', 'warn'); return; }
+ try { await db.from('sales_history').update({ customer_email: email }).eq('id', saleId); } catch(_) {}
+ }
+ const total = Number(sale.total_amount || sale.total || 0);
+ const subject = 'Resit Pembelian #' + sale.id + ' — ' + shop.name;
+ const body = [
+ 'Hi ' + (sale.customer_name || 'there') + ',',
+ '',
+ 'Terima kasih sudi beli barang dari ' + shop.name + '!',
+ '',
+ 'Butiran resit:',
+ '- Nombor: #' + sale.id,
+ '- Jumlah: RM ' + total.toFixed(2),
+ '- Kaedah: ' + (sale.payment_method || 'Cash'),
+ '',
+ 'Download resit PDF (klik link):',
+ url,
+ '',
+ 'Sila simpan untuk rekod anda. Untuk pulangan, hubungi kami dalam 7 hari.',
+ '',
+ 'Terima kasih,',
+ shop.name
+ ].join('\n');
+ const mailtoUrl = 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+ window.location.href = mailtoUrl;
+ try { await db.from('sales_history').update({ receipt_sent_email_at: new Date().toISOString() }).eq('id', saleId); } catch(_) {}
+ toast('Email client dibuka untuk ' + email, 'success');
+ } catch(e) {
+ toast('Hantar email gagal: ' + e.message, 'error');
+ }
+};
+
+// Kept for backwards compat (used by older callers / Auto-send)
+window.__sendReceiptWhatsApp = window.__sendReceiptPdfWhatsApp;
 
 window.__copyReceiptText = async function(saleId) {
  if(!saleId) return;
@@ -4327,6 +4389,181 @@ window.__copyReceiptText = async function(saleId) {
  } catch(e) {
  if(typeof showToast === 'function') showToast('Copy gagal: ' + e.message, 'error');
  }
+};
+
+// p1_199 — Lazy-load jsPDF + html2canvas from CDN. Returns when both loaded.
+window.__loadPdfLibs = async function() {
+ if(window.jspdf && window.html2canvas) return;
+ const loadScript = (src) => new Promise((resolve, reject) => {
+ if(document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+ const s = document.createElement('script');
+ s.src = src;
+ s.onload = resolve;
+ s.onerror = reject;
+ document.head.appendChild(s);
+ });
+ await Promise.all([
+ !window.jspdf && loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'),
+ !window.html2canvas && loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')
+ ].filter(Boolean));
+};
+
+// Build receipt HTML string (reused by browser-print and PDF-generation paths)
+window.__buildReceiptHtmlFragment = function(sale) {
+ const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name: '10 CAMP' };
+ const items = Array.isArray(sale.items) ? sale.items : [];
+ const dt = sale.created_at ? new Date(sale.created_at) : new Date();
+ const dtStr = dt.toLocaleString('en-MY', { dateStyle: 'long', timeStyle: 'short' });
+ const total = Number(sale.total_amount || sale.total || 0);
+ const esc = (s) => String(s == null ? '' : s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+ let subtotal = 0;
+ const itemRows = items.map(c => {
+ const qty = Number(c.quantity || c.qty || 1);
+ const price = Number(c.price || 0);
+ const line = qty * price;
+ subtotal += line;
+ return `<tr><td class="col-name">${esc(c.name || c.sku || 'Item')}${c.sku ? `<br><span style="font-size:10px;color:#888;">${esc(c.sku)}</span>` : ''}</td><td class="col-qty">${qty}</td><td class="col-price">${price.toFixed(2)}</td><td class="col-total">${line.toFixed(2)}</td></tr>`;
+ }).join('');
+ const discount = subtotal > total ? (subtotal - total) : 0;
+ const logoUrl = window.location.origin + '/assets/brand/logo/10camp-logo-color.png';
+ return `
+<div class="logo-wrap">
+ <img src="${esc(logoUrl)}" alt="${esc(shop.name)}" crossorigin="anonymous" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+ <div class="logo-fallback" style="display:none;">${esc(shop.name)}</div>
+</div>
+<div class="shop-info">
+ <h1>${esc(shop.name)}</h1>
+ <p class="addr">${esc(shop.address || 'Lot 123, Jln Cyber, 63000 Cyberjaya, Selangor')}<br>${esc(shop.phone || '+60 11-3310 9547')} · ${esc(shop.website || 'www.10camp.com')}</p>
+</div>
+<div class="receipt-header">
+ <div class="receipt-no">RESIT #${sale.id}</div>
+ <div class="receipt-date">${esc(dtStr)}<br>${esc(sale.channel || 'Walk-in Kedai')}</div>
+</div>
+<div class="customer-row">
+ <strong>${esc(sale.customer_name || 'Walk-In Customer')}</strong>
+ ${sale.customer_phone ? `<div class="sub">${esc(sale.customer_phone)}</div>` : ''}
+ ${sale.buyer_tin ? `<div class="sub">TIN: ${esc(sale.buyer_tin)}</div>` : ''}
+</div>
+<table class="items-table">
+ <thead><tr><th>Item</th><th class="col-qty">Qty</th><th class="col-price">Harga</th><th class="col-total">Jumlah</th></tr></thead>
+ <tbody>${itemRows || '<tr><td colspan="4" style="text-align:center; padding:14px; color:#9CA3AF;">(Tiada items)</td></tr>'}</tbody>
+</table>
+<div class="totals">
+ ${discount > 0 ? `<div class="row"><span>Subtotal</span><span>RM ${subtotal.toFixed(2)}</span></div><div class="row discount"><span>Diskaun</span><span>-RM ${discount.toFixed(2)}</span></div>` : ''}
+ <div class="row grand"><span>JUMLAH BAYAR</span><span>RM ${total.toFixed(2)}</span></div>
+</div>
+<div class="pay-info">
+ <span class="label">Kaedah Bayaran:</span> <span class="value">${esc(sale.payment_method_detail || sale.payment_method || 'Cash')}</span>
+ ${sale.staff_name ? `<br><span class="label">Cashier:</span> <span class="value">${esc(sale.staff_name)}</span>` : ''}
+</div>
+<div class="footer">
+ Terima kasih sebab beli barang dari <strong>${esc(shop.name)}</strong>!<br>Jumpa lagi.
+ <div class="meta">Resit sah sebagai bukti pembelian. Pulangan dalam 7 hari.</div>
+</div>`;
+};
+
+// Build PDF blob from sale via html2canvas + jsPDF
+window.__generateReceiptPdfBlob = async function(sale) {
+ await window.__loadPdfLibs();
+ // Render receipt HTML in hidden iframe-like container (off-screen)
+ const container = document.createElement('div');
+ container.id = 'receiptPdfStage';
+ container.style.cssText = 'position:fixed; left:-9999px; top:0; width:480px; padding:24px; background:#fff; font-family:Arial, sans-serif; color:#1a1a1a;';
+ container.innerHTML = `<style>
+* { box-sizing: border-box; }
+.logo-wrap { text-align:center; margin-bottom:12px; }
+.logo-wrap img { width:100px; height:auto; }
+.logo-wrap .logo-fallback { font-size:28px; font-weight:900; color:#CD7C32; }
+.shop-info { text-align:center; margin-bottom:20px; }
+.shop-info h1 { font-size:18px; font-weight:900; color:#CD7C32; margin:0 0 4px; letter-spacing:1px; }
+.shop-info .addr { font-size:11px; color:#666; line-height:1.5; }
+.receipt-header { border-top:2px solid #CD7C32; border-bottom:1px dashed #D1D5DB; padding:12px 0; margin-bottom:14px; display:flex; justify-content:space-between; align-items:baseline; }
+.receipt-header .receipt-no { font-size:14px; font-weight:800; }
+.receipt-header .receipt-date { font-size:11px; color:#6B7280; text-align:right; }
+.customer-row { font-size:12px; padding:10px 14px; background:#F9FAFB; border-radius:6px; margin-bottom:16px; }
+.customer-row strong { color:#374151; }
+.customer-row .sub { color:#6B7280; font-size:11px; margin-top:2px; }
+table.items-table { width:100%; border-collapse:collapse; font-size:12px; }
+table.items-table th { text-align:left; padding:8px 4px; border-bottom:2px solid #1a1a1a; font-size:10px; text-transform:uppercase; }
+table.items-table td { padding:10px 4px; border-bottom:1px dashed #E5E7EB; vertical-align:top; }
+table.items-table .col-name { font-weight:600; }
+table.items-table .col-qty { text-align:center; width:14%; }
+table.items-table .col-price { text-align:right; width:18%; }
+table.items-table .col-total { text-align:right; width:22%; font-weight:600; }
+.totals { padding-top:12px; margin-top:10px; border-top:1px solid #1a1a1a; }
+.totals .row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+.totals .row.discount { color:#DC2626; }
+.totals .grand { font-size:18px; font-weight:900; padding-top:10px; margin-top:6px; border-top:2px solid #1a1a1a; color:#CD7C32; }
+.pay-info { background:#FEF7ED; border:1px solid rgba(205,124,50,0.3); padding:10px 14px; border-radius:6px; margin-top:16px; font-size:12px; }
+.pay-info .label { color:#6B7280; font-weight:600; }
+.pay-info .value { color:#1a1a1a; font-weight:700; }
+.footer { text-align:center; font-size:11px; color:#6B7280; margin-top:24px; padding-top:16px; border-top:1px dashed #D1D5DB; line-height:1.6; }
+.footer strong { color:#CD7C32; }
+.footer .meta { margin-top:10px; font-size:10px; color:#9CA3AF; }
+</style>` + window.__buildReceiptHtmlFragment(sale);
+ document.body.appendChild(container);
+ try {
+ // Wait for logo image to load (or fail) before snapshot
+ const img = container.querySelector('.logo-wrap img');
+ if(img) {
+ await new Promise((resolve) => {
+ if(img.complete) { resolve(); return; }
+ img.onload = resolve;
+ img.onerror = resolve;
+ setTimeout(resolve, 1500);
+ });
+ }
+ const canvas = await window.html2canvas(container, { scale: 2, backgroundColor: '#fff', useCORS: true, logging: false });
+ const imgData = canvas.toDataURL('image/jpeg', 0.92);
+ const { jsPDF } = window.jspdf;
+ const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+ const pageW = pdf.internal.pageSize.getWidth();
+ const pageH = pdf.internal.pageSize.getHeight();
+ const imgW = pageW - 60;
+ const imgH = (canvas.height * imgW) / canvas.width;
+ // If receipt taller than page, split into multiple pages
+ let position = 30;
+ let remaining = imgH;
+ let srcY = 0;
+ while(remaining > 0) {
+ const sliceH = Math.min(remaining, pageH - 60);
+ pdf.addImage(imgData, 'JPEG', 30, position, imgW, imgH, undefined, 'FAST');
+ remaining -= sliceH;
+ if(remaining > 0) { pdf.addPage(); position = 30 - (imgH - remaining); }
+ }
+ return pdf.output('blob');
+ } finally {
+ container.remove();
+ }
+};
+
+window.__uploadReceiptToStorage = async function(blob, saleId) {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const ts = new Date().toISOString().replace(/[:.]/g, '-');
+ const fileName = 'resit_' + saleId + '_' + ts + '.pdf';
+ const { data, error } = await db.storage.from('receipts').upload(fileName, blob, {
+ cacheControl: '3600',
+ upsert: false,
+ contentType: 'application/pdf'
+ });
+ if(error) throw error;
+ const { data: pub } = db.storage.from('receipts').getPublicUrl(data.path);
+ const url = pub && pub.publicUrl ? pub.publicUrl : null;
+ // Persist URL on sales_history for re-use (no need regenerate)
+ try { await db.from('sales_history').update({ receipt_pdf_url: url, receipt_pdf_generated_at: new Date().toISOString() }).eq('id', saleId); } catch(_) {}
+ return url;
+};
+
+// Ensure PDF exists in Storage. Returns URL. Reuses existing if already generated.
+window.__ensureReceiptPdfUrl = async function(saleId) {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const { data: sale, error } = await db.from('sales_history').select('*').eq('id', saleId).single();
+ if(error) throw error;
+ if(!sale) throw new Error('Sale #' + saleId + ' tak jumpa');
+ if(sale.receipt_pdf_url) return { sale, url: sale.receipt_pdf_url, cached: true };
+ const blob = await window.__generateReceiptPdfBlob(sale);
+ const url = await window.__uploadReceiptToStorage(blob, saleId);
+ return { sale, url, cached: false };
 };
 
 // p1_198 — Proper PDF-style receipt: opens formatted HTML with 10 CAMP logo,
@@ -4407,8 +4644,10 @@ table.items-table .col-total { text-align: right; width: 22%; font-weight: 600; 
 <body>
 <div class="no-print">
  <button onclick="window.print()">Print / Save PDF</button>
+ <button onclick="window.opener && window.opener.__sendReceiptPdfWhatsApp(${sale.id}); window.close();" style="background:#10B981;">Hantar WhatsApp</button>
+ <button onclick="window.opener && window.opener.__sendReceiptPdfEmail(${sale.id}); window.close();" style="background:#6366F1;">Hantar Email</button>
  <button class="secondary" onclick="window.close()">Close</button>
- <span class="hint">Tekan "Print / Save PDF" → pilih destination "Save as PDF" untuk dapatkan fail PDF official.</span>
+ <span class="hint">Print/Save PDF untuk fail. WhatsApp/Email akan generate PDF + upload + hantar link auto.</span>
 </div>
 
 <div class="logo-wrap">
@@ -8344,8 +8583,10 @@ window.processNewCheckout = async function() {
  }
  }
 
- await db.from('sales_history').insert([{
- customer_name: custNameText, customer_phone: custPhoneText, payment_method: pm, channel: cn, status: cst,
+ // p1_199 — capture customerEmail early so we can save with the sale row
+ const earlyEmail = (document.getElementById("customerEmail").value || '').trim();
+ const insertRes = await db.from('sales_history').insert([{
+ customer_name: custNameText, customer_phone: custPhoneText, customer_email: earlyEmail || null, payment_method: pm, channel: cn, status: cst,
  total: finalTotal, total_amount: finalTotal, items: cart,
  staff_name: currentUser ? currentUser.name : 'Unknown',
  buyer_tin: buyerTin || null,
@@ -8354,7 +8595,8 @@ window.processNewCheckout = async function() {
  payment_proof_uploaded_at: proofUploadedAt,
  payment_proof_uploaded_by: proofUploadedBy,
  payment_method_detail: pmDetail
- }]);
+ }]).select('id').single();
+ const insertedSaleId = insertRes && insertRes.data ? insertRes.data.id : null;
  // Use finalTotal downstream
  totalVal = finalTotal;
  // p1_29: Push inventory deduction to EasyStore (best-effort, async, non-blocking)
@@ -8366,6 +8608,26 @@ window.processNewCheckout = async function() {
  const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
  const email = document.getElementById("customerEmail").value.trim();
  showReceiptModal(invId, custNameText, email, totalVal, [...cart]);
+
+ // p1_199 — Auto-send PDF receipt after checkout. Fire-and-forget; runs in
+ // background while staff sees the standard receipt modal. If customer has
+ // phone → WhatsApp Web tab opens with PDF link. If email → mailto opens.
+ if(insertedSaleId) {
+ setTimeout(() => {
+ try {
+ const hasPhone = !!(custPhoneText && custPhoneText.trim());
+ const hasEmail = !!(earlyEmail && earlyEmail.includes('@'));
+ if(hasPhone) {
+ if(typeof showToast === 'function') showToast('Sediakan resit PDF untuk WhatsApp…', 'info');
+ window.__sendReceiptPdfWhatsApp(insertedSaleId).catch(() => {});
+ }
+ if(hasEmail) {
+ // Stagger 2s so the WhatsApp window isn't lost behind email client
+ setTimeout(() => window.__sendReceiptPdfEmail(insertedSaleId).catch(() => {}), 2000);
+ }
+ } catch(_) {}
+ }, 400);
+ }
 
  cart = [];
  document.getElementById("customerName").value = "";
