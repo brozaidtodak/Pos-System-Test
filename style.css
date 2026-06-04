@@ -180,9 +180,9 @@ body.pos-mobile-mode .cart-section > div:last-child {
     box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
 }
 
-/* p1_239 — Main content padding bigger sebab floating area sekarang ~140px tinggi (BAYAR + Lihat Troli + gap) */
+/* p1_240 — Main content padding-bottom revert ke 100px (cuma satu button Lihat Troli orange, BAYAR dah pindah ke dalam drawer) */
 body.pos-mobile-mode .main-content {
-    padding-bottom: 160px !important;
+    padding-bottom: 100px !important;
 }
 
 /* PRINT MEDIA FOR BARCODE LABELS (THERMAL PRINTER FORMAT) */
