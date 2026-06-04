@@ -6885,7 +6885,11 @@ window.__scsToggleSkuList = async function(sessionId) {
  <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#9CA3AF;">${i.system_qty != null ? i.system_qty : '-'}</td>
  <td style="padding:8px 10px; text-align:right; font-size:11.5px; font-weight:${isChecked ? '700' : '400'}; color:${isChecked ? '#111' : '#D1D5DB'};">${isChecked ? i.counted_qty : `<button onclick="window.__scsKeyInCount(${i.id}, ${sessionId}, '${escHtml(i.sku || '').replace(/'/g, "\\'")}', ${i.system_qty != null ? i.system_qty : 'null'})" title="Key in kiraan fizikal" style="background:var(--primary); border:none; color:#fff; padding:4px 10px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="edit-3" style="width:10px;height:10px;"></i> Key In</button>`}</td>
  <td style="padding:8px 10px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:${badgeBg}; color:${badgeFg}; font-size:10px; font-weight:700;"><i data-lucide="${badgeIcon}" style="width:10px;height:10px;"></i> ${badgeTxt}</span></td>
- <td style="padding:8px 6px; text-align:center;">${isChecked ? `<button onclick="window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
+ <td style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `
+ <button onclick="window.__scsMarkNotFound(${i.id}, ${sessionId}, '${escHtml(i.sku || '').replace(/'/g, "\\'")}', ${i.system_qty != null ? i.system_qty : 'null'})" title="Tak jumpa item ni di lokasi" style="background:#FEE2E2; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700; margin-right:3px;"><i data-lucide="search-x" style="width:9px;height:9px;"></i> Tak Jumpa</button>
+ <button onclick="window.__scsMarkDamaged(${i.id}, ${sessionId}, '${escHtml(i.sku || '').replace(/'/g, "\\'")}', ${i.system_qty != null ? i.system_qty : 'null'})" title="Tandai unit rosak" style="background:#FED7AA; border:1px solid #FB923C; color:#9A3412; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700; margin-right:3px;"><i data-lucide="alert-triangle" style="width:9px;height:9px;"></i> Rosak</button>
+ <button onclick="window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>
+ `}</td>
  </tr>`;
  }).join('');
  box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
@@ -6958,6 +6962,99 @@ window.__scsKeyInCount = async function(itemId, sessionId, sku, systemQty) {
  if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
  } catch(e) {
  if(typeof showToast === 'function') showToast('Key in gagal: ' + e.message, 'error');
+ }
+};
+
+// p1_221 — Inline Tak Jumpa + Rosak flags dari Senarai SKU
+window.__scsMarkNotFound = async function(itemId, sessionId, sku, systemQty) {
+ if(!confirm(`Tandai ${sku} sebagai TAK JUMPA?\n(counted_qty = 0, variance = -${systemQty != null ? systemQty : 0})`)) return;
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const u = window.currentUser || {};
+ const nowIso = new Date().toISOString();
+ const stamp = new Date().toLocaleString('en-MY', { day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
+ // Get location from session_items row (already includes location_bin)
+ let loc = '';
+ try {
+ const { data: row } = await db.from('stock_check_session_items').select('location_bin').eq('id', itemId).single();
+ if(row) loc = row.location_bin || '';
+ } catch(e){}
+ const noteText = `Tak jumpa${loc ? ' di ' + loc : ''} · ${u.name || '?'} · ${stamp}`;
+ const variance = (systemQty != null && !isNaN(systemQty)) ? (0 - systemQty) : null;
+ const { error: e1 } = await db.from('stock_check_session_items').update({
+ counted_qty: 0,
+ variance: variance,
+ flag: 'not_found',
+ note: noteText,
+ counted_by_id: u.staff_id || 'unknown',
+ counted_by_name: u.name || 'Unknown',
+ counted_at: nowIso
+ }).eq('id', itemId);
+ if(e1) throw e1;
+ await db.from('products_master').update({
+ last_audited_at: nowIso,
+ last_audited_by: (u.name || 'Unknown') + ' (' + (u.staff_id || '?') + ')',
+ last_audited_qty: 0,
+ last_audited_system_qty: (systemQty != null && !isNaN(systemQty)) ? systemQty : null
+ }).eq('sku', sku);
+ const { data: items } = await db.from('stock_check_session_items').select('counted_qty,variance').eq('session_id', sessionId);
+ const checked = (items || []).filter(i => i.counted_qty != null);
+ const varCnt = checked.filter(i => (i.variance || 0) !== 0).length;
+ await db.from('stock_check_sessions').update({ items_checked: checked.length, items_variance: varCnt }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast(`${sku} — TAK JUMPA`, 'warn');
+ const box = document.getElementById('scsSkuList-' + sessionId);
+ if(box) { box.dataset.loaded = ''; window.__scsToggleSkuList(sessionId); window.__scsToggleSkuList(sessionId); }
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Tak Jumpa gagal: ' + e.message, 'error');
+ }
+};
+
+window.__scsMarkDamaged = async function(itemId, sessionId, sku, systemQty) {
+ const sysQty = (systemQty != null && !isNaN(systemQty)) ? systemQty : 0;
+ const raw = prompt(`Berapa unit ROSAK untuk ${sku}?\n(Sistem: ${sysQty})`, '1');
+ if(raw === null) return;
+ const damaged = parseInt(String(raw).trim(), 10);
+ if(isNaN(damaged) || damaged < 0) { if(typeof showToast === 'function') showToast('Qty rosak tak valid.', 'warn'); return; }
+ const goodQty = Math.max(0, sysQty - damaged);
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const u = window.currentUser || {};
+ const nowIso = new Date().toISOString();
+ const stamp = new Date().toLocaleString('en-MY', { day:'numeric', month:'short', hour:'numeric', minute:'numeric', hour12:true });
+ let loc = '';
+ try {
+ const { data: row } = await db.from('stock_check_session_items').select('location_bin').eq('id', itemId).single();
+ if(row) loc = row.location_bin || '';
+ } catch(e){}
+ const noteText = `${damaged} unit ROSAK${loc ? ' (' + loc + ')' : ''} · baki good ${goodQty} · ${u.name || '?'} · ${stamp}`;
+ const variance = goodQty - sysQty;
+ const { error: e1 } = await db.from('stock_check_session_items').update({
+ counted_qty: goodQty,
+ variance: variance,
+ flag: 'damaged',
+ note: noteText,
+ counted_by_id: u.staff_id || 'unknown',
+ counted_by_name: u.name || 'Unknown',
+ counted_at: nowIso
+ }).eq('id', itemId);
+ if(e1) throw e1;
+ await db.from('products_master').update({
+ last_audited_at: nowIso,
+ last_audited_by: (u.name || 'Unknown') + ' (' + (u.staff_id || '?') + ')',
+ last_audited_qty: goodQty,
+ last_audited_system_qty: sysQty
+ }).eq('sku', sku);
+ const { data: items } = await db.from('stock_check_session_items').select('counted_qty,variance').eq('session_id', sessionId);
+ const checked = (items || []).filter(i => i.counted_qty != null);
+ const varCnt = checked.filter(i => (i.variance || 0) !== 0).length;
+ await db.from('stock_check_sessions').update({ items_checked: checked.length, items_variance: varCnt }).eq('id', sessionId);
+ if(typeof showToast === 'function') showToast(`${sku} — ${damaged} ROSAK · ${goodQty} good`, 'warn');
+ const box = document.getElementById('scsSkuList-' + sessionId);
+ if(box) { box.dataset.loaded = ''; window.__scsToggleSkuList(sessionId); window.__scsToggleSkuList(sessionId); }
+ if(typeof window.renderCheckSessions === 'function') window.renderCheckSessions();
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Rosak gagal: ' + e.message, 'error');
  }
 };
 
