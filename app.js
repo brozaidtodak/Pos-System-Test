@@ -9754,8 +9754,15 @@ window.processNewCheckout = async function() {
  // B14: optional buyer TIN for e-Invoice
  const buyerTin = (document.getElementById("customerBuyerTin")?.value || '').trim();
 
+ // p1_236 — track backorder items (sold lebih dari batches available — for OOS allow flow)
+ const backorderItems = [];
  for (const item of cart) {
  totalVal = round2(totalVal + item.price * item.quantity);
+ // Skip Custom Sale items — no batch deduction (sku=CUSTOM-*)
+ if(item.isCustom || (typeof item.sku === 'string' && item.sku.startsWith('CUSTOM-'))) {
+ item.batch_alloc = [];
+ continue;
+ }
  let needed = item.quantity;
  let batches = inventoryBatches.filter(b => b.sku===item.sku && b.qty_remaining>0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
  // Track exact batch allocation per item (B7 perfect fix — refund can restock to same batches)
@@ -9768,7 +9775,16 @@ window.processNewCheckout = async function() {
  transactionsPayload.push({sku: item.sku, batch_id: batch.id, transaction_type: 'OUTBOUND_SALE', qty_change: -deduct});
  item.batch_alloc.push({ batch_id: batch.id, qty: deduct });
  }
+ // p1_236 — flag backorder kalau ada qty yang tak boleh deduct
+ if(needed > 0) {
+ backorderItems.push({ sku: item.sku, name: item.name, qty_short: needed, qty_total: item.quantity });
  }
+ }
+ // p1_236 — Expose backorder list ke saleMeta for sales_history.metadata transparency
+ if(backorderItems.length > 0) {
+ window.__lastBackorderItems = backorderItems;
+ if(typeof showToast === 'function') showToast(`AMARAN: ${backorderItems.length} item dijual backorder (stok kurang). Detail simpan dalam sale metadata.`, 'warn');
+ } else { window.__lastBackorderItems = null; }
 
  if(transactionsPayload.length> 0) await db.from('inventory_transactions').insert(transactionsPayload);
 
@@ -9822,6 +9838,18 @@ window.processNewCheckout = async function() {
  saleMeta.custom_discount_reason = customDiscReason || null;
  saleMeta.custom_discount_subtotal_before = totalVal;
  saleMeta.custom_discount_by = (currentUser && currentUser.name) ? currentUser.name : 'Unknown';
+ }
+ // p1_236 — Backorder audit trail (OOS allow flow)
+ if(window.__lastBackorderItems && window.__lastBackorderItems.length > 0) {
+ saleMeta.backorder = true;
+ saleMeta.backorder_items = window.__lastBackorderItems;
+ window.__lastBackorderItems = null;
+ }
+ // p1_236 — Custom Sale items flag (ad-hoc sales bukan dari Master)
+ const customItems = cart.filter(it => it.isCustom || (typeof it.sku === 'string' && it.sku.startsWith('CUSTOM-')));
+ if(customItems.length > 0) {
+ saleMeta.has_custom_sale = true;
+ saleMeta.custom_sale_count = customItems.length;
  }
 
  // p1_180 — upload payment proof to Storage before insert (skip if Cash or no file)
@@ -15793,15 +15821,15 @@ window.saveMasterProduct = async function() {
  }
 
  // p1_226 — Initial Quantity → inventory_batches insert (only for NEW products + qty > 0)
+ // p1_236 — fix schema columns: was unit_cost_rm/received_at/received_by/note → actual: cost_price/inbound_date/notes
  const initQty = getNum('mpInitQty');
  if(!isEdit && initQty != null && initQty > 0) {
  try {
  await db.from('inventory_batches').insert([{
  sku, qty_received: initQty, qty_remaining: initQty,
- unit_cost_rm: cleaned.cost_price || 0,
- received_at: new Date().toISOString(),
- received_by: currentUser ? currentUser.name : 'System',
- note: 'Initial stock dari Master Product registration'
+ cost_price: cleaned.cost_price || 0,
+ inbound_date: new Date().toISOString(),
+ notes: 'Initial stock dari Master Product registration · ' + ((currentUser && currentUser.name) || 'System')
  }]);
  } catch(e) { console.warn('Initial batch insert failed:', e); }
  }
@@ -16516,13 +16544,13 @@ window.pdpAdjustStock = async function() {
  const note = prompt('Sebab adjustment? (contoh: "Damaged units", "Stock count correction", "Internal use")', '') || '';
  try {
  const u = window.currentUser || {};
+ // p1_236 — fix schema columns: was unit_cost_rm/received_at/received_by/note → actual: cost_price/inbound_date/notes
  // Append batch row with delta (qty_received + qty_remaining = delta; for negative, treat as write-off batch)
  const { error } = await db.from('inventory_batches').insert([{
  sku, qty_received: delta, qty_remaining: delta,
- unit_cost_rm: 0,
- received_at: new Date().toISOString(),
- received_by: u.name || 'System',
- note: 'Manual adjustment' + (note ? ': ' + note : '')
+ cost_price: 0,
+ inbound_date: new Date().toISOString(),
+ notes: 'Manual adjustment by ' + (u.name || 'System') + (note ? ': ' + note : '')
  }]);
  if(error) throw error;
  if(typeof showToast === 'function') showToast(`Stock adjusted ${delta > 0 ? '+' : ''}${delta} untuk ${sku}.`, 'success');
