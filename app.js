@@ -4643,9 +4643,17 @@ window.__panicShow = function(sectionId, title) {
  // fixed position takes section out of normal flow entirely.
  sec.style.cssText = 'display:block !important; visibility:visible !important; opacity:1 !important; position:fixed !important; top:60px !important; left:0 !important; right:0 !important; bottom:0 !important; z-index:9000 !important; overflow-y:auto !important; padding:20px !important; background:#F9FAFB !important; box-sizing:border-box !important;';
  sec.removeAttribute('hidden');
+ // Log computed styles AFTER our override — proves if !important won
+ const cs = getComputedStyle(sec);
+ console.log('[PANIC] section computed: position=', cs.position, 'display=', cs.display, 'visibility=', cs.visibility, 'opacity=', cs.opacity, 'top=', cs.top, 'left=', cs.left, 'width=', cs.width, 'height=', cs.height, 'z-index=', cs.zIndex);
  console.log('[PANIC] section getBoundingClientRect:', JSON.stringify(sec.getBoundingClientRect()));
  console.log('[PANIC] section parent:', sec.parentElement ? sec.parentElement.id || sec.parentElement.tagName : 'NONE');
  console.log('[PANIC] section parent display:', sec.parentElement ? getComputedStyle(sec.parentElement).display : 'NONE');
+ // Find any element covering the center of viewport at section top — if anything other than html/body, that's the overlay
+ try {
+ const elAtSectionCenter = document.elementFromPoint(window.innerWidth / 2, 200);
+ console.log('[PANIC] elementFromPoint(center, 200) =', elAtSectionCenter ? (elAtSectionCenter.tagName + '#' + elAtSectionCenter.id + '.' + elAtSectionCenter.className).slice(0, 120) : 'NULL');
+ } catch(e) {}
  // NUCLEAR: also inject a body-level red beacon — if THIS still doesn't show,
  // problem is at <body> or <html> level (overlay, modal, full-page covering).
  let beacon = document.getElementById('panicBeacon');
