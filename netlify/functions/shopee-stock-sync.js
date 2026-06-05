@@ -174,24 +174,34 @@ exports.handler = async (event) => {
         }
 
         // p1_264 — mode=map: write metadata.shopee_item_id + shopee_synced_at per matched POS sku
+        // p1_265 — skip already-mapped, ?limit= chunk control
         if (mode === 'map') {
             const posStock = await loadPosStock();
             const now = new Date().toISOString();
+            const limitN = parseInt(params.limit, 10) || 80;
+            const force = params.force === '1';
+            const already = new Set();
+            if (!force) {
+                const mapped = await sb('GET', '/products_master?select=sku&metadata->>shopee_item_id=not.is.null');
+                for (const r of (mapped || [])) already.add((r.sku || '').toUpperCase());
+            }
             const updates = []; // { sku, shopee_item_id, shopee_model_id }
             const seen = new Set();
             for (const it of items) {
+                if (updates.length >= limitN) break;
                 if (it.has_model) {
                     const r = await shopeeGet('/api/v2/product/get_model_list', { item_id: it.item_id }, tok.access_token, tok.shop_id);
                     if (r.error) continue;
                     for (const m of (r.response && r.response.model) || []) {
                         const modelSku = (m.model_sku || '').toUpperCase().trim();
-                        if (!modelSku || !(modelSku in posStock) || seen.has(modelSku)) continue;
+                        if (!modelSku || !(modelSku in posStock) || seen.has(modelSku) || already.has(modelSku)) continue;
                         seen.add(modelSku);
                         updates.push({ sku: modelSku, shopee_item_id: String(it.item_id), shopee_model_id: String(m.model_id) });
+                        if (updates.length >= limitN) break;
                     }
                 } else {
                     const itemSku = (it.item_sku || '').toUpperCase().trim();
-                    if (!itemSku || !(itemSku in posStock) || seen.has(itemSku)) continue;
+                    if (!itemSku || !(itemSku in posStock) || seen.has(itemSku) || already.has(itemSku)) continue;
                     seen.add(itemSku);
                     updates.push({ sku: itemSku, shopee_item_id: String(it.item_id), shopee_model_id: null });
                 }
@@ -213,10 +223,12 @@ exports.handler = async (event) => {
                     errors.push({ sku: u.sku, error: String(e).slice(0, 200) });
                 }
             }
-            out.mapped = updates.length;
+            out.previously_mapped = already.size;
+            out.candidates_this_batch = updates.length;
             out.write_count = written;
             out.write_errors = errors.length;
             out.errors_sample = errors.slice(0, 5);
+            out.note = updates.length >= limitN ? 'Chunk limit hit — re-call function untuk continue.' : 'Done. All matched SKUs now have Shopee mapping.';
             return json(200, out);
         }
 

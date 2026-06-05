@@ -232,8 +232,17 @@ exports.handler = async (event) => {
         out.title_diffs = titleDiffs.length;
 
         // p1_264 — mode=map writes metadata.tiktok_product_id + tiktok_synced_at per matched POS sku
+        // p1_265 — skip already-mapped SKUs (limit chunk, resume-friendly via ?force=1 to overwrite)
         if (mode === 'map') {
             const now = new Date().toISOString();
+            const limit = parseInt(params.limit, 10) || 100;
+            const force = params.force === '1';
+            // Fetch which SKUs already have tiktok_product_id (skip them unless force=1)
+            const already = new Set();
+            if (!force) {
+                const mapped = await sb('GET', '/products_master?select=sku&metadata->>tiktok_product_id=not.is.null');
+                for (const r of (mapped || [])) already.add((r.sku || '').toUpperCase());
+            }
             const updates = []; // { sku, tiktok_product_id }
             const seen = new Set();
             for (const p of products) {
@@ -241,15 +250,17 @@ exports.handler = async (event) => {
                     const sellerSku = (sku.seller_sku || '').toUpperCase();
                     if (!sellerSku || !(sellerSku in pos)) continue;
                     if (seen.has(sellerSku)) continue;
+                    if (already.has(sellerSku)) continue; // skip mapped already
                     seen.add(sellerSku);
                     updates.push({ sku: sellerSku, tiktok_product_id: String(p.id), tiktok_sku_id: String(sku.id) });
+                    if (updates.length >= limit) break;
                 }
+                if (updates.length >= limit) break;
             }
             let written = 0;
             const errors = [];
             for (const u of updates) {
                 try {
-                    // Fetch current metadata to merge
                     const cur = await sb('GET', `/products_master?sku=eq.${encodeURIComponent(u.sku)}&select=metadata`);
                     const m = (cur && cur[0] && cur[0].metadata && typeof cur[0].metadata === 'object') ? cur[0].metadata : {};
                     const merged = Object.assign({}, m, {
@@ -263,9 +274,12 @@ exports.handler = async (event) => {
                     errors.push({ sku: u.sku, error: String(e).slice(0, 200) });
                 }
             }
+            out.previously_mapped = already.size;
+            out.candidates_this_batch = updates.length;
             out.write_count = written;
             out.write_errors = errors.length;
             out.errors_sample = errors.slice(0, 5);
+            out.note = updates.length >= limit ? 'Chunk limit hit — re-call function untuk continue.' : 'Done. All matched SKUs now have TikTok mapping.';
             return json(200, out);
         }
 
