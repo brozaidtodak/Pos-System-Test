@@ -1504,6 +1504,13 @@
  <div class="menu-item" data-tab="nav_orders" onclick="switchHub(['allOrdersSection'], 'Orders', this); if(typeof renderAllOrders==='function') renderAllOrders();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
  <i data-lucide="shopping-bag" style="width:18px; height:18px;"></i> <span>Orders</span>
  </div>
+ <!-- p1_273 — Orders sub-items: Returns + Abandoned Checkouts (indented) -->
+ <div class="menu-item" data-tab="nav_returns" onclick="switchHub(['returnsSection'], 'Returns', this); if(typeof renderReturnsLog==='function') renderReturnsLog();" style="display:flex; align-items:center; gap:10px; padding:7px 12px 7px 36px; margin-bottom:2px; font-size:13px;">
+ <i data-lucide="rotate-ccw" style="width:15px; height:15px;"></i> <span>Returns</span>
+ </div>
+ <div class="menu-item" data-tab="nav_abandoned" onclick="switchHub(['abandonedCheckoutsSection'], 'Abandoned Checkouts', this); if(typeof renderAbandonedCheckouts==='function') renderAbandonedCheckouts();" style="display:flex; align-items:center; gap:10px; padding:7px 12px 7px 36px; margin-bottom:2px; font-size:13px;">
+ <i data-lucide="shopping-cart" style="width:15px; height:15px;"></i> <span>Abandoned Checkouts</span>
+ </div>
  <div class="menu-item" data-tab="nav_products" onclick="switchHub(['databaseSection'], 'Products', this); if(typeof renderProductDatabase==='function') renderProductDatabase();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
  <i data-lucide="package" style="width:18px; height:18px;"></i> <span>Products</span>
  </div>
@@ -4107,6 +4114,16 @@
  <!-- SECTION: CUSTOMERS CRM -->
  <!-- ============================================== -->
  <!-- p1_249 — All Orders section (walk-in + online manual entry + list) -->
+ <!-- p1_273 — Abandoned Checkouts placeholder section -->
+ <div id="abandonedCheckoutsSection" class="tab-section" style="display: none;">
+ <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="shopping-cart" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Abandoned Checkouts</h2>
+ <div class="admin-card" style="padding:24px; text-align:center;">
+ <i data-lucide="construction" style="width:32px; height:32px; color:#9CA3AF;"></i>
+ <h3 style="margin:14px 0 6px;">Coming Soon</h3>
+ <p style="color:#6B7280; font-size:13px; margin:0;">Track checkouts yang customer mula tapi tak siapkan. Recover sales via email reminder + WhatsApp follow-up.</p>
+ </div>
+ </div>
+
  <div id="allOrdersSection" class="tab-section" style="display: none;">
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="list-ordered" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> All Orders</h2>
 
@@ -11597,7 +11614,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=366"></script>
+ <script src="app.js?v=367"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

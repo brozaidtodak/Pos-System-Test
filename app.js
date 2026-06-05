@@ -14875,6 +14875,11 @@ async function checkMyAttendanceStatus() {
  return;
 }
 
+// p1_273 — Abandoned Checkouts stub (build flow later)
+window.renderAbandonedCheckouts = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
 // p1_271 — Sidebar restructure placeholder handlers
 window.openSetupGuide = function() {
  if(typeof showToast === 'function') showToast('Setup Guide coming soon — walkthrough tutorial untuk POS setup.', 'info');
