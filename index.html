@@ -1455,7 +1455,8 @@
  <button class="rail-item" data-rail="customers" onclick="window.setActiveRail('customers')" data-tooltip="Customers">
  <i data-lucide="users"></i>
  </button>
- <button class="rail-item" data-rail="inv" data-rail-role="inv-only" onclick="window.setActiveRail('inv')" data-tooltip="Inventory">
+ <!-- p1_269 — Rail icon dulu "Inv" tukar jadi "Product Master" per Zaid screenshot. data-rail kekal "inv" untuk back-compat dengan existing items + tabToRail map. -->
+ <button class="rail-item" data-rail="inv" data-rail-role="inv-only" onclick="window.setActiveRail('inv')" data-tooltip="Product Master">
  <i data-lucide="package"></i>
  <span class="rail-badge" id="railBadgeFulfill" style="display:none;">0</span>
  </button>
@@ -1504,20 +1505,8 @@
  <span id="memoBadgePending" style="display:none; background:#EF4444; color:#FFF; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; min-width:18px; text-align:center;">0</span>
  </div>
  <!-- p1_73: Investor Dashboard removed from POS (lives in 10cc Command Centre now) -->
- <!-- p1_267 — Product Master sebagai GROUP (Zaid: "aku nak product master dekat sidebar, item dalam product master adalah collection, inventory, purchase orders"). -->
- <div class="menu-item" data-group-toggle="product_master" onclick="toggleSidebarGroup('product_master')" style="background:linear-gradient(135deg, #FFF7ED, #FED7AA); border:1px solid #FDBA74; color:#9A3412; font-weight:900; font-size:11px; text-transform:uppercase; margin-top:15px; margin-bottom:5px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
- <span style="display:inline-flex; align-items:center; gap:8px;"><i data-lucide="package" style="width:14px; height:14px;"></i> <span data-i18n="dept_product_master">Product Master</span></span>
- <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
- </div>
- <div class="menu-item" data-group="product_master" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Collection', this); if(typeof renderProductDatabase==='function') renderProductDatabase();" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
- <i data-lucide="layout-grid" style="width:16px; height:16px;"></i> <span data-i18n="sb_pm_collection">Collection</span>
- </div>
- <div class="menu-item" data-group="product_master" data-tab="inv_warehouse_hub" onclick="switchHub(['warehouseConfigSection'], 'Inventory', this); if(typeof refreshMpDatalists==='function') refreshMpDatalists();" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
- <i data-lucide="boxes" style="width:16px; height:16px;"></i> <span data-i18n="sb_pm_inventory">Inventory</span>
- </div>
- <div class="menu-item" data-group="product_master" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders', this)" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
- <i data-lucide="truck" style="width:16px; height:16px;"></i> <span data-i18n="sb_pm_purchase_orders">Purchase Orders</span>
- </div>
+ <!-- p1_269 — recall p1_262/267: Product Master sekarang LIVE di rail icon (data-rail) ganti standalone/group. Items kosong sini. -->
+
  <!-- SALES DEPARTMENT HUB & SUB-MENUS -->
  <div class="menu-item sales-only" data-group-toggle="sales" onclick="toggleSidebarGroup('sales')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
  <span data-i18n="dept_sales">Sales Department</span>
@@ -1559,65 +1548,26 @@
  </div>
  <!-- END CUSTOMERS DEPT -->
 
- <!-- INVENTORY DEPARTMENT HUB & SUB-MENUS -->
+ <!-- p1_269 — PRODUCT MASTER DEPARTMENT (renamed from Inventory per Zaid). 3 sub-items: Collection / Inventory / Purchase Orders. Old inv items hidden. -->
  <div class="menu-item inv-only" data-group-toggle="inv" onclick="toggleSidebarGroup('inv')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
- <span data-i18n="dept_inventory">Inventory Department</span>
+ <span data-i18n="dept_product_master">Product Master</span>
  <span class="group-chevron"><i data-lucide="chevron-down" style="width:14px; height:14px;"></i></span>
  </div>
- <!-- p1_171 — Inventory sidebar restructure: 4 intent-based sub-groups. -->
- <!-- ========== GROUP A: Operasi Harian (daily) ========== -->
- <div class="menu-item inv-only" data-group="inv" style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; font-weight:700; cursor:default; background:none;" data-i18n="sb_inv_daily_divider">— Operasi Harian —</div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_fulfillment" onclick="switchHub(['fulfillmentSection'], 'Pesanan Online', this); if(typeof renderFulfillment==='function') renderFulfillment();">
- <i data-lucide="package-check" style="width:16px; height:16px;"></i> <span data-i18n="sb_pesanan_online">Pesanan Online</span>
- <span id="ffSidebarBadge" style="display:none; margin-left:auto; background:#EF4444; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px;">0</span>
+ <!-- p1_269 — 3 primary sub-items ikut Zaid spec -->
+ <div class="menu-item inv-only" data-group="inv" data-tab="inv_database" onclick="switchHub(['databaseSection'], 'Collection', this); if(typeof renderProductDatabase==='function') renderProductDatabase();" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
+ <i data-lucide="layout-grid" style="width:16px; height:16px;"></i> <span data-i18n="sb_pm_collection">Collection</span>
  </div>
- <!-- p1_262 — Product Master moved to top-level standalone item (see line ~1507). Removed from Inventory group. -->
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_returns" onclick="switchHub(['returnsSection'], 'Returns / Damage', this); if(typeof renderReturnsLog==='function') renderReturnsLog();">
- <i data-lucide="rotate-ccw" style="width:16px; height:16px;"></i> <span data-i18n="sb_returns">Returns / Damage</span>
+ <div class="menu-item inv-only" data-group="inv" data-tab="inv_warehouse_hub" onclick="switchHub(['warehouseConfigSection'], 'Inventory', this); if(typeof refreshMpDatalists==='function') refreshMpDatalists();" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
+ <i data-lucide="boxes" style="width:16px; height:16px;"></i> <span data-i18n="sb_pm_inventory">Inventory</span>
  </div>
-
- <!-- ========== GROUP B: Stock Check (weekly cycle) ========== -->
- <div class="menu-item inv-only" data-group="inv" style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; font-weight:700; cursor:default; background:none;" data-i18n="sb_inv_check_group">— Stock Check —</div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_check_sessions" onclick="switchHub(['checkSessionsSection'], 'Stock Check Sessions', this); if(typeof renderCheckSessions==='function') renderCheckSessions();">
- <i data-lucide="layers" style="width:16px; height:16px;"></i> <span data-i18n="sb_check_sessions">Stock Check Sessions</span>
- <span class="rail-badge" id="sidebarSessionBadge" style="display:none;">0</span>
+ <div class="menu-item inv-only" data-group="inv" data-tab="inv_po" onclick="switchHub(['poSection'], 'Purchase Orders', this)" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;">
+ <i data-lucide="truck" style="width:16px; height:16px;"></i> <span data-i18n="sb_pm_purchase_orders">Purchase Orders</span>
  </div>
- <!-- p1_219 — Stock Take sidebar entry FULLY removed (Zaid: "buang stock take"). Sessions handle all counting. __scsOpenSession updated to call switchHub directly. -->
- <div class="menu-item mgmt-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_check_history" onclick="switchHub(['stockCheckHistorySection'], 'Stock Check History', this); if(typeof renderStockCheckHistory==='function') renderStockCheckHistory();">
- <i data-lucide="history" style="width:16px; height:16px;"></i> <span data-i18n="sb_check_history">Stock Check History</span>
- </div>
- <!-- p1_171: Stock Check Reports (legacy p1_110 workflow) sidebar entry HIDDEN. Section masih ada untuk back-compat dengan stockCheckBadge wiring. Sessions p1_167-170 sekarang primary workflow. -->
-
- <!-- ========== GROUP C: Pembelian & Bekalan (periodic) ========== -->
- <div class="menu-item inv-only" data-group="inv" style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; font-weight:700; cursor:default; background:none;" data-i18n="sb_inv_buying_group">— Pembelian & Bekalan —</div>
- <!-- p1_267 — Purchase Orders + Warehouse Hub dipindah ke Product Master group (lihat line ~1507). Removed from Inventory group. -->
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_reorder" onclick="switchHub(['reorderSection'], 'Reorder Suggest', this); if(typeof renderReorderSuggest==='function') renderReorderSuggest();">
- <i data-lucide="repeat" style="width:16px; height:16px;"></i> <span data-i18n="sb_reorder">Reorder Suggest</span>
- <span class="sidebar-badge" id="reorderBadge" style="display:none;">0</span>
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_supplier" onclick="switchHub(['supplierPerfSection'], 'Supplier Performance', this); if(typeof renderSupplierPerf==='function') renderSupplierPerf();">
- <i data-lucide="handshake" style="width:16px; height:16px;"></i> <span data-i18n="sb_supplier_perf">Supplier Performance</span>
- </div>
-
- <!-- ========== GROUP D: Setup & Tools (config) ========== -->
- <div class="menu-item inv-only" data-group="inv" style="padding:8px 35px 4px; font-size:9px; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; font-weight:700; cursor:default; background:none;" data-i18n="sb_inv_tools_group">— Setup & Alat —</div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_floorprice" onclick="switchHub(['floorPriceSection'], 'Pricing Setup', this); if(typeof renderFloorPrice==='function') renderFloorPrice();">
- <i data-lucide="calculator" style="width:16px; height:16px;"></i> <span data-i18n="sb_floor_price">Pricing Setup</span>
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_pricehistory" onclick="switchHub(['priceHistorySection'], 'Price History', this); if(typeof renderPriceHistory==='function') renderPriceHistory();">
- <i data-lucide="line-chart" style="width:16px; height:16px;"></i> <span data-i18n="sb_price_history">Price History</span>
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_barcode" onclick="switchHub(['barcodeSection'], 'Barcode Labels', this)">
- <i data-lucide="printer" style="width:16px; height:16px;"></i> <span data-i18n="sb_barcode_labels">Barcode Labels</span>
- </div>
- <div class="menu-item inv-only" data-group="inv" style="padding-left:35px; font-size:13px; display:flex; align-items:center; gap:8px;" data-tab="inv_picking" onclick="switchHub(['pickingSection'], 'Smart Picking', this)">
- <i data-lucide="route" style="width:16px; height:16px;"></i> <span data-i18n="sb_smart_picking">Smart Picking</span>
- </div>
-
- <!-- p1_70: Reports section removed from Inventory sidebar (Velocity, Aging, Valuation, Snapshot, Reservations). Section divs kekal untuk back-compat. -->
+ <!-- p1_269 — Old inventory items removed from sidebar (sections kekal di body untuk back-compat). Items: inv_fulfillment, inv_returns dah dibuang. Stock check / reorder / supplier / setup items still below. -->
 
 
- <!-- END INVENTORY DEPT -->
+ <!-- p1_269 — Legacy items removed dari sidebar per Zaid (cuma 3 sub-items dalam Product Master). Sections kekal di body — boleh restore kalau perlu: inv_check_sessions, inv_check_history, inv_reorder, inv_supplier, inv_floorprice, inv_pricehistory, inv_barcode, inv_picking. -->
+ <!-- END PRODUCT MASTER DEPT -->
 
 
  
@@ -6800,7 +6750,7 @@
  { id:'p0_4', label:'PWA offline-capable', d:'done' },
  { id:'p0_5', label:'Single-user login', d:'done' }
 ]},
- { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (267/267 · last 2026-06-05) — Product Master jadi sidebar group dengan 3 sub-items: Collection (grid view), Inventory (Warehouse Hub), Purchase Orders. Pindah Warehouse Hub + PO keluar dari Inventory Department group ke Product Master group. Group toggle collapsible. Semua visible kepada semua role via whitelist extension.',
+ { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (269/269 · last 2026-06-05) — Recall p1_267 standalone, simplify Product Master jadi rail icon (package). Rename rail tooltip Inventory → Product Master (data-rail kekal inv back-compat). Group label tukar ke Product Master. 3 sub-items: Collection / Inventory / Purchase Orders. Remove semua legacy inv items dari sidebar (sections kekal di body).',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
@@ -6876,6 +6826,7 @@
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
  { id:'p1_263', label:'Marketplace integration indicator tiap product (Zaid: "setiap product wajib ada indicator yang menandakan dia dah integrated dengan tiktok dan shopee"). Schema check: products_master takde dedicated columns shopee/tiktok yet — semua sync data live dalam metadata JSONB (pattern same as easystore_* keys). Visual indicator dalam renderProductDatabase pd-card grid: position absolute top:6px left:6px (kiri atas, sebelah status badge Live/Draft kanan atas). Dua chips small: SP (brand Shopee orange #EE4D2D fill bila integrated, grey #E5E7EB outline bila tak) dan TT (TikTok black bila integrated, grey bila tak). Lucide check icon bila syncd, X icon bila tak. Hover title explain status. Read data: metadata.shopee_item_id atau metadata.shopee_synced_at → shopeeIntegrated; same logic untuk TikTok. PDP modal extend dengan card baru "Marketplace Integration" antara Organization dan SEO: 2 grid 1fr 1fr — Shopee Item ID + TikTok Product ID inputs dengan brand colored chips beside labels (SP orange, TT black). Bawah ada syncStatus line yang papar "Shopee last sync: <timestamp> · TikTok last sync: <timestamp>" atau "Belum pernah sync auto" kalau kosong. openPdpModal populate values dari metadata. savePdpData merge ke metadata.shopee_item_id + tiktok_product_id (preserved alongside other metadata). Zaid boleh edit manually for now; future sync flow can auto-fill + set _synced_at timestamps. app.js v359→v360.', d:'done' },
+ { id:'p1_269', label:'Recall p1_267 + p1_262, simplify Product Master jadi rail (Zaid screenshot rail icons: "aku nak letak product master dekat sini je. recall balik yang kau buat tadi"). p1_262 standalone top-level + p1_267 group structure salah path. Yang betul: Product Master HUKUM sebenar adalah RAIL icon (package). Solusi: (a) Rename rail tooltip dulu "Inventory" → "Product Master" (data-rail kekal "inv" untuk back-compat). (b) Rename group label "Inventory Department" → "Product Master". (c) Cuma 3 sub-items dalam group: Collection (inv_database, layout-grid icon) → switchHub Collection title; Inventory (inv_warehouse_hub, boxes icon) → switchHub Inventory title; Purchase Orders (inv_po, truck icon). (d) Remove semua legacy inv items dari sidebar: inv_fulfillment, inv_returns, inv_check_sessions, inv_check_history, inv_reorder, inv_supplier, inv_floorprice, inv_pricehistory, inv_barcode, inv_picking — sections kekal di body untuk back-compat. (e) Remove p1_267 standalone group entry (yang lama, pre-rail era). app.js v362→v363.', d:'done' },
  { id:'p1_267', label:'Product Master jadi group dengan 3 sub-items (Zaid: "aku nak product master dekat sidebar, item dalam product master adalah collection, inventory, purchase orders"). p1_262 sebelum ni single standalone item. p1_267 restructure jadi collapsible group. Group header pakai warm orange gradient (#FFF7ED → #FED7AA) + chevron-down toggle. Sub-items: (a) Collection — data-tab inv_database (layout-grid icon) → renderProductDatabase grid view. Switchhub title tukar dari Product Master → Collection. (b) Inventory — data-tab inv_warehouse_hub (boxes icon) → warehouseConfigSection (Daftar Profile Produk form). Pindah dari Inventory Department group. Switchhub title Warehouse Hub → Inventory. (c) Purchase Orders — data-tab inv_po (truck icon) → poSection. Pindah dari Inventory Department group. Inventory Department group sekarang tinggal Pesanan Online + Returns + Stock Check items + Setup tools. Whitelist line 21779 extended: groupToggle === product_master OR data-group === product_master OR specific data-tabs (inv_database, inv_warehouse_hub, inv_po) — semua visible kepada semua role tanpa inv-only restriction. app.js v360→v361.', d:'done' },
  { id:'p1_262', label:'Product Master sidebar standalone top-level item (Zaid: "ok now fokus dekat sidebar. master product sepatutnya stand on his own sebagai env item"). Master Product sebelum ni nested dalam Inventory Department group bawah divider "— Operasi Harian —" (line 1560 lama). Zaid nak dia stand on its own — like Memo Board sebelum Sales Department. Move logic: (a) Delete original entry from Inventory group + add comment placeholder. (b) Add new top-level menu-item selepas Memo Board (line 1507 area, sebelum Sales Department header). Visual: warm orange gradient bg (#FFF7ED → #FED7AA) + #FDBA74 border + #9A3412 text — sama treatment pattern macam Memo Board kuning gradient supaya distinct dari group items. Onclick switchHub databaseSection + renderProductDatabase. Same data-tab "inv_database" supaya tab→rail mapping + other code yang reference still work. (c) Add "inv_database" ke whitelist line 21779 app.js (sebelah memo_board, sales_all_orders) supaya visible kepada SEMUA role tanpa inv-only restriction — kira level dengan Customer Lookup + All Orders. app.js v358→v359.', d:'done' },
  { id:'p1_261', label:'Favicon 10 CAMP logo dalam browser tab (Zaid: "pos kita takde logo dekat tab. tolong tambah logo jap"). Sebelum ni `<link rel="icon">` ada `data:image/x-icon;base64,iVBORw0KGgo=` — base64 tu cuma PNG header je, no data. Tab tunjuk default globe icon. Fix: scan assets/brand/logo/ folder — ketemu 8 logo files dah ada (10camp-logo-color.png + variants white/receipt/final/resized). Pakai 10camp-logo-color.png sebagai favicon. Add 3 link tag: rel="icon" type="image/png", rel="apple-touch-icon" (iOS Home Screen + Safari iPad), rel="shortcut icon" (legacy). app.js v357→v358.', d:'done' },
@@ -11600,7 +11551,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=362"></script>
+ <script src="app.js?v=363"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
