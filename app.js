@@ -4261,10 +4261,54 @@ window.renderPaymentProofs = async function() {
  }
 };
 
+// p1_253 — Zoom state + handlers
+window.__ppImgZoomLevel = 1;
 window.__ppOpenImg = function(url) {
  const m = document.getElementById('ppImgModal');
  const img = document.getElementById('ppImgModalImg');
- if(m && img) { img.src = url; m.style.display = 'flex'; }
+ const nt = document.getElementById('ppImgNewTab');
+ if(m && img) {
+ img.src = url;
+ if(nt) nt.href = url;
+ // Reset zoom to Fit
+ window.__ppImgZoom(1);
+ m.style.display = 'flex';
+ // Lucide icons (Open external icon)
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ }
+};
+window.__ppImgZoom = function(level) {
+ window.__ppImgZoomLevel = level;
+ const img = document.getElementById('ppImgModalImg');
+ const scroll = document.getElementById('ppImgScroll');
+ if(!img) return;
+ if(level === 1) {
+ img.style.transform = '';
+ img.style.maxWidth = '100%';
+ img.style.maxHeight = '100%';
+ img.style.cursor = 'zoom-in';
+ if(scroll) scroll.style.alignItems = 'center';
+ } else {
+ img.style.transform = '';
+ img.style.maxWidth = 'none';
+ img.style.maxHeight = 'none';
+ img.style.width = (level * 100) + '%';
+ img.style.height = 'auto';
+ img.style.cursor = level >= 3 ? 'zoom-out' : 'zoom-in';
+ if(scroll) scroll.style.alignItems = 'flex-start';
+ }
+ // Update toolbar active button styling
+ [1, 2, 3].forEach(l => {
+ const btn = document.getElementById('ppImgZoom' + l);
+ if(btn) {
+ if(l === level) { btn.style.background = '#fff'; btn.style.color = '#111'; }
+ else { btn.style.background = '#374151'; btn.style.color = '#fff'; }
+ }
+ });
+};
+window.__ppImgCycleZoom = function() {
+ const next = window.__ppImgZoomLevel >= 3 ? 1 : window.__ppImgZoomLevel + 1;
+ window.__ppImgZoom(next);
 };
 
 // p1_197 — Build receipt text from sales_history row + send via WhatsApp.
