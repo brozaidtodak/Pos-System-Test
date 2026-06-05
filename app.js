@@ -14885,6 +14885,11 @@ window.renderStockTransfer = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
+// p1_277 — Campaigns stub
+window.renderCampaigns = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
 // p1_276 — Messages sub-section stubs
 window.renderBroadcast = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
