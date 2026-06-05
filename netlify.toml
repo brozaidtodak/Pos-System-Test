@@ -115,6 +115,12 @@
 [functions."shopee-sync-cron"]
   schedule = "*/15 * * * *"
 
+# p1_293 — Marketplace stock reconcile (POS → Shopee + TikTok) every 20 min.
+# Replaces EasyStore's central stock-hub role for the full cutover; keeps all
+# channels in sync regardless of where the stock change originated.
+[functions."marketplace-stock-cron"]
+  schedule = "*/20 * * * *"
+
 [[redirects]]
   from = "/api/daily-bos-digest"
   to = "/.netlify/functions/daily-bos-digest"
