@@ -19249,27 +19249,28 @@ window.renderCustomersV2 = function() {
  const vipCount = filtered.filter(c => c.is_member).length;
  const emailConsent = filtered.filter(c => c.accepts_email_marketing).length;
 
- // p1_244 — Stats cards redesign: white bg + primary border-left accent + Lucide icons (was random pastels, not theme)
+ // p1_245 — Stats cards guna universal .stat-card brand class (consistent dengan sections lain)
+ // border-left semantic colors: primary brand (Match), brand-aligned bronze tints + neutral colors.
  document.getElementById('crmStats').innerHTML = `
- <div style="background:#fff; padding:14px 16px; border-radius:8px; border:1px solid var(--neutral-200, #E5E7EB); border-left:3px solid var(--primary, #C8741E); box-shadow:var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));">
- <div style="display:flex; align-items:center; gap:6px; font-size:10.5px; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;"><i data-lucide="users" style="width:13px;height:13px; color:var(--primary, #C8741E);"></i> Match</div>
- <div style="font-size:22px; font-weight:800; color:#111;">${filtered.length.toLocaleString()}</div>
+ <div class="stat-card">
+ <div class="stat-card__label"><i data-lucide="users" style="width:13px;height:13px; color:var(--primary);"></i> Match</div>
+ <div class="stat-card__value">${filtered.length.toLocaleString()}</div>
  </div>
- <div style="background:#fff; padding:14px 16px; border-radius:8px; border:1px solid var(--neutral-200, #E5E7EB); border-left:3px solid #10B981; box-shadow:var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));">
- <div style="display:flex; align-items:center; gap:6px; font-size:10.5px; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;"><i data-lucide="trending-up" style="width:13px;height:13px; color:#10B981;"></i> Total Spent</div>
- <div style="font-size:22px; font-weight:800; color:#111;">RM ${totalSpent.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+ <div class="stat-card" style="border-left-color:#16A34A;">
+ <div class="stat-card__label"><i data-lucide="trending-up" style="width:13px;height:13px; color:#16A34A;"></i> Total Spent</div>
+ <div class="stat-card__value">RM ${totalSpent.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
  </div>
- <div style="background:#fff; padding:14px 16px; border-radius:8px; border:1px solid var(--neutral-200, #E5E7EB); border-left:3px solid #6366F1; box-shadow:var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));">
- <div style="display:flex; align-items:center; gap:6px; font-size:10.5px; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;"><i data-lucide="shopping-bag" style="width:13px;height:13px; color:#6366F1;"></i> Total Orders</div>
- <div style="font-size:22px; font-weight:800; color:#111;">${totalOrders.toLocaleString()}</div>
+ <div class="stat-card" style="border-left-color:var(--secondary);">
+ <div class="stat-card__label"><i data-lucide="shopping-bag" style="width:13px;height:13px; color:var(--secondary);"></i> Total Orders</div>
+ <div class="stat-card__value">${totalOrders.toLocaleString()}</div>
  </div>
- <div style="background:#fff; padding:14px 16px; border-radius:8px; border:1px solid var(--neutral-200, #E5E7EB); border-left:3px solid #F59E0B; box-shadow:var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));">
- <div style="display:flex; align-items:center; gap:6px; font-size:10.5px; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;"><i data-lucide="star" style="width:13px;height:13px; color:#F59E0B;"></i> VIP Members</div>
- <div style="font-size:22px; font-weight:800; color:#111;">${vipCount.toLocaleString()}</div>
+ <div class="stat-card" style="border-left-color:#F59E0B;">
+ <div class="stat-card__label"><i data-lucide="star" style="width:13px;height:13px; color:#F59E0B;"></i> VIP Members</div>
+ <div class="stat-card__value">${vipCount.toLocaleString()}</div>
  </div>
- <div style="background:#fff; padding:14px 16px; border-radius:8px; border:1px solid var(--neutral-200, #E5E7EB); border-left:3px solid #3B82F6; box-shadow:var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.04));">
- <div style="display:flex; align-items:center; gap:6px; font-size:10.5px; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;"><i data-lucide="mail-check" style="width:13px;height:13px; color:#3B82F6;"></i> Email Consent</div>
- <div style="font-size:22px; font-weight:800; color:#111;">${emailConsent.toLocaleString()}</div>
+ <div class="stat-card" style="border-left-color:#475569;">
+ <div class="stat-card__label"><i data-lucide="mail-check" style="width:13px;height:13px; color:#475569;"></i> Email Consent</div>
+ <div class="stat-card__value">${emailConsent.toLocaleString()}</div>
  </div>
  `;
 
