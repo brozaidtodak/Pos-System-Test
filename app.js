@@ -5497,13 +5497,15 @@ async function initApp() {
  if (isFirstLoad && typeof showLoading === 'function') showLoading('Memuatkan data dari awan...');
  try {
  console.log("Loading Cloud Omnichannel Data...");
- let { data: master } = await db.from('products_master').select('*');
+ // p1_308 — explicit high .limit() so PostgREST's default 1000-row cap doesn't
+ // silently truncate (sales_history already >4900 rows). Keeps full data loaded.
+ let { data: master } = await db.from('products_master').select('*').limit(100000);
  if(master) masterProducts = master;
 
- let { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date', {ascending: true});
+ let { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date', {ascending: true}).limit(100000);
  if(batches) inventoryBatches = batches;
 
- let { data: txns } = await db.from('inventory_transactions').select('*').order('created_at', {ascending: false});
+ let { data: txns } = await db.from('inventory_transactions').select('*').order('created_at', {ascending: false}).limit(100000);
  if(txns) inventoryTransactions = txns;
 
  // Sprint 2.1+2.2: load real PO + suppliers tables
@@ -5528,7 +5530,7 @@ async function initApp() {
  let { data: quotes } = await db.from('quotations_log').select('*').order('created_at', {ascending: false});
  if(quotes) quoteHistoryLogs = quotes;
 
- let { data: sales } = await db.from('sales_history').select('*').order('created_at', {ascending: false});
+ let { data: sales } = await db.from('sales_history').select('*').order('created_at', {ascending: false}).limit(100000);
  if(sales) salesHistory = [...salesHistory,...sales];
  // p3_10: refresh fulfillment KPIs + sidebar badge once orders are loaded
  if(typeof window.renderFulfillment === 'function') { try { window.renderFulfillment(); } catch(e){} }
@@ -10753,7 +10755,7 @@ window.__obwNext = async function() {
  if (typeof db !== 'undefined' && db) {
  const { error: e1 } = await db.from('products_master').insert([{ sku, name: pName, price: pPrice, is_published: true }]);
  if (e1 && !String(e1.message||'').toLowerCase().includes('duplicate')) throw e1;
- const { error: e2 } = await db.from('inventory_batches').insert([{ sku, qty_remaining: pQty, qty_initial: pQty, inbound_date: new Date().toISOString().slice(0,10), cost_price: pPrice * 0.6 }]);
+ const { error: e2 } = await db.from('inventory_batches').insert([{ sku, qty_remaining: pQty, qty_received: pQty, inbound_date: new Date().toISOString().slice(0,10), cost_price: pPrice * 0.6 }]);
  if (e2) console.warn('[obw] batch insert warn:', e2);
  }
  } catch(e) {
@@ -17207,6 +17209,33 @@ window.pdpAddVariantOption = function() {
 };
 
 // p1_228 — Adjust stock (append-only inventory batch)
+// p1_308 — apply a stock delta CORRECTLY: positive = new batch; negative = reduce
+// existing positive batches FIFO. (A negative qty_remaining row is excluded from
+// every "qty_remaining > 0" stock sum, so reductions silently vanished + could be
+// re-applied each save — the root cause behind the variant stock bug.)
+window.__applyStockDelta = async function(sku, delta, reason) {
+ delta = Math.round(Number(delta) || 0);
+ if(!delta) return { applied: 0 };
+ const u = window.currentUser || {};
+ if(delta > 0) {
+ const { error } = await db.from('inventory_batches').insert([{ sku, qty_received: delta, qty_remaining: delta, cost_price: 0, inbound_date: new Date().toISOString(), notes: reason || ('Stock +' + delta + ' by ' + (u.name || 'System')) }]);
+ if(error) throw error;
+ return { applied: delta };
+ }
+ // delta < 0 → reduce FIFO from positive batches (oldest first)
+ let need = -delta;
+ const { data: batches, error: selErr } = await db.from('inventory_batches').select('id,qty_remaining,inbound_date').eq('sku', sku).gt('qty_remaining', 0).order('inbound_date', { ascending: true });
+ if(selErr) throw selErr;
+ for(const b of (batches || [])) {
+ if(need <= 0) break;
+ const take = Math.min(b.qty_remaining, need);
+ const { error } = await db.from('inventory_batches').update({ qty_remaining: b.qty_remaining - take }).eq('id', b.id);
+ if(error) throw error;
+ need -= take;
+ }
+ return { applied: delta + need, short: need };
+};
+
 window.pdpAdjustStock = async function() {
  const sku = document.getElementById('pdpOriginalSku').value;
  if(!sku) return;
@@ -17217,15 +17246,9 @@ window.pdpAdjustStock = async function() {
  const note = prompt('Sebab adjustment? (contoh: "Damaged units", "Stock count correction", "Internal use")', '') || '';
  try {
  const u = window.currentUser || {};
- // p1_236 — fix schema columns: was unit_cost_rm/received_at/received_by/note → actual: cost_price/inbound_date/notes
- // Append batch row with delta (qty_received + qty_remaining = delta; for negative, treat as write-off batch)
- const { error } = await db.from('inventory_batches').insert([{
- sku, batch_year: new Date().getFullYear(), qty_received: delta, qty_remaining: delta,
- cost_price: 0,
- inbound_date: new Date().toISOString(),
- notes: 'Manual adjustment by ' + (u.name || 'System') + (note ? ': ' + note : '')
- }]);
- if(error) throw error;
+ // p1_308 — apply via __applyStockDelta: +ve = new batch, -ve = reduce FIFO
+ // (negative qty_remaining rows were excluded from stock sums = silent failure)
+ await window.__applyStockDelta(sku, delta, 'Manual adjustment by ' + (u.name || 'System') + (note ? ': ' + note : ''));
  if(typeof showToast === 'function') showToast(`Stock adjusted ${delta > 0 ? '+' : ''}${delta} untuk ${sku}.`, 'success');
  // Refresh inventory display
  if(typeof initApp === 'function') await initApp();
@@ -17372,10 +17395,8 @@ window.__pdpSaveVariants = async function(parentSku) {
  const target = parseInt(qtyEl.value, 10);
  const cur = stockBySku[sku] || 0;
  if(!isNaN(target) && target !== cur) {
- const delta = target - cur;
  try {
- const { error } = await db.from('inventory_batches').insert([{ sku, batch_year: new Date().getFullYear(), qty_received: delta, qty_remaining: delta, cost_price: 0, inbound_date: new Date().toISOString(), notes: 'Variant inline edit by ' + (u.name || 'System') }]);
- if(error) throw error;
+ await window.__applyStockDelta(sku, target - cur, 'Variant inline edit by ' + (u.name || 'System'));
  stockAdj++;
  } catch(e) { errs.push(sku + ' stok: ' + e.message); }
  }
@@ -20108,9 +20129,9 @@ window.openAddOnlineOrder = function() {
  <label class="small-lbl">Channel <span style="color:#dc2626;">*</span></label>
  <select id="aoOnlineChannel" class="login-input" style="margin:0;">
  <option value="Shopee">Shopee</option>
- <option value="TikTok">TikTok</option>
+ <option value="TikTok Shop">TikTok Shop</option>
  <option value="WhatsApp">WhatsApp</option>
- <option value="EasyStore">EasyStore</option>
+ <option value="Web EasyStore">Web EasyStore</option>
  </select>
  </div>
  <div>
@@ -23839,7 +23860,7 @@ window.openB2BDetail = async function(id) {
 
  // Channel mix
  const channelMix = {};
- sales.forEach(s => { const ch = s.channel || 'Walk-in'; channelMix[ch] = (channelMix[ch] || 0) + 1; });
+ sales.forEach(s => { const ch = s.channel || 'POS Cashier'; channelMix[ch] = (channelMix[ch] || 0) + 1; });
  const topChannel = Object.entries(channelMix).sort((a,b) => b[1]-a[1])[0];
 
  const salesRows = sales.length
