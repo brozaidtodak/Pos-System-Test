@@ -119,3 +119,10 @@
   to = "/.netlify/functions/send-receipt-email"
   status = 200
   force = true
+
+# p1_256 — HEIC to JPEG conversion (single + batch)
+[[redirects]]
+  from = "/api/heic-convert"
+  to = "/.netlify/functions/heic-convert"
+  status = 200
+  force = true
