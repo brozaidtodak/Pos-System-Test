@@ -17296,7 +17296,9 @@ window.renderPdpSiblingVariants = function(prod) {
  const isCur = v.sku === prod.sku;
  const stock = stockBySku[v.sku] || 0;
  const label = [v.variant_color, v.variant_size].filter(Boolean).join(' · ') || v.sku;
+ const thumb = (v.images && v.images[0]) ? v.images[0] : '';
  rows += `<tr style="${isCur ? 'background:#FFF7ED;' : ''}border-bottom:1px solid #F3F4F6;">
+ <td style="padding:6px 8px;">${thumb ? `<img src="${esc(thumb)}" onclick="window.openPdpModal('${escJs(v.sku)}')" loading="lazy" style="width:38px; height:38px; object-fit:cover; border-radius:6px; cursor:pointer; background:#eee; border:1px solid #E5E7EB;" onerror="this.style.visibility='hidden';">` : `<div style="width:38px; height:38px; border-radius:6px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; color:#CBD5E1; font-size:9px;">no img</div>`}</td>
  <td style="padding:6px 8px; white-space:nowrap;"><a onclick="window.openPdpModal('${escJs(v.sku)}')" style="cursor:pointer; color:#CD7C32; font-weight:${isCur?'800':'600'}; text-decoration:none;">${esc(label)}</a>${isCur ? ' <span style="color:#9CA3AF; font-size:9px;">(kini)</span>' : ''}</td>
  <td style="padding:6px 8px; font-family:monospace; font-size:11px; color:#6B7280; white-space:nowrap;">${esc(v.sku)}</td>
  <td style="padding:6px 8px;">${inp(i,'qty',stock,58,'1')}</td>
@@ -17322,7 +17324,7 @@ window.renderPdpSiblingVariants = function(prod) {
  <div style="overflow-x:auto;">
  <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:920px;">
  <thead><tr style="background:#FAFAFA; color:#9CA3AF; font-size:10px; text-transform:uppercase;">
- ${th('Variant')}${th('SKU')}${th('Stok')}${th('Harga')}${th('Compare')}${th('Cost')}${th('Barcode')}${th('P(cm)')}${th('L(cm)')}${th('T(cm)')}${th('Berat')}${th('Aktif')}
+ ${th('')}${th('Variant')}${th('SKU')}${th('Stok')}${th('Harga')}${th('Compare')}${th('Cost')}${th('Barcode')}${th('P(cm)')}${th('L(cm)')}${th('T(cm)')}${th('Berat')}${th('Aktif')}
  </tr></thead><tbody>${rows}</tbody></table>
  </div>
  <div style="padding:6px 10px; font-size:10.5px; color:#9CA3AF;">Edit terus dalam jadual, tekan "Simpan Variants". Tukar Stok = auto adjustment (audit trail). Harga auto-push ke marketplace.</div>
