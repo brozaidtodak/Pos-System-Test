@@ -52,12 +52,20 @@ exports.handler = async (event) => {
     const channel = ['shopee', 'tiktok'].includes(p.channel) ? p.channel : 'both';
     const doShopee = channel === 'both' || channel === 'shopee';
     const doTiktok = channel === 'both' || channel === 'tiktok';
-    const shopeeMarkup = p.shopee_markup != null ? Number(p.shopee_markup) : DEFAULT_SHOPEE_MARKUP;
-    const tiktokMarkup = p.tiktok_markup != null ? Number(p.tiktok_markup) : DEFAULT_TIKTOK_MARKUP;
-    const out = { mode, channel, shopee_markup_pct: shopeeMarkup, tiktok_markup_pct: tiktokMarkup };
-
+    const out = { mode, channel };
     const skus = parseSkus(event);
     try {
+        // Markup config from app_settings (POS-editable). mode 'pct' or 'rm'.
+        // Optional query override for testing: ?shopee_markup=&shopee_mode=rm
+        let cfg = { shopee: { mode: 'pct', value: DEFAULT_SHOPEE_MARKUP }, tiktok: { mode: 'pct', value: DEFAULT_TIKTOK_MARKUP } };
+        try {
+            const srow = await shopee.sb('GET', '/app_settings?key=eq.marketplace_markup&select=value&limit=1');
+            if (srow && srow[0] && srow[0].value) cfg = srow[0].value;
+        } catch (_) {}
+        if (p.shopee_markup != null) cfg.shopee = { mode: p.shopee_mode === 'rm' ? 'rm' : 'pct', value: Number(p.shopee_markup) };
+        if (p.tiktok_markup != null) cfg.tiktok = { mode: p.tiktok_mode === 'rm' ? 'rm' : 'pct', value: Number(p.tiktok_markup) };
+        out.markup = cfg;
+        const applyMarkup = (base, c) => (c && c.mode === 'rm') ? round2(base + (Number(c.value) || 0)) : round2(base * (1 + (Number(c.value) || 0) / 100));
         // Load products (scoped to skus, or all that are mapped to either channel)
         let path = '/products_master?select=sku,price,price_marketplace,metadata';
         if (skus.length) path += `&sku=in.(${skus.map(s => `"${s}"`).join(',')})`;
@@ -70,8 +78,8 @@ exports.handler = async (event) => {
             return {
                 sku: (r.sku || '').toUpperCase(),
                 base,
-                shopee_price: round2(base * (1 + shopeeMarkup / 100)),
-                tiktok_price: round2(base * (1 + tiktokMarkup / 100)),
+                shopee_price: applyMarkup(base, cfg.shopee),
+                tiktok_price: applyMarkup(base, cfg.tiktok),
                 shopee_item_id: m.shopee_item_id || null,
                 shopee_model_id: m.shopee_model_id != null ? m.shopee_model_id : null
             };

@@ -15023,6 +15023,27 @@ window.renderMarketplaces = async function() {
  html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #3B82F6; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Master Catalog</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + mapStats.total + '</div><div style="font-size:11px; color:#9CA3AF; margin-top:2px;">products_master rows</div></div>';
  html += '</div>';
 
+ // p1_296 — Markup Harga Marketplace (editable RM/%) + Push Harga
+ html += '<div style="background:#FFF; border:1px solid #E5E7EB; border-radius:12px; padding:18px; margin-bottom:20px;">';
+ html += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;"><i data-lucide="tags" style="width:18px;height:18px;color:#CD7C32;"></i><span style="font-size:15px; font-weight:700; color:#101010;">Markup Harga Marketplace</span></div>';
+ html += '<div style="font-size:12px; color:#6B7280; margin-bottom:14px;">Harga POS + markup ini = harga yang dipush ke marketplace (tutup komisen). Pilih % atau RM.</div>';
+ html += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">';
+ const mkRow = (key, name, color) =>
+   '<div style="border:1px solid #E5E7EB; border-radius:10px; padding:14px;">' +
+   '<div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;"><span style="width:10px;height:10px;border-radius:3px;background:' + color + ';"></span><span style="font-weight:700; font-size:13.5px;">' + name + '</span></div>' +
+   '<div style="display:flex; gap:8px;">' +
+   '<select id="mk_' + key + '_mode" class="login-input" style="margin:0; flex:0 0 90px; padding:8px;"><option value="pct">%</option><option value="rm">RM</option></select>' +
+   '<input id="mk_' + key + '_value" type="number" step="0.01" min="0" class="login-input" style="margin:0; flex:1; padding:8px;" placeholder="0">' +
+   '</div></div>';
+ html += mkRow('shopee', 'Shopee', '#EE4D2D');
+ html += mkRow('tiktok', 'TikTok Shop', '#000000');
+ html += '</div>';
+ html += '<div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">';
+ html += '<button onclick="window.__mpSaveMarkup && window.__mpSaveMarkup()" class="btn-brand-primary" style="font-size:13px; padding:9px 16px; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="save" style="width:14px;height:14px;"></i>Simpan Markup</button>';
+ html += '<button onclick="window.__mpPushPrices && window.__mpPushPrices()" class="btn-brand-outline" style="font-size:13px; padding:9px 16px; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="upload-cloud" style="width:14px;height:14px;"></i>Push Harga ke Marketplace</button>';
+ html += '<span id="mpPushStatus" style="font-size:12px; color:#6B7280; align-self:center;"></span>';
+ html += '</div></div>';
+
  // p1_289 — "Your active channels" heading (EasyStore-style)
  html += '<div style="font-size:13px; font-weight:700; color:#101010; margin:4px 0 2px;">Your active channels</div>';
  html += '<div style="font-size:12px; color:#6B7280; margin-bottom:14px;">Tekan channel untuk urus orders, products & sync.</div>';
@@ -15056,6 +15077,64 @@ window.renderMarketplaces = async function() {
 
  body.innerHTML = html;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ if(window.__mpLoadMarkup) window.__mpLoadMarkup();
+};
+
+// p1_296 — load saved markup config into the inputs
+window.__mpLoadMarkup = async function() {
+ try {
+ const r = await fetch('/api/marketplace-settings');
+ const cfg = await r.json();
+ ['shopee','tiktok'].forEach(k => {
+ const mode = document.getElementById('mk_' + k + '_mode');
+ const val = document.getElementById('mk_' + k + '_value');
+ if(mode && cfg[k]) mode.value = cfg[k].mode || 'pct';
+ if(val && cfg[k]) val.value = cfg[k].value != null ? cfg[k].value : '';
+ });
+ } catch(e) { console.warn('load markup failed', e); }
+};
+
+// p1_296 — save markup config
+window.__mpSaveMarkup = async function() {
+ const get = (k) => ({
+ mode: (document.getElementById('mk_' + k + '_mode') || {}).value || 'pct',
+ value: parseFloat((document.getElementById('mk_' + k + '_value') || {}).value) || 0
+ });
+ const payload = { shopee: get('shopee'), tiktok: get('tiktok') };
+ try {
+ const r = await fetch('/api/marketplace-settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+ const j = await r.json();
+ if(j.ok && typeof showToast === 'function') showToast('Markup disimpan. Tekan "Push Harga" untuk apply ke marketplace.', 'success');
+ else if(typeof showToast === 'function') showToast('Gagal simpan markup: ' + (j.error || '?'), 'error');
+ } catch(e) { if(typeof showToast === 'function') showToast('Ralat simpan markup', 'error'); }
+};
+
+// p1_296 — push prices to marketplaces in client-side batches (avoids fn timeout)
+window.__mpPushPrices = async function() {
+ const statusEl = document.getElementById('mpPushStatus');
+ const setS = (t) => { if(statusEl) statusEl.textContent = t; };
+ const prods = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
+ const skus = prods.filter(p => p && p.metadata && p.metadata.shopee_item_id).map(p => p.sku);
+ if(!skus.length) { setS('Tiada produk mapped untuk push.'); return; }
+ const chunk = (a,n) => { const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i+n)); return o; };
+ let okShopee = 0, okTiktok = 0;
+ const batches = chunk(skus, 20);
+ for(let i=0;i<batches.length;i++) {
+ setS(`Push Shopee... batch ${i+1}/${batches.length}`);
+ try {
+ const r = await fetch('/api/marketplace-price-push?mode=push&channel=shopee&skus=' + batches[i].join(','));
+ const j = await r.json(); okShopee += (j.shopee && j.shopee.pushed) || 0;
+ } catch(e) {}
+ }
+ for(let i=0;i<batches.length;i++) {
+ setS(`Push TikTok... batch ${i+1}/${batches.length}`);
+ try {
+ const r = await fetch('/api/marketplace-price-push?mode=push&channel=tiktok&skus=' + batches[i].join(','));
+ const j = await r.json(); okTiktok += (j.tiktok && j.tiktok.pushed) || 0;
+ } catch(e) {}
+ }
+ setS(`Siap — Shopee ${okShopee}, TikTok ${okTiktok} harga dipush.`);
+ if(typeof showToast === 'function') showToast(`Harga dipush: Shopee ${okShopee}, TikTok ${okTiktok}`, 'success');
 };
 
 // p1_289 — human-readable "last sync" timestamp (global so detail view reuses it)
