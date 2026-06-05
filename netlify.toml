@@ -48,6 +48,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/marketplace-price-push"
+  to = "/.netlify/functions/marketplace-price-push"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/tiktok-product-sync"
   to = "/.netlify/functions/tiktok-product-sync"
   status = 200
