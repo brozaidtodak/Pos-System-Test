@@ -21776,7 +21776,8 @@ window.setMode = function(mode) {
  const dataTab = it.getAttribute('data-tab');
  // Roadmap button + Memo Board — keep visible in all modes (p1_19)
  // p1_148: report_my + staff_feedback — all-staff visibility (Reports template + Aduan feature)
- if(it.id === 'sidebarRoadmapBtn' || dataTab === 'memo_board' || dataTab === 'report_my' || dataTab === 'staff_feedback' || dataTab === 'payment_proofs' || dataTab === 'customers_all' || dataTab === 'customers_b2b' || dataTab === 'sales_customer_lookup' || dataTab === 'feedback_inbox') { it.classList.remove('mode-hidden'); return; }
+ // p1_251 — sales_all_orders ditambah ke whitelist (Zaid: "visiblekan all orders dekat semua orang")
+ if(it.id === 'sidebarRoadmapBtn' || dataTab === 'memo_board' || dataTab === 'report_my' || dataTab === 'staff_feedback' || dataTab === 'payment_proofs' || dataTab === 'customers_all' || dataTab === 'customers_b2b' || dataTab === 'sales_customer_lookup' || dataTab === 'feedback_inbox' || dataTab === 'sales_all_orders') { it.classList.remove('mode-hidden'); return; }
  // p1_45: Superior bypass — Bos always sees everything, mode-class hiding skipped entirely
  if(__isSuperior) { it.classList.remove('mode-hidden'); return; }
 
