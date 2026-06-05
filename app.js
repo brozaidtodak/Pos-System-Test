@@ -18237,6 +18237,9 @@ window.renderBulkOps = function() {
  const filterCat = document.getElementById('bulkFilterCategory').value;
  const filterStatus = document.getElementById('bulkFilterStatus').value;
  const pageSize = parseInt(document.getElementById('bulkPageSize').value) || 100;
+ // p1_313 — reset to page 1 whenever the filter/search changes
+ const __sig = [q, filterBrand, filterCat, filterStatus, pageSize].join('|');
+ if(window.__bulkLastSig !== __sig) { window.__bulkPage = 1; window.__bulkLastSig = __sig; }
 
  let filtered = masterProducts.filter(p => {
  if(filterBrand && p.brand !== filterBrand) return false;
@@ -18250,13 +18253,23 @@ window.renderBulkOps = function() {
  return true;
  });
 
+ // p1_313 — paginate so ALL skus reachable (page through, avoids huge-DOM crash)
  const total = filtered.length;
- filtered = filtered.slice(0, pageSize);
+ const totalPages = Math.max(1, Math.ceil(total / pageSize));
+ if(typeof window.__bulkPage !== 'number') window.__bulkPage = 1;
+ if(window.__bulkPage > totalPages) window.__bulkPage = totalPages;
+ if(window.__bulkPage < 1) window.__bulkPage = 1;
+ const pg = window.__bulkPage;
+ const startIdx = (pg - 1) * pageSize;
+ filtered = filtered.slice(startIdx, startIdx + pageSize);
  bulkVisibleSkus = filtered.map(p => p.sku);
 
+ const navBtn = (label, target, disabled) => `<button onclick="window.__bulkGoPage(${target})" ${disabled ? 'disabled' : ''} style="padding:5px 11px; font-size:12px; border:1px solid #E5E7EB; border-radius:6px; background:${disabled ? '#F9FAFB' : '#fff'}; color:${disabled ? '#CBD5E1' : '#374151'}; cursor:${disabled ? 'default' : 'pointer'}; font-weight:600;">${label}</button>`;
  document.getElementById('bulkSummaryLine').innerHTML =
- `Match: <strong>${total}</strong> produk · Tunjuk: <strong>${filtered.length}</strong>` +
- (total> filtered.length ? ` <span style="color:#DC2626;">(turunkan saiz halaman atau tightenkan filter untuk lihat semua)</span>` : '');
+ `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+ <span><strong>${total}</strong> produk · halaman <strong>${pg}</strong> / ${totalPages} · baris ${total ? startIdx + 1 : 0}–${startIdx + filtered.length}</span>
+ <span style="display:inline-flex; gap:6px; align-items:center;">${navBtn('‹ Prev', pg - 1, pg <= 1)}${navBtn('Next ›', pg + 1, pg >= totalPages)}<span style="font-size:11px; color:#9CA3AF; margin-left:4px;">Simpan dulu sebelum tukar halaman</span></span>
+ </div>`;
 
  if(filtered.length === 0) {
  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px; color:#999;">Tiada produk match filter. Cuba tukar Status ke "Semua".</td></tr>';
@@ -18332,6 +18345,13 @@ window.bulkSaveEdits = async function() {
  if(errs.length) console.warn('bulk save errors:', errs);
  if(typeof showToast === 'function') showToast(`Disimpan: ${changed} produk${errs.length ? '. Ralat: ' + errs[0] : ''}.`, errs.length ? 'warn' : 'success');
  if(typeof renderBulkOps === 'function') renderBulkOps();
+};
+
+// p1_313 — bulk edit pagination nav
+window.__bulkGoPage = function(target) {
+ window.__bulkPage = target;
+ if(typeof renderBulkOps === 'function') renderBulkOps();
+ try { document.getElementById('bulkOpsSection').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){}
 };
 
 window.bulkToggleRow = function(sku, checked) {
