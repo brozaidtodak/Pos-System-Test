@@ -17076,6 +17076,7 @@ window.openPdpModal = function(sku) {
  set('pdpPrice', prod.price || 0);
  set('pdpCost', prod.cost_price || 0);
  set('pdpShopeePrice', prod.shopee_price); set('pdpTiktokPrice', prod.tiktok_price);
+ set('pdpShopeeMode', prod.shopee_price_mode || 'rm'); set('pdpTiktokMode', prod.tiktok_price_mode || 'rm');
 
  // Media
  let imgs = prod.images || [];
@@ -17338,6 +17339,8 @@ window.savePdpData = async function() {
  cost_price: parseFloat(get('pdpCost')) || 0,
  shopee_price: (function(){ const v=get('pdpShopeePrice'); return (v===''||v==null)?null:(parseFloat(v)||null); })(),
  tiktok_price: (function(){ const v=get('pdpTiktokPrice'); return (v===''||v==null)?null:(parseFloat(v)||null); })(),
+ shopee_price_mode: get('pdpShopeeMode') || 'rm',
+ tiktok_price_mode: get('pdpTiktokMode') || 'rm',
  is_published: get('pdpStatus') === 'true',
  description: get('pdpDescription') || null,
  variant_color: get('pdpVariantColor') || null,

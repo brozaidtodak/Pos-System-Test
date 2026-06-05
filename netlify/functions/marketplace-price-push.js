@@ -67,16 +67,22 @@ exports.handler = async (event) => {
         out.markup = cfg;
         const applyMarkup = (base, c) => (c && c.mode === 'rm') ? round2(base + (Number(c.value) || 0)) : round2(base * (1 + (Number(c.value) || 0) / 100));
         // Load products (scoped to skus, or all that are mapped to either channel)
-        let path = '/products_master?select=sku,price,price_marketplace,shopee_price,tiktok_price,metadata';
+        let path = '/products_master?select=sku,price,price_marketplace,shopee_price,tiktok_price,shopee_price_mode,tiktok_price_mode,metadata';
         if (skus.length) path += `&sku=in.(${skus.map(s => `"${s}"`).join(',')})`;
         const rows = await shopee.sb('GET', path) || [];
 
-        // Build plan. Per-product custom price wins; else POS price + channel markup.
+        // Per-product custom price wins; else POS price + global channel markup.
+        // Custom mode: 'rm' = absolute price; 'pct' = markup % over base POS price.
+        const computeCustom = (val, modeRaw, base) => {
+            if (val == null) return null;
+            const v = Number(val); if (!isFinite(v)) return null;
+            return (modeRaw === 'pct') ? round2(base * (1 + v / 100)) : round2(v);
+        };
         const plan = rows.map(r => {
             const m = (r.metadata && typeof r.metadata === 'object') ? r.metadata : {};
             const base = (r.price_marketplace != null ? Number(r.price_marketplace) : Number(r.price)) || 0;
-            const customShopee = r.shopee_price != null ? Number(r.shopee_price) : null;
-            const customTiktok = r.tiktok_price != null ? Number(r.tiktok_price) : null;
+            const customShopee = computeCustom(r.shopee_price, r.shopee_price_mode, base);
+            const customTiktok = computeCustom(r.tiktok_price, r.tiktok_price_mode, base);
             return {
                 sku: (r.sku || '').toUpperCase(),
                 base,
