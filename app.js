@@ -19264,7 +19264,7 @@ window.renderCustomersV2 = function() {
  const summaryEl = document.getElementById('crmSummaryLine');
  if(summaryEl) {
  const more = filtered.length > slice.length
- ? ` · <button onclick="window.__crmShowMore()" style="background:none; border:none; color:var(--primary); cursor:pointer; font-weight:600; text-decoration:underline; padding:0;">${T('cr_show_more','Show More')} (+${Math.min(pageSize, filtered.length - slice.length)})</button>`
+ ? ` <button onclick="window.__crmShowMore()" style="background:var(--primary-50, #FEF7ED); border:1px solid var(--primary, #C8741E); color:var(--primary, #C8741E); cursor:pointer; font-weight:700; padding:6px 12px; border-radius:6px; font-size:11.5px; margin-left:8px; min-height:32px; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="chevron-down" style="width:11px;height:11px;"></i> ${T('cr_show_more','Show More')} (+${Math.min(pageSize, filtered.length - slice.length)})</button>`
  : '';
  summaryEl.innerHTML = `${T('cr_showing','Showing')} <strong>${slice.length}</strong> ${T('cr_of','of')} <strong>${filtered.length}</strong>${more}`;
  }
@@ -19278,14 +19278,16 @@ window.renderCustomersV2 = function() {
  }
 
  // p1_80 fix #10 + #6: row click opens detail; first cell = bulk select checkbox
+ // p1_243: Lucide member badge (was emoji ⭐), tags +N more, consent text labels (was emoji)
  tbody.innerHTML = slice.map((c, idx) => {
  const consent = [];
- if(c.accepts_email_marketing) consent.push('<span title="Email consent" style="color:#10B981;"></span>');
- if(c.accepts_sms_marketing) consent.push('<span title="SMS consent" style="color:#10B981;"></span>');
- const tags = (c.tags || '').split(',').map(t => t.trim()).filter(Boolean).slice(0, 3);
- const tagBadges = tags.map(t => `<span style="background:#E0E7FF; color:#3730A3; padding:1px 6px; border-radius:3px; font-size:9px; margin-right:2px;">${t}</span>`).join('');
+ if(c.accepts_email_marketing) consent.push('<i data-lucide="mail-check" title="Email consent" style="width:14px;height:14px;color:#10B981;vertical-align:-2px;"></i>');
+ if(c.accepts_sms_marketing) consent.push('<i data-lucide="message-square" title="SMS consent" style="width:14px;height:14px;color:#10B981;vertical-align:-2px;"></i>');
+ const allTags = (c.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+ const tags = allTags.slice(0, 3);
+ const tagBadges = tags.map(t => `<span style="background:#E0E7FF; color:#3730A3; padding:1px 6px; border-radius:3px; font-size:9px; margin-right:2px;">${t}</span>`).join('') + (allTags.length > 3 ? `<span style="background:#F3F4F6; color:#6B7280; padding:1px 6px; border-radius:3px; font-size:9px;">+${allTags.length - 3}</span>` : '');
  const memberBadge = c.is_member
- ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:4px; font-weight:bold; font-size:10px;">⭐ VIP</span>'
+ ? '<span style="background:#FEF3C7; color:#92400E; padding:3px 8px; border-radius:4px; font-weight:700; font-size:10px; display:inline-flex; align-items:center; gap:3px;"><i data-lucide="star" style="width:10px;height:10px;"></i> VIP</span>'
  : '<span style="color:#999; font-size:11px;">-</span>';
  const cid = String(c.id || c.phone || c.email || idx);
  const isSelected = window.__crmSelected && window.__crmSelected.has(cid);
@@ -19305,44 +19307,142 @@ window.renderCustomersV2 = function() {
  `;
  }).join('');
  try { window.__crmRenderBulkBar(); } catch(e){}
+ // p1_243 — render Lucide icons (member badge star, consent mail/sms icons)
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
-// p1_80 fix #10: Open simple customer detail view (read-only quick info).
-// Full edit modal can come later; for now show name/phone/email/spent/orders/points/tags.
+// p1_80 fix #10: Open customer detail view.
+// p1_243: upgrade — Edit + Quick Actions (WhatsApp/Email/Call) + full sales history (no cap), better lookup.
 window.openCustomerDetail = function(id) {
  if(typeof customersData === 'undefined' || !Array.isArray(customersData)) return;
  const c = customersData.find(x => String(x.id) === String(id) || x.phone === id || x.email === id);
  if(!c) { if(typeof showToast==='function') showToast('Pelanggan tak dijumpai', 'warn'); return; }
- const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory))
- ? salesHistory.filter(s => s.customer_phone === c.phone || s.customer_name === c.name).slice(0, 10)
- : [];
+ // p1_243 fix #5 — better sales lookup edge case: prefer phone match, fall back to name only if name not blank/Walk-In
+ const allSales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+ const sales = allSales.filter(s => {
+ if(c.phone && s.customer_phone && s.customer_phone === c.phone) return true;
+ if(!c.phone && c.name && c.name.toLowerCase() !== 'walk-in') {
+ if(s.customer_name && s.customer_name.toLowerCase() === c.name.toLowerCase()) return true;
+ }
+ return false;
+ });
+ const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+ // p1_243 fix #4 — sales table 5 col: Tarikh + Channel + Items + Payment + Jumlah
  const salesRows = sales.length
- ? sales.map(s => '<tr><td>' + (s.created_at ? new Date(s.created_at).toLocaleDateString('en-MY') : '-') + '</td><td>' + (s.channel || '-') + '</td><td style="text-align:right;">RM ' + (parseFloat(s.total||0)).toFixed(2) + '</td></tr>').join('')
- : '<tr><td colspan="3" style="text-align:center; color:#999; padding:8px;">Tiada pembelian / No purchases yet</td></tr>';
+ ? sales.map(s => {
+ const itemsCount = Array.isArray(s.items) ? s.items.reduce((n, it) => n + (parseInt(it.quantity) || 0), 0) : 0;
+ return '<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:6px 8px; font-size:11.5px;">' + (s.created_at ? new Date(s.created_at).toLocaleDateString('en-MY', {day:'2-digit', month:'short', year:'2-digit'}) : '-') + '</td><td style="padding:6px 8px; font-size:11.5px;">' + escHtml(s.channel || '-') + '</td><td style="padding:6px 8px; text-align:center; font-size:11.5px;">' + (itemsCount || '-') + '</td><td style="padding:6px 8px; font-size:11.5px;">' + escHtml(s.payment_method || '-') + '</td><td style="padding:6px 8px; text-align:right; font-size:11.5px; font-weight:700;">RM ' + (parseFloat(s.total||s.total_amount||0)).toFixed(2) + '</td></tr>';
+ }).join('')
+ : '<tr><td colspan="5" style="text-align:center; color:#999; padding:12px;">Tiada pembelian / No purchases yet</td></tr>';
+
+ // p1_243 fix #4 — Quick Action helpers
+ const phoneClean = (c.phone || '').replace(/[^\d]/g, '');
+ const waLink = phoneClean ? `https://wa.me/${phoneClean.startsWith('60') ? phoneClean : (phoneClean.startsWith('0') ? '6' + phoneClean : '60' + phoneClean)}` : '';
+ const telLink = phoneClean ? `tel:${phoneClean}` : '';
+ const mailLink = c.email ? `mailto:${c.email}` : '';
+ const cid = String(c.id || c.phone || c.email || '');
+
  const html =
- '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3700; display:flex; align-items:center; justify-content:center; padding:20px;" onclick="if(event.target===this) this.remove();">'
- + '<div style="background:#fff; max-width:560px; width:100%; border-radius:12px; padding:24px; max-height:90vh; overflow-y:auto;">'
- + '<div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">'
- + '<div><h2 style="margin:0; font-size:20px;">' + (c.name || '-') + '</h2><div style="font-size:12px; color:#666; margin-top:2px;">' + (c.phone || '-') + ' · ' + (c.email || '-') + '</div></div>'
- + '<button onclick="this.closest(\'div[style*=\\\'inset:0\\\']\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999;">×</button>'
+ '<div id="custDetailOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3700; display:flex; align-items:flex-start; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); padding-bottom:calc(20px + env(safe-area-inset-bottom)); overflow-y:auto;" onclick="if(event.target===this) this.remove();">'
+ + '<div style="background:#fff; max-width:620px; width:100%; border-radius:12px; padding:24px; margin:auto;">'
+ + '<div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:14px; gap:10px;">'
+ + '<div style="flex:1; min-width:0;"><h2 style="margin:0; font-size:20px; word-break:break-word;">' + escHtml(c.name || '-') + (c.is_member ? ' <span style="background:#FEF3C7; color:#92400E; padding:3px 8px; border-radius:4px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:3px; vertical-align:middle;"><i data-lucide="star" style="width:11px;height:11px;"></i> VIP</span>' : '') + '</h2><div style="font-size:12px; color:#666; margin-top:4px;">' + escHtml(c.phone || '-') + ' · ' + escHtml(c.email || '-') + '</div></div>'
+ + '<button onclick="document.getElementById(\'custDetailOverlay\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999; padding:4px 8px; min-height:36px;">×</button>'
  + '</div>'
+ // p1_243: Quick Action buttons row
+ + '<div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">'
+ + '<button onclick="window.openEditCustomerModal(\'' + cid.replace(/'/g,"\\'") + '\')" style="background:#F3E8FF; border:1px solid #C4B5FD; color:#5B21B6; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="edit-3" style="width:13px;height:13px;"></i> Edit</button>'
+ + (waLink ? '<a href="' + waLink + '" target="_blank" rel="noopener" style="background:#DCFCE7; border:1px solid #86EFAC; color:#166534; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="message-circle" style="width:13px;height:13px;"></i> WhatsApp</a>' : '')
+ + (mailLink ? '<a href="' + mailLink + '" style="background:#DBEAFE; border:1px solid #93C5FD; color:#1E3A8A; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="mail" style="width:13px;height:13px;"></i> Email</a>' : '')
+ + (telLink ? '<a href="' + telLink + '" style="background:#FEF3C7; border:1px solid #FCD34D; color:#92400E; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="phone" style="width:13px;height:13px;"></i> Call</a>' : '')
+ + '</div>'
+ // Stats grid
  + '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px;">'
  + '<div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Belanja / Spent</div><div style="font-size:16px; font-weight:bold;">RM ' + (parseFloat(c.total_spent||0)).toFixed(2) + '</div></div>'
  + '<div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Pesanan / Orders</div><div style="font-size:16px; font-weight:bold;">' + (c.total_orders || 0) + '</div></div>'
  + '<div style="background:#EFF6FF; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#1E40AF;">Mata / Points</div><div style="font-size:16px; font-weight:bold;">' + (c.points || 0) + '</div></div>'
  + '</div>'
- + (c.is_member ? '<div style="background:#FEF3C7; color:#92400E; padding:6px 10px; border-radius:6px; font-size:12px; font-weight:700; margin-bottom:12px; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="star" style="width:12px; height:12px;"></i> VIP Member</div>' : '')
- + '<h3 style="font-size:13px; margin:6px 0; color:#111;">10 Pembelian Terakhir / Last 10 purchases</h3>'
- + '<table style="width:100%; font-size:12px; border-collapse:collapse;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left; padding:6px;">Tarikh</th><th style="text-align:left; padding:6px;">Channel</th><th style="text-align:right; padding:6px;">Jumlah</th></tr></thead><tbody>'
+ // Tags display
+ + (c.tags ? '<div style="margin-bottom:12px;"><div style="font-size:11px; color:#6B7280; margin-bottom:4px;">Tags:</div>' + (c.tags || '').split(',').map(t => t.trim()).filter(Boolean).map(t => '<span style="background:#E0E7FF; color:#3730A3; padding:3px 8px; border-radius:4px; font-size:11px; margin-right:4px; display:inline-block;">' + escHtml(t) + '</span>').join('') + '</div>' : '')
+ // Consent display
+ + '<div style="display:flex; gap:14px; margin-bottom:14px; font-size:11.5px; color:#6B7280;">'
+ + (c.accepts_email_marketing ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#059669;"><i data-lucide="mail-check" style="width:13px;height:13px;"></i> Email consent</span>' : '<span style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="mail-x" style="width:13px;height:13px;color:#D1D5DB;"></i> No email consent</span>')
+ + (c.accepts_sms_marketing ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#059669;"><i data-lucide="message-square" style="width:13px;height:13px;"></i> SMS consent</span>' : '<span style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="message-square-off" style="width:13px;height:13px;color:#D1D5DB;"></i> No SMS consent</span>')
+ + '</div>'
+ // Sales history — full, no cap. Scrollable container.
+ + '<h3 style="font-size:13px; margin:6px 0 8px; color:#111; display:flex; justify-content:space-between; align-items:center;"><span>Pembelian / Purchases (<span style="color:var(--primary);">' + sales.length + '</span>)</span></h3>'
+ + '<div style="border:1px solid #E5E7EB; border-radius:8px; max-height:280px; overflow-y:auto;">'
+ + '<table style="width:100%; font-size:12px; border-collapse:collapse;"><thead style="position:sticky; top:0; background:#FAFAFA; z-index:1;"><tr><th style="text-align:left; padding:6px 8px; font-size:10px; color:#6B7280; text-transform:uppercase;">Tarikh</th><th style="text-align:left; padding:6px 8px; font-size:10px; color:#6B7280; text-transform:uppercase;">Channel</th><th style="text-align:center; padding:6px 8px; font-size:10px; color:#6B7280; text-transform:uppercase;">Items</th><th style="text-align:left; padding:6px 8px; font-size:10px; color:#6B7280; text-transform:uppercase;">Bayar</th><th style="text-align:right; padding:6px 8px; font-size:10px; color:#6B7280; text-transform:uppercase;">Jumlah</th></tr></thead><tbody>'
  + salesRows
  + '</tbody></table>'
+ + '</div>'
  + '</div>'
  + '</div>';
  const tmp = document.createElement('div');
  tmp.innerHTML = html;
  document.body.appendChild(tmp.firstChild);
- // p1_140 — render Lucide star icon for VIP (replaced ⭐ emoji)
  if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+// p1_243 — Edit customer modal (reuse Add modal markup with prefilled values + edit mode flag)
+window.openEditCustomerModal = function(id) {
+ if(typeof customersData === 'undefined') return;
+ const c = customersData.find(x => String(x.id) === String(id) || x.phone === id || x.email === id);
+ if(!c) return;
+ window.__custEditTarget = c;
+ // Close detail modal kalau ada
+ const detail = document.getElementById('custDetailOverlay');
+ if(detail) detail.remove();
+ // Open Add modal
+ window.openAddCustomerModal();
+ // Prefill values after modal renders
+ setTimeout(() => {
+ const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+ set('addCustName', c.name);
+ set('addCustPhone', c.phone);
+ set('addCustEmail', c.email);
+ set('addCustTags', c.tags);
+ const eC = document.getElementById('addCustEmailConsent'); if(eC) eC.checked = !!c.accepts_email_marketing;
+ const sC = document.getElementById('addCustSmsConsent'); if(sC) sC.checked = !!c.accepts_sms_marketing;
+ // Tukar title + button label
+ const h2 = document.querySelector('#addCustOverlay h2');
+ if(h2) h2.textContent = 'Edit Pelanggan / Edit Customer';
+ const saveBtn = document.querySelector('#addCustOverlay button.login-btn[onclick*="submitNewCustomer"]');
+ if(saveBtn) { saveBtn.textContent = 'Update'; saveBtn.setAttribute('onclick', 'window.submitEditCustomer()'); }
+ }, 80);
+};
+
+window.submitEditCustomer = async function() {
+ const target = window.__custEditTarget;
+ if(!target) return;
+ const name = (document.getElementById('addCustName')?.value || '').trim();
+ const phone = (document.getElementById('addCustPhone')?.value || '').trim();
+ const email = (document.getElementById('addCustEmail')?.value || '').trim();
+ const tags = (document.getElementById('addCustTags')?.value || '').trim();
+ const emailConsent = !!document.getElementById('addCustEmailConsent')?.checked;
+ const smsConsent = !!document.getElementById('addCustSmsConsent')?.checked;
+ const err = document.getElementById('addCustErr');
+ if(!name) { if(err) err.textContent = 'Nama wajib diisi.'; return; }
+ const payload = {
+ name, phone: phone || null, email: email || null, tags: tags || null,
+ accepts_email_marketing: emailConsent,
+ accepts_sms_marketing: smsConsent
+ };
+ try {
+ if(typeof db !== 'undefined' && db && target.id) {
+ const { error } = await db.from('customers').update(payload).eq('id', target.id);
+ if(error) throw error;
+ }
+ // Sync in-memory
+ Object.assign(target, payload);
+ } catch(e) {
+ if(err) err.textContent = 'Update gagal: ' + (e.message || e);
+ return;
+ }
+ document.getElementById('addCustOverlay')?.remove();
+ if(typeof showToast === 'function') showToast('Pelanggan ' + name + ' diupdate', 'success');
+ window.__custEditTarget = null;
+ if(typeof renderCustomersV2 === 'function') renderCustomersV2();
 };
 
 // p1_80 fix #8: "Show More" button increments shown count by current pageSize.
