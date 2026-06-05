@@ -25,15 +25,7 @@ h2, .h2, .section-title { font-family: 'Poppins', sans-serif; font-weight: 800; 
 h3, .h3 { font-family: 'Poppins', sans-serif; font-weight: 700; }
 h4, .h4 { font-family: 'Poppins', sans-serif; font-weight: 600; }
 
-/* p1_245 — Universal admin card system — softer borders, brand-aligned */
-.admin-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    transition: box-shadow 0.2s;
-}
-.admin-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+/* p1_246 — .admin-card consolidated lower in file (was here duplicate). */
 
 /* p1_245 — Universal stat card system (.stat-card) — clean white + border-left accent + uppercase muted label + big bold number */
 .stat-card {
@@ -175,14 +167,47 @@ input, select, textarea { width: 100%; padding: 14px; border: 1px solid var(--bo
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: #FFFFFF;}
 .small-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); display: block; margin-bottom: 6px; }
 
-/* INVENTORY (WMS) */
-.btn-primary, .btn-secondary, .btn-success, .btn-dark { padding: 14px 24px; border: none; border-radius: var(--radius-pill); color: white; cursor: pointer; font-weight: 600; margin-bottom:10px; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
-.btn-primary { background: var(--primary); }
-.btn-secondary { background: var(--text-muted); }
-.btn-success { background: var(--success); width: 100%;}
-.btn-dark { background: #111827; }
+/* p1_246 — Polish legacy button classes ikut brand (universal apply across 87+ usages tanpa refactor manual) */
+.btn-primary, .btn-secondary, .btn-success, .btn-dark, .btn-danger {
+    padding: 12px 22px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    color: white;
+    cursor: pointer;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    font-family: 'Poppins', sans-serif;
+    transition: filter 0.15s, transform 0.1s, background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 40px;
+}
+.btn-primary:hover, .btn-success:hover, .btn-dark:hover, .btn-danger:hover { filter: brightness(1.08); }
+.btn-primary:active, .btn-secondary:active, .btn-success:active, .btn-dark:active, .btn-danger:active { transform: scale(0.98); }
+.btn-primary { background: var(--primary); border-color: var(--primary); }
+.btn-secondary { background: #fff; color: #374151; border: 1px solid #D1D5DB; }
+.btn-secondary:hover { background: #F9FAFB; border-color: #9CA3AF; }
+.btn-success { background: var(--success, #10B981); border-color: var(--success, #10B981); } /* p1_246 — buang width:100% lama, sebab Export CSV jadi full-width */
+.btn-dark { background: var(--secondary, #101010); border-color: var(--secondary, #101010); }
+.btn-dark:hover { background: #2A2520; }
+.btn-danger { background: #DC2626; border-color: #DC2626; }
 
-.admin-card { background: var(--card-bg); padding: 25px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 20px; }
+/* p1_246 — Consolidate .admin-card (sebelum: defined dua tempat, conflict). Brand-aligned card system. */
+.admin-card {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s;
+}
+.admin-card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
 
 /* TABLE */
 .table-responsive { overflow-x: auto; background: var(--card-bg); border-radius: var(--radius-md); border: 1px solid var(--border-color); }
