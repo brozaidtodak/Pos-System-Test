@@ -170,7 +170,7 @@ exports.handler = async (event) => {
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
 
     const params = event.queryStringParameters || {};
-    const mode = params.mode === 'compare' ? 'compare' : 'peek';
+    const mode = ['compare', 'map'].includes(params.mode) ? params.mode : 'peek';
     const out = { mode };
 
     try {
@@ -230,6 +230,45 @@ exports.handler = async (event) => {
         out.mapped_skus = mapped;
         out.price_diffs = priceDiffs.length;
         out.title_diffs = titleDiffs.length;
+
+        // p1_264 — mode=map writes metadata.tiktok_product_id + tiktok_synced_at per matched POS sku
+        if (mode === 'map') {
+            const now = new Date().toISOString();
+            const updates = []; // { sku, tiktok_product_id }
+            const seen = new Set();
+            for (const p of products) {
+                for (const sku of (p.skus || [])) {
+                    const sellerSku = (sku.seller_sku || '').toUpperCase();
+                    if (!sellerSku || !(sellerSku in pos)) continue;
+                    if (seen.has(sellerSku)) continue;
+                    seen.add(sellerSku);
+                    updates.push({ sku: sellerSku, tiktok_product_id: String(p.id), tiktok_sku_id: String(sku.id) });
+                }
+            }
+            let written = 0;
+            const errors = [];
+            for (const u of updates) {
+                try {
+                    // Fetch current metadata to merge
+                    const cur = await sb('GET', `/products_master?sku=eq.${encodeURIComponent(u.sku)}&select=metadata`);
+                    const m = (cur && cur[0] && cur[0].metadata && typeof cur[0].metadata === 'object') ? cur[0].metadata : {};
+                    const merged = Object.assign({}, m, {
+                        tiktok_product_id: u.tiktok_product_id,
+                        tiktok_sku_id: u.tiktok_sku_id,
+                        tiktok_synced_at: now
+                    });
+                    await sb('PATCH', `/products_master?sku=eq.${encodeURIComponent(u.sku)}`, { metadata: merged }, { Prefer: 'return=minimal' });
+                    written++;
+                } catch (e) {
+                    errors.push({ sku: u.sku, error: String(e).slice(0, 200) });
+                }
+            }
+            out.write_count = written;
+            out.write_errors = errors.length;
+            out.errors_sample = errors.slice(0, 5);
+            return json(200, out);
+        }
+
         out.sample_price_diffs = priceDiffs.slice(0, 12);
         out.sample_title_diffs = titleDiffs.slice(0, 6);
         out.note = 'READ-ONLY compare. POS does NOT push price/title to TikTok — '
