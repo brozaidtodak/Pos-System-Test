@@ -14885,6 +14885,20 @@ window.renderStockTransfer = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
+// p1_275 — Customers sub-section stubs
+window.renderSegments = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.renderPointsMembership = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.renderEngagement = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.renderStoreCredit = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
 // p1_271 — Sidebar restructure placeholder handlers
 window.openSetupGuide = function() {
  if(typeof showToast === 'function') showToast('Setup Guide coming soon — walkthrough tutorial untuk POS setup.', 'info');
