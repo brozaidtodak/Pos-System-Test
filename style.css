@@ -293,6 +293,11 @@ body.pos-mobile-mode #posCartDrawer.drawer-open ~ #mobileCartFloatingBar {
     display: none !important;
 }
 
+/* p1_248 — Hide floating bar bila checkout panel terbuka (orange bar overlap dengan Sahkan Bayaran button kat footer panel). Body class via JS (broader compat than :has). */
+body.checkout-panel-open #mobileCartFloatingBar {
+    display: none !important;
+}
+
 /* p1_238 — BAYAR SEKARANG sticky bottom-of-drawer supaya selalu visible (tak scroll out)
    p1_242 — padding-bottom include safe-area-inset-bottom untuk iPhone home indicator */
 body.pos-mobile-mode .cart-section > div:last-child {

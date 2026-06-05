@@ -21896,6 +21896,8 @@ window.openCheckoutPanel = function() {
  panel.classList.add('is-open');
  panel.setAttribute('aria-hidden', 'false');
  // p1_232 — Hide mobile floating bar (orange "Lihat Troli · Bayar →") yang overlap dgn green Sahkan button
+ // p1_248 — also set body class supaya CSS rule override !important dari p1_239
+ document.body.classList.add('checkout-panel-open');
  const mfb = document.getElementById('mobileCartFloatingBar');
  if(mfb) { mfb.dataset.prevDisplay = mfb.style.display || ''; mfb.style.display = 'none'; }
  } else {
@@ -21926,6 +21928,8 @@ window.closeCheckoutPanel = function() {
  const panel = document.getElementById('checkoutPanel');
  if(panel) { panel.classList.remove('is-open'); panel.setAttribute('aria-hidden', 'true'); }
  // p1_232 — Restore mobile floating bar (CSS media query controls actual visibility)
+ // p1_248 — buang body.checkout-panel-open
+ document.body.classList.remove('checkout-panel-open');
  const mfb = document.getElementById('mobileCartFloatingBar');
  if(mfb) { mfb.style.display = mfb.dataset.prevDisplay || ''; delete mfb.dataset.prevDisplay; }
 };
