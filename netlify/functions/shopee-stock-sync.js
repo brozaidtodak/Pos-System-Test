@@ -94,15 +94,15 @@ async function getValidToken() {
     return rows[0]; // refresh logic lives in shopee-sync.js; this assumes recent connect
 }
 
-// Load POS stock from inventory_batches (latest snapshot per SKU)
+// Load POS stock from inventory_batches (sum qty_remaining per SKU).
+// p1_266 — fix column: was 'current_qty' (tak wujud) → correct 'qty_remaining' (per audit p1_236).
 async function loadPosStock() {
-    // sum stock per SKU from inventory_batches table
-    const rows = await sb('GET', '/inventory_batches?select=sku,current_qty&limit=10000');
+    const rows = await sb('GET', '/inventory_batches?select=sku,qty_remaining&limit=10000');
     const bySku = {};
     for (const r of (rows || [])) {
         const sku = (r.sku || '').toUpperCase().trim();
         if (!sku) continue;
-        bySku[sku] = (bySku[sku] || 0) + Number(r.current_qty || 0);
+        bySku[sku] = (bySku[sku] || 0) + Number(r.qty_remaining || 0);
     }
     return bySku;
 }
