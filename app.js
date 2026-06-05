@@ -14873,6 +14873,18 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 async function checkMyAttendanceStatus() {
  // p1_270 — Clock-in/out function hidden (Zaid). Skip showing floating button.
  return;
+}
+
+// p1_271 — Sidebar restructure placeholder handlers
+window.openSetupGuide = function() {
+ if(typeof showToast === 'function') showToast('Setup Guide coming soon — walkthrough tutorial untuk POS setup.', 'info');
+ else alert('Setup Guide — coming soon');
+};
+window.openHelpDialog = function() {
+ if(typeof showToast === 'function') showToast('Help: hubungi admin@10camp.com atau Zaid via WhatsApp.', 'info');
+ else alert('Help — Hubungi admin@10camp.com');
+};
+function _p271_void() {
  if(!currentUser) return;
  const btn = document.getElementById("floatingClockBtn");
  const lbl = document.getElementById("lblClockFace");

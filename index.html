@@ -24,7 +24,7 @@
  <link rel="apple-touch-icon" href="assets/brand/logo/10camp-logo-color.png">
  <link rel="shortcut icon" href="assets/brand/logo/10camp-logo-color.png">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
- <link rel="stylesheet" href="style.css?v=49">
+ <link rel="stylesheet" href="style.css?v=50">
  <link rel="stylesheet" href="design-tokens.css?v=69">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1494,6 +1494,49 @@
  </div>
  </div>
  <div class="menu-list">
+ <!-- p1_271 — NEW SIDEBAR LAYOUT (Zaid: 8 top items + 3 bottom items, Shopify-style). Old items below kekal hidden for back-compat. -->
+ <div class="menu-item" data-tab="setup_guide" onclick="window.openSetupGuide && window.openSetupGuide()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="rocket" style="width:18px; height:18px;"></i> <span>Setup Guide</span>
+ </div>
+ <div class="menu-item" data-tab="nav_home" onclick="switchHub(['homeSection','managerDashboardSection'], 'Home', this); if(typeof renderDashboard==='function') renderDashboard(); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="home" style="width:18px; height:18px;"></i> <span>Home</span>
+ </div>
+ <div class="menu-item" data-tab="nav_orders" onclick="switchHub(['allOrdersSection'], 'Orders', this); if(typeof renderAllOrders==='function') renderAllOrders();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="shopping-bag" style="width:18px; height:18px;"></i> <span>Orders</span>
+ </div>
+ <div class="menu-item" data-tab="nav_products" onclick="switchHub(['databaseSection'], 'Products', this); if(typeof renderProductDatabase==='function') renderProductDatabase();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="package" style="width:18px; height:18px;"></i> <span>Products</span>
+ </div>
+ <div class="menu-item" data-tab="nav_customers" onclick="switchHub(['customersSection'], 'Customers', this); if(typeof renderCustomersV2==='function') renderCustomersV2();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="users" style="width:18px; height:18px;"></i> <span>Customers</span>
+ </div>
+ <div class="menu-item" data-tab="nav_messages" onclick="switchHub(['memoBoardSection'], 'Messages', this); if(typeof renderMemoBoard==='function') renderMemoBoard();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="message-square" style="width:18px; height:18px;"></i> <span>Messages</span>
+ <span id="memoBadgePendingNav" style="display:none; margin-left:auto; background:#EF4444; color:#FFF; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; min-width:18px; text-align:center;">0</span>
+ </div>
+ <div class="menu-item" data-tab="nav_discounts" onclick="switchHub(['promotionsSection'], 'Discounts', this); if(typeof renderPromotionsV2==='function') renderPromotionsV2();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="tag" style="width:18px; height:18px;"></i> <span>Discounts</span>
+ </div>
+ <div class="menu-item" data-tab="nav_channels" onclick="switchHub(['syncSection'], 'Channels', this); if(typeof renderSyncSection==='function') renderSyncSection();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="globe" style="width:18px; height:18px;"></i> <span>Channels</span>
+ </div>
+
+ <!-- p1_271 — Bottom items (Reports / Settings / Help) — pinned at bottom via flex-grow spacer -->
+ <div style="flex:1; min-height:20px;"></div>
+ <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:8px; margin-top:8px;">
+ <div class="menu-item" data-tab="nav_reports" onclick="switchHub(['reportsSection'], 'Reports', this); if(typeof renderReports==='function') renderReports();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="bar-chart-3" style="width:18px; height:18px;"></i> <span>Reports</span>
+ </div>
+ <div class="menu-item" data-tab="nav_settings" onclick="switchHub(['shopSettingsSection'], 'Settings', this); if(typeof renderShopSettings==='function') renderShopSettings();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="settings" style="width:18px; height:18px;"></i> <span>Settings</span>
+ </div>
+ <div class="menu-item" data-tab="nav_help" onclick="window.openHelpDialog && window.openHelpDialog()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <i data-lucide="help-circle" style="width:18px; height:18px;"></i> <span>Help</span>
+ </div>
+ </div>
+
+ <!-- p1_271 — LEGACY MENU items below hidden via CSS rule .sidebar-legacy-hidden -->
+ <div class="sidebar-legacy-hidden" style="display:none;">
  <div class="menu-item mgmt-only" data-tab="overview" onclick="switchHub(['homeSection','managerDashboardSection'], 'Overview', this); if(typeof renderDashboard==='function') renderDashboard(); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:8px;">
  <i data-lucide="layout-dashboard" style="width:18px; height:18px;"></i> <span data-i18n="sb_overview">Overview</span>
  </div>
@@ -1726,6 +1769,7 @@
  </div>
  <!-- p1_77 fix #10: "Visit Website" link removed — staff bukan customer, tiada sebab buka 10camp.com dari POS. -->
 
+ </div><!-- /.sidebar-legacy-hidden p1_271 wrapper close -->
  </div>
  </div><!-- /.sidebar-main -->
  </div><!-- /.sidebar -->
@@ -11553,7 +11597,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=364"></script>
+ <script src="app.js?v=365"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

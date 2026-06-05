@@ -96,6 +96,14 @@ h4, .h4 { font-family: 'Poppins', sans-serif; font-weight: 600; }
 .btn-brand-dark:hover { background: #2A2520; }
 
 /* LOGIN UI */
+/* p1_271 — Sidebar Shopify-style restructure: hide rail strip, flat sidebar full-width */
+.sidebar-rail { display: none !important; }
+#sidebarMain { width: 260px !important; max-width: 260px; }
+.menu-list { display: flex !important; flex-direction: column; min-height: calc(100vh - 80px); padding: 8px; }
+.menu-list .menu-item { color: #D1D5DB; border-radius: 8px; transition: background 0.15s, color 0.15s; cursor: pointer; }
+.menu-list .menu-item:hover { background: rgba(255, 255, 255, 0.08); color: #FFF; }
+.menu-list .menu-item.active { background: rgba(205, 124, 50, 0.18); color: var(--primary, #CD7C32); font-weight: 700; }
+
 /* p1_242 — Login overlay padding-top + padding-bottom safe area (Dynamic Island + home indicator) */
 .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);}
 
