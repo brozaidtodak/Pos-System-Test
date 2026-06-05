@@ -14885,6 +14885,14 @@ window.renderStockTransfer = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
+// p1_276 — Messages sub-section stubs
+window.renderBroadcast = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.renderConnections = function() {
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
 // p1_275 — Customers sub-section stubs
 window.renderSegments = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
