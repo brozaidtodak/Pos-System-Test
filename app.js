@@ -4514,7 +4514,7 @@ window.__ppBindZoomGestures = function() {
 };
 // p1_378 — build stamp visible dalam modal supaya boleh sahkan iPad jalan versi mana
 // (diagnostik cache PWA). Naikkan bila tukar kod zoom.
-window.__ZOOM_BUILD = '454';
+window.__ZOOM_BUILD = '455';
 window.__ppOpenImg = function(url) {
  const m = document.getElementById('ppImgModal');
  const img = document.getElementById('ppImgModalImg');
