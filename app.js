@@ -3325,6 +3325,8 @@ window.__psListFilter = function() {
  + `<td class="ps-list-cell" style="padding:10px; color:#6B7280;">${escHtml(p.brand || '—')}</td>`
  + `<td class="ps-list-cell" style="padding:10px;">${loc ? `<span style="display:inline-block; padding:2px 8px; border-radius:4px; background:#FEF3C7; color:#92400E; font-size:10.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(loc)}</span>` : `<span style="color:#D1D5DB; font-size:11px;">—</span>`}</td>`
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();">${numInp('psr_' + i + '_price', price, 'RM')}</td>`
+ + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();">${numInp('psr_' + i + '_shopee', Number(p.shopee_price || 0), 'RM')}</td>`
+ + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();">${numInp('psr_' + i + '_tiktok', Number(p.tiktok_price || 0), 'RM')}</td>`
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();"><input id="psr_${i}_cost" type="number" step="0.01" inputmode="decimal" value="${cost > 0 ? cost : ''}" placeholder="¥" oninput="window.__psRowCalc(${i})" onclick="event.stopPropagation();" style="width:90px; padding:5px 7px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>`
  + `<td class="ps-list-cell" style="padding:8px 10px; text-align:right; color:#374151; font-weight:600;"><span id="psr_${i}_costfinal">${t.costFinal > 0 ? t.costFinal.toFixed(2) : '—'}</span></td>`
  + tcell('psr_' + i + '_rrp', t.rrp)
@@ -3346,11 +3348,13 @@ window.__psListFilter = function() {
  + '<th style="text-align:left;">Brand</th>'
  + '<th style="text-align:left;">Lokasi</th>'
  + '<th style="text-align:right;">Harga POS</th>'
+ + '<th style="text-align:right;">Shopee</th>'
+ + '<th style="text-align:right;">TikTok</th>'
  + '<th style="text-align:right;">Cost RMB</th>'
  + '<th style="text-align:right;">Cost Final</th>'
  + '<th style="text-align:right;">RRP</th>'
  + '<th style="text-align:right;">Kedai</th>'
- + '<th style="text-align:right;">TT/Shopee</th>'
+ + '<th style="text-align:right;">Mktplc</th>'
  + '<th style="text-align:right;">Z Prop</th>'
  + '<th style="text-align:right;">Stok</th>'
  + '<th style="text-align:center;">Status</th>'
@@ -3421,6 +3425,11 @@ window.__psSaveList = async function() {
  const cEl = document.getElementById('psr_' + i + '_cost');
  if(pEl) { const nv = pEl.value.trim() === '' ? null : (parseFloat(pEl.value) || 0); const ov = prod.price == null ? null : Number(prod.price); if(String(ov) !== String(nv)) payload.price = nv; }
  if(cEl) { const nv = cEl.value.trim() === '' ? null : (parseFloat(cEl.value) || 0); const ov = prod.cost_rmb == null ? null : Number(prod.cost_rmb); if(String(ov) !== String(nv)) payload.cost_rmb = nv; }
+ // p1_357 — Harga Shopee + TikTok dipisahkan (kosong=null→fallback markup; isi→harga tetap mode rm)
+ const sEl = document.getElementById('psr_' + i + '_shopee');
+ const tEl = document.getElementById('psr_' + i + '_tiktok');
+ if(sEl) { const nv = sEl.value.trim() === '' ? null : (parseFloat(sEl.value) || null); const ov = prod.shopee_price == null ? null : Number(prod.shopee_price); if(String(ov) !== String(nv)) { payload.shopee_price = nv; payload.shopee_price_mode = 'rm'; } }
+ if(tEl) { const nv = tEl.value.trim() === '' ? null : (parseFloat(tEl.value) || null); const ov = prod.tiktok_price == null ? null : Number(prod.tiktok_price); if(String(ov) !== String(nv)) { payload.tiktok_price = nv; payload.tiktok_price_mode = 'rm'; } }
  if(Object.keys(payload).length) {
  try {
  const { error } = await db.from('products_master').update(payload).eq('sku', sku);
