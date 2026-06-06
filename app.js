@@ -9606,6 +9606,22 @@ function renderCart() {
  }
  } catch(e){}
 
+ // p1_384 — sku -> gambar produk (untuk thumbnail dalam cart). Ambik dari masterProducts.
+ const __cartImg = {};
+ try {
+ if(typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+ masterProducts.forEach(p => {
+ const sku = (p.sku || '').toUpperCase();
+ if(!sku) return;
+ let img = '';
+ if(Array.isArray(p.images) && p.images[0]) img = p.images[0];
+ else if(typeof p.images === 'string' && p.images) img = p.images;
+ if(img) __cartImg[sku] = img;
+ });
+ }
+ } catch(e){}
+ if(!window.__cartNoImg) window.__cartNoImg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><rect width='48' height='48' rx='8' fill='%23F3F4F6'/><path d='M14 30l6-7 4 5 4-5 6 7z' fill='%23D1D5DB'/><circle cx='18' cy='17' r='3' fill='%23D1D5DB'/></svg>";
+
  // p1_158 — was innerHTML += in cart loop (Safari OOM trigger; CASHIER hot path — fires every add/remove)
  container.innerHTML = cart.map(item => {
  total = round2(total + item.price * item.quantity);
@@ -9616,8 +9632,10 @@ function renderCart() {
  const floorBadge = belowFloor
  ? `<span style="display:inline-block; margin-top:2px; padding:1px 6px; background:#FEE2E2; color:#991B1B; border-radius:50px; font-size:9px; font-weight:700; letter-spacing:0.3px;">BAWAH FLOOR (RM ${floor.toFixed(2)})</span>`
  : '';
+ const __img = __cartImg[skuU] || window.__cartNoImg;
  return `
  <div class="cart-item" style="${belowFloor ? 'border-left:3px solid #EF4444; background:rgba(254,226,226,.15);' : ''}">
+ <img src="${__img}" loading="lazy" onerror="this.onerror=null;this.src=window.__cartNoImg;" style="width:48px; height:48px; object-fit:cover; border-radius:8px; border:1px solid #E5E7EB; flex-shrink:0; margin-right:10px;" alt="">
  <div style="flex:1;"><strong style="font-size:13px; color:#111;">[${item.sku}] ${item.name}</strong><br><small style="color:#666;">${(item.discount_amount && item.original_price) ? `<s style="color:#9CA3AF;">RM${item.original_price.toFixed(2)}</s> ` : ''}RM${item.price.toFixed(2)} x ${item.quantity}</small> ${(item.discount_amount && item.discount_amount > 0) ? `<span style="display:inline-block; margin-left:5px; padding:1px 6px; background:#FEF3C7; color:#92400E; border-radius:50px; font-size:10px; font-weight:700;" title="${item.discount_reason || 'Diskaun manual'}">-RM ${item.discount_amount.toFixed(2)}</span>` : ''} ${floorBadge}</div>
  <div style="display:flex; gap:8px; align-items:center;">
  <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
