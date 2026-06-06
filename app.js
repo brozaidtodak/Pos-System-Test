@@ -17465,6 +17465,8 @@ window.renderPdpSiblingVariants = function(prod) {
  <td style="padding:6px 8px;">${inp(i,'price',v.price,70,'0.01')}</td>
  <td style="padding:6px 8px;">${inp(i,'compare',v.compare_at_price,70,'0.01')}</td>
  <td style="padding:6px 8px;">${inp(i,'cost',v.cost_price,70,'0.01')}</td>
+ <td style="padding:6px 8px;">${inp(i,'shopee',v.shopee_price,72,'0.01')}</td>
+ <td style="padding:6px 8px;">${inp(i,'tiktok',v.tiktok_price,72,'0.01')}</td>
  <td style="padding:6px 8px;">${inp(i,'barcode',v.erp_barcode,110,'')}</td>
  <td style="padding:6px 8px;">${inp(i,'len',v.length_cm,50,'0.1')}</td>
  <td style="padding:6px 8px;">${inp(i,'wid',v.width_cm,50,'0.1')}</td>
@@ -17484,7 +17486,7 @@ window.renderPdpSiblingVariants = function(prod) {
  <div style="overflow-x:auto;">
  <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:920px;">
  <thead><tr style="background:#FAFAFA; color:#9CA3AF; font-size:10px; text-transform:uppercase;">
- ${th('')}${th('Variant')}${th('SKU')}${th('Stok')}${th('Harga')}${th('Compare')}${th('Cost')}${th('Barcode')}${th('P(cm)')}${th('L(cm)')}${th('T(cm)')}${th('Berat')}${th('Aktif')}
+ ${th('')}${th('Variant')}${th('SKU')}${th('Stok')}${th('Harga')}${th('Compare')}${th('Cost')}${th('Shopee')}${th('TikTok')}${th('Barcode')}${th('P(cm)')}${th('L(cm)')}${th('T(cm)')}${th('Berat')}${th('Aktif')}
  </tr></thead><tbody>${rows}</tbody></table>
  </div>
  <div style="padding:6px 10px; font-size:10.5px; color:#9CA3AF;">Edit terus dalam jadual, tekan "Simpan Variants". Tukar Stok = auto adjustment (audit trail). Harga auto-push ke marketplace.</div>
@@ -17500,7 +17502,7 @@ window.__pdpSaveVariants = async function(parentSku) {
  const stockBySku = {};
  for(const b of (inventoryBatches || [])) if(b.qty_remaining > 0) stockBySku[b.sku] = (stockBySku[b.sku] || 0) + b.qty_remaining;
  const u = window.currentUser || {};
- const colMap = { price:'price', compare:'compare_at_price', cost:'cost_price', barcode:'erp_barcode', len:'length_cm', wid:'width_cm', hei:'height_cm', wt:'weight_kg' };
+ const colMap = { price:'price', compare:'compare_at_price', cost:'cost_price', shopee:'shopee_price', tiktok:'tiktok_price', barcode:'erp_barcode', len:'length_cm', wid:'width_cm', hei:'height_cm', wt:'weight_kg' };
  let fieldUpdates = 0, stockAdj = 0; const errs = [];
  for(let i=0;i<skus.length;i++) {
  const sku = skus[i];
@@ -17517,6 +17519,9 @@ window.__pdpSaveVariants = async function(parentSku) {
  }
  const pubEl = document.getElementById('pv_'+i+'_pub');
  if(pubEl && (!!isPublished(prod) !== pubEl.checked)) payload.is_published = pubEl.checked;
+ // p1_351 — bila harga marketplace per-variant berubah, set mode 'rm' (harga tetap). Null harga = fallback markup global.
+ if('shopee_price' in payload) payload.shopee_price_mode = 'rm';
+ if('tiktok_price' in payload) payload.tiktok_price_mode = 'rm';
  if(Object.keys(payload).length) {
  try {
  const { error } = await db.from('products_master').update(payload).eq('sku', sku);
@@ -17539,22 +17544,8 @@ window.__pdpSaveVariants = async function(parentSku) {
  }
  }
  }
- // p1_346 — Harga Shopee/TikTok (field utama borang) untuk produk dibuka (curSku).
- // Dulu "Simpan Variants" abaikan field ni → Zaid set Harga TikTok tapi tak tersimpan.
- try {
- const mpPayload = {};
- const sv = document.getElementById('pdpShopeePrice');
- const tv = document.getElementById('pdpTiktokPrice');
- if(sv) mpPayload.shopee_price = (sv.value.trim() === '') ? null : (parseFloat(sv.value) || null);
- if(tv) mpPayload.tiktok_price = (tv.value.trim() === '') ? null : (parseFloat(tv.value) || null);
- const sm = document.getElementById('pdpShopeeMode'); if(sm) mpPayload.shopee_price_mode = sm.value || 'rm';
- const tm = document.getElementById('pdpTiktokMode'); if(tm) mpPayload.tiktok_price_mode = tm.value || 'rm';
- if(curSku && Object.keys(mpPayload).length) {
- const { error } = await db.from('products_master').update(mpPayload).eq('sku', curSku);
- if(error) { errs.push(curSku + ' (harga marketplace): ' + error.message); }
- else { const idx = masterProducts.findIndex(x => x.sku === curSku); if(idx >= 0) Object.assign(masterProducts[idx], mpPayload); fieldUpdates++; }
- }
- } catch(e) { errs.push('harga marketplace: ' + e.message); }
+ // p1_351 — Harga Shopee/TikTok kini PER-VARIANT (kolum dalam jadual, disimpan via colMap atas).
+ // Blok lama p1_346 (simpan field utama ke curSku) dibuang sebab tindih dengan kolum per-variant.
  // push updated prices to marketplaces (fire-and-forget, single batch)
  try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(skus.join(','))).catch(()=>{}); } catch(e){}
  if(errs.length) console.warn('Variant save errors:', errs);
