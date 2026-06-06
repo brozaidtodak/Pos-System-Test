@@ -1553,8 +1553,11 @@
  <div class="menu-item" data-tab="nav_sys_pricehistory" onclick="event.stopPropagation(); switchHub(['priceHistorySection'], 'Price History', this); if(typeof renderPriceHistory==='function') renderPriceHistory();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="line-chart" style="width:15px; height:15px;"></i> <span>Price History</span>
  </div>
- <div class="menu-item" data-tab="nav_sys_pricecalc" onclick="event.stopPropagation(); switchHub(['floorPriceSection'], 'Price Calculator', this); if(typeof renderFloorPrice==='function') renderFloorPrice();" style="display:flex; align-items:center; gap:10px;">
+ <div class="menu-item" data-tab="nav_sys_pricecalc" onclick="event.stopPropagation(); switchHub(['priceCalcSection'], 'Price Calculator', this); if(typeof renderPriceCalc==='function') renderPriceCalc();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="calculator" style="width:15px; height:15px;"></i> <span>Price Calculator</span>
+ </div>
+ <div class="menu-item" data-tab="nav_sys_pricingsetup" onclick="event.stopPropagation(); switchHub(['floorPriceSection'], 'Pricing Setup', this); if(typeof renderFloorPrice==='function') renderFloorPrice();" style="display:flex; align-items:center; gap:10px;">
+ <i data-lucide="sliders-horizontal" style="width:15px; height:15px;"></i> <span>Pricing Setup</span>
  </div>
  <div class="menu-item" data-tab="nav_sys_barcode" onclick="event.stopPropagation(); switchHub(['barcodeSection'], 'Barcode Generator', this);" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="printer" style="width:15px; height:15px;"></i> <span>Barcode Generator</span>
@@ -3046,6 +3049,47 @@
  </table>
  </div>
  <p id="fifoSummaryLine" style="font-size:12px; color:#666; padding:10px 14px; margin:0;"></p>
+ </div>
+ </div>
+
+ <!-- p1_352 — Price Calculator (jadual semua SKU dalam baris; isi kandungan dibina kemudian) -->
+ <div id="priceCalcSection" class="tab-section" style="display:none;">
+ <style>
+ #priceCalcSection .data-table { border-collapse:collapse; width:100%; }
+ #priceCalcSection .data-table tbody td { border-bottom:1px solid #E5E7EB; }
+ #priceCalcSection .data-table thead th { border-bottom:2px solid #D1D5DB; }
+ #priceCalcSection .data-table tbody tr:nth-child(even){ background:#FAFBFC; }
+ #priceCalcSection .data-table tbody tr:hover { background:#EEF4FD !important; }
+ </style>
+ <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="calculator" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Price Calculator</h2>
+ <p style="color:#6B7280; font-size:13px; margin:2px 0 14px;">Semua produk (SKU) dalam satu jadual untuk kira harga secara pukal. Kolum kiraan akan ditambah kemudian.</p>
+ <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:end;">
+ <div style="flex:1; min-width:220px;"><label class="small-lbl">Cari SKU / Nama / Brand</label><input type="text" id="pcSearch" class="login-input" placeholder="BD005 / tent / Naturehike..." style="margin:0;" oninput="window.renderPriceCalc && window.renderPriceCalc()"></div>
+ <div><label class="small-lbl">Per page</label>
+ <select id="pcPerPage" class="login-input" style="margin:0;" onchange="window.__pcPage=1; window.renderPriceCalc && window.renderPriceCalc()">
+ <option value="50" selected>50</option><option value="100">100</option><option value="250">250</option>
+ </select>
+ </div>
+ </div>
+ <div id="pcStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+ <div class="admin-card" style="padding:0;">
+ <div style="overflow-x:auto;">
+ <table class="data-table" style="font-size:12.5px;">
+ <thead style="background:var(--card-bg);">
+ <tr>
+ <th style="text-align:left; padding:10px;">SKU</th>
+ <th style="text-align:left; padding:10px;">Nama</th>
+ <th style="text-align:left; padding:10px;">Brand</th>
+ <th style="text-align:right; padding:10px;">Kos (RM)</th>
+ <th style="text-align:right; padding:10px;">Harga POS (RM)</th>
+ </tr>
+ </thead>
+ <tbody id="pcTbody">
+ <tr><td colspan="5" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>
+ </tbody>
+ </table>
+ </div>
+ <p id="pcSummaryLine" style="font-size:12px; color:#666; padding:10px 14px; margin:0;"></p>
  </div>
  </div>
 
@@ -7189,6 +7233,7 @@
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
  { id:'p1_263', label:'Marketplace integration indicator tiap product (Zaid: "setiap product wajib ada indicator yang menandakan dia dah integrated dengan tiktok dan shopee"). Schema check: products_master takde dedicated columns shopee/tiktok yet — semua sync data live dalam metadata JSONB (pattern same as easystore_* keys). Visual indicator dalam renderProductDatabase pd-card grid: position absolute top:6px left:6px (kiri atas, sebelah status badge Live/Draft kanan atas). Dua chips small: SP (brand Shopee orange #EE4D2D fill bila integrated, grey #E5E7EB outline bila tak) dan TT (TikTok black bila integrated, grey bila tak). Lucide check icon bila syncd, X icon bila tak. Hover title explain status. Read data: metadata.shopee_item_id atau metadata.shopee_synced_at → shopeeIntegrated; same logic untuk TikTok. PDP modal extend dengan card baru "Marketplace Integration" antara Organization dan SEO: 2 grid 1fr 1fr — Shopee Item ID + TikTok Product ID inputs dengan brand colored chips beside labels (SP orange, TT black). Bawah ada syncStatus line yang papar "Shopee last sync: <timestamp> · TikTok last sync: <timestamp>" atau "Belum pernah sync auto" kalau kosong. openPdpModal populate values dari metadata. savePdpData merge ke metadata.shopee_item_id + tiktok_product_id (preserved alongside other metadata). Zaid boleh edit manually for now; future sync flow can auto-fill + set _synced_at timestamps. app.js v359→v360.', d:'done' },
+ { id:'p1_352', label:'Price Calculator — jadual semua SKU (scaffold; Zaid: "buat price calculator dimana semua product (sku) diletakkan dalam row tables, isi kandungan dibina kemudian"). Section baru priceCalcSection: jadual semua produk (SKU/Nama/Brand/Kos/Harga POS), carian, per-page 50/100/250 + pagination __pcGoPage, stat Jumlah SKU. System group: "Price Calculator" repoint ke priceCalcSection; floorPriceSection lama jadi sub-item "Pricing Setup". Kolum kiraan ditambah kemudian. app.js v430 to v431.', d:'done' },
  { id:'p1_351', label:'Harga Shopee & TikTok PER-VARIANT dalam jadual variant (Zaid: "fokus harga shopee dan tiktok di variant"). Dulu harga marketplace cuma 1 field utama untuk lead (p1_346). Sekarang jadual variant (renderPdpSiblingVariants) tambah 2 kolum input Harga Shopee + Harga TikTok (selepas Cost) — setiap variant set harga sendiri. __pdpSaveVariants colMap tambah shopee:shopee_price + tiktok:tiktok_price simpan per-SKU; bila harga marketplace berubah set mode rm (harga tetap), kosong = fallback markup global. Blok p1_346 (simpan field utama ke curSku) DIBUANG sebab tindih dengan kolum per-variant. Di-push masa Simpan Variants. app.js v429 to v430.', d:'done' },
  { id:'p1_350', label:'Audit + haluskan SEMUA nota amaran (Zaid: "audit semua bahagian amaran, aku nak kau buat halus macam ni"). Agen Explore petakan 16 nota amaran/caution loud (12 index.html + 4 app.js rendered) — exclude badge status/error toast/roadmap/danger-zone button. Cipta CSS class reusable .soft-note (+ --inline tiada kotak, + --warn sedikit tegas) di design-tokens.css: teks warm-grey #8A7A6D, tint #FAF8F5, ikon opacity 0.65. Nota biasa (snapshot/email blast/coming soon/memo/webhook/audience/cuti/mapping/sync-error/feedback-error/order-note) → class .soft-note; banner berlayout (margin watcher/stock session/floor price/quote edit/master toolbar) → muted warna in-place kekal struktur+id+JS toggle. Loud amber #FEF3C7 + red #FEE2E2 + dark text → muted warm tones. Elemen fungsi (toggle/badge/stat-card) kekal loud sengaja. app.js v428 to v429, design-tokens v70 to v71.', d:'done' },
  { id:'p1_349', label:'Design semula amaran Shopee — halus, bukan merah menyala (Zaid: "jangan buang amaran tu kekalkan, tapi design tu aku tak suka, bukan main merah mak ngah lagi"). Tukar dari span amber loud #B45309 dalam baris → baris berasingan sendiri: ikon info lucide (opacity 0.8) + teks warm-grey muted #A1887F, font 10.5px, line-height 1.4. Subtle, elegan, masih nampak tapi tak menjerit. index.html sahaja.', d:'done' },
@@ -11986,7 +12031,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=430"></script>
+ <script src="app.js?v=431"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
