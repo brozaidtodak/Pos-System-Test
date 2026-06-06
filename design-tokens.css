@@ -3749,3 +3749,26 @@ a:focus-visible {
 .rp-rm-check input:focus + .rp-rm-checkbox { box-shadow: 0 0 0 3px rgba(205,124,50,0.18); }
 
 .rp-rm-label { font-size: 13px; color: var(--text-main, #111827); line-height: 1.4; }
+
+/* p1_350 — Nota amaran HALUS (subtle caution note) — ganti amaran loud merah/amber menyala.
+   Gaya: warm muted grey-brown text, tint hampir tak nampak, ikon info opacity rendah. */
+.soft-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #8A7A6D;
+  background: #FAF8F5;
+  border: 1px solid #ECE6DE;
+  border-radius: 8px;
+  padding: 8px 11px;
+  margin: 8px 0;
+}
+.soft-note > i, .soft-note > svg { width: 13px; height: 13px; flex-shrink: 0; opacity: 0.65; margin-top: 1px; }
+.soft-note strong, .soft-note b { color: #6F6256; font-weight: 700; }
+.soft-note a { color: #9A6B4F; }
+/* tiada kotak — untuk nota bawah field/form */
+.soft-note--inline { background: none; border: none; padding: 2px 0; margin: 5px 0 0; font-size: 10.5px; }
+/* sedikit lebih tegas (caution sebenar) tapi masih muted */
+.soft-note--warn { color: #9A6B4F; background: #FBF6F1; border-color: #EFE0D4; }

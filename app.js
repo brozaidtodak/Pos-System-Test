@@ -3673,7 +3673,7 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  </div>
  </div>
  ${(shopeeErrors + tiktokErrors > 0) ? `
- <p style="font-size:12px; color:#D97706; margin-top:10px; padding:8px 10px; background:#FEF3C7; border-radius:6px;"><i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-1px;"></i> ${shopeeErrors + tiktokErrors} error(s) total — investigate dalam Settings → Sync.</p>
+ <p class="soft-note" style="margin-top:10px;"><i data-lucide="alert-triangle"></i> ${shopeeErrors + tiktokErrors} error(s) total — investigate dalam Settings → Sync.</p>
  ` : '<p style="font-size:12px; color:#10B981; margin-top:8px;">All systems green.</p>'}
  </div>
 
@@ -4156,7 +4156,7 @@ window.renderFeedbackSection = async function() {
  // p1_186 — wrap is block-scoped to try; re-query for safety. Show RED panel
  // so Zaid sees real error instead of blank screen.
  const errWrap = document.getElementById('fbMyList');
- if(errWrap) errWrap.innerHTML = '<p style="color:#991B1B; padding:20px; background:#FEE2E2; border-radius:8px; margin:8px;"><strong>Error render Aduan:</strong> ' + (e && e.message ? e.message : String(e)) + '<br><small style="color:#7F1D1D;">Refresh page (Cmd+Shift+R). Kalau masih error, screenshot bagi Zaid.</small></p>';
+ if(errWrap) errWrap.innerHTML = '<p class="soft-note soft-note--warn" style="margin:8px;"><strong>Error render Aduan:</strong> ' + (e && e.message ? e.message : String(e)) + '<br><small>Refresh page (Cmd+Shift+R). Kalau masih error, screenshot bagi Zaid.</small></p>';
  console.error('[Aduan] renderFeedbackSection failed:', e);
  }
 };
@@ -15230,7 +15230,7 @@ window.renderMarketplaces = async function() {
  html += '</div>';
 
  // Footer note
- html += '<div style="margin-top:20px; padding:12px 14px; background:#FFF7ED; border:1px solid #FED7AA; border-radius:10px; font-size:12px; color:#9A3412;"><i data-lucide="info" style="width:13px; height:13px; vertical-align:middle; margin-right:5px;"></i>Mapping data dibaca dari products_master.metadata. Stock + order sync jalan automatic ikut webhook + schedule.</div>';
+ html += '<div class="soft-note" style="margin-top:20px;"><i data-lucide="info"></i>Mapping data dibaca dari products_master.metadata. Stock + order sync jalan automatic ikut webhook + schedule.</div>';
 
  // Stash computed data so the detail view can read it without re-querying.
  window.__mpData = { platforms: platforms, connectedCount: connectedCount, totalMapped: totalMapped, totalCatalog: mapStats.total };
@@ -20633,7 +20633,7 @@ window.__aoViewOrder = function(saleId) {
  <button onclick="window.__aoSetFulfil(${s.id},'completed')" style="flex:1; min-width:100px; background:#fff; border:1px solid #6EE7B7; color:#047857; padding:9px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700;"><i data-lucide="check-circle" style="width:13px;height:13px;vertical-align:-2px;"></i> Selesai</button>
  </div>` : `<div style="font-size:12px; color:#6B7280;">Order ni dah <strong>${esc(m.label)}</strong>.</div>`;
  const sc = window.__aoSellerCentreUrl(s);
- const mpNote = isMarketplace ? `${sc ? `<a href="${esc(sc.url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:7px; background:${sc.color}; color:#fff; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:700; text-decoration:none; margin-bottom:8px;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Buka ${esc(sc.label)}${sc.direct ? ' — print Airway Bill' : ' — cari order & print AWB'}</a>` : ''}<div style="font-size:11px; color:#92400E; margin-bottom:8px; line-height:1.5;"><i data-lucide="info" style="width:11px;height:11px;vertical-align:-1px;"></i> ${sc && !sc.direct ? 'Order Shopee = migrasi EasyStore, takde ID Shopee dalam data — buka senarai To-Ship, cari order ni, print AWB. ' : ''}AWB / label penghantaran dijana di seller centre platform.</div>` : '';
+ const mpNote = isMarketplace ? `${sc ? `<a href="${esc(sc.url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:7px; background:${sc.color}; color:#fff; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:700; text-decoration:none; margin-bottom:8px;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Buka ${esc(sc.label)}${sc.direct ? ' — print Airway Bill' : ' — cari order & print AWB'}</a>` : ''}<div class="soft-note soft-note--inline" style="margin-bottom:8px;"><i data-lucide="info"></i> ${sc && !sc.direct ? 'Order Shopee = migrasi EasyStore, takde ID Shopee dalam data — buka senarai To-Ship, cari order ni, print AWB. ' : ''}AWB / label penghantaran dijana di seller centre platform.</div>` : '';
  const fulfilHtml = `<div style="border:1px solid #FDE68A; background:#FFFBEB; border-radius:10px; padding:14px; margin-bottom:14px;">
  <div style="font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:#92400E; text-transform:uppercase; margin-bottom:8px;"><i data-lucide="truck" style="width:12px;height:12px;vertical-align:-2px;"></i> Fulfilment / Penghantaran</div>
  ${chipsHtml}${mpNote}${controls}
