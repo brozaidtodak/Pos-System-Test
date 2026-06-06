@@ -3138,6 +3138,193 @@ window.__scBosAck = async function(id) {
 };
 
 // p1_109 — Floor Price Calculator handlers
+// p1_391 — Cost Calculator (Shipment landed-cost).
+// Landed/unit = goods(RMB*ex) + SF(RMB*sf%*ex, by value) + shipping(RM/qty) + part-timer(RM/qty).
+window.__scRows = [];
+window.__scId = null;
+
+window.scAddRow = function(){
+ (window.__scRows = window.__scRows || []).push({ sku:'', name:'', rmb:'', qty:'' });
+ scRenderItems(); scCompute();
+};
+window.scRemoveRow = function(i){ (window.__scRows||[]).splice(i,1); scRenderItems(); scCompute(); };
+window.scUpdateRow = function(i, field, val){ if(window.__scRows && window.__scRows[i]){ window.__scRows[i][field] = val; scCompute(); } };
+
+window.scRenderItems = function(){
+ const tb = document.getElementById('scItemsBody'); if(!tb) return;
+ const rows = window.__scRows || [];
+ if(!rows.length){ tb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:18px; color:#9CA3AF;">Tiada produk. Tekan "Tambah Produk".</td></tr>'; return; }
+ tb.innerHTML = rows.map((r,i) => `
+ <tr>
+ <td><input value="${hesc(r.sku||'')}" oninput="scUpdateRow(${i},'sku',this.value)" style="width:120px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:11px; font-family:monospace;"></td>
+ <td><input value="${hesc(r.name||'')}" oninput="scUpdateRow(${i},'name',this.value)" style="width:160px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px;"></td>
+ <td><input type="number" step="0.01" value="${r.rmb!=null?r.rmb:''}" oninput="scUpdateRow(${i},'rmb',this.value)" style="width:90px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>
+ <td><input type="number" step="1" value="${r.qty!=null?r.qty:''}" oninput="scUpdateRow(${i},'qty',this.value)" style="width:64px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>
+ <td style="text-align:right;"><span id="sc_goods_${i}">RM0.00</span></td>
+ <td style="text-align:right;"><span id="sc_sf_${i}">RM0.00</span></td>
+ <td style="text-align:center;"><button onclick="scRemoveRow(${i})" title="Buang" style="border:none; background:none; color:#DC2626; cursor:pointer; font-size:16px; line-height:1;">&times;</button></td>
+ </tr>`).join('');
+};
+
+window.__scParams = function(){
+ const ex = parseFloat((document.getElementById('scExchange')||{}).value) || 0;
+ const sfPct = parseFloat((document.getElementById('scSfPct')||{}).value) || 0;
+ const shipping = parseFloat((document.getElementById('scShipping')||{}).value) || 0;
+ const pt = parseFloat((document.getElementById('scParttimer')||{}).value) || 0;
+ const rows = window.__scRows || [];
+ const totalQty = rows.reduce((s,r)=> s + (parseInt(r.qty,10)||0), 0);
+ return { ex, sfPct, shipping, pt, rows, totalQty,
+ shipPerUnit: totalQty>0 ? shipping/totalQty : 0,
+ ptPerUnit: totalQty>0 ? pt/totalQty : 0 };
+};
+
+window.scCompute = function(){
+ const P = window.__scParams();
+ const fmt = (n)=> 'RM' + (Number(n)||0).toFixed(2);
+ P.rows.forEach((r,i)=>{
+ const rmb = parseFloat(r.rmb)||0;
+ const g = document.getElementById('sc_goods_'+i); if(g) g.textContent = fmt(rmb*P.ex);
+ const s = document.getElementById('sc_sf_'+i); if(s) s.textContent = fmt(rmb*(P.sfPct/100)*P.ex);
+ });
+ const tq = document.getElementById('scTotalQty'); if(tq) tq.textContent = 'Jumlah Qty: ' + P.totalQty;
+ const sp = document.getElementById('scShipPerUnit'); if(sp) sp.textContent = 'Shipping/unit: ' + fmt(P.shipPerUnit);
+ const pp = document.getElementById('scPtPerUnit'); if(pp) pp.textContent = 'Part-timer/unit: ' + fmt(P.ptPerUnit);
+ const lb = document.getElementById('scLandedBody');
+ if(lb){
+ if(!P.rows.length){ lb.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:18px; color:#9CA3AF;">—</td></tr>'; }
+ else lb.innerHTML = P.rows.map(r=>{
+ const rmb = parseFloat(r.rmb)||0; const qty = parseInt(r.qty,10)||0;
+ const goods = rmb*P.ex; const sf = rmb*(P.sfPct/100)*P.ex;
+ const landed = goods + sf + P.shipPerUnit + P.ptPerUnit;
+ return `<tr><td style="font-family:monospace; font-size:11px;">${hesc(r.sku||'-')}</td><td style="text-align:right;">${fmt(goods)}</td><td style="text-align:right;">${fmt(sf)}</td><td style="text-align:right;">${fmt(P.shipPerUnit)}</td><td style="text-align:right;">${fmt(P.ptPerUnit)}</td><td style="text-align:right; font-weight:800; color:#101010;">${fmt(landed)}</td><td style="text-align:right;">${qty}</td></tr>`;
+ }).join('');
+ }
+};
+
+window.__scLanded = function(){
+ const P = window.__scParams();
+ return P.rows.map(r=>{
+ const rmb = parseFloat(r.rmb)||0; const qty = parseInt(r.qty,10)||0;
+ const goods = rmb*P.ex; const sf = rmb*(P.sfPct/100)*P.ex;
+ return { sku:(r.sku||'').trim(), qty, landed: +(goods+sf+P.shipPerUnit+P.ptPerUnit).toFixed(2) };
+ });
+};
+
+window.scNewShipment = function(){
+ window.__scId = null;
+ ['scLabel','scShipping','scParttimer'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+ const sf=document.getElementById('scSfPct'); if(sf) sf.value='5';
+ const picker=document.getElementById('scShipmentPicker'); if(picker) picker.value='';
+ window.__scRows = [{ sku:'', name:'', rmb:'', qty:'' }];
+ scRenderItems(); scCompute();
+};
+
+window.scLoadList = async function(){
+ const picker = document.getElementById('scShipmentPicker'); if(!picker || typeof db==='undefined' || !db) return;
+ try {
+ const { data } = await db.from('cost_shipments').select('id,label,updated_at').order('updated_at',{ascending:false}).limit(200);
+ const cur = window.__scId;
+ picker.innerHTML = '<option value="">— Pilih shipment —</option>' + (data||[]).map(s=>`<option value="${s.id}"${String(cur)===String(s.id)?' selected':''}>${hesc(s.label||('Shipment #'+s.id))}</option>`).join('');
+ } catch(e){}
+};
+
+window.scLoadSelected = async function(){
+ const picker = document.getElementById('scShipmentPicker'); if(!picker) return;
+ const id = picker.value; if(!id) return;
+ if(typeof db==='undefined'||!db) return;
+ try {
+ const { data: s } = await db.from('cost_shipments').select('*').eq('id', id).single();
+ const { data: items } = await db.from('cost_shipment_items').select('*').eq('shipment_id', id).order('sort_idx',{ascending:true});
+ if(!s) return;
+ window.__scId = s.id;
+ document.getElementById('scLabel').value = s.label||'';
+ document.getElementById('scExchange').value = s.exchange_rate!=null?s.exchange_rate:'';
+ document.getElementById('scSfPct').value = s.sf_pct!=null?s.sf_pct:5;
+ document.getElementById('scShipping').value = s.shipping_cost_rm!=null?s.shipping_cost_rm:'';
+ document.getElementById('scParttimer').value = s.parttimer_cost_rm!=null?s.parttimer_cost_rm:'';
+ window.__scRows = (items||[]).map(it=>({ sku:it.sku||'', name:it.product_name||'', rmb:it.cost_rmb!=null?it.cost_rmb:'', qty:it.qty!=null?it.qty:'' }));
+ if(!window.__scRows.length) window.__scRows = [{sku:'',name:'',rmb:'',qty:''}];
+ scRenderItems(); scCompute();
+ } catch(e){ if(typeof showToast==='function') showToast('Load gagal: '+e.message,'error'); }
+};
+
+window.scSaveShipment = async function(){
+ if(typeof db==='undefined'||!db){ if(typeof showToast==='function') showToast('DB tak available','error'); return; }
+ const u = window.currentUser||{};
+ const payload = {
+ label: (document.getElementById('scLabel').value||'').trim() || null,
+ exchange_rate: parseFloat(document.getElementById('scExchange').value)||0,
+ sf_pct: parseFloat(document.getElementById('scSfPct').value)||0,
+ shipping_cost_rm: parseFloat(document.getElementById('scShipping').value)||0,
+ parttimer_cost_rm: parseFloat(document.getElementById('scParttimer').value)||0,
+ updated_at: new Date().toISOString()
+ };
+ try {
+ let id = window.__scId;
+ if(id){ const { error } = await db.from('cost_shipments').update(payload).eq('id', id); if(error) throw error; }
+ else { payload.created_by = u.name||'System'; const { data, error } = await db.from('cost_shipments').insert([payload]).select('id').single(); if(error) throw error; id = data.id; window.__scId = id; }
+ await db.from('cost_shipment_items').delete().eq('shipment_id', id);
+ const rows = (window.__scRows||[]).filter(r=> (r.sku||'').trim() || (r.name||'').trim() || r.rmb || r.qty);
+ if(rows.length){
+ const ins = rows.map((r,idx)=>({ shipment_id:id, sku:(r.sku||'').trim()||null, product_name:(r.name||'').trim()||null, cost_rmb:parseFloat(r.rmb)||0, qty:parseInt(r.qty,10)||0, sort_idx:idx }));
+ const { error } = await db.from('cost_shipment_items').insert(ins); if(error) throw error;
+ }
+ if(typeof showToast==='function') showToast('Shipment disimpan.','success');
+ await scLoadList();
+ } catch(e){ if(typeof showToast==='function') showToast('Simpan gagal: '+e.message,'error'); }
+};
+
+window.scDeleteShipment = async function(){
+ if(!window.__scId){ if(typeof showToast==='function') showToast('Takde shipment dipilih.','warn'); return; }
+ if(!confirm('Padam shipment ni? (kos yang dah di-apply ke produk TAK terjejas)')) return;
+ try { await db.from('cost_shipments').delete().eq('id', window.__scId); if(typeof showToast==='function') showToast('Shipment dipadam.','success'); scNewShipment(); await scLoadList(); }
+ catch(e){ if(typeof showToast==='function') showToast('Padam gagal: '+e.message,'error'); }
+};
+
+window.scApplyCostPrice = async function(){
+ if(typeof db==='undefined'||!db) return;
+ const rows = window.__scLanded().filter(r=> r.sku && r.landed>0);
+ if(!rows.length){ if(typeof showToast==='function') showToast('Tiada baris dengan SKU + landed cost.','warn'); return; }
+ if(!confirm(`Set cost_price untuk ${rows.length} produk ikut landed cost? (akan terekod dalam Price History)`)) return;
+ const uName = (window.currentUser||{}).name||'System';
+ let ok=0; const errs=[];
+ for(const r of rows){
+ try {
+ const { error } = await db.from('products_master').update({ cost_price: r.landed, last_modified_by: uName }).eq('sku', r.sku);
+ if(error) throw error;
+ const p = (masterProducts||[]).find(x=>x.sku===r.sku); if(p) p.cost_price = r.landed;
+ ok++;
+ } catch(e){ errs.push(r.sku+': '+e.message); }
+ }
+ if(typeof showToast==='function') showToast(`cost_price dikemaskini: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
+};
+
+window.scApplyBatch = async function(){
+ if(typeof db==='undefined'||!db) return;
+ const rows = window.__scLanded().filter(r=> r.sku && r.qty>0);
+ if(!rows.length){ if(typeof showToast==='function') showToast('Tiada baris dengan SKU + qty.','warn'); return; }
+ if(!confirm(`Stock-in ${rows.length} produk jadi batch baru (FIFO) ikut landed cost? Ini akan TAMBAH stok.`)) return;
+ const uName = (window.currentUser||{}).name||'System';
+ const label = (document.getElementById('scLabel').value||'').trim();
+ let ok=0; const errs=[];
+ for(const r of rows){
+ try {
+ const { error } = await db.from('inventory_batches').insert([{ sku:r.sku, qty_received:r.qty, qty_remaining:r.qty, cost_price:r.landed, inbound_date:new Date().toISOString(), notes:'Cost Calc shipment'+(label?' ('+label+')':'')+' by '+uName }]);
+ if(error) throw error;
+ ok++;
+ } catch(e){ errs.push(r.sku+': '+e.message); }
+ }
+ try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){}
+ if(typeof showToast==='function') showToast(`Stock-in batch: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
+};
+
+window.renderShipmentCalc = function(){
+ if(!(window.__scRows||[]).length) scNewShipment();
+ else { scRenderItems(); scCompute(); }
+ scLoadList();
+ if(typeof lucide!=='undefined') lucide.createIcons();
+};
+
 window.renderFloorPrice = function() {
  // Populate datalist SKU options (reuse movementSkuList)
  try {
