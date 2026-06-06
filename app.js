@@ -17539,6 +17539,22 @@ window.__pdpSaveVariants = async function(parentSku) {
  }
  }
  }
+ // p1_346 — Harga Shopee/TikTok (field utama borang) untuk produk dibuka (curSku).
+ // Dulu "Simpan Variants" abaikan field ni → Zaid set Harga TikTok tapi tak tersimpan.
+ try {
+ const mpPayload = {};
+ const sv = document.getElementById('pdpShopeePrice');
+ const tv = document.getElementById('pdpTiktokPrice');
+ if(sv) mpPayload.shopee_price = (sv.value.trim() === '') ? null : (parseFloat(sv.value) || null);
+ if(tv) mpPayload.tiktok_price = (tv.value.trim() === '') ? null : (parseFloat(tv.value) || null);
+ const sm = document.getElementById('pdpShopeeMode'); if(sm) mpPayload.shopee_price_mode = sm.value || 'rm';
+ const tm = document.getElementById('pdpTiktokMode'); if(tm) mpPayload.tiktok_price_mode = tm.value || 'rm';
+ if(curSku && Object.keys(mpPayload).length) {
+ const { error } = await db.from('products_master').update(mpPayload).eq('sku', curSku);
+ if(error) { errs.push(curSku + ' (harga marketplace): ' + error.message); }
+ else { const idx = masterProducts.findIndex(x => x.sku === curSku); if(idx >= 0) Object.assign(masterProducts[idx], mpPayload); fieldUpdates++; }
+ }
+ } catch(e) { errs.push('harga marketplace: ' + e.message); }
  // push updated prices to marketplaces (fire-and-forget, single batch)
  try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(skus.join(','))).catch(()=>{}); } catch(e){}
  if(errs.length) console.warn('Variant save errors:', errs);
