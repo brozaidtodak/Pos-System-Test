@@ -243,13 +243,15 @@ exports.handler = async (event) => {
         // 3. Map to sales_history schema
         const rows = orders.map(mapOrder);
 
-        // 4. Dedup
+        // 4. Dedup (+ capture id/status existing untuk re-sync status)
         const snList = rows.map(r => r.metadata.shopee_order_sn).filter(Boolean);
         let seen = new Set();
+        const existMap = {};
         if (snList.length) {
             const existing = await sb('GET',
-                `/sales_history?select=sn:metadata->>shopee_order_sn&metadata->>shopee_order_sn=in.(${snList.map(s => `"${s}"`).join(',')})`);
-            seen = new Set((existing || []).map(r => r.sn).filter(Boolean));
+                `/sales_history?select=id,status,sn:metadata->>shopee_order_sn&metadata->>shopee_order_sn=in.(${snList.map(s => `"${s}"`).join(',')})`);
+            (existing || []).forEach(r => { if (r.sn) existMap[r.sn] = { id: r.id, status: r.status }; });
+            seen = new Set(Object.keys(existMap));
         }
         const fresh = rows.filter(r => !seen.has(r.metadata.shopee_order_sn));
 
@@ -286,6 +288,20 @@ exports.handler = async (event) => {
             for (const s of r.shortfalls) stock.shortfalls.push({ order_sn: order.metadata.shopee_order_sn, ...s });
             for (const e of r.errors) stock.errors.push({ order_sn: order.metadata.shopee_order_sn, ...e });
         }
+        // 5b. Re-sync STATUS untuk order yang DAH WUJUD — status di Shopee mungkin dah berubah
+        //     (UNPAID→CANCELLED, READY_TO_SHIP→SHIPPED→COMPLETED, dll). Elak order lapuk tersangkut
+        //     (cth Pending yang sebenarnya dah dibatalkan masih papar "Belum Bayar"). Status sahaja, tak sentuh stok.
+        let statusUpdated = 0;
+        for (const r of rows) {
+            const ex = existMap[r.metadata.shopee_order_sn];
+            if (ex && ex.status !== r.status) {
+                try {
+                    await sb('PATCH', `/sales_history?id=eq.${ex.id}`, { status: r.status }, { Prefer: 'return=minimal' });
+                    statusUpdated++;
+                } catch (e) { /* best-effort */ }
+            }
+        }
+        out.status_updated = statusUpdated;
         out.inserted = inserted;
         out.dupes_skipped = dupes;
         out.stock = stock;
