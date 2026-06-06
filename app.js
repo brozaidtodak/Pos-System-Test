@@ -3212,7 +3212,7 @@ window.__scLanded = function(){
 
 window.scNewShipment = function(){
  window.__scId = null;
- ['scLabel','scShipping','scParttimer'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+ ['scLabel','scShipping','scParttimer','scSupplier','scOrderDate','scExchange'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
  const sf=document.getElementById('scSfPct'); if(sf) sf.value='5';
  const picker=document.getElementById('scShipmentPicker'); if(picker) picker.value='';
  window.__scRows = [{ sku:'', name:'', rmb:'', qty:'' }];
@@ -3238,6 +3238,8 @@ window.scLoadSelected = async function(){
  if(!s) return;
  window.__scId = s.id;
  document.getElementById('scLabel').value = s.label||'';
+ const supEl=document.getElementById('scSupplier'); if(supEl) supEl.value = s.supplier||'';
+ const odEl=document.getElementById('scOrderDate'); if(odEl) odEl.value = s.order_date||'';
  document.getElementById('scExchange').value = s.exchange_rate!=null?s.exchange_rate:'';
  document.getElementById('scSfPct').value = s.sf_pct!=null?s.sf_pct:5;
  document.getElementById('scShipping').value = s.shipping_cost_rm!=null?s.shipping_cost_rm:'';
@@ -3253,6 +3255,8 @@ window.scSaveShipment = async function(){
  const u = window.currentUser||{};
  const payload = {
  label: (document.getElementById('scLabel').value||'').trim() || null,
+ supplier: ((document.getElementById('scSupplier')||{}).value||'').trim() || null,
+ order_date: ((document.getElementById('scOrderDate')||{}).value||'').trim() || null,
  exchange_rate: parseFloat(document.getElementById('scExchange').value)||0,
  sf_pct: parseFloat(document.getElementById('scSfPct').value)||0,
  shipping_cost_rm: parseFloat(document.getElementById('scShipping').value)||0,
@@ -3318,10 +3322,91 @@ window.scApplyBatch = async function(){
  if(typeof showToast==='function') showToast(`Stock-in batch: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
 };
 
+// p1_392 — tab switch (Kira vs Arkib) + past order/shipment archive
+window.scSetTab = function(tab, btn){
+ const calc = document.getElementById('scPaneCalc');
+ const arch = document.getElementById('scPaneArchive');
+ const bc = document.getElementById('scTabCalcBtn');
+ const ba = document.getElementById('scTabArchiveBtn');
+ if(calc) calc.style.display = (tab==='calc') ? '' : 'none';
+ if(arch) arch.style.display = (tab==='archive') ? '' : 'none';
+ [bc,ba].forEach(b=>{ if(b) b.classList.remove('ps-tab--active'); });
+ const active = btn || (tab==='archive'?ba:bc); if(active) active.classList.add('ps-tab--active');
+ if(tab==='archive') scLoadArchive();
+};
+
+window.__scArchive = [];
+window.scLoadArchive = async function(){
+ const tb = document.getElementById('scArchiveBody'); if(!tb) return;
+ if(typeof db==='undefined'||!db){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#EF4444;">DB tak available.</td></tr>'; return; }
+ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#9CA3AF;">Memuatkan…</td></tr>';
+ try {
+ const { data: ships } = await db.from('cost_shipments').select('*').order('order_date',{ascending:false, nullsFirst:false}).order('updated_at',{ascending:false}).limit(500);
+ const { data: items } = await db.from('cost_shipment_items').select('shipment_id,cost_rmb,qty').limit(100000);
+ const byShip = {};
+ (items||[]).forEach(it=>{ (byShip[it.shipment_id] = byShip[it.shipment_id] || []).push(it); });
+ window.__scArchive = (ships||[]).map(s=>{
+ const its = byShip[s.id] || [];
+ const goodsRmb = its.reduce((sum,it)=> sum + (Number(it.cost_rmb)||0)*(parseInt(it.qty,10)||0), 0);
+ const goods = goodsRmb * (Number(s.exchange_rate)||0);
+ const sf = goods * (Number(s.sf_pct)||0)/100;
+ const landed = goods + sf + (Number(s.shipping_cost_rm)||0) + (Number(s.parttimer_cost_rm)||0);
+ return { id:s.id, label:s.label, supplier:s.supplier, order_date:s.order_date, updated_at:s.updated_at, created_by:s.created_by, items:its.length, goods, landed };
+ });
+ scRenderArchive();
+ } catch(e){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#EF4444;">Error: '+(e.message||e)+'</td></tr>'; }
+};
+
+window.scRenderArchive = function(){
+ const tb = document.getElementById('scArchiveBody'); if(!tb) return;
+ const q = ((document.getElementById('scArchiveSearch')||{}).value||'').trim().toLowerCase();
+ let rows = window.__scArchive || [];
+ if(q) rows = rows.filter(r=> (`${r.supplier||''} ${r.label||''}`).toLowerCase().includes(q));
+ const fmt = (n)=> 'RM' + (Number(n)||0).toFixed(2);
+ if(!rows.length){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod.</td></tr>'; const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent=''; return; }
+ tb.innerHTML = rows.map(r=>{
+ const dt = r.order_date ? r.order_date : (r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-MY') : '—');
+ return `<tr>
+ <td>${hesc(dt)}</td>
+ <td>${hesc(r.supplier||'—')}</td>
+ <td>${hesc(r.label||('Shipment #'+r.id))}</td>
+ <td style="text-align:right;">${r.items}</td>
+ <td style="text-align:right;">${fmt(r.goods)}</td>
+ <td style="text-align:right; font-weight:700;">${fmt(r.landed)}</td>
+ <td style="font-size:11px; color:#6B7280;">${hesc(r.created_by||'—')}</td>
+ <td style="text-align:center; white-space:nowrap;">
+ <button onclick="scOpenArchived(${r.id})" style="padding:4px 10px; font-size:11px; font-weight:600; background:#FFF1E2; color:#A05F22; border:1px solid #CD7C32; border-radius:6px; cursor:pointer;">Buka</button>
+ <button onclick="scDeleteArchived(${r.id})" style="padding:4px 8px; font-size:11px; font-weight:600; background:#fff; color:#DC2626; border:1px solid #FECACA; border-radius:6px; cursor:pointer; margin-left:4px;">Padam</button>
+ </td>
+ </tr>`;
+ }).join('');
+ const totalLanded = rows.reduce((s,r)=> s + (r.landed||0), 0);
+ const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent = `${rows.length} rekod · jumlah landed semua: ${fmt(totalLanded)}`;
+};
+
+window.scOpenArchived = async function(id){
+ scSetTab('calc', document.getElementById('scTabCalcBtn'));
+ await scLoadList();
+ const picker = document.getElementById('scShipmentPicker'); if(picker) picker.value = String(id);
+ await scLoadSelected();
+ try { document.getElementById('shipmentCalcSection').scrollIntoView({behavior:'smooth', block:'start'}); } catch(e){}
+};
+
+window.scDeleteArchived = async function(id){
+ if(!confirm('Padam rekod shipment ni? (kos/stok yang dah di-apply TAK terjejas)')) return;
+ try {
+ await db.from('cost_shipments').delete().eq('id', id);
+ if(String(window.__scId)===String(id)) scNewShipment();
+ if(typeof showToast==='function') showToast('Rekod dipadam.','success');
+ scLoadArchive(); scLoadList();
+ } catch(e){ if(typeof showToast==='function') showToast('Padam gagal: '+e.message,'error'); }
+};
+
 window.renderShipmentCalc = function(){
  if(!(window.__scRows||[]).length) scNewShipment();
  else { scRenderItems(); scCompute(); }
  scLoadList();
+ scSetTab('calc', document.getElementById('scTabCalcBtn'));
  if(typeof lucide!=='undefined') lucide.createIcons();
 };
 
