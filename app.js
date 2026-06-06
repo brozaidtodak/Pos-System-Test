@@ -4434,6 +4434,52 @@ window.renderPaymentProofs = async function() {
 
 // p1_253 — Zoom state + handlers
 window.__ppImgZoomLevel = 1;
+// p1_375 — Zoom resit guna transform:scale + pan (pinch/seret/wheel/butang) supaya
+// jalan betul atas iPad/phone. Ganti engine lama (width:% + flexbox yg buggy).
+window.__ppZoom = { scale: 1, tx: 0, ty: 0 };
+window.__ppApplyZoom = function() {
+ const img = document.getElementById('ppImgModalImg');
+ if(!img) return;
+ const z = window.__ppZoom;
+ img.style.transform = `translate(${z.tx}px, ${z.ty}px) scale(${z.scale})`;
+ img.style.cursor = z.scale > 1 ? 'grab' : 'zoom-in';
+ const lbl = document.getElementById('ppImgZoomLabel');
+ if(lbl) lbl.textContent = z.scale <= 1.01 ? 'Fit' : (z.scale.toFixed(1) + 'x');
+};
+window.__ppImgZoomReset = function() { window.__ppZoom = { scale: 1, tx: 0, ty: 0 }; window.__ppApplyZoom(); };
+window.__ppImgZoomBy = function(delta) {
+ const z = window.__ppZoom;
+ z.scale = Math.min(6, Math.max(1, +(z.scale + delta).toFixed(2)));
+ if(z.scale === 1) { z.tx = 0; z.ty = 0; }
+ window.__ppApplyZoom();
+};
+// Tap gambar: kalau Fit → zoom masuk 2.5x; kalau dah zoom → biar (pan guna seret, Fit utk reset)
+window.__ppImgTapZoom = function() { if(window.__ppZoom.scale <= 1.01) { window.__ppZoom.scale = 2.5; window.__ppApplyZoom(); } };
+// Bind gesture sekali sahaja (pinch 2-jari, seret 1-jari/mouse, wheel)
+window.__ppBindZoomGestures = function() {
+ if(window.__ppZoomBound) return;
+ const scroll = document.getElementById('ppImgScroll');
+ const img = document.getElementById('ppImgModalImg');
+ if(!scroll || !img) return;
+ window.__ppZoomBound = true;
+ let mode = null, startDist = 0, startScale = 1, lastX = 0, lastY = 0, startTx = 0, startTy = 0;
+ const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+ scroll.addEventListener('touchstart', (e) => {
+ if(e.touches.length === 2) { mode = 'pinch'; startDist = dist(e.touches) || 1; startScale = window.__ppZoom.scale; }
+ else if(e.touches.length === 1 && window.__ppZoom.scale > 1) { mode = 'pan'; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; startTx = window.__ppZoom.tx; startTy = window.__ppZoom.ty; }
+ }, { passive: false });
+ scroll.addEventListener('touchmove', (e) => {
+ if(mode === 'pinch' && e.touches.length === 2) { e.preventDefault(); const z = window.__ppZoom; z.scale = Math.min(6, Math.max(1, startScale * (dist(e.touches) / startDist))); if(z.scale === 1) { z.tx = 0; z.ty = 0; } window.__ppApplyZoom(); }
+ else if(mode === 'pan' && e.touches.length === 1) { e.preventDefault(); const z = window.__ppZoom; z.tx = startTx + (e.touches[0].clientX - lastX); z.ty = startTy + (e.touches[0].clientY - lastY); window.__ppApplyZoom(); }
+ }, { passive: false });
+ scroll.addEventListener('touchend', () => { mode = null; });
+ scroll.addEventListener('wheel', (e) => { e.preventDefault(); window.__ppImgZoomBy(e.deltaY < 0 ? 0.3 : -0.3); }, { passive: false });
+ // Mouse drag pan (desktop)
+ let dragging = false, mX = 0, mY = 0, mTx = 0, mTy = 0;
+ img.addEventListener('mousedown', (e) => { if(window.__ppZoom.scale > 1) { dragging = true; mX = e.clientX; mY = e.clientY; mTx = window.__ppZoom.tx; mTy = window.__ppZoom.ty; e.preventDefault(); } });
+ window.addEventListener('mousemove', (e) => { if(dragging) { const z = window.__ppZoom; z.tx = mTx + (e.clientX - mX); z.ty = mTy + (e.clientY - mY); window.__ppApplyZoom(); } });
+ window.addEventListener('mouseup', () => { dragging = false; });
+};
 window.__ppOpenImg = function(url) {
  const m = document.getElementById('ppImgModal');
  const img = document.getElementById('ppImgModalImg');
@@ -4441,46 +4487,15 @@ window.__ppOpenImg = function(url) {
  if(m && img) {
  img.src = url;
  if(nt) nt.href = url;
- // Reset zoom to Fit
- window.__ppImgZoom(1);
+ window.__ppImgZoomReset();
  m.style.display = 'flex';
- // Lucide icons (Open external icon)
+ window.__ppBindZoomGestures();
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  }
 };
-window.__ppImgZoom = function(level) {
- window.__ppImgZoomLevel = level;
- const img = document.getElementById('ppImgModalImg');
- const scroll = document.getElementById('ppImgScroll');
- if(!img) return;
- if(level === 1) {
- img.style.transform = '';
- img.style.maxWidth = '100%';
- img.style.maxHeight = '100%';
- img.style.cursor = 'zoom-in';
- if(scroll) scroll.style.alignItems = 'center';
- } else {
- img.style.transform = '';
- img.style.maxWidth = 'none';
- img.style.maxHeight = 'none';
- img.style.width = (level * 100) + '%';
- img.style.height = 'auto';
- img.style.cursor = level >= 3 ? 'zoom-out' : 'zoom-in';
- if(scroll) scroll.style.alignItems = 'flex-start';
- }
- // Update toolbar active button styling
- [1, 2, 3].forEach(l => {
- const btn = document.getElementById('ppImgZoom' + l);
- if(btn) {
- if(l === level) { btn.style.background = '#fff'; btn.style.color = '#111'; }
- else { btn.style.background = '#374151'; btn.style.color = '#fff'; }
- }
- });
-};
-window.__ppImgCycleZoom = function() {
- const next = window.__ppImgZoomLevel >= 3 ? 1 : window.__ppImgZoomLevel + 1;
- window.__ppImgZoom(next);
-};
+// Back-compat: panggilan lama __ppImgZoom(level)/__ppImgCycleZoom kekal berfungsi
+window.__ppImgZoom = function(level) { window.__ppZoom = { scale: Math.max(1, level || 1), tx: 0, ty: 0 }; window.__ppApplyZoom(); };
+window.__ppImgCycleZoom = function() { window.__ppImgTapZoom(); };
 
 // p1_197 — Build receipt text from sales_history row + send via WhatsApp.
 // Called per-row from Payment Proofs (and reusable from anywhere with saleId).
