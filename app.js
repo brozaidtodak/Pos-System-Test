@@ -4512,6 +4512,9 @@ window.__ppBindZoomGestures = function() {
  window.addEventListener('mousemove', (e) => { if(dragging) { const z = window.__ppZoom; z.tx = mTx + (e.clientX - mX); z.ty = mTy + (e.clientY - mY); window.__ppApplyZoom(); } });
  window.addEventListener('mouseup', () => { dragging = false; });
 };
+// p1_378 — build stamp visible dalam modal supaya boleh sahkan iPad jalan versi mana
+// (diagnostik cache PWA). Naikkan bila tukar kod zoom.
+window.__ZOOM_BUILD = '454';
 window.__ppOpenImg = function(url) {
  const m = document.getElementById('ppImgModal');
  const img = document.getElementById('ppImgModalImg');
@@ -4522,6 +4525,7 @@ window.__ppOpenImg = function(url) {
  window.__ppImgZoomReset();
  m.style.display = 'flex';
  window.__ppBindZoomGestures();
+ const bv = document.getElementById('ppZoomBuild'); if(bv) bv.textContent = 'zoom build ' + window.__ZOOM_BUILD;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  }
 };
@@ -20915,7 +20919,14 @@ window.__aoViewOrder = function(saleId) {
  <span style="font-size:18px; font-weight:800; color:#101010;">RM ${grandTotal.toFixed(2)}</span>
  </div>
  ${fulfilHtml}
- ${proof ? `<div style="margin-bottom:14px;"><span style="font-size:12px; color:#6B7280;">Bukti bayar: </span><a href="${esc(proof)}" target="_blank" rel="noopener" style="color:var(--primary); font-weight:700; font-size:12px; text-decoration:none;"><i data-lucide="external-link" style="width:12px;height:12px;vertical-align:-1px;"></i> Buka</a></div>` : ''}
+ ${proof ? ((() => {
+ const low = String(proof).toLowerCase();
+ const isImg = !low.endsWith('.pdf') && !low.endsWith('.heic') && !low.endsWith('.heif');
+ // p1_378 — Bukti bayar dalam panel order detail: gambar boleh TEKAN untuk zoom
+ // (Zaid: nak zoom in/out resit dekat All Orders). Buka modal zoom __ppOpenImg.
+ if(isImg) return `<div style="margin-bottom:14px;"><div style="font-size:12px; color:#6B7280; margin-bottom:6px;">Bukti bayar <span style="color:#9CA3AF;">(tekan gambar untuk zoom)</span>:</div><img src="${esc(proof)}" loading="lazy" onclick="window.__ppOpenImg && window.__ppOpenImg(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" style="max-width:170px; max-height:170px; object-fit:contain; border-radius:8px; border:1px solid #E5E7EB; cursor:zoom-in; display:block;"><a href="${esc(proof)}" target="_blank" rel="noopener" style="display:none; margin-top:6px; align-items:center; gap:4px; color:var(--primary); font-weight:700; font-size:11.5px; text-decoration:none;"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Buka tab baru</a></div>`;
+ return `<div style="margin-bottom:14px;"><span style="font-size:12px; color:#6B7280;">Bukti bayar: </span><a href="${esc(proof)}" target="_blank" rel="noopener" style="color:var(--primary); font-weight:700; font-size:12px; text-decoration:none;"><i data-lucide="external-link" style="width:12px;height:12px;vertical-align:-1px;"></i> Buka</a></div>`;
+ })()) : ''}
  <div style="display:flex; gap:8px;">
  <button onclick="window.__aoPrintPackingSlip && window.__aoPrintPackingSlip(${s.id})" style="flex:1.4; background:#CD7C32; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak Packing Slip</button>
  <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; background:#F3E8FF; border:1px solid #C4B5FD; color:#5B21B6; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit</button>
