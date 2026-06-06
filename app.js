@@ -20313,7 +20313,8 @@ window.__aoViewOrder = function(saleId) {
  ${fulfilHtml}
  ${proof ? `<div style="margin-bottom:14px;"><span style="font-size:12px; color:#6B7280;">Bukti bayar: </span><a href="${esc(proof)}" target="_blank" rel="noopener" style="color:var(--primary); font-weight:700; font-size:12px; text-decoration:none;"><i data-lucide="external-link" style="width:12px;height:12px;vertical-align:-1px;"></i> Buka</a></div>` : ''}
  <div style="display:flex; gap:8px;">
- <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; background:#F3E8FF; border:1px solid #C4B5FD; color:#5B21B6; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit Order</button>
+ <button onclick="window.__aoPrintPackingSlip && window.__aoPrintPackingSlip(${s.id})" style="flex:1.4; background:#CD7C32; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak Packing Slip</button>
+ <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; background:#F3E8FF; border:1px solid #C4B5FD; color:#5B21B6; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit</button>
  <button onclick="document.getElementById('aoViewOverlay').remove()" style="flex:1; background:#101010; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;">Tutup</button>
  </div>
  </div>
@@ -20366,6 +20367,178 @@ window.__aoSetFulfil = async function(saleId, action, opts) {
  } catch(e) {
  if(typeof showToast === 'function') showToast('Update gagal: ' + (e.message || e), 'error');
  }
+};
+
+// p1_323 — helper: cari lokasi bin untuk SKU
+window.__aoBinFor = function(sku) {
+ if(typeof masterProducts === 'undefined') return '';
+ const p = masterProducts.find(x => x.sku === sku);
+ return (p && p.location_bin) ? String(p.location_bin) : '';
+};
+// p1_323 — helper: ambil setting kedai untuk header cetak
+window.__aoShopHeader = function() {
+ let shop = {};
+ try { shop = (JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop) || {}; } catch(e){}
+ return { name: shop.name || '10 CAMP', addr: shop.address || '', ssm: shop.ssm || '' };
+};
+
+// p1_323 — Cetak Packing Slip untuk satu order
+window.__aoPrintPackingSlip = function(saleId) {
+ if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return;
+ const s = salesHistory.find(x => x.id === saleId);
+ if(!s) return;
+ const esc = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+ const md = s.metadata || {};
+ const ref = md.shopee_order_sn || md.tiktok_order_id || md.online_order_ref || ('#' + s.id);
+ const m = window.__aoStatusMeta(s.status);
+ const f = md.fulfilment || {};
+ const shop = window.__aoShopHeader();
+ const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+ const items = Array.isArray(s.items) ? s.items : [];
+ const totalQty = items.reduce((n, it) => n + window.__aoItemQty(it), 0);
+ const isMarketplace = /shopee|tiktok/i.test(s.channel || '');
+ const win = window.open('', '_blank', 'width=800,height=900');
+ if(!win) { if(typeof showToast === 'function') showToast('Popup disekat browser — benarkan popup untuk cetak.', 'warn'); return; }
+ win.document.write(`<!DOCTYPE html><html><head><title>Packing Slip ${esc(ref)}</title>
+ <style>
+ body { font-family:'Helvetica Neue',Arial,sans-serif; max-width:780px; margin:auto; padding:30px; color:#111; }
+ .header { border-bottom:3px solid #111; padding-bottom:10px; margin-bottom:18px; }
+ .header h1 { font-size:22px; margin:0 0 2px; }
+ .header h2 { font-size:18px; margin:10px 0 0; color:#CD7C32; }
+ .meta { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-bottom:16px; font-size:13px; }
+ .cust { background:#FAFAFA; border:1px solid #E5E7EB; border-radius:6px; padding:10px 12px; margin-bottom:16px; font-size:13px; }
+ table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px; }
+ th,td { border:1px solid #999; padding:7px 8px; text-align:left; }
+ th { background:#f3f4f6; }
+ .center { text-align:center; } .right { text-align:right; }
+ .qty { font-size:16px; font-weight:bold; text-align:center; }
+ .bin { font-family:'SF Mono',Menlo,monospace; background:#FEF3C7; }
+ .total-row { font-weight:bold; background:#FEF3C7; }
+ .note { background:#fff7ed; border:1px solid #fed7aa; padding:9px 11px; border-radius:5px; font-size:12px; margin-bottom:14px; }
+ .signoff { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:40px; }
+ .signoff div { border-top:1px solid #111; padding-top:6px; font-size:11px; }
+ @media print { @page { margin:1.4cm; } button { display:none; } }
+ </style></head><body>
+ <div class="header">
+ <h1>${esc(shop.name)}</h1>
+ <p style="margin:0; font-size:11px; color:#666;">${esc(shop.addr)}</p>
+ <h2>PACKING SLIP</h2>
+ </div>
+ <div class="meta">
+ <div><strong>Order:</strong> ${esc(ref)}</div>
+ <div><strong>POS #:</strong> ${s.id}</div>
+ <div><strong>Tarikh:</strong> ${esc(dt)}</div>
+ <div><strong>Channel:</strong> ${esc(s.channel || '-')}</div>
+ <div><strong>Status:</strong> ${esc(m.label)}</div>
+ <div><strong>Kurier:</strong> ${esc(f.courier || md.shipping_carrier || md.shipping_provider || '____________')}</div>
+ <div><strong>Tracking:</strong> ${esc(f.tracking_no || '________________________')}</div>
+ <div><strong>Bayar:</strong> ${esc(s.payment_method || '-')}</div>
+ </div>
+ <div class="cust">
+ <strong>Pelanggan:</strong> ${esc(s.customer_name || 'Walk-In')}${s.customer_phone ? ' &nbsp;·&nbsp; ' + esc(s.customer_phone) : ''}${(s.customer_email || md.buyer_email) ? ' &nbsp;·&nbsp; ' + esc(s.customer_email || md.buyer_email) : ''}
+ ${isMarketplace ? '<br><span style="font-size:11px; color:#92400E;">Alamat penghantaran penuh ada di seller centre ' + esc(s.channel) + ' — tampal label dari sana.</span>' : ''}
+ </div>
+ <table>
+ <thead><tr><th class="center">#</th><th>SKU</th><th>Nama Produk</th><th class="center">Lokasi Rak</th><th class="center">Qty</th><th class="center">Tick</th></tr></thead>
+ <tbody>
+ ${items.length ? items.map((it, i) => `<tr>
+ <td class="center">${i + 1}</td>
+ <td><strong>${esc(it.sku || '-')}</strong></td>
+ <td>${esc((it.name || '').slice(0, 70))}</td>
+ <td class="center bin">${esc(window.__aoBinFor(it.sku) || '—')}</td>
+ <td class="qty">${window.__aoItemQty(it)}</td>
+ <td class="center">&#9744;</td>
+ </tr>`).join('') : '<tr><td colspan="6" class="center" style="color:#999; padding:16px;">Tiada senarai barang direkod.</td></tr>'}
+ <tr class="total-row"><td colspan="4" class="right">JUMLAH UNIT:</td><td class="qty">${totalQty}</td><td></td></tr>
+ </tbody>
+ </table>
+ <div class="signoff">
+ <div><strong>Dipack oleh</strong><br><br>Nama: ______________________<br>Tarikh: ____________</div>
+ <div><strong>Disemak</strong><br><br>Nama: ______________________<br>Tarikh: ____________</div>
+ </div>
+ <p style="margin-top:26px; font-size:10px; color:#999; text-align:center;">Auto-generated by POS10C · ${esc(ref)} · ${esc(dt)}</p>
+ <button onclick="window.print()" style="position:fixed; top:20px; right:20px; padding:10px 20px; background:#CD7C32; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Print</button>
+ </body></html>`);
+ win.document.close();
+};
+
+// p1_323 — Cetak Senarai Pick (gabung semua order "Perlu Pack" ikut filter semasa, disusun ikut lokasi rak)
+window.__aoPrintPickingList = function() {
+ if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return;
+ const q = (document.getElementById('aoSearch')?.value || '').trim().toLowerCase();
+ const channel = document.getElementById('aoChannel')?.value || '';
+ const period = document.getElementById('aoPeriod')?.value || 'all';
+ const cutoff = period === 'all' ? 0 : (Date.now() - parseInt(period, 10) * 86400000);
+ const hideTest = !!document.getElementById('aoHideTest')?.checked;
+ const ONLINE_CHANNELS = ['shopee', 'tiktok', 'whatsapp', 'easystore'];
+ const orders = salesHistory.filter(s => {
+ if(window.__aoStatusMeta(s.status).canon !== 'To Fulfil') return false;
+ if(hideTest && s.is_test) return false;
+ if(cutoff && s.created_at && new Date(s.created_at).getTime() < cutoff) return false;
+ const chLower = (s.channel || '').toLowerCase();
+ if(channel === 'walkin') { if(!(chLower.includes('walk') || chLower.includes('cashier'))) return false; }
+ else if(channel === 'online') { if(!ONLINE_CHANNELS.some(c => chLower.includes(c))) return false; }
+ else if(channel && s.channel !== channel) return false;
+ if(q) {
+ const itemsTxt = Array.isArray(s.items) ? s.items.map(i => (i.sku || '') + ' ' + (i.name || '')).join(' ') : '';
+ if(!`${s.customer_name||''} ${s.customer_phone||''} ${itemsTxt}`.toLowerCase().includes(q)) return false;
+ }
+ return true;
+ });
+ if(!orders.length) { if(typeof showToast === 'function') showToast('Tiada order "Perlu Pack" untuk dicetak.', 'info'); return; }
+ const esc = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+ const bySku = {};
+ let totalUnits = 0;
+ orders.forEach(s => {
+ (Array.isArray(s.items) ? s.items : []).forEach(it => {
+ const sku = it.sku || '?';
+ if(!bySku[sku]) bySku[sku] = { sku, name: it.name || sku, bin: window.__aoBinFor(sku), qty: 0, ordCount: 0 };
+ const qn = window.__aoItemQty(it);
+ bySku[sku].qty += qn; bySku[sku].ordCount += 1; totalUnits += qn;
+ });
+ });
+ const rows = Object.values(bySku).sort((a, b) => (a.bin || 'zzzz').localeCompare(b.bin || 'zzzz') || a.sku.localeCompare(b.sku));
+ const shop = window.__aoShopHeader();
+ const today = new Date().toLocaleString('en-MY', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ const win = window.open('', '_blank', 'width=820,height=900');
+ if(!win) { if(typeof showToast === 'function') showToast('Popup disekat browser — benarkan popup untuk cetak.', 'warn'); return; }
+ win.document.write(`<!DOCTYPE html><html><head><title>Senarai Pick</title>
+ <style>
+ body { font-family:'Helvetica Neue',Arial,sans-serif; max-width:800px; margin:auto; padding:28px; color:#111; }
+ .header { border-bottom:3px solid #111; padding-bottom:10px; margin-bottom:16px; }
+ .header h1 { font-size:20px; margin:0; }
+ .header h2 { font-size:17px; margin:8px 0 0; color:#CD7C32; }
+ .sub { font-size:12px; color:#555; margin-top:4px; }
+ table { width:100%; border-collapse:collapse; font-size:13px; }
+ th,td { border:1px solid #999; padding:7px 8px; text-align:left; }
+ th { background:#f3f4f6; }
+ .center { text-align:center; }
+ .bin { font-family:'SF Mono',Menlo,monospace; background:#FEF3C7; font-weight:bold; }
+ .qty { font-size:16px; font-weight:bold; text-align:center; }
+ @media print { @page { margin:1.2cm; } button { display:none; } }
+ </style></head><body>
+ <div class="header">
+ <h1>${esc(shop.name)}</h1>
+ <h2>SENARAI PICK — Perlu Pack</h2>
+ <div class="sub">${esc(today)} · ${orders.length} order · ${rows.length} SKU · ${totalUnits} unit · disusun ikut lokasi rak</div>
+ </div>
+ <table>
+ <thead><tr><th class="center">Lokasi Rak</th><th>SKU</th><th>Nama Produk</th><th class="center">Qty</th><th class="center">Order</th><th class="center">Tick</th></tr></thead>
+ <tbody>
+ ${rows.map(r => `<tr>
+ <td class="center bin">${esc(r.bin || '—')}</td>
+ <td><strong>${esc(r.sku)}</strong></td>
+ <td>${esc((r.name || '').slice(0, 70))}</td>
+ <td class="qty">${r.qty}</td>
+ <td class="center">${r.ordCount}</td>
+ <td class="center">&#9744;</td>
+ </tr>`).join('')}
+ </tbody>
+ </table>
+ <p style="margin-top:24px; font-size:10px; color:#999; text-align:center;">Auto-generated by POS10C · Senarai Pick · ${esc(today)}</p>
+ <button onclick="window.print()" style="position:fixed; top:20px; right:20px; padding:10px 20px; background:#CD7C32; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Print</button>
+ </body></html>`);
+ win.document.close();
 };
 
 window.openAddWalkinOrder = function() {
