@@ -2370,6 +2370,13 @@ a:focus-visible {
 @media (max-width: 1100px) {.dash-hero-row { grid-template-columns: 1fr 1fr 1fr; } }
 @media (max-width: 720px) {.dash-hero-row { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 480px) {.dash-hero-row { grid-template-columns: 1fr; } }
+/* p1_381 — #homeSection .dash-hero (grid 4-kolum 1.6fr 1fr 1fr 1fr) takde responsive
+   -> atas phone kad KPI+carta tersepit melebihi lebar skrin -> overflow mendatar
+   (seluruh page boleh geser tepi, kad memo terpotong). Tambah responsive + min-width:0. */
+@media (max-width: 1100px) { #homeSection .dash-hero { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { #homeSection .dash-hero { grid-template-columns: 1fr; } }
+#homeSection .dash-hero-card { min-width: 0; }
+#homeSection .dash-hero-card canvas, #homeSection .dash-hero-card svg { max-width: 100%; height: auto; }
 
 /* Hero card — dominates */
 .dash-hero {
