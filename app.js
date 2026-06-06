@@ -3372,20 +3372,23 @@ window.scRenderArchive = function(){
  const fmt = (n)=> 'RM' + (Number(n)||0).toFixed(2);
  if(!rows.length){ tb.innerHTML='<tr><td colspan="12" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod.</td></tr>'; const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent=''; return; }
  const unitsOf = (r)=> (r.rows||[]).reduce((s,it)=> s + (it.qty||0), 0);
- tb.innerHTML = rows.map(r=>{
+ const fmtEx = (n)=> { const v = Number(n); if(!v) return '—'; return (Math.round(v*10000)/10000).toString(); };
+ const shortBy = (s)=> { s = String(s||'—'); const i = s.indexOf('('); return i>0 ? s.slice(0,i).trim() : s; };
+ tb.innerHTML = rows.map((r,i)=>{
  const dt = r.order_date ? r.order_date : (r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-MY') : '—');
- return `<tr onclick="scToggleArchiveDetail(${r.id})" style="cursor:pointer;" title="Klik untuk buka detail item">
- <td><span id="scCaret_${r.id}" style="color:#CD7C32; font-size:10px;">&#9656;</span> ${hesc(dt)}</td>
+ const stripe = (i % 2 === 0) ? '#FFFFFF' : '#FBF7F1';
+ return `<tr class="sc-row" onclick="scToggleArchiveDetail(${r.id})" style="cursor:pointer; background:${stripe};" title="Klik untuk buka detail item">
+ <td style="white-space:nowrap;"><span id="scCaret_${r.id}" style="color:#CD7C32; font-size:10px;">&#9656;</span> ${hesc(dt)}</td>
  <td>${hesc(r.supplier||'—')}</td>
  <td>${hesc(r.label||('Shipment #'+r.id))}</td>
  <td style="text-align:right;">${r.items}</td>
  <td style="text-align:right;">${unitsOf(r)}</td>
- <td style="text-align:right; color:#6B7280;">${r.ex || '—'}</td>
+ <td style="text-align:right; color:#6B7280;">${fmtEx(r.ex)}</td>
  <td style="text-align:right;">${fmt(r.goods)}</td>
  <td style="text-align:right;">${fmt(r.shipping)}</td>
  <td style="text-align:right;">${fmt(r.parttimer)}</td>
  <td style="text-align:right; font-weight:700; color:#101010;">${fmt(r.landed)}</td>
- <td style="font-size:11px; color:#6B7280;">${hesc(r.created_by||'—')}</td>
+ <td style="font-size:11px; color:#6B7280; white-space:nowrap;" title="${hesc(r.created_by||'')}">${hesc(shortBy(r.created_by))}</td>
  <td style="text-align:center; white-space:nowrap;">
  <button onclick="event.stopPropagation(); scOpenArchived(${r.id})" style="padding:4px 10px; font-size:11px; font-weight:600; background:#FFF1E2; color:#A05F22; border:1px solid #CD7C32; border-radius:6px; cursor:pointer;">Buka</button>
  <button onclick="event.stopPropagation(); scDeleteArchived(${r.id})" style="padding:4px 8px; font-size:11px; font-weight:600; background:#fff; color:#DC2626; border:1px solid #FECACA; border-radius:6px; cursor:pointer; margin-left:4px;">Padam</button>
