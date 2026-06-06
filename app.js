@@ -1120,7 +1120,8 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  // Returns + loss
  const retRows = (returns && returns.data) || [];
  const retCount = retRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
- const lossRm = retRows.reduce((sum, r) => sum + (Number(r.cost_impact) || 0), 0);
+ // p1_338 — cost_impact = kos seunit; kerugian sebenar = kos × qty (selaras dengan Returns section)
+ const lossRm = retRows.reduce((sum, r) => sum + (Number(r.cost_impact) || 0) * (Number(r.qty) || 0), 0);
  const elRC = document.getElementById('rpWatchReturnsCount');
  const elLO = document.getElementById('rpWatchLossRm');
  const cardR = document.getElementById('rpWatchReturnsCard');
@@ -1559,7 +1560,8 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
  const { data } = await db.from('returns_log').select('qty,cost_impact').gte('reported_at', startIso).lte('reported_at', endIso);
  const rows = data || [];
  const count = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
- const loss = rows.reduce((s, r) => s + (Number(r.cost_impact) || 0), 0);
+ // p1_338 — cost_impact = kos seunit; kerugian sebenar = kos × qty (selaras dengan Returns section)
+ const loss = rows.reduce((s, r) => s + (Number(r.cost_impact) || 0) * (Number(r.qty) || 0), 0);
  const card = document.getElementById('rpInvReturnsCard');
  const elN = document.getElementById('rpInvReturnsCount');
  const elS = document.getElementById('rpInvReturnsSub');
