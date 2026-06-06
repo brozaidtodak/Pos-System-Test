@@ -3299,6 +3299,11 @@ window.__psListFilter = function() {
  const SHIP = parseFloat(document.getElementById('psListShip')?.value) || 0;
  const HANDraw = document.getElementById('psListHand')?.value;
  const HAND = (HANDraw === '' || HANDraw == null || isNaN(parseFloat(HANDraw))) ? 5 : parseFloat(HANDraw);
+ // p1_358 — stok SEBENAR dari inventory_batches (sum qty_remaining), sync dengan stok produk
+ const __psStock = {};
+ if(typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches)) {
+ for(const b of inventoryBatches) { if(b && (Number(b.qty_remaining) || 0) > 0) __psStock[b.sku] = (__psStock[b.sku] || 0) + Number(b.qty_remaining); }
+ }
  // Single-quote SVG fallback (window.__psNoImg) — safe in onerror without escaping
  if(!window.__psNoImg) window.__psNoImg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><rect width='80' height='80' fill='%23F9FAFB'/><text x='40' y='44' text-anchor='middle' fill='%23D1D5DB' font-family='sans-serif' font-size='10'>No Img</text></svg>";
  // p1_354 — input editable (stopPropagation supaya tak trigger load-calc bila taip)
@@ -3306,7 +3311,7 @@ window.__psListFilter = function() {
  const body = slice.map((p, i) => {
  const price = Number(p.price || 0);
  const cost = Number(p.cost_rmb || 0);
- const stock = Number(p.stock || 0);
+ const stock = __psStock[p.sku] || 0;
  let badge = '';
  if(price > 0 && cost > 0) badge = '<span style="background:#D1FAE5; color:#065F46; padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700;">Set</span>';
  else if(price > 0) badge = '<span style="background:#FEF3C7; color:#92400E; padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700;">No Cost</span>';
