@@ -277,11 +277,13 @@ exports.handler = async (event) => {
         // 3. Map
         const rows = orders.map(mapOrder);
 
-        // 4. Dedup against already-imported TikTok-direct orders
+        // 4. Dedup against already-imported TikTok-direct orders (+ capture id/status untuk re-sync)
         const idList = rows.map(r => r.metadata.tiktok_order_id);
         const existing = await sb('GET',
-            `/sales_history?select=tid:metadata->>tiktok_order_id&metadata->>tiktok_order_id=in.(${idList.join(',')})`);
-        const seen = new Set((existing || []).map(r => r.tid).filter(Boolean));
+            `/sales_history?select=id,status,tid:metadata->>tiktok_order_id&metadata->>tiktok_order_id=in.(${idList.join(',')})`);
+        const existMap = {};
+        (existing || []).forEach(r => { if (r.tid) existMap[r.tid] = { id: r.id, status: r.status }; });
+        const seen = new Set(Object.keys(existMap));
         const fresh = rows.filter(r => !seen.has(r.metadata.tiktok_order_id));
 
         out.mapped = rows.length;
@@ -302,6 +304,21 @@ exports.handler = async (event) => {
             inserted += batch.length;
         }
         out.inserted = inserted;
+
+        // 5b. Re-sync STATUS untuk order yang DAH WUJUD — status di TikTok mungkin dah berubah
+        //     (UNPAID→CANCELLED, AWAITING_SHIPMENT→COMPLETED, dll). Sync insert-sahaja dulu tinggal status lapuk
+        //     (cth order Pending yang sebenarnya dah dibatalkan masih papar "Belum Bayar" di POS).
+        let statusUpdated = 0;
+        for (const r of rows) {
+            const ex = existMap[r.metadata.tiktok_order_id];
+            if (ex && ex.status !== r.status) {
+                try {
+                    await sb('PATCH', `/sales_history?id=eq.${ex.id}`, { status: r.status }, { Prefer: 'return=minimal' });
+                    statusUpdated++;
+                } catch (e) { /* best-effort */ }
+            }
+        }
+        out.status_updated = statusUpdated;
 
         // 6. Lubang A — deduct POS stock for each NEWLY-imported order (FIFO).
         // Only `fresh` orders reach here (already deduped), so each deducts once.
