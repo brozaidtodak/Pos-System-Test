@@ -3244,6 +3244,12 @@ window.__psRenderList = function() {
  const brands = Array.from(new Set(masterProducts.map(p => (p.brand || '').trim()).filter(Boolean))).sort();
  brandSel.innerHTML = '<option value="">Semua brand</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
  }
+ // p1_368 — Kategori dropdown (macam Products)
+ const catSel = document.getElementById('psListCategory');
+ if(catSel && catSel.options.length <= 1) {
+ const cats = Array.from(new Set(masterProducts.map(p => (p.category || '').trim()).filter(Boolean))).sort();
+ catSel.innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+ }
  // p1_214 — Populate location dropdown (CSV codes seperti C-IV, A-IR etc)
  const locSel = document.getElementById('psListLocation');
  if(locSel && locSel.options.length <= 1) {
@@ -3259,11 +3265,14 @@ window.__psListFilter = function() {
  if(!wrap) return;
  const q = ((document.getElementById('psListSearch') && document.getElementById('psListSearch').value) || '').toLowerCase().trim();
  const brand = (document.getElementById('psListBrand') && document.getElementById('psListBrand').value) || '';
+ const cat = (document.getElementById('psListCategory') && document.getElementById('psListCategory').value) || '';
  const status = (document.getElementById('psListStatus') && document.getElementById('psListStatus').value) || '';
  const loc = (document.getElementById('psListLocation') && document.getElementById('psListLocation').value) || '';
+ const sort = (document.getElementById('psListSort') && document.getElementById('psListSort').value) || 'sku';
  const all = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
  const rows = all.filter(p => {
  if(brand && (p.brand || '') !== brand) return false;
+ if(cat && (p.category || '') !== cat) return false;
  if(loc && (p.location_bin || '') !== loc) return false;
  if(q) {
  const sku = (p.sku || '').toLowerCase();
@@ -3277,6 +3286,18 @@ window.__psListFilter = function() {
  if(status === 'nocost' && !(price > 0 && cost <= 0)) return false;
  return true;
  });
+ // p1_368 — Susun (natural SKU sort default, sama macam Bulk Edit p1_366/367) supaya senarai tak bersepah ikut turutan DB rawak
+ const __psStockSum = (sku) => {
+ if(typeof inventoryBatches === 'undefined' || !Array.isArray(inventoryBatches)) return 0;
+ let s = 0; for(const b of inventoryBatches) { if(b && b.sku === sku && (Number(b.qty_remaining) || 0) > 0) s += Number(b.qty_remaining); } return s;
+ };
+ const __skuParts = (s) => { const m = String(s||'').toUpperCase().match(/^([A-Z]+)0*(\d+)/); return m ? [m[1], parseInt(m[2],10)] : [String(s||'').toUpperCase(), Infinity]; };
+ const __bySku = (a,b) => { const pa=__skuParts(a.sku), pb=__skuParts(b.sku); if(pa[0]!==pb[0]) return pa[0]<pb[0]?-1:1; if(pa[1]!==pb[1]) return pa[1]-pb[1]; return String(a.sku||'').localeCompare(String(b.sku||'')); };
+ if(sort === 'brand') rows.sort((a,b)=>{ const ba=(a.brand||'').toLowerCase(), bb=(b.brand||'').toLowerCase(); if(ba!==bb) return ba<bb?-1:1; return __bySku(a,b); });
+ else if(sort === 'category') rows.sort((a,b)=>{ const ca=(a.category||'').toLowerCase(), cb=(b.category||'').toLowerCase(); if(ca!==cb) return ca<cb?-1:1; return __bySku(a,b); });
+ else if(sort === 'price_desc') rows.sort((a,b)=> ((Number(b.price)||0)-(Number(a.price)||0)) || __bySku(a,b));
+ else if(sort === 'stock_asc') rows.sort((a,b)=> (__psStockSum(a.sku)-__psStockSum(b.sku)) || __bySku(a,b));
+ else rows.sort(__bySku);
  const totalSet = all.filter(p => Number(p.price || 0) > 0 && Number(p.cost_rmb || 0) > 0).length;
  const totalNoPrice = all.filter(p => !(Number(p.price || 0) > 0)).length;
  const totalNoCost = all.filter(p => Number(p.price || 0) > 0 && !(Number(p.cost_rmb || 0) > 0)).length;
@@ -3285,7 +3306,7 @@ window.__psListFilter = function() {
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
  // p1_354 — pagination 50/page (elak sangkut) + reset ke halaman 1 bila filter berubah
  const PER = 50;
- const sig = [q, brand, status, loc].join('|');
+ const sig = [q, brand, cat, status, loc, sort].join('|');
  if(window.__psLastSig !== sig) { window.__psPage = 1; window.__psLastSig = sig; }
  const totalPages = Math.max(1, Math.ceil(rows.length / PER));
  if(!window.__psPage || window.__psPage < 1) window.__psPage = 1;
