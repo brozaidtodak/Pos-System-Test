@@ -3370,7 +3370,8 @@ window.scRenderArchive = function(){
  let rows = window.__scArchive || [];
  if(q) rows = rows.filter(r=> (`${r.supplier||''} ${r.label||''}`).toLowerCase().includes(q));
  const fmt = (n)=> 'RM' + (Number(n)||0).toFixed(2);
- if(!rows.length){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod.</td></tr>'; const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent=''; return; }
+ if(!rows.length){ tb.innerHTML='<tr><td colspan="12" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod.</td></tr>'; const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent=''; return; }
+ const unitsOf = (r)=> (r.rows||[]).reduce((s,it)=> s + (it.qty||0), 0);
  tb.innerHTML = rows.map(r=>{
  const dt = r.order_date ? r.order_date : (r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-MY') : '—');
  return `<tr onclick="scToggleArchiveDetail(${r.id})" style="cursor:pointer;" title="Klik untuk buka detail item">
@@ -3378,18 +3379,34 @@ window.scRenderArchive = function(){
  <td>${hesc(r.supplier||'—')}</td>
  <td>${hesc(r.label||('Shipment #'+r.id))}</td>
  <td style="text-align:right;">${r.items}</td>
+ <td style="text-align:right;">${unitsOf(r)}</td>
+ <td style="text-align:right; color:#6B7280;">${r.ex || '—'}</td>
  <td style="text-align:right;">${fmt(r.goods)}</td>
- <td style="text-align:right; font-weight:700;">${fmt(r.landed)}</td>
+ <td style="text-align:right;">${fmt(r.shipping)}</td>
+ <td style="text-align:right;">${fmt(r.parttimer)}</td>
+ <td style="text-align:right; font-weight:700; color:#101010;">${fmt(r.landed)}</td>
  <td style="font-size:11px; color:#6B7280;">${hesc(r.created_by||'—')}</td>
  <td style="text-align:center; white-space:nowrap;">
  <button onclick="event.stopPropagation(); scOpenArchived(${r.id})" style="padding:4px 10px; font-size:11px; font-weight:600; background:#FFF1E2; color:#A05F22; border:1px solid #CD7C32; border-radius:6px; cursor:pointer;">Buka</button>
  <button onclick="event.stopPropagation(); scDeleteArchived(${r.id})" style="padding:4px 8px; font-size:11px; font-weight:600; background:#fff; color:#DC2626; border:1px solid #FECACA; border-radius:6px; cursor:pointer; margin-left:4px;">Padam</button>
  </td>
  </tr>
- <tr id="scDetail_${r.id}" style="display:none;"><td colspan="8" style="padding:0; background:#FCFAF7;"><div id="scDetailBody_${r.id}" style="padding:12px 16px;"></div></td></tr>`;
+ <tr id="scDetail_${r.id}" style="display:none;"><td colspan="12" style="padding:0; background:#FCFAF7;"><div id="scDetailBody_${r.id}" style="padding:12px 16px;"></div></td></tr>`;
  }).join('');
- const totalLanded = rows.reduce((s,r)=> s + (r.landed||0), 0);
- const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent = `${rows.length} rekod · jumlah landed semua: ${fmt(totalLanded)}`;
+ // p1_395 — baris Jumlah (totals) supaya table elok tersusun
+ const tot = rows.reduce((a,r)=>({ items:a.items+(r.items||0), units:a.units+unitsOf(r), goods:a.goods+(r.goods||0), shipping:a.shipping+(r.shipping||0), parttimer:a.parttimer+(r.parttimer||0), landed:a.landed+(r.landed||0) }), {items:0,units:0,goods:0,shipping:0,parttimer:0,landed:0});
+ tb.innerHTML += `<tr style="background:#F3EEE7; font-weight:700; border-top:2px solid #CD7C32;">
+ <td colspan="3" style="text-align:right;">JUMLAH (${rows.length} rekod)</td>
+ <td style="text-align:right;">${tot.items}</td>
+ <td style="text-align:right;">${tot.units}</td>
+ <td></td>
+ <td style="text-align:right;">${fmt(tot.goods)}</td>
+ <td style="text-align:right;">${fmt(tot.shipping)}</td>
+ <td style="text-align:right;">${fmt(tot.parttimer)}</td>
+ <td style="text-align:right; color:#101010;">${fmt(tot.landed)}</td>
+ <td colspan="2"></td>
+ </tr>`;
+ const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent = `${rows.length} rekod · jumlah landed semua: ${fmt(tot.landed)}`;
 };
 
 // p1_394 — grid detail item untuk satu shipment (expand dalam Arkib)
