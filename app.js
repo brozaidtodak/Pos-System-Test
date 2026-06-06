@@ -3338,7 +3338,6 @@ window.__psListFilter = function() {
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();"><input id="psr_${i}_cost" type="number" step="0.01" inputmode="decimal" value="${cost > 0 ? cost : ''}" placeholder="¥" oninput="window.__psRowCalc(${i})" onclick="event.stopPropagation();" style="width:88px; padding:5px 7px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>`
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();"><input id="psr_${i}_ship" type="number" step="0.01" inputmode="decimal" value="${shipRow > 0 ? shipRow : ''}" placeholder="RM" oninput="window.__psRowCalc(${i})" onclick="event.stopPropagation();" style="width:80px; padding:5px 7px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>`
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();"><input id="psr_${i}_rrprate" type="number" step="1" inputmode="decimal" value="${rrpRate}" oninput="window.__psRowCalc(${i})" onclick="event.stopPropagation();" style="width:64px; padding:5px 7px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>`
- + tcell('psr_' + i + '_rrp', rrpVal)
  + `<td class="ps-list-cell" style="padding:10px; text-align:right; color:${stock <= 0 ? '#EF4444' : '#111827'}; font-weight:600;">${stock}</td>`
  + `<td class="ps-list-cell" style="padding:10px; text-align:center;">${badge}</td></tr>`;
  }).join('');
@@ -3359,7 +3358,6 @@ window.__psListFilter = function() {
  + '<th style="text-align:right;">Cost RMB</th>'
  + '<th style="text-align:right;">Shipping</th>'
  + '<th style="text-align:right;">RRP %</th>'
- + '<th style="text-align:right;">RRP</th>'
  + '<th style="text-align:right;">Stok</th>'
  + '<th style="text-align:center;">Status</th>'
  + '</tr></thead><tbody>' + body + '</tbody></table>'
