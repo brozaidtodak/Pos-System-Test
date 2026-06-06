@@ -9784,10 +9784,14 @@ window.__proofUploadToStorage = async function(saleId) {
  const ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
  const ts = new Date().toISOString().replace(/[:.]/g, '-');
  const fileName = (saleId || 'pending') + '_' + ts + '.' + ext;
+ // p1_373 — bucket payment-proofs enforce allowed_mime_types; kalau f.type kosong
+ // (sesetengah kamera phone), octet-stream akan DITOLAK. Teka dari extension.
+ const extMime = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', heic:'image/heic', heif:'image/heic', pdf:'application/pdf' };
+ const contentType = f.type || extMime[ext] || 'image/jpeg';
  const { data, error } = await db.storage.from('payment-proofs').upload(fileName, f, {
  cacheControl: '3600',
  upsert: false,
- contentType: f.type || 'application/octet-stream'
+ contentType: contentType
  });
  if(error) throw error;
  const { data: pub } = db.storage.from('payment-proofs').getPublicUrl(data.path);
