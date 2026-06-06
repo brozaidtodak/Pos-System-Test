@@ -10183,12 +10183,13 @@ window.processNewCheckout = async function() {
  saleMeta.custom_sale_count = customItems.length;
  }
 
- // p1_180 — upload payment proof to Storage before insert (skip if Cash or no file)
+ // p1_180 — upload payment proof to Storage before insert (skip if no file)
  // p1_185 — surface upload failure to user (was silent — staff may not realize
  // resit dah hilang). Sale still inserts; staff can re-upload from Reports.
+ // p1_372 — Zaid: snap resit dibenarkan untuk SEMUA method termasuk Cash. Buang gate pm!=='Cash'.
  let proofUrl = null, proofUploadedAt = null, proofUploadedBy = null;
  const hasFile = !!(window.__proofState && window.__proofState.file);
- if(pm !== 'Cash' && hasFile && typeof window.__proofUploadToStorage === 'function') {
+ if(hasFile && typeof window.__proofUploadToStorage === 'function') {
  const url = await window.__proofUploadToStorage(null);
  if(url) {
  proofUrl = url;
@@ -23957,6 +23958,8 @@ window.openCheckoutPanel = function() {
  }
  const chEl = document.getElementById('cpChannel'); if(chEl) chEl.value = 'POS Cashier';
  const stEl = document.getElementById('cpStatus'); if(stEl) stEl.value = 'Completed';
+ // p1_372 — reset resit state setiap checkout baru (elak resit sale lepas terbawa)
+ if(typeof window.__proofClearFile === 'function') window.__proofClearFile();
  cpSetPayment('Cash');
 
  // Compute & show total
@@ -24020,8 +24023,8 @@ window.cpSetPayment = function(method) {
  ewl.classList.add('is-hidden');
  }
  // p1_230 — Refresh cpFormView proof badge (Snap/Pilih buttons manual)
- if(method !== 'Cash' && typeof window.cpRefreshProofBadge === 'function') window.cpRefreshProofBadge();
- else { const badge = document.getElementById('cpProofStatusBadge'); if(badge) badge.style.display = 'none'; }
+ // p1_372 — Zaid: staff nak snap resit untuk SEMUA jualan termasuk Cash. Buang gate Cash.
+ if(typeof window.cpRefreshProofBadge === 'function') window.cpRefreshProofBadge();
 };
 
 // p1_234 — Sync window.posCustomer ke cpCustName/Phone/Email (call lepas pick/register)
@@ -24049,8 +24052,7 @@ window.cpSyncCustomerFromPos = function() {
 window.cpRefreshProofBadge = function() {
  const badge = document.getElementById('cpProofStatusBadge');
  if(!badge) return;
- const method = document.getElementById('cpPaymentMethod')?.value || 'Cash';
- if(method === 'Cash') { badge.style.display = 'none'; return; }
+ // p1_372 — resit opsional untuk SEMUA method (termasuk Cash); buang gate Cash dulu.
  const hasProof = !!(window.__proofState && window.__proofState.file);
  badge.style.display = 'block';
  if(hasProof) {
