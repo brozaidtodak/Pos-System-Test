@@ -20098,7 +20098,15 @@ window.__aoPeriodChange = function(){
  const wrap = document.getElementById('aoCustomRange');
  const isCustom = (document.getElementById('aoPeriod')?.value === 'custom');
  if(wrap) wrap.style.display = isCustom ? 'flex' : 'none';
+ window.__aoPage = 1;
  window.renderAllOrders && window.renderAllOrders();
+};
+// p1_328 — tukar halaman pagination + scroll ke atas jadual
+window.__aoGoPage = function(target){
+ window.__aoPage = target;
+ window.renderAllOrders && window.renderAllOrders();
+ const top = document.getElementById('aoStats') || document.getElementById('allOrdersSection');
+ if(top && top.scrollIntoView) try { top.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){}
 };
 
 window.renderAllOrders = function() {
@@ -20159,7 +20167,16 @@ window.renderAllOrders = function() {
  const m = window.__aoStatusMeta(st);
  return `<span style="background:${m.bg}; color:${m.fg}; padding:2px 8px; border-radius:4px; font-size:10.5px; font-weight:700;">${escHtml(m.label || '-')}</span>`;
  };
- const slice = filtered.slice(0, 200);
+ // p1_328 — pagination (200/page) supaya semua order boleh diakses tanpa render semua sekali (elak lag iPad)
+ const AO_PAGE_SIZE = 200;
+ const aoSig = [q, channel, status, document.getElementById('aoPeriod')?.value || '', document.getElementById('aoDateFrom')?.value || '', document.getElementById('aoDateTo')?.value || '', hideTest].join('|');
+ if(window.__aoLastSig !== aoSig) { window.__aoPage = 1; window.__aoLastSig = aoSig; }
+ const aoTotalPages = Math.max(1, Math.ceil(filtered.length / AO_PAGE_SIZE));
+ if(!window.__aoPage || window.__aoPage < 1) window.__aoPage = 1;
+ if(window.__aoPage > aoTotalPages) window.__aoPage = aoTotalPages;
+ const aoPage = window.__aoPage;
+ const aoStart = (aoPage - 1) * AO_PAGE_SIZE;
+ const slice = filtered.slice(aoStart, aoStart + AO_PAGE_SIZE);
  tbody.innerHTML = slice.map(s => {
  const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
  const itemsCount = Array.isArray(s.items) ? s.items.reduce((n, it) => n + window.__aoItemQty(it), 0) : 0;
@@ -20217,7 +20234,18 @@ window.renderAllOrders = function() {
  </td>
  </tr>`;
  }).join('');
- document.getElementById('aoSummaryLine').innerHTML = `Showing <strong>${slice.length}</strong> of <strong>${filtered.length}</strong> orders${filtered.length > 200 ? ' (top 200; refine filter untuk lihat lain)' : ''}.`;
+ const aoFrom = filtered.length ? aoStart + 1 : 0;
+ const aoTo = aoStart + slice.length;
+ const btnStyle = 'padding:6px 12px; border:1px solid #E5E7EB; background:#fff; border-radius:7px; cursor:pointer; font-size:12px; font-weight:700; color:#374151;';
+ const btnDis = 'padding:6px 12px; border:1px solid #F3F4F6; background:#F9FAFB; border-radius:7px; font-size:12px; font-weight:700; color:#D1D5DB; cursor:not-allowed;';
+ const pager = aoTotalPages > 1 ? `<div style="display:flex; align-items:center; gap:8px;">
+ <button ${aoPage <= 1 ? 'disabled style="'+btnDis+'"' : 'onclick="window.__aoGoPage(1)" style="'+btnStyle+'"'}>« Awal</button>
+ <button ${aoPage <= 1 ? 'disabled style="'+btnDis+'"' : 'onclick="window.__aoGoPage('+(aoPage-1)+')" style="'+btnStyle+'"'}>‹ Prev</button>
+ <span style="font-size:12px; color:#374151; font-weight:700; padding:0 4px;">Halaman ${aoPage} / ${aoTotalPages}</span>
+ <button ${aoPage >= aoTotalPages ? 'disabled style="'+btnDis+'"' : 'onclick="window.__aoGoPage('+(aoPage+1)+')" style="'+btnStyle+'"'}>Next ›</button>
+ <button ${aoPage >= aoTotalPages ? 'disabled style="'+btnDis+'"' : 'onclick="window.__aoGoPage('+aoTotalPages+')" style="'+btnStyle+'"'}>Akhir »</button>
+ </div>` : '';
+ document.getElementById('aoSummaryLine').innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;"><span>Memaparkan <strong>${aoFrom}-${aoTo}</strong> dari <strong>${filtered.length.toLocaleString()}</strong> order.</span>${pager}</div>`;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  window.__aoUpdateOrderBadge && window.__aoUpdateOrderBadge();
 };
