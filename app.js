@@ -24357,6 +24357,13 @@ window.__collectionOpen = function(type, value) {
  if(typeof window.renderProductDatabase === 'function') window.renderProductDatabase();
 };
 
+// p1_345 — tukar halaman produk + scroll ke atas
+window.__pdbGoPage = function(target){
+ window.__pdbPage = target;
+ window.renderProductDatabase && window.renderProductDatabase();
+ const top = document.getElementById('pdStats') || document.getElementById('databaseSection');
+ if(top && top.scrollIntoView) try { top.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){}
+};
 window.renderProductDatabase = function() {
  const gridEl = document.getElementById('pdGridView');
  const tableBody = document.getElementById('pdTableBody');
@@ -24489,12 +24496,25 @@ window.renderProductDatabase = function() {
  });
  });
 
+ // p1_345 — pagination produk (Prev/Next) — sebelum ni slice(0,perPage) tunjuk page pertama je
+ const __pdbSig = [q, fBrand, fCat, document.getElementById('pdStatus')?.value || '', perPage].join('|');
+ if(window.__pdbLastSig !== __pdbSig) { window.__pdbPage = 1; window.__pdbLastSig = __pdbSig; }
+ const __pdbTotalPages = Math.max(1, Math.ceil(grouped.length / perPage));
+ if(!window.__pdbPage || window.__pdbPage < 1) window.__pdbPage = 1;
+ if(window.__pdbPage > __pdbTotalPages) window.__pdbPage = __pdbTotalPages;
+ const __pdbPage = window.__pdbPage;
+ const __pdbStart = (__pdbPage - 1) * perPage;
+ const slice = grouped.slice(__pdbStart, __pdbStart + perPage);
+
  const summaryEl = document.getElementById('pdSummary');
  if(summaryEl) {
- summaryEl.innerHTML = `Match: <strong>${grouped.length}</strong> produk · Show: <strong>${Math.min(grouped.length, perPage)}</strong>${grouped.length> perPage ? ' <span style="color:var(--warning-700);">(turunkan saiz halaman atau tighten filter untuk lihat semua)</span>' : ''}`;
+ const fromN = grouped.length ? __pdbStart + 1 : 0;
+ const toN = __pdbStart + slice.length;
+ const bs = "padding:4px 10px; border:1px solid #E5E7EB; background:#fff; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; color:#374151;";
+ const bd = "padding:4px 10px; border:1px solid #F3F4F6; background:#F9FAFB; border-radius:6px; font-size:12px; font-weight:700; color:#D1D5DB; cursor:not-allowed;";
+ const pager = __pdbTotalPages > 1 ? `<span style="display:inline-flex; align-items:center; gap:6px; margin-left:10px;"><button ${__pdbPage <= 1 ? 'disabled style="'+bd+'"' : 'onclick="window.__pdbGoPage('+(__pdbPage-1)+')" style="'+bs+'"'}>‹ Prev</button><span style="font-weight:700;">Halaman ${__pdbPage} / ${__pdbTotalPages}</span><button ${__pdbPage >= __pdbTotalPages ? 'disabled style="'+bd+'"' : 'onclick="window.__pdbGoPage('+(__pdbPage+1)+')" style="'+bs+'"'}>Next ›</button></span>` : '';
+ summaryEl.innerHTML = `Memaparkan <strong>${fromN}-${toN}</strong> dari <strong>${grouped.length.toLocaleString()}</strong> produk${pager}`;
  }
-
- const slice = grouped.slice(0, perPage);
 
  if(slice.length === 0) {
  const empty = `<div class="empty-state" style="grid-column:1/-1;">
