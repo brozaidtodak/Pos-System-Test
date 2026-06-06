@@ -20241,6 +20241,31 @@ window.__aoViewOrder = function(saleId) {
  const proof = s.payment_proof_url || '';
  const isMarketplace = /shopee|tiktok/i.test(s.channel || '');
  const infoRow = (label, val) => val ? `<div style="display:flex; gap:8px; font-size:12.5px; padding:3px 0;"><span style="color:#6B7280; min-width:120px;">${label}</span><span style="font-weight:600; color:#111827;">${esc(val)}</span></div>` : '';
+ // p1_320 — fulfilment state + controls
+ const f = md.fulfilment || {};
+ const canFulfil = !['Completed','Cancelled','Refunded'].includes(m.canon);
+ const fmtWhen = (iso) => iso ? new Date(iso).toLocaleString('en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+ const couriers = ['J&T Express','Pos Laju','Ninja Van','Flash Express','City-Link Express','DHL','GDex','Shopee Xpress','TikTok arranged','Self-deliver / COD','Lain-lain'];
+ const chips = [];
+ if(f.packed_at) chips.push(`<span style="display:inline-flex; align-items:center; gap:4px; background:#D1FAE5; color:#065F46; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;"><i data-lucide="check" style="width:11px;height:11px;"></i> Packed · ${esc(fmtWhen(f.packed_at))}${f.packed_by ? ' · ' + esc(f.packed_by) : ''}</span>`);
+ if(f.shipped_at) chips.push(`<span style="display:inline-flex; align-items:center; gap:4px; background:#DBEAFE; color:#1E40AF; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;"><i data-lucide="truck" style="width:11px;height:11px;"></i> Dah Hantar${f.courier ? ' · ' + esc(f.courier) : ''}${f.tracking_no ? ' · ' + esc(f.tracking_no) : ''}</span>`);
+ const chipsHtml = chips.length ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">${chips.join('')}</div>` : '';
+ const courierSel = `<select id="aoFulCourier" style="flex:1; min-width:120px; padding:8px; border:1px solid #E5E7EB; border-radius:7px; font-size:12px;">${couriers.map(c=>`<option value="${esc(c)}" ${f.courier===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
+ const controls = canFulfil ? `
+ <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+ ${courierSel}
+ <input id="aoFulTracking" type="text" placeholder="No. tracking / AWB" value="${esc(f.tracking_no||'')}" style="flex:2; min-width:140px; padding:8px; border:1px solid #E5E7EB; border-radius:7px; font-size:12px;">
+ </div>
+ <div style="display:flex; gap:6px; flex-wrap:wrap;">
+ ${!f.packed_at ? `<button onclick="window.__aoSetFulfil(${s.id},'packed')" style="flex:1; min-width:110px; background:#fff; border:1px solid #86EFAC; color:#065F46; padding:9px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700;"><i data-lucide="package-check" style="width:13px;height:13px;vertical-align:-2px;"></i> Tanda Packed</button>` : ''}
+ <button onclick="window.__aoSetFulfil(${s.id},'shipped',{courier:(document.getElementById('aoFulCourier')||{}).value, tracking:((document.getElementById('aoFulTracking')||{}).value||'')})" style="flex:2; min-width:130px; background:#2563EB; border:none; color:#fff; padding:9px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700;"><i data-lucide="truck" style="width:13px;height:13px;vertical-align:-2px;"></i> ${f.shipped_at ? 'Kemaskini Hantar' : 'Tanda Dah Hantar'}</button>
+ <button onclick="window.__aoSetFulfil(${s.id},'completed')" style="flex:1; min-width:100px; background:#fff; border:1px solid #6EE7B7; color:#047857; padding:9px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700;"><i data-lucide="check-circle" style="width:13px;height:13px;vertical-align:-2px;"></i> Selesai</button>
+ </div>` : `<div style="font-size:12px; color:#6B7280;">Order ni dah <strong>${esc(m.label)}</strong>.</div>`;
+ const mpNote = isMarketplace ? `<div style="font-size:11px; color:#92400E; margin-bottom:8px; line-height:1.5;"><i data-lucide="info" style="width:11px;height:11px;vertical-align:-1px;"></i> Shopee/TikTok urus penghantaran sebenar di seller centre. Tanda di sini untuk rekod POS sahaja.</div>` : '';
+ const fulfilHtml = `<div style="border:1px solid #FDE68A; background:#FFFBEB; border-radius:10px; padding:14px; margin-bottom:14px;">
+ <div style="font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:#92400E; text-transform:uppercase; margin-bottom:8px;"><i data-lucide="truck" style="width:12px;height:12px;vertical-align:-2px;"></i> Fulfilment / Penghantaran</div>
+ ${chipsHtml}${mpNote}${controls}
+ </div>`;
  const html = `<div id="aoViewOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3800; display:flex; align-items:flex-start; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); overflow-y:auto;" onclick="if(event.target===this) this.remove();">
  <div style="background:#fff; max-width:680px; width:100%; border-radius:14px; padding:0; margin:auto; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
  <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid #F0F0F0; background:linear-gradient(135deg,#FAF6EF,#fff);">
@@ -20280,6 +20305,7 @@ window.__aoViewOrder = function(saleId) {
  <span style="font-size:12px; color:#6B7280;">${items.length} jenis barang · ${totalItems} unit${itemsSub && Math.abs(itemsSub - grandTotal) > 0.01 ? ' · subtotal barang RM ' + itemsSub.toFixed(2) : ''}</span>
  <span style="font-size:18px; font-weight:800; color:#101010;">RM ${grandTotal.toFixed(2)}</span>
  </div>
+ ${fulfilHtml}
  ${proof ? `<div style="margin-bottom:14px;"><span style="font-size:12px; color:#6B7280;">Bukti bayar: </span><a href="${esc(proof)}" target="_blank" rel="noopener" style="color:var(--primary); font-weight:700; font-size:12px; text-decoration:none;"><i data-lucide="external-link" style="width:12px;height:12px;vertical-align:-1px;"></i> Buka</a></div>` : ''}
  <div style="display:flex; gap:8px;">
  <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; background:#F3E8FF; border:1px solid #C4B5FD; color:#5B21B6; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit Order</button>
@@ -20292,6 +20318,49 @@ window.__aoViewOrder = function(saleId) {
  tmp.innerHTML = html;
  document.body.appendChild(tmp.firstChild);
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+// p1_320 — set fulfilment state (packed / shipped+tracking / completed). Simpan ke metadata.fulfilment + update status.
+window.__aoSetFulfil = async function(saleId, action, opts) {
+ opts = opts || {};
+ if(typeof db === 'undefined' || !db) { if(typeof showToast==='function') showToast('DB tak available', 'error'); return; }
+ if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return;
+ const s = salesHistory.find(x => x.id === saleId);
+ if(!s) return;
+ const u = window.currentUser || {};
+ const who = (u.name || 'Unknown') + ' (' + (u.staff_id || '?') + ')';
+ const now = new Date().toISOString();
+ const md = Object.assign({}, s.metadata || {});
+ const f = Object.assign({}, md.fulfilment || {});
+ let newStatus = s.status;
+ let msg = '';
+ if(action === 'packed') {
+ f.packed_at = now; f.packed_by = who; msg = 'ditanda PACKED';
+ } else if(action === 'shipped') {
+ const tracking = String(opts.tracking || '').trim();
+ const courier = opts.courier || '';
+ if(!tracking && !confirm('Tiada no. tracking dimasukkan. Tetap tanda Dah Hantar?')) return;
+ f.shipped_at = now; f.shipped_by = who;
+ if(courier) f.courier = courier;
+ if(tracking) f.tracking_no = tracking;
+ if(!f.packed_at) { f.packed_at = now; f.packed_by = who; }
+ newStatus = 'Processing';
+ msg = 'ditanda DAH HANTAR';
+ } else if(action === 'completed') {
+ f.delivered_at = now; f.delivered_by = who; newStatus = 'Completed'; msg = 'ditanda SELESAI';
+ } else { return; }
+ md.fulfilment = f;
+ try {
+ const { error } = await db.from('sales_history').update({ status: newStatus, metadata: md }).eq('id', saleId);
+ if(error) throw error;
+ s.status = newStatus; s.metadata = md;
+ if(typeof showToast === 'function') showToast(`Order #${saleId} ${msg}.`, 'success');
+ window.renderAllOrders && window.renderAllOrders();
+ const ov = document.getElementById('aoViewOverlay');
+ if(ov) { ov.remove(); window.__aoViewOrder(saleId); }
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Update gagal: ' + (e.message || e), 'error');
+ }
 };
 
 window.openAddWalkinOrder = function() {
