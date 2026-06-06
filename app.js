@@ -18534,6 +18534,7 @@ window.renderBulkOps = function() {
  const __skuParts = (s) => { const m = String(s||'').toUpperCase().match(/^([A-Z]+)0*(\d+)/); return m ? [m[1], parseInt(m[2],10)] : [String(s||'').toUpperCase(), Infinity]; };
  const __bySku = (a,b) => { const pa=__skuParts(a.sku), pb=__skuParts(b.sku); if(pa[0]!==pb[0]) return pa[0]<pb[0]?-1:1; if(pa[1]!==pb[1]) return pa[1]-pb[1]; return String(a.sku||'').localeCompare(String(b.sku||'')); };
  if(sortBy === 'brand') filtered.sort((a,b)=>{ const ba=(a.brand||'').toLowerCase(), bb=(b.brand||'').toLowerCase(); if(ba!==bb) return ba<bb?-1:1; return __bySku(a,b); });
+ else if(sortBy === 'category') filtered.sort((a,b)=>{ const ca=(a.category||'').toLowerCase(), cb=(b.category||'').toLowerCase(); if(ca!==cb) return ca<cb?-1:1; return __bySku(a,b); });
  else if(sortBy === 'stock_asc') filtered.sort((a,b)=> (bulkComputeStock(a.sku)-bulkComputeStock(b.sku)) || __bySku(a,b));
  else if(sortBy === 'price_desc') filtered.sort((a,b)=> ((Number(b.price)||0)-(Number(a.price)||0)) || __bySku(a,b));
  else filtered.sort(__bySku);
@@ -25310,6 +25311,7 @@ window.I18N = {
  bk_filter_sort: { bm: 'Susun', en: 'Sort' },
  bk_sort_sku: { bm: 'SKU (A→Z)', en: 'SKU (A→Z)' },
  bk_sort_brand: { bm: 'Brand → SKU', en: 'Brand → SKU' },
+ bk_sort_cat: { bm: 'Kategori → SKU', en: 'Category → SKU' },
  bk_sort_stock: { bm: 'Stok rendah → tinggi', en: 'Stock low → high' },
  bk_sort_price: { bm: 'Harga tinggi → rendah', en: 'Price high → low' },
  bk_title: { bm: 'Bulk Edit Produk', en: 'Bulk Edit Products' },
