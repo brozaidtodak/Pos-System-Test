@@ -15055,61 +15055,6 @@ window.renderFifoListing = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
-// p1_352 — Price Calculator: jadual semua SKU dalam baris (scaffold; kolum kiraan ditambah kemudian)
-window.__pcGoPage = function(t){
- window.__pcPage = t;
- window.renderPriceCalc && window.renderPriceCalc();
- const top = document.getElementById('pcStats') || document.getElementById('priceCalcSection');
- if(top && top.scrollIntoView) try { top.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){}
-};
-window.renderPriceCalc = function() {
- const tbody = document.getElementById('pcTbody');
- if(!tbody) return;
- if(typeof masterProducts === 'undefined' || !Array.isArray(masterProducts)) {
- tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>';
- return;
- }
- const esc = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
- const q = (document.getElementById('pcSearch')?.value || '').trim().toLowerCase();
- let rows = masterProducts.slice();
- if(q) rows = rows.filter(p => (p.sku||'').toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q) || (p.brand||'').toLowerCase().includes(q));
- rows.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
- document.getElementById('pcStats').innerHTML = `<div class="stat-card" style="border-left-color:var(--primary);"><div class="stat-card__label"><i data-lucide="package" style="width:13px;height:13px; color:var(--primary);"></i> Jumlah SKU</div><div class="stat-card__value">${rows.length.toLocaleString()}</div></div>`;
- const perPage = parseInt(document.getElementById('pcPerPage')?.value) || 50;
- const sig = [q, perPage].join('|');
- if(window.__pcLastSig !== sig) { window.__pcPage = 1; window.__pcLastSig = sig; }
- const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
- if(!window.__pcPage || window.__pcPage < 1) window.__pcPage = 1;
- if(window.__pcPage > totalPages) window.__pcPage = totalPages;
- const page = window.__pcPage;
- const start = (page - 1) * perPage;
- const slice = rows.slice(start, start + perPage);
- if(!slice.length) {
- tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:32px;">Tiada SKU' + (q ? ' untuk carian ni' : '') + '.</td></tr>';
- document.getElementById('pcSummaryLine').textContent = '';
- if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
- return;
- }
- const dash = '<span style="color:#D1D5DB;">—</span>';
- tbody.innerHTML = slice.map(p => {
- const cost = (p.cost_price != null && p.cost_price !== '') ? parseFloat(p.cost_price) : null;
- const price = (p.price != null && p.price !== '') ? parseFloat(p.price) : null;
- return `<tr>
- <td style="padding:9px 10px; font-family:'SF Mono',Menlo,monospace; font-size:11.5px;">${esc(p.sku || '-')}</td>
- <td style="padding:9px 10px;">${esc((p.name || '-').slice(0, 55))}</td>
- <td style="padding:9px 10px; font-size:11.5px; color:#6B7280;">${esc(p.brand || '-')}</td>
- <td style="padding:9px 10px; text-align:right;">${cost != null ? cost.toFixed(2) : dash}</td>
- <td style="padding:9px 10px; text-align:right; font-weight:700;">${price != null ? price.toFixed(2) : dash}</td>
- </tr>`;
- }).join('');
- const from = start + 1, to = start + slice.length;
- const bs = "padding:5px 11px; border:1px solid #E5E7EB; background:#fff; border-radius:7px; cursor:pointer; font-size:12px; font-weight:700; color:#374151;";
- const bd = "padding:5px 11px; border:1px solid #F3F4F6; background:#F9FAFB; border-radius:7px; font-size:12px; font-weight:700; color:#D1D5DB; cursor:not-allowed;";
- const pager = totalPages > 1 ? `<span style="display:inline-flex; align-items:center; gap:8px; margin-left:10px;"><button ${page <= 1 ? 'disabled style="'+bd+'"' : 'onclick="window.__pcGoPage('+(page-1)+')" style="'+bs+'"'}>‹ Prev</button><span style="font-weight:700;">Halaman ${page} / ${totalPages}</span><button ${page >= totalPages ? 'disabled style="'+bd+'"' : 'onclick="window.__pcGoPage('+(page+1)+')" style="'+bs+'"'}>Next ›</button></span>` : '';
- document.getElementById('pcSummaryLine').innerHTML = `Memaparkan <strong>${from}-${to}</strong> dari <strong>${rows.length.toLocaleString()}</strong> SKU${pager}`;
- if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
-};
-
 // p1_274 — Stock Transfer stub (build flow later)
 window.renderStockTransfer = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
