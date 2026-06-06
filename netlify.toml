@@ -130,10 +130,10 @@
 # p1_293 — Marketplace stock reconcile (POS → Shopee + TikTok) every 20 min.
 # p1_315 — PAUSED 2026-06-06: ~84 TikTok-mapped products have POS stock 0 while
 # real stock lives on the marketplace (never stocked into POS, e.g. MX011-015).
-# Reconcile would wipe their real marketplace stock to 0. Re-enable after POS
-# stock for those is imported/corrected. (Schedule commented out below.)
+# p1_363 — RE-ENABLED 2026-06-06 selepas stocktake Zack diaplikasi (p1_362). POS stok kini
+# tepat (kiraan fizikal Zack) jadi reconcile selamat — POS = sumber kebenaran, push ke Shopee/TikTok.
 [functions."marketplace-stock-cron"]
-  # schedule = "*/20 * * * *"
+  schedule = "*/20 * * * *"
 
 [[redirects]]
   from = "/api/daily-bos-digest"
