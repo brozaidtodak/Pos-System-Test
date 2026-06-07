@@ -21726,6 +21726,161 @@ function __computeProductSales() {
 
 window.invalidateProductSalesCache = function() { __prodSalesCache = null; };
 
+// ===================================
+// p1_454 — ANALYTICS PAGE (dedicated): period selector + compare-to-previous,
+// KPI deltas, trend overlay, top product/brand/category, channel, customer
+// new-vs-repeat, busiest hour/day. Operational (no margin/cost) = open access.
+// Uses __isRealSale (test/void/cancel/refund excluded). p1_452-consistent.
+// ===================================
+window.__anRange = window.__anRange || '30d';
+window.__anInst = window.__anInst || {};
+window.__anSetRange = function(r, btn) {
+ window.__anRange = r || '30d';
+ document.querySelectorAll('#anPills .an-pill').forEach(p => p.classList.toggle('active', p === btn));
+ const cr = document.getElementById('anCustomRow');
+ if(cr) cr.style.display = (r === 'custom') ? 'flex' : 'none';
+ if(r !== 'custom') window.renderAnalytics();
+};
+window.renderAnalytics = function() {
+ if(typeof Chart === 'undefined') return;
+ const sod = (d)=>{ const x=new Date(d); x.setHours(0,0,0,0); return x; };
+ const eod = (d)=>{ const x=new Date(d); x.setHours(23,59,59,999); return x; };
+ const now = new Date();
+ const r = window.__anRange || '30d';
+ let start, end = eod(now);
+ if(r === 'custom') {
+ const f = document.getElementById('anFrom'), t = document.getElementById('anTo');
+ start = (f && f.value) ? new Date(f.value+'T00:00:00') : sod(new Date(now.getTime()-29*864e5));
+ end = (t && t.value) ? new Date(t.value+'T23:59:59') : eod(now);
+ } else if(r === '7d') { const s=new Date(now); s.setDate(s.getDate()-6); start=sod(s); }
+ else if(r === '90d') { const s=new Date(now); s.setDate(s.getDate()-89); start=sod(s); }
+ else if(r === 'mtd') { start = sod(new Date(now.getFullYear(), now.getMonth(), 1)); }
+ else if(r === 'ytd') { start = sod(new Date(now.getFullYear(), 0, 1)); }
+ else { const s=new Date(now); s.setDate(s.getDate()-29); start=sod(s); }
+ const startMs = start.getTime(), endMs = end.getTime();
+ const spanMs = endMs - startMs;
+ const prevEndMs = startMs - 1, prevStartMs = startMs - (spanMs + 1);
+
+ const lbl = document.getElementById('anRangeLabel');
+ if(lbl) lbl.textContent = start.toLocaleDateString('en-MY',{day:'numeric',month:'short'}) + ' – ' + end.toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'});
+
+ const fmtRM = (n)=> 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:0, maximumFractionDigits:0});
+ const fmtRM2 = (n)=> 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2, maximumFractionDigits:2});
+ const amtOf = (s)=> Number(s.total||s.total_amount||0)||0;
+ const itemsOf = (s)=>{ let it=s.items; if(typeof it==='string'){try{it=JSON.parse(it);}catch(e){it=[];}} return Array.isArray(it)?it:[]; };
+ const qtyOf = (it)=> Number(it.qty!=null?it.qty:(it.quantity!=null?it.quantity:0))||0;
+ const lineRev = (it)=> (Number(it.price||0)||0)*qtyOf(it) - (Number(it.discount||0)||0);
+ const custKey = (s)=> (s.customer_phone || s.customer_name || '').trim().toLowerCase();
+
+ const all = (Array.isArray(salesHistory)?salesHistory:[]).filter(s => window.__isRealSale(s) && s.created_at);
+ const cur = all.filter(s => { const t=new Date(s.created_at).getTime(); return t>=startMs && t<=endMs; });
+ const prev = all.filter(s => { const t=new Date(s.created_at).getTime(); return t>=prevStartMs && t<=prevEndMs; });
+
+ // first-ever purchase per customer (for new vs repeat)
+ const firstSeen = {};
+ all.forEach(s => { const k=custKey(s); if(!k) return; const t=new Date(s.created_at).getTime(); if(!firstSeen[k] || t<firstSeen[k]) firstSeen[k]=t; });
+
+ // ---- KPI aggregates ----
+ const agg = (arr) => {
+ let rev=0, units=0; const custs=new Set(); let newC=0;
+ arr.forEach(s => { rev+=amtOf(s); itemsOf(s).forEach(it=> units+=qtyOf(it)); const k=custKey(s); if(k) custs.add(k); });
+ custs.forEach(k => { if(firstSeen[k] !== undefined && firstSeen[k] >= (arr===cur?startMs:prevStartMs) && firstSeen[k] <= (arr===cur?endMs:prevEndMs)) newC++; });
+ const orders = arr.length;
+ return { rev:round2(rev), orders, aov: orders?round2(rev/orders):0, units, custCount:custs.size, newC, repeatRate: custs.size? Math.round((custs.size-newC)/custs.size*100):0 };
+ };
+ const C = agg(cur), P = agg(prev);
+
+ const setD = (id, c, p, isPct) => {
+ const el = document.getElementById(id); if(!el) return;
+ if(p === 0 || p == null) { el.textContent = c>0 ? '▲ baru' : '—'; el.className = 'an-delta ' + (c>0?'up':'flat'); return; }
+ const d = ((c - p) / Math.abs(p)) * 100;
+ const arrow = d>0.5?'▲':(d<-0.5?'▼':'▬');
+ el.textContent = arrow + ' ' + Math.abs(d).toFixed(0) + '% vs lalu';
+ el.className = 'an-delta ' + (d>0.5?'up':(d<-0.5?'down':'flat'));
+ };
+ const setT = (id, v) => { const e=document.getElementById(id); if(e) e.textContent = v; };
+ setT('anKpiRev', fmtRM2(C.rev)); setD('anKpiRevD', C.rev, P.rev);
+ setT('anKpiOrders', C.orders.toLocaleString()); setD('anKpiOrdersD', C.orders, P.orders);
+ setT('anKpiAov', fmtRM2(C.aov)); setD('anKpiAovD', C.aov, P.aov);
+ setT('anKpiUnits', C.units.toLocaleString()); setD('anKpiUnitsD', C.units, P.units);
+ setT('anKpiNew', C.newC.toLocaleString()); setD('anKpiNewD', C.newC, P.newC);
+ setT('anKpiRepeat', C.repeatRate + '%'); setD('anKpiRepeatD', C.repeatRate, P.repeatRate);
+
+ // ---- Trend overlay (current vs previous, aligned by day-offset) ----
+ const DAY = 864e5;
+ const nDays = Math.max(1, Math.min(370, Math.ceil((endMs - startMs) / DAY) + 1));
+ const stepDay = nDays > 92 ? 7 : 1; // weekly buckets if long range
+ const nBuckets = Math.ceil(nDays / stepDay);
+ const curB = new Array(nBuckets).fill(0), prevB = new Array(nBuckets).fill(0), labels = [];
+ for(let i=0;i<nBuckets;i++){ const d=new Date(startMs + i*stepDay*DAY); labels.push(d.toLocaleDateString('en-MY',{day:'numeric',month:'short'})); }
+ cur.forEach(s => { const idx=Math.floor((new Date(s.created_at).getTime()-startMs)/DAY/stepDay); if(idx>=0&&idx<nBuckets) curB[idx]=round2(curB[idx]+amtOf(s)); });
+ prev.forEach(s => { const idx=Math.floor((new Date(s.created_at).getTime()-prevStartMs)/DAY/stepDay); if(idx>=0&&idx<nBuckets) prevB[idx]=round2(prevB[idx]+amtOf(s)); });
+ const trendCtx = document.getElementById('anTrendChart');
+ if(trendCtx){ if(window.__anInst.trend) window.__anInst.trend.destroy();
+ window.__anInst.trend = new Chart(trendCtx.getContext('2d'), {
+ type:'line',
+ data:{ labels, datasets:[
+ { label:'Semasa', data:curB, borderColor:'#CD7C32', backgroundColor:'rgba(205,124,50,0.12)', borderWidth:2.5, fill:true, tension:0.32, pointRadius:nBuckets>20?0:3, pointHoverRadius:5 },
+ { label:'Tempoh sebelum', data:prevB, borderColor:'#9CA3AF', borderDash:[5,4], borderWidth:1.6, fill:false, tension:0.32, pointRadius:0, pointHoverRadius:4 }
+ ]},
+ options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+ plugins:{ legend:{display:true, position:'bottom', labels:{boxWidth:12, font:{size:11}, padding:10}}, tooltip:{ callbacks:{ label:(c)=> c.dataset.label+': RM '+Number(c.parsed.y).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}) } } },
+ scales:{ x:{ grid:{display:false}, ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:10, font:{size:10}} }, y:{ beginAtZero:true, grid:{color:'rgba(0,0,0,0.05)'}, ticks:{font:{size:10}, callback:(v)=>fmtRM(v)} } }
+ }
+ });
+ }
+
+ // ---- Top product / brand / category ----
+ const skuMeta = {};
+ (Array.isArray(masterProducts)?masterProducts:[]).forEach(p => { const k=(p.sku||'').toUpperCase(); if(k) skuMeta[k]={brand:p.brand||'Unknown', category:p.category||'Lain-lain', name:p.name}; });
+ const prodAgg={}, brandAgg={}, catAgg={};
+ cur.forEach(s => itemsOf(s).forEach(it => {
+ const sku=(it.sku||'').toUpperCase(); const rev=lineRev(it), q=qtyOf(it);
+ const meta=skuMeta[sku]||{};
+ const pk = sku || (it.name||'?');
+ if(!prodAgg[pk]) prodAgg[pk]={name: it.name||meta.name||sku, rev:0, units:0};
+ prodAgg[pk].rev=round2(prodAgg[pk].rev+rev); prodAgg[pk].units+=q;
+ const bk = meta.brand||it.brand||'Unknown'; if(!brandAgg[bk]) brandAgg[bk]={rev:0,units:0}; brandAgg[bk].rev=round2(brandAgg[bk].rev+rev); brandAgg[bk].units+=q;
+ const ck = meta.category||'Lain-lain'; if(!catAgg[ck]) catAgg[ck]={rev:0,units:0}; catAgg[ck].rev=round2(catAgg[ck].rev+rev); catAgg[ck].units+=q;
+ }));
+ const topN = (obj, n, nameKey) => Object.entries(obj).map(([k,v])=>({k, name:(nameKey?v[nameKey]:k), rev:v.rev, units:v.units})).sort((a,b)=>b.rev-a.rev).slice(0,n);
+ const fillRows = (id, rows, showName) => { const tb=document.getElementById(id); if(!tb) return; tb.innerHTML = rows.length ? rows.map((x,i)=>'<tr><td style="color:var(--text-muted);">'+(i+1)+'</td><td>'+String(showName?x.name:x.k).slice(0,38)+'</td><td style="text-align:right;">'+x.units.toLocaleString()+'</td><td style="text-align:right; font-weight:600;">'+fmtRM2(x.rev)+'</td></tr>').join('') : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">Tiada data</td></tr>'; };
+ fillRows('anTopProdBody', topN(prodAgg,10,'name'), true);
+ fillRows('anTopBrandBody', topN(brandAgg,10), false);
+ fillRows('anTopCatBody', topN(catAgg,10), false);
+
+ // ---- Channel performance ----
+ const chAgg={}; cur.forEach(s => { const ch=s.channel||'POS Cashier'; if(!chAgg[ch]) chAgg[ch]={orders:0,rev:0}; chAgg[ch].orders++; chAgg[ch].rev=round2(chAgg[ch].rev+amtOf(s)); });
+ const chRows = Object.entries(chAgg).map(([k,v])=>({k,...v})).sort((a,b)=>b.rev-a.rev);
+ const chBody=document.getElementById('anChannelBody');
+ if(chBody) chBody.innerHTML = chRows.length ? chRows.map(x=>'<tr><td>'+x.k+'</td><td style="text-align:right;">'+x.orders+'</td><td style="text-align:right; font-weight:600;">'+fmtRM2(x.rev)+'</td><td style="text-align:right;">'+(C.rev?Math.round(x.rev/C.rev*100):0)+'%</td></tr>').join('') : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">Tiada data</td></tr>';
+
+ // ---- Customer new vs repeat (doughnut) + top customers ----
+ const custCt = document.getElementById('anCustChart');
+ if(custCt){ if(window.__anInst.cust) window.__anInst.cust.destroy();
+ window.__anInst.cust = new Chart(custCt.getContext('2d'), {
+ type:'doughnut',
+ data:{ labels:['Customer Baru','Customer Ulang'], datasets:[{ data:[C.newC, Math.max(0, C.custCount-C.newC)], backgroundColor:['#CD7C32','#101010'], borderWidth:2, borderColor:'#fff' }] },
+ options:{ responsive:true, maintainAspectRatio:false, cutout:'58%', plugins:{ legend:{position:'bottom', labels:{boxWidth:10, font:{size:11}, padding:8}}, tooltip:{ callbacks:{ label:(c)=> c.label+': '+c.parsed+' ('+(C.custCount?Math.round(c.parsed/C.custCount*100):0)+'%)' } } } }
+ });
+ }
+ const custAgg={}; cur.forEach(s => { const k=custKey(s); if(!k) return; if(!custAgg[k]) custAgg[k]={name:s.customer_name||s.customer_phone||'Walk-in', orders:0, rev:0}; custAgg[k].orders++; custAgg[k].rev=round2(custAgg[k].rev+amtOf(s)); });
+ const topCust = Object.values(custAgg).sort((a,b)=>b.rev-a.rev).slice(0,10);
+ const tcBody=document.getElementById('anTopCustBody');
+ if(tcBody) tcBody.innerHTML = topCust.length ? topCust.map((x,i)=>'<tr><td style="color:var(--text-muted);">'+(i+1)+'</td><td>'+String(x.name).slice(0,30)+'</td><td style="text-align:right;">'+x.orders+'</td><td style="text-align:right; font-weight:600;">'+fmtRM2(x.rev)+'</td></tr>').join('') : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">Tiada data</td></tr>';
+
+ // ---- Busiest hour / day ----
+ const hours=new Array(24).fill(0), dows=new Array(7).fill(0);
+ cur.forEach(s => { const d=new Date(s.created_at); hours[d.getHours()]+=amtOf(s); dows[(d.getDay()+6)%7]+=amtOf(s); });
+ const barOpts = { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>'RM '+Number(c.parsed.y).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2})}}}, scales:{x:{grid:{display:false},ticks:{font:{size:9}}}, y:{beginAtZero:true, grid:{color:'rgba(0,0,0,0.05)'}, ticks:{font:{size:9}, callback:(v)=>fmtRM(v)}}} };
+ const hourCt=document.getElementById('anHourChart');
+ if(hourCt){ if(window.__anInst.hour) window.__anInst.hour.destroy();
+ window.__anInst.hour = new Chart(hourCt.getContext('2d'), { type:'bar', data:{ labels:hours.map((_,i)=>i+':00'), datasets:[{ data:hours, backgroundColor:'#CD7C32', borderRadius:3 }] }, options:barOpts }); }
+ const dowCt=document.getElementById('anDowChart');
+ if(dowCt){ if(window.__anInst.dow) window.__anInst.dow.destroy();
+ window.__anInst.dow = new Chart(dowCt.getContext('2d'), { type:'bar', data:{ labels:['Isn','Sel','Rab','Kha','Jum','Sab','Ahd'], datasets:[{ data:dows, backgroundColor:'#101010', borderRadius:3 }] }, options:barOpts }); }
+};
+
 window.renderProductSales = function() {
  const tbody = document.getElementById('prodSalesTbody');
  if(!tbody) return;

@@ -4563,10 +4563,98 @@
  <!-- p1_279 — Analytics placeholder -->
  <div id="analyticsSection" class="tab-section" style="display: none;">
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="line-chart" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Analytics</h2>
- <div class="admin-card" style="padding:24px; text-align:center;">
- <i data-lucide="construction" style="width:32px; height:32px; color:#9CA3AF;"></i>
- <h3 style="margin:14px 0 6px;">Coming Soon</h3>
- <p style="color:#6B7280; font-size:13px; margin:0;">Real-time dashboards — sales trend, top SKUs, customer LTV, channel mix, conversion funnel. Drilldown + period compare.</p>
+ <style>
+ #analyticsSection .an-pill { font-size:12px; padding:6px 12px; border:1px solid var(--border-color); border-radius:20px; background:#F9FAFB; color:#374151; cursor:pointer; user-select:none; }
+ #analyticsSection .an-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); font-weight:700; }
+ #analyticsSection .an-delta { font-size:11px; margin-top:3px; font-weight:700; }
+ #analyticsSection .an-delta.up { color:#059669; }
+ #analyticsSection .an-delta.down { color:#dc2626; }
+ #analyticsSection .an-delta.flat { color:#9CA3AF; }
+ #analyticsSection tbody tr { border-top:1px solid var(--border-color); }
+ #analyticsSection tbody td { padding:8px 12px; }
+ @media (max-width:820px){ #analyticsSection .an-grid2 { grid-template-columns:1fr !important; } }
+ </style>
+
+ <!-- p1_454 — Period selector with compare-to-previous -->
+ <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+ <div id="anPills" style="display:flex; gap:6px; flex-wrap:wrap;">
+ <span class="an-pill" data-an="7d" onclick="window.__anSetRange('7d', this)">7 hari</span>
+ <span class="an-pill active" data-an="30d" onclick="window.__anSetRange('30d', this)">30 hari</span>
+ <span class="an-pill" data-an="90d" onclick="window.__anSetRange('90d', this)">90 hari</span>
+ <span class="an-pill" data-an="mtd" onclick="window.__anSetRange('mtd', this)">Bulan ini</span>
+ <span class="an-pill" data-an="ytd" onclick="window.__anSetRange('ytd', this)">YTD</span>
+ <span class="an-pill" data-an="custom" onclick="window.__anSetRange('custom', this)">Custom</span>
+ </div>
+ <div id="anRangeLabel" style="font-size:11.5px; color:var(--text-muted);"></div>
+ </div>
+ <div id="anCustomRow" style="display:none; gap:6px; align-items:center; margin-bottom:14px;">
+ <input type="date" id="anFrom" onchange="window.renderAnalytics && window.renderAnalytics()" style="font-size:12px; padding:5px 8px; border:1px solid var(--border-color); border-radius:6px; margin:0;">
+ <span style="color:#9CA3AF;">→</span>
+ <input type="date" id="anTo" onchange="window.renderAnalytics && window.renderAnalytics()" style="font-size:12px; padding:5px 8px; border:1px solid var(--border-color); border-radius:6px; margin:0;">
+ </div>
+
+ <!-- KPI row with period-over-period delta -->
+ <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:18px;" id="anKpiGrid">
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Jualan</div><div class="sa-kpi__val" id="anKpiRev">RM 0</div><div class="an-delta" id="anKpiRevD">—</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Order</div><div class="sa-kpi__val" id="anKpiOrders">0</div><div class="an-delta" id="anKpiOrdersD">—</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Purata / Order</div><div class="sa-kpi__val" id="anKpiAov">RM 0</div><div class="an-delta" id="anKpiAovD">—</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Unit Terjual</div><div class="sa-kpi__val" id="anKpiUnits">0</div><div class="an-delta" id="anKpiUnitsD">—</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Customer Baru</div><div class="sa-kpi__val" id="anKpiNew">0</div><div class="an-delta" id="anKpiNewD">—</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Kadar Ulang</div><div class="sa-kpi__val" id="anKpiRepeat">0%</div><div class="an-delta" id="anKpiRepeatD">—</div></div>
+ </div>
+
+ <!-- Trend: current vs previous -->
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:16px; margin-bottom:16px;">
+ <div style="font-weight:800; font-size:15px; margin-bottom:10px;">Trend Jualan <span style="font-weight:500; font-size:11.5px; color:var(--text-muted);">— semasa vs tempoh sebelum</span></div>
+ <div style="height:300px;"><canvas id="anTrendChart"></canvas></div>
+ </div>
+
+ <!-- Top products / brands -->
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;" class="an-grid2">
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:0; overflow:hidden;">
+ <div style="font-weight:700; font-size:13px; padding:12px 14px; border-bottom:1px solid var(--border-color); background:#FAFAFA;">Top 10 Produk (hasil)</div>
+ <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:var(--text-muted); text-align:left;"><th style="padding:8px 12px;">#</th><th style="padding:8px 12px;">Produk</th><th style="padding:8px 12px; text-align:right;">Unit</th><th style="padding:8px 12px; text-align:right;">Hasil</th></tr></thead><tbody id="anTopProdBody"></tbody></table></div>
+ </div>
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:0; overflow:hidden;">
+ <div style="font-weight:700; font-size:13px; padding:12px 14px; border-bottom:1px solid var(--border-color); background:#FAFAFA;">Top Brand (hasil)</div>
+ <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:var(--text-muted); text-align:left;"><th style="padding:8px 12px;">#</th><th style="padding:8px 12px;">Brand</th><th style="padding:8px 12px; text-align:right;">Unit</th><th style="padding:8px 12px; text-align:right;">Hasil</th></tr></thead><tbody id="anTopBrandBody"></tbody></table></div>
+ </div>
+ </div>
+
+ <!-- Top categories / channel -->
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;" class="an-grid2">
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:0; overflow:hidden;">
+ <div style="font-weight:700; font-size:13px; padding:12px 14px; border-bottom:1px solid var(--border-color); background:#FAFAFA;">Top Kategori (hasil)</div>
+ <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:var(--text-muted); text-align:left;"><th style="padding:8px 12px;">#</th><th style="padding:8px 12px;">Kategori</th><th style="padding:8px 12px; text-align:right;">Unit</th><th style="padding:8px 12px; text-align:right;">Hasil</th></tr></thead><tbody id="anTopCatBody"></tbody></table></div>
+ </div>
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:0; overflow:hidden;">
+ <div style="font-weight:700; font-size:13px; padding:12px 14px; border-bottom:1px solid var(--border-color); background:#FAFAFA;">Prestasi Channel</div>
+ <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:var(--text-muted); text-align:left;"><th style="padding:8px 12px;">Channel</th><th style="padding:8px 12px; text-align:right;">Order</th><th style="padding:8px 12px; text-align:right;">Hasil</th><th style="padding:8px 12px; text-align:right;">%</th></tr></thead><tbody id="anChannelBody"></tbody></table></div>
+ </div>
+ </div>
+
+ <!-- Customer + time -->
+ <div style="display:grid; grid-template-columns:1fr 1.3fr; gap:16px; margin-bottom:16px;" class="an-grid2">
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:16px;">
+ <div style="font-weight:700; font-size:13px; margin-bottom:8px;">Customer Baru vs Ulang</div>
+ <div style="height:230px;"><canvas id="anCustChart"></canvas></div>
+ </div>
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:0; overflow:hidden;">
+ <div style="font-weight:700; font-size:13px; padding:12px 14px; border-bottom:1px solid var(--border-color); background:#FAFAFA;">Top 10 Customer (hasil)</div>
+ <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="color:var(--text-muted); text-align:left;"><th style="padding:8px 12px;">#</th><th style="padding:8px 12px;">Customer</th><th style="padding:8px 12px; text-align:right;">Order</th><th style="padding:8px 12px; text-align:right;">Hasil</th></tr></thead><tbody id="anTopCustBody"></tbody></table></div>
+ </div>
+ </div>
+
+ <!-- Busiest hour / day -->
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="an-grid2">
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:16px;">
+ <div style="font-weight:700; font-size:13px; margin-bottom:8px;">Jam Paling Sibuk</div>
+ <div style="height:230px;"><canvas id="anHourChart"></canvas></div>
+ </div>
+ <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:16px;">
+ <div style="font-weight:700; font-size:13px; margin-bottom:8px;">Hari Paling Sibuk</div>
+ <div style="height:230px;"><canvas id="anDowChart"></canvas></div>
+ </div>
  </div>
  </div>
 
@@ -7516,6 +7604,7 @@
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
  { id:'p1_263', label:'Marketplace integration indicator tiap product (Zaid: "setiap product wajib ada indicator yang menandakan dia dah integrated dengan tiktok dan shopee"). Schema check: products_master takde dedicated columns shopee/tiktok yet — semua sync data live dalam metadata JSONB (pattern same as easystore_* keys). Visual indicator dalam renderProductDatabase pd-card grid: position absolute top:6px left:6px (kiri atas, sebelah status badge Live/Draft kanan atas). Dua chips small: SP (brand Shopee orange #EE4D2D fill bila integrated, grey #E5E7EB outline bila tak) dan TT (TikTok black bila integrated, grey bila tak). Lucide check icon bila syncd, X icon bila tak. Hover title explain status. Read data: metadata.shopee_item_id atau metadata.shopee_synced_at → shopeeIntegrated; same logic untuk TikTok. PDP modal extend dengan card baru "Marketplace Integration" antara Organization dan SEO: 2 grid 1fr 1fr — Shopee Item ID + TikTok Product ID inputs dengan brand colored chips beside labels (SP orange, TT black). Bawah ada syncStatus line yang papar "Shopee last sync: <timestamp> · TikTok last sync: <timestamp>" atau "Belum pernah sync auto" kalau kosong. openPdpModal populate values dari metadata. savePdpData merge ke metadata.shopee_item_id + tiktok_product_id (preserved alongside other metadata). Zaid boleh edit manually for now; future sync flow can auto-fill + set _synced_at timestamps. app.js v359→v360.', d:'done' },
+ { id:'p1_454', label:'Bina halaman ANALYTICS penuh (Zaid: "bina lengkap"). Ganti placeholder "Coming Soon" dgn dashboard sebenar: (1) period selector pills 7d/30d/90d/MTD/YTD/Custom + COMPARE auto vs tempoh sebelum (delta % naik/turun pada tiap KPI). (2) 6 KPI delta: Jualan, Order, Purata/Order, Unit Terjual, Customer Baru, Kadar Ulang. (3) Trend chart line OVERLAY semasa vs tempoh sebelum (auto harian; mingguan kalau >92 hari). (4) Top 10 Produk / Top Brand / Top Kategori (jadual unit+hasil). (5) Prestasi Channel (order/hasil/%). (6) Customer Baru vs Ulang doughnut (firstSeen all-time) + Top 10 Customer. (7) Jam & Hari paling sibuk (bar). window.renderAnalytics + __anSetRange; guna __isRealSale (selaras p1_452, RM82k/317 utk 30d). Operational/non-sulit = akses terbuka. CSS .an-pill/.an-delta + responsive 1-kolum <820px. app.js v513->v514, sw v70->v71.', d:'done' },
  { id:'p1_453', label:'Gate PIN data SULIT/PNC (Zaid: "data sulit & bersifat PNC masuk reports, letak pin"; PIN disahkan 1999, skop = semua kewangan sensitif: untung/margin, komisen, kos, leaderboard). Helper window.__confidentialGate(onSuccess) papar overlay minta PIN 1999, unlock simpan dlm sessionStorage (confUnlocked_v1) — sekali buka, buka utk sesi tu. switchHub intercept: kalau buka channelProfitSection / brandPerfSection / salesMgmtSection & belum unlock → papar gate, abort, on-success re-click nav. Commission MANAGER-view (cmManagerWrap jadual SEMUA staf) digate berasingan — personal view (staf tengok komisen sendiri) KEKAL terbuka; bila locked papar butang "Buka dengan PIN". NOTA: managerDashboardSection TAK digate sebab ia sebahagian Home (switchHub homeSection+managerDashboardSection) — confidential widget dlm home (margin/money-at-risk) belum digate, perlu keputusan Zaid. app.js v512->v513, sw v69->v70.', d:'done' },
  { id:'p1_452', label:'Selaraskan TAPISAN accuracy merentas semua Analytics & Reports (Zaid: "fokus analytics & reports" + audit dedah banyak halaman kira data MENTAH macam bug home dashboard sebelum p1_449). Tambah helper SATU-sumber window.__isRealSale(s) = buang is_test + status void/cancel/refund (definisi sama home dashboard). Apply ke: (1) renderChannelProfit (admin Channel Profitability — dulu revenue/COGS/margin gembung), (2) renderBrandPerf (admin Brand Performance — revenue/units/trend gembung), (3) renderMgmtStaffSales (leaderboard staf Farhan), (4) renderManagerDashboard (sales + prevSales + MTD target bar — dulu cuma tapis tarikh), (5) __computeProductSales (inventori: buang test+void+cancel, kekal logik refund negatif). Sales Ledger SENGAJA dibiar (audit trail papar semua + ada filter status). Hasil: semua KPI analytics kini selaras & tepat dengan home (RM81,986/317 utk 30d). Sebahagian batch "fokus analytics&reports" — seterusnya: PIN-199 confidential reports, bina halaman Analytics, improve reports staff. app.js v511->v512, sw v68->v69.', d:'done' },
  { id:'p1_451', label:'Komisen: base = UNIT SKU terjual (harga sebenar dibayar), bukan total resit (Zaid: "komisen 5% pada setiap 1 unit sku berjaya terjual, BUKAN 5% pada total resit"; pilih opsyen C = harga selepas diskaun, tak masuk shipping/tax). AUDIT SQL semua masa per staff dedah cara lama (5% × total resit) bayar KURANG sebab resit dah tolak diskaun + ada shipping/tax; beza terbesar Aliff (diskaun besar): 5% senarai RM5,674 vs harga-sebenar RM4,181 vs resit-skrg RM3,823. FIX: helper window.__saleCommissionBase(s) = SUM(harga×qty − diskaun) merentas item, buang shipping/tax peringkat-resit, tanda negatif utk refund (total resit<0). Diguna di: (1) aggregateForStaff (Komisen Saya + Manager view), (2) jadual detail transaksi, (3) modal __cmShowStaffSales, (4) jadual reports Aliff (+ tambah padanan staff_name, skip is_test). Header "Amount"->"Nilai Produk", "Sales MTD"->"Base Komisen" + nota penjelas pada kad. app.js v510->v511, sw v67->v68.', d:'done' },
@@ -12418,7 +12507,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=513"></script>
+ <script src="app.js?v=514"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
