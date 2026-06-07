@@ -6400,49 +6400,74 @@ window.renderDashboard = function() {
  </tr>`).join('');
  }
 
- // 6. Draw Chart.js (Daily Sales)
- let dailyMap = {};
- filteredSales.forEach(s => {
- let dStr = new Date(s.created_at).toLocaleDateString('en-GB'); 
- dailyMap[dStr] = round2((dailyMap[dStr] || 0) + Number(s.total || s.total_amount || 0));
- });
- // Sort chronological
- let sortedDates = Object.keys(dailyMap).sort((a,b)=> new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-')));
- let gLabels = sortedDates;
- let gData = sortedDates.map(d => dailyMap[d]);
-
- const ctx = document.getElementById('salesChart');
- if(!ctx) return;
- 
- if(salesChartInst) salesChartInst.destroy();
- salesChartInst = new Chart(ctx.getContext('2d'), {
- type: 'line',
- data: {
- labels: gLabels,
- datasets: [{
- label: 'RM',
- data: gData,
- backgroundColor: 'rgba(205, 124, 50, 0.12)',
- borderColor: '#CD7C32',
- borderWidth: 2,
- fill: true,
- tension: 0.35,
- pointRadius: gData.length> 14 ? 0 : 2,
- pointHoverRadius: 4
- }]
- },
- options: {
- responsive: true,
- maintainAspectRatio: false,
- plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => 'RM ' + Number(c.parsed.y).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) } } },
- scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
- }
- });
+ // 6. Sales Trajectory chart — p1_439 ada toggle Daily/Weekly/Monthly/Custom sendiri
+ if(typeof window.renderSalesTrajectory === 'function') window.renderSalesTrajectory();
 
  // Freshness timestamp
  const stamp = document.getElementById('dashFreshStamp');
  if (stamp) stamp.textContent = new Date().toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
 }
+
+// p1_439 — Sales Trajectory: Daily / Weekly / Monthly / Custom analytic graph
+window.__stMode = window.__stMode || 'daily';
+window.__stSetMode = function(mode) {
+ window.__stMode = mode || 'daily';
+ const cr = document.getElementById('stCustomRow');
+ if(cr) cr.style.display = (window.__stMode === 'custom') ? 'flex' : 'none';
+ window.renderSalesTrajectory();
+};
+window.renderSalesTrajectory = function() {
+ const ctx = document.getElementById('salesChart');
+ if(!ctx || typeof Chart === 'undefined') return;
+ const mode = window.__stMode || 'daily';
+ const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory) ? salesHistory : []).filter(s => {
+ if(!s || !s.created_at || s.is_test) return false;
+ const st = (s.status || '').toLowerCase();
+ if(st.includes('void') || st.includes('cancel') || st.includes('refund')) return false;
+ return true;
+ });
+ const now = new Date();
+ let from, to = now;
+ if(mode === 'custom') {
+ const f = document.getElementById('stFrom'), t = document.getElementById('stTo');
+ from = (f && f.value) ? new Date(f.value + 'T00:00:00') : new Date(now.getTime() - 30*864e5);
+ to = (t && t.value) ? new Date(t.value + 'T23:59:59') : now;
+ } else if(mode === 'weekly') { from = new Date(now.getTime() - 12*7*864e5); }
+ else if(mode === 'monthly') { from = new Date(now.getFullYear(), now.getMonth() - 11, 1); }
+ else { from = new Date(now.getTime() - 29*864e5); } // daily = 30 hari
+ const fromMs = from.getTime(), toMs = to.getTime();
+ const pad = (n) => String(n).padStart(2, '0');
+ const keyOf = (d) => {
+ if(mode === 'monthly') return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+ if(mode === 'weekly') { const x = new Date(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); x.setHours(0,0,0,0); return x.getFullYear() + '-' + pad(x.getMonth()+1) + '-' + pad(x.getDate()); }
+ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+ };
+ const bucket = {};
+ sales.forEach(s => {
+ const d = new Date(s.created_at); const t = d.getTime();
+ if(t < fromMs || t > toMs) return;
+ const k = keyOf(d);
+ bucket[k] = round2((bucket[k] || 0) + Number(s.total || s.total_amount || 0));
+ });
+ const keys = Object.keys(bucket).sort();
+ const labelOf = (k) => {
+ const p = k.split('-');
+ if(mode === 'monthly') return new Date(+p[0], +p[1]-1, 1).toLocaleDateString('en-MY', { month:'short', year:'2-digit' });
+ return (mode === 'weekly' ? 'mgg ' : '') + p[2] + '/' + p[1];
+ };
+ const labels = keys.map(labelOf);
+ const data = keys.map(k => bucket[k]);
+ if(salesChartInst) salesChartInst.destroy();
+ salesChartInst = new Chart(ctx.getContext('2d'), {
+ type: 'line',
+ data: { labels, datasets: [{ label: 'RM', data, backgroundColor: 'rgba(205, 124, 50, 0.12)', borderColor: '#CD7C32', borderWidth: 2, fill: true, tension: 0.35, pointRadius: data.length > 14 ? 0 : 2, pointHoverRadius: 4 }] },
+ options: {
+ responsive: true, maintainAspectRatio: false,
+ plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => 'RM ' + Number(c.parsed.y).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2}) } } },
+ scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+ }
+ });
+};
 
 // p1_159 — Test/Real management state
 window.__ordHideTest = (function(){
