@@ -21747,6 +21747,7 @@ window.renderAllOrders = function() {
  const aoStart = (aoPage - 1) * AO_PAGE_SIZE;
  const slice = filtered.slice(aoStart, aoStart + AO_PAGE_SIZE);
  window.__aoPageIds = slice.map(s => s.id);
+ window.__aoNavIds = filtered.map(s => s.id); // p1_436 — full filtered order list for modal Next/Back
  tbody.innerHTML = slice.map(s => {
  const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
  const itemsCount = Array.isArray(s.items) ? s.items.reduce((n, it) => n + window.__aoItemQty(it), 0) : 0;
@@ -21850,6 +21851,18 @@ window.__aoToggleTest = async function(saleId, isTest) {
 };
 
 // p1_319 — Panel detail order (klik "Lihat"). Read-only: butiran + senarai barang untuk pack.
+// p1_436 — navigate to prev/next order within the filtered list WITHOUT closing the modal
+window.__aoNavOrder = function(currentId, dir) {
+ const list = window.__aoNavIds || [];
+ const idx = list.indexOf(currentId);
+ if(idx < 0) return;
+ const next = idx + dir;
+ if(next < 0 || next >= list.length) return;
+ const overlay = document.getElementById('aoViewOverlay');
+ if(overlay) overlay.remove();
+ window.__aoViewOrder(list[next]);
+};
+
 window.__aoViewOrder = function(saleId) {
  if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return;
  const s = salesHistory.find(x => x.id === saleId);
@@ -21906,6 +21919,13 @@ window.__aoViewOrder = function(saleId) {
  <div style="font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:#92400E; text-transform:uppercase; margin-bottom:8px;"><i data-lucide="truck" style="width:12px;height:12px;vertical-align:-2px;"></i> Fulfilment / Penghantaran</div>
  ${chipsHtml}${mpNote}${controls}
  </div>`;
+ // p1_436 — Back/Next nav across the filtered order list
+ const __navList = window.__aoNavIds || [];
+ const __navIdx = __navList.indexOf(s.id);
+ const __hasPrev = __navIdx > 0;
+ const __hasNext = __navIdx >= 0 && __navIdx < __navList.length - 1;
+ const __navOn = 'background:#F3F4F6; border:1px solid #E5E7EB; color:#374151; min-width:34px; height:34px; padding:0 10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; display:inline-flex; align-items:center; gap:4px; justify-content:center;';
+ const __navOff = 'background:#F9FAFB; border:1px solid #F0F0F0; color:#D1D5DB; min-width:34px; height:34px; padding:0 10px; border-radius:8px; cursor:not-allowed; font-size:13px; font-weight:700; display:inline-flex; align-items:center; gap:4px; justify-content:center;';
  const html = `<div id="aoViewOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3800; display:flex; align-items:flex-start; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); overflow-y:auto;" onclick="if(event.target===this) this.remove();">
  <div style="background:#fff; max-width:680px; width:100%; border-radius:14px; padding:0; margin:auto; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
  <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 22px; border-bottom:1px solid #F0F0F0; background:linear-gradient(135deg,#FAF6EF,#fff);">
@@ -21913,7 +21933,11 @@ window.__aoViewOrder = function(saleId) {
  <div style="font-size:18px; font-weight:800; color:#101010;">Order #${s.id} <span style="background:${m.bg}; color:${m.fg}; padding:2px 9px; border-radius:5px; font-size:11px; font-weight:700; margin-left:6px; vertical-align:2px;">${esc(m.label)}</span></div>
  <div style="font-size:12px; color:#6B7280; margin-top:3px;"><i data-lucide="calendar" style="width:11px;height:11px;vertical-align:-1px;"></i> ${dt} &nbsp;·&nbsp; <i data-lucide="store" style="width:11px;height:11px;vertical-align:-1px;"></i> ${esc(s.channel || '-')}</div>
  </div>
- <button onclick="document.getElementById('aoViewOverlay').remove()" style="background:none; border:none; font-size:26px; cursor:pointer; color:#999; line-height:1;">×</button>
+ <div style="display:flex; gap:7px; align-items:center;">
+ <button ${__hasPrev ? `onclick="window.__aoNavOrder(${s.id}, -1)"` : 'disabled'} title="Order sebelum" style="${__hasPrev ? __navOn : __navOff}"><i data-lucide="chevron-left" style="width:15px;height:15px;"></i> Back</button>
+ <button ${__hasNext ? `onclick="window.__aoNavOrder(${s.id}, 1)"` : 'disabled'} title="Order seterusnya" style="${__hasNext ? __navOn : __navOff}">Next <i data-lucide="chevron-right" style="width:15px;height:15px;"></i></button>
+ <button onclick="document.getElementById('aoViewOverlay').remove()" title="Tutup" style="background:none; border:none; font-size:26px; cursor:pointer; color:#999; line-height:1; margin-left:4px;">×</button>
+ </div>
  </div>
  <div style="padding:18px 22px;">
  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
