@@ -4406,15 +4406,18 @@ window.renderTeamReports = async function() {
  if(ph) ph.remove();
 
  const filter = window.__teamFilter;
- let rows = [];
+ let rows = [], allRows = [];
  try {
  if(typeof db !== 'undefined' && db) {
- let q = db.from('staff_report_submissions').select('*').order('submitted_at', { ascending: false }).limit(100);
- if(filter === 'unread') q = q.is('bos_read_at', null);
- else if(filter === 'manual_notes' || filter === 'bizdev_pipeline' || filter === 'commission_draft') q = q.eq('submission_type', filter);
- const { data, error } = await q;
+ // p1_456 — fetch all (100 terkini), tapis client-side supaya ringkasan + "belum hantar" boleh dikira
+ const { data, error } = await db.from('staff_report_submissions').select('*').order('submitted_at', { ascending: false }).limit(100);
  if(error) throw error;
- rows = data || [];
+ allRows = data || [];
+ rows = allRows.filter(r => {
+ if(filter === 'unread') return !r.bos_read_at;
+ if(filter === 'all') return true;
+ return r.submission_type === filter;
+ });
  }
  } catch(e) {
  grid.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
@@ -4426,12 +4429,34 @@ window.renderTeamReports = async function() {
  const cfg = {
  manual_notes: { bg:'#ffedd5', fg:'#7c4a1a', label:'Catatan' },
  bizdev_pipeline: { bg:'#ffedd5', fg:'#a05f22', label:'BizDev Pipeline' },
- commission_draft: { bg:'#D1FAE5', fg:'#065F46', label:'Komisen' }
+ commission_draft: { bg:'#D1FAE5', fg:'#065F46', label:'Komisen' },
+ marketing_weekly: { bg:'#FCE7F3', fg:'#9D174D', label:'Marketing' }
  }[type] || { bg:'#E5E7EB', fg:'#374151', label:type };
  return `<span style="display:inline-block; padding:2px 8px; border-radius:50px; background:${cfg.bg}; color:${cfg.fg}; font-size:10px; font-weight:700;">${cfg.label}</span>`;
  };
 
- // Filter buttons (p1_133 — commission filter added)
+ // p1_456 — Ringkasan + senarai staf "belum hantar" (14 hari)
+ const unreadN = allRows.filter(r => !r.bos_read_at).length;
+ const submittedNames = new Set();
+ const cut14 = Date.now() - 14*24*3600*1000;
+ allRows.forEach(r => { const t = new Date(r.submitted_at).getTime(); if(!isNaN(t) && t >= cut14 && r.staff_name) submittedNames.add(r.staff_name); });
+ let roster = [];
+ try {
+ let inactive = []; try { inactive = JSON.parse(localStorage.getItem('staffInactive_v1')||'[]'); } catch(e){}
+ roster = (typeof authUsers !== 'undefined' ? authUsers : []).filter(u => u && u.name && u.staff_id !== 'TST001' && !inactive.includes(u.staff_id));
+ } catch(e){}
+ const notSubmitted = roster.filter(u => !submittedNames.has(u.name));
+ const chip = (lbl, val, color) => `<div style="background:#fff; border:1px solid var(--border-color); border-radius:10px; padding:8px 14px; min-width:80px;"><div style="font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#9CA3AF; font-weight:700;">${lbl}</div><div style="font-size:18px; font-weight:800; color:${color||'#101010'};">${val}</div></div>`;
+ const summaryBar = `
+ <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+ ${chip('Jumlah', allRows.length)}
+ ${chip('Belum Dibaca', unreadN, unreadN>0?'#D97706':'#059669')}
+ ${chip('Staf Hantar (14h)', submittedNames.size, 'var(--primary)')}
+ ${chip('Belum Hantar (14h)', notSubmitted.length, notSubmitted.length>0?'#c0392b':'#059669')}
+ </div>
+ ${notSubmitted.length ? `<div style="background:#FFF7ED; border:1px solid #FED7AA; border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:12px; color:#7c4a1a;"><strong>Belum hantar laporan (14 hari):</strong> ${notSubmitted.map(u=>escAttr(u.name)).join(', ')}</div>` : ''}`;
+
+ // Filter buttons (p1_133 — commission; p1_456 — marketing)
  const filterBar = `
  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
  <button class="sy-btn ${filter === 'all' ? '' : 'secondary'}" onclick="window.__teamFilter='all'; window.renderTeamReports()">Semua</button>
@@ -4439,16 +4464,17 @@ window.renderTeamReports = async function() {
  <button class="sy-btn ${filter === 'manual_notes' ? '' : 'secondary'}" onclick="window.__teamFilter='manual_notes'; window.renderTeamReports()">Catatan</button>
  <button class="sy-btn ${filter === 'bizdev_pipeline' ? '' : 'secondary'}" onclick="window.__teamFilter='bizdev_pipeline'; window.renderTeamReports()">BizDev Pipeline</button>
  <button class="sy-btn ${filter === 'commission_draft' ? '' : 'secondary'}" onclick="window.__teamFilter='commission_draft'; window.renderTeamReports()">Komisen Draf</button>
+ <button class="sy-btn ${filter === 'marketing_weekly' ? '' : 'secondary'}" onclick="window.__teamFilter='marketing_weekly'; window.renderTeamReports()">Marketing</button>
  <button class="sy-btn secondary" style="margin-left:auto;" onclick="window.__teamMarkAllRead()"><i data-lucide="check-check" style="width:13px;height:13px;"></i> Mark Semua Read</button>
  </div>`;
 
  if(!rows.length) {
- grid.innerHTML = filterBar + '<p style="color:#9CA3AF; padding:30px; text-align:center;">Tiada submission dengan filter ni.</p>';
+ grid.innerHTML = summaryBar + filterBar + '<p style="color:#9CA3AF; padding:30px; text-align:center;">Tiada submission dengan filter ni.</p>';
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  return;
  }
 
- grid.innerHTML = filterBar + rows.map(r => {
+ grid.innerHTML = summaryBar + filterBar + rows.map(r => {
  const unread = !r.bos_read_at;
  const initials = (r.staff_name || '').split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
  const payload = r.payload || {};
@@ -4470,6 +4496,15 @@ window.renderTeamReports = async function() {
  const amount = Number(payload.amount || 0);
  const prep = payload.prepared_by_name || '';
  preview = `Komisen RM ${amount.toFixed(2)} · ${rate}%${prep ? ' · disediakan ' + prep : ''}`;
+ }
+ // p1_456 — marketing_weekly preview
+ else if(r.submission_type === 'marketing_weekly') {
+ const sum = (p)=> (Number(p?.posts||0)) ;
+ const tp=payload.tiktok||{}, ig=payload.instagram||{}, fb=payload.facebook||{};
+ const totPosts = sum(tp)+sum(ig)+sum(fb);
+ const totViews = (Number(tp.views||0)+Number(ig.views||0)+Number(fb.views||0));
+ const totLeads = (Number(tp.leads||0)+Number(ig.leads||0)+Number(fb.leads||0));
+ preview = `${totPosts} posts · ${totViews.toLocaleString()} views · ${totLeads} leads (TT/IG/FB)`;
  }
  const ago = (() => {
  const ms = Date.now() - new Date(r.submitted_at).getTime();
@@ -4574,6 +4609,17 @@ window.__teamOpenSubmission = async function(id) {
  <div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Amaun</div><div style="font-size:24px; font-weight:800; color:#101010;">RM ${amount.toFixed(2)}</div></div>
  <div style="grid-column:1 / -1; padding-top:8px; border-top:1px solid #E5E7EB;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Disediakan oleh</div><div style="font-size:13px; color:#374151;">${escAttr(prep)}</div></div>
  </div>`;
+ } else if(data.submission_type === 'marketing_weekly') {
+ const plat = [['tiktok','TikTok'],['instagram','Instagram'],['facebook','Facebook']];
+ const n = (v)=> Number(v||0).toLocaleString();
+ let tot = {posts:0,views:0,likes:0,leads:0};
+ plat.forEach(([k])=>{ const p=payload[k]||{}; tot.posts+=Number(p.posts||0); tot.views+=Number(p.views||0); tot.likes+=Number(p.likes||0); tot.leads+=Number(p.leads||0); });
+ bodyHtml = '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;">'
+ + '<thead><tr style="text-align:left; color:#6B7280; font-size:11px; text-transform:uppercase;"><th style="padding:6px 8px;">Platform</th><th style="padding:6px 8px; text-align:right;">Posts</th><th style="padding:6px 8px; text-align:right;">Views</th><th style="padding:6px 8px; text-align:right;">Likes</th><th style="padding:6px 8px; text-align:right;">Leads</th></tr></thead><tbody>'
+ + plat.map(([k,lbl])=>{ const p=payload[k]||{}; return '<tr style="border-top:1px solid #E5E7EB;"><td style="padding:7px 8px; font-weight:600;">'+lbl+'</td><td style="padding:7px 8px; text-align:right;">'+n(p.posts)+'</td><td style="padding:7px 8px; text-align:right;">'+n(p.views)+'</td><td style="padding:7px 8px; text-align:right;">'+n(p.likes)+'</td><td style="padding:7px 8px; text-align:right;">'+n(p.leads)+'</td></tr>'; }).join('')
+ + '<tr style="border-top:2px solid #E5E7EB; font-weight:800;"><td style="padding:7px 8px;">Jumlah</td><td style="padding:7px 8px; text-align:right;">'+n(tot.posts)+'</td><td style="padding:7px 8px; text-align:right;">'+n(tot.views)+'</td><td style="padding:7px 8px; text-align:right;">'+n(tot.likes)+'</td><td style="padding:7px 8px; text-align:right;">'+n(tot.leads)+'</td></tr>'
+ + '</tbody></table></div>'
+ + (payload.notes ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid #E5E7EB;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:4px;">Catatan</div><div style="white-space:pre-wrap; line-height:1.6; font-size:13px; color:#374151;">'+escAttr(payload.notes)+'</div></div>' : '');
  }
  // Mark read
  await db.from('staff_report_submissions').update({ bos_read_at: new Date().toISOString(), bos_action: 'acknowledged' }).eq('id', id);
