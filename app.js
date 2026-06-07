@@ -12392,6 +12392,8 @@ window.lpRenderPdp = function() {
     if (current.weight_kg) { const v = fmtKg(current.weight_kg); if (v) quickSpecs.push({ label: 'Berat', value: v }); }
     const L = fmtCm(current.length_cm), W = fmtCm(current.width_cm), H = fmtCm(current.height_cm);
     if (L && W && H) quickSpecs.push({ label: 'Saiz Packed', value: `${L} × ${W} × ${H} cm` });
+    // p1_423 — SKU dipindah ke row info, sebelah Saiz Packed (Zaid)
+    if (current.sku) quickSpecs.push({ label: 'SKU', value: current.sku });
     if (current.variant_size) quickSpecs.push({ label: 'Saiz', value: current.variant_size });
     if (current.unit && current.unit !== 'pcs') quickSpecs.push({ label: 'Unit', value: current.unit });
     const quickHtml = quickSpecs.length
@@ -12441,7 +12443,6 @@ window.lpRenderPdp = function() {
             <div class="lp-pdp__meta">
                 ${current.brand ? `<span class="lp-pdp__brand">${escHtml(current.brand)}</span>` : ''}
                 ${(!sameBC && cleanCat) ? `<span class="lp-pdp__cat">${escHtml(cleanCat)}</span>` : ''}
-                <span class="lp-pdp__sku">${escHtml(current.sku)}</span>
             </div>
             <h2 class="lp-pdp__title" id="lpPdpTitle">${escHtml(parsed.title)}</h2>
             <div class="lp-pdp__price-row">
