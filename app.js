@@ -21786,32 +21786,16 @@ window.renderConfidentialReport = function() {
  const note = document.getElementById('confRangeNote');
  if(note) note.textContent = '· ' + start.toLocaleDateString('en-MY',{day:'numeric',month:'short'}) + ' – ' + now.toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'});
 
- // Jualan bersih 30 hari (real sales)
- let rev = 0;
+ // p1_457 — POS hanya kira data POS sebenar (jualan + order). Untung/margin/COGS
+ // = sumber rasmi 10cc (finance dah pindah ke 10cc; finance_records POS basi/0 COGS).
+ let rev = 0, orders = 0;
  (Array.isArray(salesHistory)?salesHistory:[]).forEach(s => {
  if(!window.__isRealSale(s) || !s.created_at) return;
  const t = new Date(s.created_at).getTime();
- if(t>=startMs && t<=endMs) rev = round2(rev + (Number(s.total||s.total_amount||0)||0));
+ if(t>=startMs && t<=endMs) { rev = round2(rev + (Number(s.total||s.total_amount||0)||0)); orders++; }
  });
- // COGS dari finance_records (kategori COGS) dalam tetingkap (guna tengah-bulan)
- let cogs = 0;
- try {
- const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
- (Array.isArray(financeRecords)?financeRecords:[]).forEach(f => {
- if(f.category !== 'COGS') return;
- const idx = M.indexOf(f.month); if(idx<0) return;
- const d = new Date(parseInt(f.year), idx, 15).getTime();
- if(d>=startMs && d<=endMs) cogs += parseFloat(f.amount||0)||0;
- });
- } catch(e){}
- cogs = round2(cogs);
- const profit = round2(rev - cogs);
- const marginPct = rev>0 ? (profit/rev*100) : null;
  setT('confRev', fmtRM2(rev));
- setT('confCogs', fmtRM2(cogs));
- setT('confProfit', fmtRM2(profit));
- const mEl = document.getElementById('confMargin');
- if(mEl){ if(marginPct==null){ mEl.textContent='—'; } else { mEl.textContent = marginPct.toFixed(1)+'%'; mEl.style.color = marginPct>=30?'#059669':marginPct>=15?'#d97706':'#dc2626'; } }
+ setT('confOrders', orders.toLocaleString());
 
  // Wang Berisiko (snapshot): low-stock value + AR overdue >30 hari
  try {
