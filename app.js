@@ -13946,6 +13946,14 @@ ${table.outerHTML}
 };
 
 // p1_127 — Toggle cuti balance hint when AL/MC/EL/PH selected
+// p1_415 — BUGFIX: fungsi ni dirujuk oleh onchange #reqScheduleShift tapi tak pernah
+// ditakrifkan → setiap kali tukar Syif/Cuti, ReferenceError dilempar & halang balance hint.
+// Tunjuk kotak upload sijil MC (#reqMcBox) hanya bila pilih "Cuti Sakit Sijil (MC)".
+window.toggleReqMcUpload = function(shift) {
+ const box = document.getElementById('reqMcBox');
+ if(box) box.style.display = (shift === 'MC') ? 'block' : 'none';
+};
+
 window.__rsToggleBalanceHint = function(shift) {
  const hint = document.getElementById('reqBalanceHint');
  if(!hint) return;
@@ -26194,6 +26202,22 @@ window.I18N = {
  dept_marketing: { bm: 'Jabatan Pemasaran', en: 'Marketing Department' },
  dept_setup: { bm: 'Tetapan', en: 'Settings' },
 
+ // p1_415 — BUGFIX i18n: key dirujuk dlm HTML tapi tertinggal dari dict (label tak translate dlm BM)
+ dept_product_master: { bm: 'Master Produk', en: 'Product Master' },
+ sb_all_orders: { bm: 'Semua Pesanan', en: 'All Orders' },
+ sb_pm_collection: { bm: 'Koleksi', en: 'Collection' },
+ sb_pm_inventory: { bm: 'Inventori', en: 'Inventory' },
+ sb_pm_purchase_orders: { bm: 'Pesanan Belian', en: 'Purchase Orders' },
+ od_customer: { bm: 'Butiran Pelanggan', en: 'Customer details' },
+ od_shipping_address: { bm: 'Alamat Penghantaran', en: 'Shipping address' },
+ od_tracking: { bm: 'Penjejakan', en: 'Tracking' },
+ od_history: { bm: 'Sejarah', en: 'History' },
+ od_tags: { bm: 'Tag', en: 'Tags' },
+ od_items_label: { bm: 'Item', en: 'Items' },
+ od_kpi_items: { bm: 'Jumlah Item', en: 'Total items' },
+ od_kpi_total: { bm: 'Jumlah Amaun', en: 'Total amount' },
+ od_action_invoice: { bm: 'Invois', en: 'Invoice' },
+ od_action_packing_slip: { bm: 'Slip Pembungkusan', en: 'Packing Slip' },
  // p1_77 — Sidebar item labels (every clickable menu-item)
  sb_overview: { bm: 'Ringkasan', en: 'Overview' },
  sb_memo_board: { bm: 'Papan Memo', en: 'Memo Board' },
