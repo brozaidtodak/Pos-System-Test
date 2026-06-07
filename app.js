@@ -18465,7 +18465,13 @@ window.renderPdpSiblingVariants = function(prod) {
  });
  window.__pdpVariantSkus = sibs.map(v => v.sku);
  // editable cell input
- const inp = (i,f,val,w,num) => `<input id="pv_${i}_${f}" type="${num?'number':'text'}" ${num?'step="'+num+'" inputmode="decimal"':''} value="${val==null?'':esc(val)}" onclick="event.stopPropagation();" style="width:${w}px; padding:5px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px;">`;
+ // p1_432 — for the LEAD (current) variant, live-sync its table cells to the main
+ // form fields so editing harga di jadual (1) tak hilang bila tekan Save utama (2).
+ const SYNCMAP = { price:'pdpPrice', compare:'pdpCompareAt', cost:'pdpCost', shopee:'pdpShopeePrice', tiktok:'pdpTiktokPrice' };
+ const inp = (i,f,val,w,num,leadSync) => {
+ const sync = (leadSync && SYNCMAP[f]) ? ` oninput="var m=document.getElementById('${SYNCMAP[f]}'); if(m) m.value=this.value;"` : '';
+ return `<input id="pv_${i}_${f}" type="${num?'number':'text'}" ${num?'step="'+num+'" inputmode="decimal"':''} value="${val==null?'':esc(val)}" onclick="event.stopPropagation();"${sync} style="width:${w}px; padding:5px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px;">`;
+ };
  let rows = '';
  sibs.forEach((v,i) => {
  const isCur = v.sku === prod.sku;
@@ -18477,11 +18483,11 @@ window.renderPdpSiblingVariants = function(prod) {
  <td style="padding:6px 8px; white-space:nowrap;"><a onclick="window.openPdpModal('${escJs(v.sku)}')" style="cursor:pointer; color:#CD7C32; font-weight:${isCur?'800':'600'}; text-decoration:none;">${esc(label)}</a>${isCur ? ' <span style="color:#9CA3AF; font-size:9px;">(kini)</span>' : ''}</td>
  <td style="padding:6px 8px; font-family:monospace; font-size:11px; color:#6B7280; white-space:nowrap;">${esc(v.sku)}</td>
  <td style="padding:6px 8px;">${inp(i,'qty',stock,58,'1')}</td>
- <td style="padding:6px 8px;">${inp(i,'price',v.price,70,'0.01')}</td>
- <td style="padding:6px 8px;">${inp(i,'compare',v.compare_at_price,70,'0.01')}</td>
- <td style="padding:6px 8px;">${inp(i,'cost',v.cost_price,70,'0.01')}</td>
- <td style="padding:6px 8px;">${inp(i,'shopee',v.shopee_price,72,'0.01')}</td>
- <td style="padding:6px 8px;">${inp(i,'tiktok',v.tiktok_price,72,'0.01')}</td>
+ <td style="padding:6px 8px;">${inp(i,'price',v.price,70,'0.01',isCur)}</td>
+ <td style="padding:6px 8px;">${inp(i,'compare',v.compare_at_price,70,'0.01',isCur)}</td>
+ <td style="padding:6px 8px;">${inp(i,'cost',v.cost_price,70,'0.01',isCur)}</td>
+ <td style="padding:6px 8px;">${inp(i,'shopee',v.shopee_price,72,'0.01',isCur)}</td>
+ <td style="padding:6px 8px;">${inp(i,'tiktok',v.tiktok_price,72,'0.01',isCur)}</td>
  <td style="padding:6px 8px;">${inp(i,'barcode',v.erp_barcode,110,'')}</td>
  <td style="padding:6px 8px;">${inp(i,'len',v.length_cm,50,'0.1')}</td>
  <td style="padding:6px 8px;">${inp(i,'wid',v.width_cm,50,'0.1')}</td>
