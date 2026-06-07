@@ -821,11 +821,12 @@
 .lp-pill { background: #FFF; border: 1px solid #E5E7EB; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #4B5563; cursor: pointer; transition: 0.15s; }
 .lp-pill:hover { border-color: var(--primary-500); color: var(--primary-700); }
 .lp-pill--active { background: #1F2937; color: #FFF; border-color: #1F2937; }
-/* p1_420 — fixed 5 cards per row (Zaid), responsive down for smaller screens */
-.lp-products-grid { padding: 0 24px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; align-items: start; }
-@media (max-width: 1200px) { .lp-products-grid { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 900px)  { .lp-products-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 640px)  { .lp-products-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 14px; } }
+/* p1_420/p1_421 — fixed 5 cards per row (Zaid), responsive. ID selector so it wins over
+   the base .products-grid (minmax 140px) in BOTH the public landing and Preview Mode. */
+#publicProductsList.lp-products-grid { padding: 0 24px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1200px) { #publicProductsList.lp-products-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 900px)  { #publicProductsList.lp-products-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px)  { #publicProductsList.lp-products-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 14px; } }
 
 /* p1_51: card is flex column so button always sits at bottom; grid default align-items:stretch equalises row height */
 .lp-product-card { background: #FFF; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid transparent; transition: 0.2s; position: relative; display: flex; flex-direction: column; }
