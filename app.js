@@ -18765,6 +18765,27 @@ window.savePdpData = async function() {
  try {
  let { error } = await db.from('products_master').update(updatePayload).eq('sku', sku);
  if(error) throw error;
+ // p1_428 — Product ID / Item ID / direct links adalah PERINGKAT PRODUK (satu, dikongsi
+ // semua variant — Zack). tiktok_sku_id / shopee_model_id peringkat variant kekal (dari sync).
+ // Jadi isi sekali → propagate ke semua sibling variant dlm group yg sama.
+ try {
+ const parent = prevProd.parent_sku;
+ if(parent) {
+ const siblings = (masterProducts || []).filter(p => p.parent_sku === parent && p.sku !== sku);
+ const shared = {
+ shopee_item_id: metadata.shopee_item_id,
+ tiktok_product_id: metadata.tiktok_product_id,
+ shopee_url: metadata.shopee_url,
+ tiktok_url: metadata.tiktok_url
+ };
+ for(const sib of siblings) {
+ const sm = (sib.metadata && typeof sib.metadata === 'object') ? sib.metadata : {};
+ const newMeta = { ...sm, ...shared };
+ const { error: se } = await db.from('products_master').update({ metadata: newMeta }).eq('sku', sib.sku);
+ if(!se) sib.metadata = newMeta; // keep in-memory consistent
+ }
+ }
+ } catch(e){ console.warn('propagate marketplace ids ke sibling:', e); }
  // p1_297b — push this product's price to Shopee + TikTok (fire-and-forget)
  try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(sku)).catch(()=>{}); } catch(e){}
  if(typeof showToast === 'function') showToast(`${sku} saved. Harga dipush ke marketplace.`, 'success');
