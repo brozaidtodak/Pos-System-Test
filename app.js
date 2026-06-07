@@ -5844,7 +5844,7 @@ window.refreshRailBadges = function() {
 // p1_453 — Gate PIN untuk DATA SULIT (PNC): untung/margin, kos, leaderboard staf.
 // Buka dengan PIN 1999, unlock kekal utk sesi ni sahaja. (managerDashboardSection
 // TIDAK digate sebab ia sebahagian Home; commission manager-view digate berasingan.)
-window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection'];
+window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection'];
 window.__CONF_PIN = '1999';
 window.__confIsUnlocked = function() {
  try { return sessionStorage.getItem('confUnlocked_v1') === '1'; } catch(e) { return window.__confUnlockedMem === true; }
@@ -21727,6 +21727,73 @@ function __computeProductSales() {
 window.invalidateProductSalesCache = function() { __prodSalesCache = null; };
 
 // ===================================
+// p1_455 — LAPORAN SULIT (PNC): data kewangan sensitif dipindah dari Home.
+// Gross Margin + Untung + Wang Berisiko. Gated PIN 1999 (confidentialSection).
+// ===================================
+window.renderConfidentialReport = function() {
+ const sod = (d)=>{ const x=new Date(d); x.setHours(0,0,0,0); return x; };
+ const now = new Date();
+ const start = sod(new Date(now.getTime() - 29*864e5));
+ const startMs = start.getTime(), endMs = now.getTime();
+ const fmtRM2 = (n)=> 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2, maximumFractionDigits:2});
+ const setT = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+ const note = document.getElementById('confRangeNote');
+ if(note) note.textContent = '· ' + start.toLocaleDateString('en-MY',{day:'numeric',month:'short'}) + ' – ' + now.toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'});
+
+ // Jualan bersih 30 hari (real sales)
+ let rev = 0;
+ (Array.isArray(salesHistory)?salesHistory:[]).forEach(s => {
+ if(!window.__isRealSale(s) || !s.created_at) return;
+ const t = new Date(s.created_at).getTime();
+ if(t>=startMs && t<=endMs) rev = round2(rev + (Number(s.total||s.total_amount||0)||0));
+ });
+ // COGS dari finance_records (kategori COGS) dalam tetingkap (guna tengah-bulan)
+ let cogs = 0;
+ try {
+ const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+ (Array.isArray(financeRecords)?financeRecords:[]).forEach(f => {
+ if(f.category !== 'COGS') return;
+ const idx = M.indexOf(f.month); if(idx<0) return;
+ const d = new Date(parseInt(f.year), idx, 15).getTime();
+ if(d>=startMs && d<=endMs) cogs += parseFloat(f.amount||0)||0;
+ });
+ } catch(e){}
+ cogs = round2(cogs);
+ const profit = round2(rev - cogs);
+ const marginPct = rev>0 ? (profit/rev*100) : null;
+ setT('confRev', fmtRM2(rev));
+ setT('confCogs', fmtRM2(cogs));
+ setT('confProfit', fmtRM2(profit));
+ const mEl = document.getElementById('confMargin');
+ if(mEl){ if(marginPct==null){ mEl.textContent='—'; } else { mEl.textContent = marginPct.toFixed(1)+'%'; mEl.style.color = marginPct>=30?'#059669':marginPct>=15?'#d97706':'#dc2626'; } }
+
+ // Wang Berisiko (snapshot): low-stock value + AR overdue >30 hari
+ try {
+ const stockMap = {};
+ (Array.isArray(inventoryBatches)?inventoryBatches:[]).forEach(b => { stockMap[b.sku] = (stockMap[b.sku]||0) + (parseFloat(b.qty_remaining)||0); });
+ let lowVal=0, lowCnt=0;
+ (Array.isArray(masterProducts)?masterProducts:[]).forEach(p => {
+ if(!p.is_published && !p.published_at) return;
+ const stock = stockMap[p.sku]||0; const reorder = parseInt(p.reorder_point)||5;
+ if(stock <= reorder){ lowCnt++; lowVal += (parseFloat(p.price)||0) * Math.max(0, reorder-stock); }
+ });
+ let arVal=0, arCnt=0; const cut30 = Date.now() - 30*24*3600*1000;
+ (Array.isArray(window.quotationsLog)?window.quotationsLog:[]).forEach(q => {
+ if(q.status==='paid'||q.status==='cancelled'||q.status==='voided') return;
+ if(q.doc_type!=='invoice' && q.type!=='invoice') return;
+ const d = new Date(q.created_at||q.date||q.generated_date).getTime();
+ if(isNaN(d) || d>cut30) return;
+ const amt = parseFloat(q.grand_total||q.total||0)||0;
+ if(amt>0){ arVal+=amt; arCnt++; }
+ });
+ const totalRisk = round2(lowVal + arVal);
+ setT('confRiskValue', Number(totalRisk).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}));
+ const rb = document.getElementById('confRiskBreakdown');
+ if(rb) rb.textContent = lowCnt + ' produk stok rendah (RM ' + Math.round(lowVal).toLocaleString() + ') · ' + arCnt + ' invois tertunggak >30 hari (RM ' + Math.round(arVal).toLocaleString() + ')';
+ } catch(e){}
+};
+
+// ===================================
 // p1_454 — ANALYTICS PAGE (dedicated): period selector + compare-to-previous,
 // KPI deltas, trend overlay, top product/brand/category, channel, customer
 // new-vs-repeat, busiest hour/day. Operational (no margin/cost) = open access.
@@ -23883,6 +23950,16 @@ window.renderManagerDashboard = function() {
  try { if(typeof window.applyI18N === 'function') window.applyI18N(); } catch(e){}
 
  if(typeof salesHistory === 'undefined') return;
+
+ // p1_455 — Widget SULIT (Gross Margin + Money at Risk) dipindah ke Laporan Sulit (PNC).
+ // Sorok dari Home kecuali sesi dah unlock PIN. Net Revenue/Orders/AOV kekal nampak.
+ try {
+ const __confOK = window.__confIsUnlocked && window.__confIsUnlocked();
+ const mRow = document.querySelector('#managerDashboardSection .dash-hero__margin');
+ if(mRow) mRow.style.display = __confOK ? '' : 'none';
+ const rCard = document.querySelector('#managerDashboardSection .dash-stat--risk');
+ if(rCard) rCard.style.display = __confOK ? '' : 'none';
+ } catch(e){}
 
  const cutoff = dashGetCutoff();
  const periodMs = (Date.now() - cutoff) || (1000 * 60 * 60 * 24 * 30);
