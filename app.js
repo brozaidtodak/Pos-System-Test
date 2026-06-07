@@ -6591,7 +6591,7 @@ window.renderSalesAnalytics = function() {
  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
  };
  const chanKey = (ch) => { const c = (ch || '').toLowerCase(); return (window.__SA_CHANNELS.find(x => x.match(c)) || window.__SA_CHANNELS[5]).key; };
- const periodSet = {}; const total = {}; const byChan = {}; const share = {};
+ const periodSet = {}; const total = {}; const byChan = {}; const share = {}; const chanCnt = {};
  let grand = 0, orders = 0;
  sales.forEach(s => {
  const d = new Date(s.created_at); const t = d.getTime();
@@ -6600,6 +6600,7 @@ window.renderSalesAnalytics = function() {
  periodSet[k] = 1; total[k] = round2((total[k]||0) + amt);
  (byChan[ck] = byChan[ck] || {})[k] = round2((byChan[ck][k]||0) + amt);
  share[ck] = round2((share[ck]||0) + amt);
+ chanCnt[ck] = (chanCnt[ck] || 0) + 1;
  grand = round2(grand + amt); orders++;
  });
  const keys = Object.keys(periodSet).sort();
@@ -6665,6 +6666,29 @@ window.renderSalesAnalytics = function() {
  setT('saKpiRefund', fmtRM2(refundAmt));
  setT('saKpiNet', fmtRM2(net));
  setT('saKpiCancelRate', (allInPeriod.length ? Math.round(cancelCnt/allInPeriod.length*100) : 0) + '%');
+
+ // p1_450 — Jadual pecahan Jualan ikut Channel (Order / RM / Purata / % Hasil)
+ const ctBody = document.getElementById('saChannelTableBody');
+ if(ctBody) {
+ const rows = window.__SA_CHANNELS.filter(c => chanCnt[c.key]).sort((a,b) => (share[b.key]||0) - (share[a.key]||0));
+ ctBody.innerHTML = rows.length ? rows.map(c => {
+ const rm = share[c.key]||0, cnt = chanCnt[c.key]||0, pct = grand ? (rm/grand*100) : 0, aov = cnt ? rm/cnt : 0;
+ return '<tr style="border-top:1px solid var(--border-color);">'
+ + '<td style="padding:9px 14px;"><span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:'+c.color+'; margin-right:7px; vertical-align:middle;"></span>'+c.label+'</td>'
+ + '<td style="padding:9px 14px; text-align:right;">'+cnt.toLocaleString()+'</td>'
+ + '<td style="padding:9px 14px; text-align:right; font-weight:600;">'+fmtRM2(rm)+'</td>'
+ + '<td style="padding:9px 14px; text-align:right; color:var(--text-muted);">'+fmtRM2(aov)+'</td>'
+ + '<td style="padding:9px 14px; text-align:right;"><div style="display:flex; align-items:center; gap:8px; justify-content:flex-end;"><div style="flex:0 0 64px; height:7px; background:#E5E7EB; border-radius:10px; overflow:hidden;"><div style="height:100%; width:'+Math.round(pct)+'%; background:'+c.color+';"></div></div><span style="min-width:40px; display:inline-block;">'+pct.toFixed(1)+'%</span></div></td>'
+ + '</tr>';
+ }).join('') : '<tr><td colspan="5" style="padding:14px; text-align:center; color:var(--text-muted);">Tiada jualan dalam tempoh ini</td></tr>';
+ const ctFoot = document.getElementById('saChannelTableFoot');
+ if(ctFoot) ctFoot.innerHTML = '<tr style="border-top:2px solid var(--border-color); font-weight:700; background:#FAFAFA;">'
+ + '<td style="padding:10px 14px;">Jumlah</td>'
+ + '<td style="padding:10px 14px; text-align:right;">'+orders.toLocaleString()+'</td>'
+ + '<td style="padding:10px 14px; text-align:right;">'+fmtRM2(grand)+'</td>'
+ + '<td style="padding:10px 14px; text-align:right; color:var(--text-muted);">'+fmtRM2(orders?grand/orders:0)+'</td>'
+ + '<td style="padding:10px 14px; text-align:right;">100%</td></tr>';
+ }
 
  // Sasaran jualan bulan ini (gross bulan semasa, independent of period toggle)
  let target = 0; try { target = parseFloat(localStorage.getItem('sa_target_v1')) || 0; } catch(e){}
