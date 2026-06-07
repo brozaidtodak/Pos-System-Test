@@ -1,5 +1,8 @@
 /* p1_245 — 10 CAMP Brand Identity tokens (Sunset Bronze + Tropical Black + Cloudy White) */
 :root {
+    /* p1_438 — declare scheme so iOS Safari doesn't auto-darken inputs (invisible
+       typed text on phone dark-mode while app is light). data-theme=dark overrides. */
+    color-scheme: light;
     --primary: #CD7C32;      /* Sunset Bronze — brand primary */
     --secondary: #101010;    /* Tropical Black — brand deep */
     --bg-color: #FAF6EF;     /* Cloudy White — warm cream (was cold grey #EEEEEE) */

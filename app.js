@@ -17,7 +17,16 @@ try {
 // p1_75: Also auto-restore session on refresh so staff tak perlu login balik.
 document.addEventListener('DOMContentLoaded', () => {
  try { if(typeof window.__initPasswordRecovery === 'function') window.__initPasswordRecovery(); } catch(e){}
- try { if(typeof window.__restoreSession === 'function') window.__restoreSession(); } catch(e){}
+ // p1_438: await restore so the mobile-app deep-link below only fires when nobody is logged in.
+ (async () => {
+ let restored = false;
+ try { if(typeof window.__restoreSession === 'function') restored = await window.__restoreSession(); } catch(e){}
+ // Mobile app shell deep-link: when launched at #staff and no active session, open the staff PIN login
+ // directly instead of the public catalog. Normal visitors (no #staff hash) are unaffected.
+ try {
+ if(!restored && !window.currentUser && (location.hash || '').toLowerCase() === '#staff' && typeof handleLogin === 'function') handleLogin();
+ } catch(e){}
+ })();
 });
 
 // p1_75: Auto-login on refresh — Supabase persists session in localStorage by default.

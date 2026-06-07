@@ -2369,8 +2369,12 @@ a:focus-visible {
 [data-theme="dark"].cp-input, [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
  background: #18181B;
  color: #E4E4E7;
+ -webkit-text-fill-color: #E4E4E7; /* p1_438 — iOS: force input text fill in dark mode */
  border-color: #3F3F46;
 }
+/* p1_438 — cashier search: guarantee typed text is visible (iOS auto-dark could hide it) */
+#searchInput { background: #FFFFFF; color: #101010; -webkit-text-fill-color: #101010; }
+[data-theme="dark"] #searchInput { background: #18181B; color: #E4E4E7; -webkit-text-fill-color: #E4E4E7; }
 [data-theme="dark"].table-responsive,
 [data-theme="dark"].data-table thead { background: #18181B; }
 [data-theme="dark"].mode-bar { background: #27272A; border-color: #3F3F46; }
@@ -3295,6 +3299,7 @@ a:focus-visible {
 
 /* ---------- DARK MODE (toggle ready, not yet active) ---------- */
 [data-theme="dark"] {
+ color-scheme: dark; /* p1_438 — match app dark theme so iOS renders inputs correctly */
  --neutral-50: #18181B;
  --neutral-100: #27272A;
  --neutral-200: #3F3F46;
