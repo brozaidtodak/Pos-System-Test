@@ -18596,6 +18596,35 @@ window.addPdpMedia = function() {
  }
 };
 
+// p1_425 — import gambar produk dari Shopee/TikTok (guna mapping shopee_item_id /
+// tiktok_product_id). Function backend marketplace-image-import return senarai URL;
+// client tambah ke gallery → user tekan Save. Read-only (tak tulis terus).
+window.importPdpMediaFromMarketplace = async function() {
+ const sku = (document.getElementById('pdpOriginalSku')?.value || '').trim();
+ if(!sku) { showToast('SKU tak dijumpai.', 'warning'); return; }
+ const btn = document.getElementById('pdpImportBtn');
+ const orig = btn ? btn.innerHTML : '';
+ if(btn){ btn.disabled = true; btn.innerHTML = 'Mengimport...'; }
+ try {
+ const r = await fetch('/api/marketplace-image-import?sku=' + encodeURIComponent(sku));
+ const j = await r.json();
+ if(!j.ok || !Array.isArray(j.images) || !j.images.length) {
+ showToast(j.note || j.error || 'Tiada gambar dijumpai dari Shopee/TikTok untuk produk ni.', 'warning');
+ } else {
+ const el = document.getElementById('pdpMediaUrls');
+ let urls = el.value ? el.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+ const before = urls.length;
+ for(const u of j.images){ if(!urls.includes(u)) urls.push(u); }
+ el.value = urls.join(',');
+ renderPdpMediaGallery(urls);
+ const added = urls.length - before;
+ const sp = (j.shopee && j.shopee.found) || 0, tt = (j.tiktok && j.tiktok.found) || 0;
+ showToast(`${added} gambar baru diimport (Shopee ${sp}, TikTok ${tt}). Tekan Save untuk simpan.`, 'success');
+ }
+ } catch(e){ console.error('import gambar:', e); showToast('Ralat import: ' + e.message, 'error'); }
+ if(btn){ btn.disabled = false; btn.innerHTML = orig; }
+};
+
 // p1_424 — upload gambar produk terus ke Supabase storage (bucket product-images, public).
 // Sokong JPG/PNG/WebP/AVIF/GIF. URL ditambah ke pdpMediaUrls → kena tekan Save untuk simpan.
 window.uploadPdpMedia = async function(input) {

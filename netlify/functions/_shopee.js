@@ -58,6 +58,18 @@ async function shopeePost(path, extraQuery, bodyObj, accessToken, shopId) {
     return res.json();
 }
 
+// GET variant (same shop-scoped sign). Used to read product detail (get_item_base_info).
+async function shopeeGet(path, extraQuery, accessToken, shopId) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const sign = signShop(path, timestamp, accessToken, shopId);
+    const q = Object.assign({
+        partner_id: PARTNER_ID, timestamp, access_token: accessToken, shop_id: shopId, sign
+    }, extraQuery || {});
+    const qs = Object.entries(q).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    const res = await fetch(`${HOST}${path}?${qs}`, { method: 'GET' });
+    return res.json();
+}
+
 async function getValidToken() {
     const rows = await sb('GET', `/shopee_tokens?environment=eq.${ENV}&order=created_at.desc&limit=1`);
     if (!rows || !rows.length) throw new Error(`No Shopee token for ${ENV} — run the authorize flow first.`);
@@ -86,5 +98,5 @@ async function loadPosStock(skus) {
 
 module.exports = {
     PARTNER_ID, PARTNER_KEY, ENV, HOST, SERVICE_KEY,
-    sb, signShop, shopeePost, getValidToken, loadPosStock
+    sb, signShop, shopeePost, shopeeGet, getValidToken, loadPosStock
 };
