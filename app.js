@@ -10073,8 +10073,11 @@ function renderCart() {
 // p4_7 Customer-facing display sync
 window.writeCustomerDisplayCart = function() {
  try {
+ const __c = window.posCustomer || null;
  const payload = {
  items: cart,
+ // p1_402 — nama customer untuk greeting skrin pelanggan (sense of belonging)
+ customer: __c ? { name: __c.name || null, is_member: !!__c.is_member, tier: __c.tier || __c.member_tier || null } : null,
  vip: window.__currentCheckoutVip || null,
  autoDiscount: !!window.VIP_AUTO_DISCOUNT, // p1_369 — skrin pelanggan ikut flag yang sama
  updatedAt: new Date().toISOString()

@@ -34,6 +34,16 @@
         display: flex; align-items: center; gap: 8px;
         font-size: 13px; font-weight: 600;
     }
+    .cust-greeting {
+        flex: 1; text-align: center; color: #FFF; font-size: 24px; font-weight: 800;
+        letter-spacing: -0.3px; padding: 0 20px;
+        display: flex; align-items: center; justify-content: center; gap: 12px;
+    }
+    .cust-greeting .hdr-vip {
+        background: rgba(255,255,255,0.22); color: #FFF;
+        padding: 4px 14px; border-radius: 50px; font-size: 14px; font-weight: 800;
+        letter-spacing: 0.4px;
+    }
     header .live-dot {
         width: 10px; height: 10px; border-radius: 50%;
         background: #34D399; animation: pulse 1.5s infinite;
@@ -132,6 +142,7 @@
             <div class="logo">10 CAMP</div>
             <div class="tagline" id="shopTagline">Outdoor & Camping Specialist</div>
         </div>
+        <div id="custGreeting" class="cust-greeting" style="display:none;"></div>
         <div class="live-indicator"><span class="live-dot"></span><span id="liveStatus">Connected to cashier</span></div>
     </header>
 
@@ -203,6 +214,21 @@ function render() {
 
     const items = (payload && payload.items) || [];
     const vip = payload && payload.vip;
+
+    // p1_402 — personalized greeting (sense of belonging) bila customer attached
+    const cust = payload && payload.customer;
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const greetEl = document.getElementById('custGreeting');
+    if (greetEl) {
+        if (cust && cust.name) {
+            greetEl.style.display = 'flex';
+            greetEl.innerHTML = 'Hai, ' + esc(cust.name) + '!' + (cust.is_member ? '<span class="hdr-vip">' + esc(cust.tier || 'MEMBER') + '</span>' : '');
+        } else {
+            greetEl.style.display = 'none';
+        }
+    }
+    const emptyMsg = document.getElementById('emptyMsg');
+    if (emptyMsg) emptyMsg.textContent = (cust && cust.name) ? ('Selamat datang, ' + cust.name + '!') : 'Selamat datang ke 10 CAMP';
 
     if (items.length === 0) {
         empty.style.display = 'flex';
