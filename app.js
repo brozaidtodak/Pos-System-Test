@@ -18596,6 +18596,41 @@ window.addPdpMedia = function() {
  }
 };
 
+// p1_424 — upload gambar produk terus ke Supabase storage (bucket product-images, public).
+// Sokong JPG/PNG/WebP/AVIF/GIF. URL ditambah ke pdpMediaUrls → kena tekan Save untuk simpan.
+window.uploadPdpMedia = async function(input) {
+ const files = Array.from((input && input.files) || []);
+ if(!files.length) return;
+ if(typeof db === 'undefined' || !db) { showToast('DB belum sedia.', 'error'); return; }
+ const btn = document.getElementById('pdpUploadBtn');
+ const orig = btn ? btn.innerHTML : '';
+ if(btn){ btn.disabled = true; btn.innerHTML = 'Memuat naik...'; }
+ const sku = (document.getElementById('pdpOriginalSku')?.value || 'prod').replace(/[^A-Za-z0-9_-]/g, '') || 'prod';
+ const okUrls = [];
+ for(const f of files){
+ if(!f.type || !f.type.startsWith('image/')){ showToast('Bukan fail gambar: ' + f.name, 'warning'); continue; }
+ if(f.size > 8 * 1024 * 1024){ showToast('Gambar terlalu besar (max 8MB): ' + f.name, 'warning'); continue; }
+ try {
+ const ext = (f.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+ const fileName = `products/${sku}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+ const { data, error } = await db.storage.from('product-images').upload(fileName, f, { cacheControl: '3600', upsert: false, contentType: f.type || 'image/jpeg' });
+ if(error) throw error;
+ const { data: pub } = db.storage.from('product-images').getPublicUrl(data.path);
+ if(pub && pub.publicUrl) okUrls.push(pub.publicUrl);
+ } catch(e){ console.error('upload gambar:', e); showToast('Gagal upload ' + f.name + ': ' + e.message, 'error'); }
+ }
+ if(okUrls.length){
+ const el = document.getElementById('pdpMediaUrls');
+ let urls = el.value ? el.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+ urls.push(...okUrls);
+ el.value = urls.join(',');
+ renderPdpMediaGallery(urls);
+ showToast(`${okUrls.length} gambar dimuat naik. Tekan Save untuk simpan.`, 'success');
+ }
+ if(btn){ btn.disabled = false; btn.innerHTML = orig; }
+ if(input) input.value = '';
+};
+
 window.removePdpMedia = function(idx) {
  let currentStr = document.getElementById('pdpMediaUrls').value;
  let urls = currentStr ? currentStr.split(',') : [];
