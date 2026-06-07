@@ -9537,7 +9537,7 @@ function renderPOS(searchTerm = "") {
  const offPct = isOnSale ? Math.round(((compareAtNum - priceNum) / compareAtNum) * 100) : 0;
  const fmtPrice = (n) => 'RM ' + (Number.isInteger(n) ? n : n.toFixed(2));
  const priceHtml = isOnSale
- ? `<p class="price price--has-sale"><span class="price__sale">${fmtPrice(priceNum)}</span><span class="price__was">${fmtPrice(compareAtNum)}</span><span class="price__off">${fmtPrice(compareAtNum - priceNum)}</span></p>`
+ ? `<p class="price price--has-sale"><span class="price__sale">${fmtPrice(priceNum)}</span><span class="price__was">${fmtPrice(compareAtNum)}</span><span class="price__off">${(window.t?window.t('cs_save'):'Save')} ${fmtPrice(compareAtNum - priceNum)}</span></p>`
  : `<p class="price">${fmtPrice(priceNum)}</p>`;
 
  htmlBuf += `
@@ -9551,8 +9551,8 @@ function renderPOS(searchTerm = "") {
  </div>
  <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
- <p class="product-card__stock">${totalStock <= 0 ? 'Out of stock' : `${totalStock} ${p.unit||'pcs'} in stock`}</p>
- <button onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? 'style="background:#FED7AA; color:#9A3412; border:1px solid #FB923C;" title="Stok 0 dalam sistem — jual sebagai backorder"' : ''}>${totalStock <= 0 ? 'Jual (Backorder)' : 'Add to Cart'}</button>
+ <p class="product-card__stock">${totalStock <= 0 ? (window.t?window.t('cs_out_of_stock'):'Out of stock') : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
+ <button onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? `style="background:#FED7AA; color:#9A3412; border:1px solid #FB923C;" title="${(window.t?window.t('cs_oos_hint'):'Out of stock — backorder')}"` : ''}>${(window.t?window.t('cs_add_to_cart'):'Add to Cart')}</button>
  </div>
  `;
  });
@@ -9707,14 +9707,14 @@ window.posOpenProductDetail = function(sku) {
         addBtn.disabled = false;
         addBtn.style.background = '#FED7AA';
         addBtn.style.color = '#9A3412';
-        addBtn.title = 'Stok 0 dalam sistem — jual sebagai backorder';
-        addBtn.innerHTML = '<i data-lucide="alert-triangle" style="width:16px;height:16px;flex-shrink:0;"></i><span>Jual (Backorder)</span>';
+        addBtn.title = (window.t?window.t('cs_oos_hint'):'Out of stock — backorder');
+        addBtn.innerHTML = '<i data-lucide="alert-triangle" style="width:16px;height:16px;flex-shrink:0;"></i><span>'+(window.t?window.t('cs_add_to_cart'):'Add to Cart')+'</span>';
     } else {
         addBtn.disabled = false;
         addBtn.style.background = '';
         addBtn.style.color = '';
         addBtn.title = '';
-        addBtn.innerHTML = '<i data-lucide="shopping-cart" style="width:16px;height:16px;flex-shrink:0;"></i><span>Add to Cart</span>';
+        addBtn.innerHTML = '<i data-lucide="shopping-cart" style="width:16px;height:16px;flex-shrink:0;"></i><span>'+(window.t?window.t('cs_add_to_cart'):'Add to Cart')+'</span>';
     }
     // p1_202 — Reset discount inputs + preview on PDP open
     const dAmt = document.getElementById('pdDiscAmt'); if(dAmt) dAmt.value = '';
@@ -26467,6 +26467,11 @@ window.I18N = {
  cp_saved_suffix: { bm: 'dah disimpan.', en: 'saved.' },
  cp_email_can_send: { bm: 'Email-resit boleh dihantar.', en: 'E-receipt can be sent.' },
  cp_walkin_customer: { bm: 'Walk-in customer.', en: 'Walk-in customer.' },
+ cs_save: { bm: 'Jimat', en: 'Save' },
+ cs_add_to_cart: { bm: 'Tambah ke Troli', en: 'Add to Cart' },
+ cs_out_of_stock: { bm: 'Stok habis', en: 'Out of stock' },
+ cs_in_stock: { bm: 'dalam stok', en: 'in stock' },
+ cs_oos_hint: { bm: 'Stok 0 dalam sistem — jual sebagai backorder', en: 'Out of stock in system — sold as backorder' },
  cs_search_placeholder: { bm: 'Imbas Barcode / Cari Nama...', en: 'Scan Barcode / Search Name...' },
  cs_small_screen: { bm: 'Skrin Kecil', en: 'Small Screen' },
  cs_full_screen: { bm: 'Skrin Besar', en: 'Full Screen' },
@@ -26994,6 +26999,8 @@ window.setLang = function(lang) {
  try { if(typeof window.__updatePosLayoutBtn === 'function') window.__updatePosLayoutBtn(); } catch(e){}
  // p1_404 — re-render cart (proof-row strings via i18n) bila tukar bahasa
  try { if(typeof window.renderCart === 'function') window.renderCart(); } catch(e){}
+ // p1_408 — re-render POS grid (Save/stock/button labels via i18n)
+ try { if(typeof window.renderPOS === 'function') window.renderPOS(); } catch(e){}
  if(typeof showToast === 'function') {
  showToast(lang === 'bm' ? 'Bahasa: Bahasa Malaysia ' : 'Language: English ', 'success');
  }
