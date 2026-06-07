@@ -6474,7 +6474,17 @@ window.renderSalesTrajectory = function() {
 window.__saTrendInst = window.__saTrendInst || null;
 window.__saChannelInst = window.__saChannelInst || null;
 window.__saShareInst = window.__saShareInst || null;
+window.__saPayInst = window.__saPayInst || null;
+window.__saAovInst = window.__saAovInst || null;
+window.__saHourInst = window.__saHourInst || null;
+window.__saDowInst = window.__saDowInst || null;
+window.__saTopProdInst = window.__saTopProdInst || null;
+window.__saTopBrandInst = window.__saTopBrandInst || null;
 window.__saMode = window.__saMode || 'daily';
+window.__saSaveTarget = function(v) {
+ try { localStorage.setItem('sa_target_v1', String(parseFloat(v) || 0)); } catch(e){}
+ window.renderSalesAnalytics();
+};
 window.__SA_CHANNELS = [
  { key:'shopee',   label:'Shopee',        color:'#EE4D2D', match:(c)=>c.includes('shopee') },
  { key:'tiktok',   label:'TikTok',        color:'#111827', match:(c)=>c.includes('tiktok') },
@@ -6576,6 +6586,76 @@ window.renderSalesAnalytics = function() {
  options:{ responsive:true, maintainAspectRatio:false, cutout:'58%', plugins:{ legend:{ display:true, position:'bottom', labels:{ boxWidth:10, font:{size:10}, padding:8 } }, tooltip:{ callbacks:{ label:(c)=> c.label + ': RM ' + Number(c.parsed).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' (' + (grand? Math.round(c.parsed/grand*100):0) + '%)' } } } }
  });
  }
+
+ // ===== p1_442 — extra analytics =====
+ const fmtRM2 = (v) => 'RM ' + Number(v).toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
+ // Gross / Refund / Net / cancel-rate (separate pass incl. refunds/cancels in period)
+ const allInPeriod = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory) ? salesHistory : []).filter(s => {
+ if(!s || !s.created_at || s.is_test) return false;
+ const t = new Date(s.created_at).getTime(); return t >= fromMs && t <= toMs;
+ });
+ let refundAmt = 0, cancelCnt = 0;
+ allInPeriod.forEach(s => { const st = (s.status||'').toLowerCase(); const amt = Math.abs(Number(s.total||s.total_amount||0)||0); if(st.includes('refund')) { refundAmt = round2(refundAmt + amt); cancelCnt++; } else if(st.includes('cancel') || st.includes('void')) { cancelCnt++; } });
+ const net = round2(grand - refundAmt);
+ setT('saKpiGross', fmtRM2(grand));
+ setT('saKpiRefund', fmtRM2(refundAmt));
+ setT('saKpiNet', fmtRM2(net));
+ setT('saKpiCancelRate', (allInPeriod.length ? Math.round(cancelCnt/allInPeriod.length*100) : 0) + '%');
+
+ // Sasaran jualan bulan ini (gross bulan semasa, independent of period toggle)
+ let target = 0; try { target = parseFloat(localStorage.getItem('sa_target_v1')) || 0; } catch(e){}
+ const tInput = document.getElementById('saTarget'); if(tInput && document.activeElement !== tInput) tInput.value = target ? target : '';
+ const moNow = new Date(); const moStart = new Date(moNow.getFullYear(), moNow.getMonth(), 1).getTime();
+ let moGross = 0;
+ (typeof salesHistory !== 'undefined' ? salesHistory : []).forEach(s => { if(!s||!s.created_at||s.is_test) return; const st=(s.status||'').toLowerCase(); if(st.includes('void')||st.includes('cancel')||st.includes('refund')) return; if(new Date(s.created_at).getTime() >= moStart) moGross = round2(moGross + (Number(s.total||s.total_amount||0)||0)); });
+ const bar = document.getElementById('saTargetBar'); const tlbl = document.getElementById('saTargetLabel');
+ const pct = target > 0 ? Math.min(100, Math.round(moGross/target*100)) : 0;
+ if(bar) bar.style.width = pct + '%';
+ if(tlbl) tlbl.textContent = target > 0 ? (fmtRM2(moGross) + ' / ' + fmtRM2(target) + ' (' + pct + '%)' + (moGross>=target ? ' — Tahniah, sasaran dicapai!' : '')) : 'Tetapkan sasaran untuk jejak kemajuan jualan bulan ini.';
+
+ const barOpts = (horizontal) => ({ responsive:true, maintainAspectRatio:false, indexAxis: horizontal?'y':'x', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtRM2(horizontal?c.parsed.x:c.parsed.y) } } }, scales:{ x:{ grid:{display:false}, ticks:{font:{size:10}, callback: horizontal?(v)=>fmtRM(v):undefined} }, y:{ grid:{color:'rgba(0,0,0,0.05)'}, ticks:{font:{size:10}, callback: horizontal?undefined:(v)=>fmtRM(v)} } } });
+
+ // Kaedah bayar (doughnut)
+ const payCanvas = document.getElementById('saPayChart');
+ if(payCanvas) {
+ const payAgg = {}; sales.forEach(s => { const d = new Date(s.created_at).getTime(); if(d<fromMs||d>toMs) return; const pm = (s.payment_method||'Lain').trim()||'Lain'; payAgg[pm] = round2((payAgg[pm]||0) + (Number(s.total||s.total_amount||0)||0)); });
+ const pmKeys = Object.keys(payAgg).sort((a,b)=>payAgg[b]-payAgg[a]);
+ const palette = ['#CD7C32','#101010','#EE4D2D','#25D366','#3B82F6','#9CA3AF','#A855F7','#F59E0B'];
+ if(window.__saPayInst) window.__saPayInst.destroy();
+ window.__saPayInst = new Chart(payCanvas.getContext('2d'), { type:'doughnut', data:{ labels:pmKeys, datasets:[{ data:pmKeys.map(k=>payAgg[k]), backgroundColor:pmKeys.map((k,i)=>palette[i%palette.length]), borderWidth:2, borderColor:'#fff' }] }, options:{ responsive:true, maintainAspectRatio:false, cutout:'55%', plugins:{ legend:{display:true, position:'bottom', labels:{boxWidth:10, font:{size:10}, padding:6}}, tooltip:{ callbacks:{ label:(c)=> c.label+': '+fmtRM2(c.parsed) } } } } });
+ }
+ // AOV trend (line)
+ const aovCanvas = document.getElementById('saAovChart');
+ if(aovCanvas) {
+ const cntB = {}; sales.forEach(s => { const d=new Date(s.created_at); const t=d.getTime(); if(t<fromMs||t>toMs) return; const k=keyOf(d); cntB[k]=(cntB[k]||0)+1; });
+ const aov = keys.map(k => (cntB[k] ? round2(total[k]/cntB[k]) : 0));
+ if(window.__saAovInst) window.__saAovInst.destroy();
+ window.__saAovInst = new Chart(aovCanvas.getContext('2d'), { type:'line', data:{ labels, datasets:[{ label:'AOV', data:aov, borderColor:'#3B82F6', backgroundColor:'rgba(59,130,246,0.1)', borderWidth:2, fill:true, tension:0.3, pointRadius:keys.length>20?0:2, pointHoverRadius:4 }] }, options: axisOpts });
+ }
+ // Jam paling sibuk (bar 0-23)
+ const hourCanvas = document.getElementById('saHourChart');
+ if(hourCanvas) {
+ const hr = new Array(24).fill(0); sales.forEach(s => { const d=new Date(s.created_at); const t=d.getTime(); if(t<fromMs||t>toMs) return; hr[d.getHours()] = round2(hr[d.getHours()] + (Number(s.total||s.total_amount||0)||0)); });
+ if(window.__saHourInst) window.__saHourInst.destroy();
+ window.__saHourInst = new Chart(hourCanvas.getContext('2d'), { type:'bar', data:{ labels: hr.map((_,i)=> String(i).padStart(2,'0')), datasets:[{ data:hr, backgroundColor:'#CD7C32', borderRadius:3 }] }, options: barOpts(false) });
+ }
+ // Hari paling sibuk (bar Isnin-Ahad)
+ const dowCanvas = document.getElementById('saDowChart');
+ if(dowCanvas) {
+ const dowNames = ['Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu','Ahad']; const dw = new Array(7).fill(0);
+ sales.forEach(s => { const d=new Date(s.created_at); const t=d.getTime(); if(t<fromMs||t>toMs) return; const idx=(d.getDay()+6)%7; dw[idx]=round2(dw[idx] + (Number(s.total||s.total_amount||0)||0)); });
+ if(window.__saDowInst) window.__saDowInst.destroy();
+ window.__saDowInst = new Chart(dowCanvas.getContext('2d'), { type:'bar', data:{ labels: dowNames, datasets:[{ data:dw, backgroundColor:'#b86a26', borderRadius:3 }] }, options: barOpts(false) });
+ }
+ // Top produk + brand (horizontal bar)
+ const prodRev = {}; const brandRev = {};
+ const brandOf = (sku) => { const p = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.find(x => x.sku === sku) : null; return (p && p.brand) ? p.brand : null; };
+ sales.forEach(s => { const t=new Date(s.created_at).getTime(); if(t<fromMs||t>toMs) return; const items = Array.isArray(s.items)? s.items : []; items.forEach(it => { const qty = parseInt(it.qty||it.quantity||1)||1; const line = (parseFloat(it.price||it.unit_price||0)||0)*qty; const nm = it.name||it.product_name||it.sku||'item'; prodRev[nm]=round2((prodRev[nm]||0)+line); const br = brandOf(it.sku)|| (it.brand||null); if(br) brandRev[br]=round2((brandRev[br]||0)+line); }); });
+ const topN = (obj, n) => Object.keys(obj).sort((a,b)=>obj[b]-obj[a]).slice(0,n);
+ const tpCanvas = document.getElementById('saTopProdChart');
+ if(tpCanvas) { const tp = topN(prodRev, 8); if(window.__saTopProdInst) window.__saTopProdInst.destroy(); window.__saTopProdInst = new Chart(tpCanvas.getContext('2d'), { type:'bar', data:{ labels: tp.map(n=>n.length>26?n.slice(0,24)+'…':n), datasets:[{ data: tp.map(n=>prodRev[n]), backgroundColor:'#CD7C32', borderRadius:3 }] }, options: barOpts(true) }); }
+ const tbCanvas = document.getElementById('saTopBrandChart');
+ if(tbCanvas) { const tb = topN(brandRev, 8); if(window.__saTopBrandInst) window.__saTopBrandInst.destroy(); window.__saTopBrandInst = new Chart(tbCanvas.getContext('2d'), { type:'bar', data:{ labels: tb, datasets:[{ data: tb.map(n=>brandRev[n]), backgroundColor:'#101010', borderRadius:3 }] }, options: barOpts(true) }); }
 };
 
 // p1_159 — Test/Real management state
