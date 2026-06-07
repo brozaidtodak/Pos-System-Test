@@ -97,6 +97,16 @@ window.__restoreSession = async function() {
 window.round2 = function(n) { return Math.round((parseFloat(n) || 0) * 100) / 100; };
 const round2 = window.round2;
 
+// p1_452 — SATU sumber kebenaran utk "jualan dikira dalam analytics".
+// Buang order test + void/cancel/refund. Diguna SEMUA halaman analytics/reports
+// supaya angka konsisten & tepat (definisi sama macam home dashboard p1_449).
+window.__isRealSale = function(s) {
+ if (!s || s.is_test) return false;
+ const st = (s.status || '').toLowerCase();
+ if (st.includes('void') || st.includes('cancel') || st.includes('refund')) return false;
+ return true;
+};
+
 // Loading overlay: full-screen translucent block during long ops.
 window.showLoading = function(msg) {
  let el = document.getElementById('__globalLoadingOverlay');
@@ -2262,6 +2272,7 @@ window.renderBrandPerf = function() {
  const map = {};
  if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return map;
  salesHistory.forEach(sale => {
+ if(!window.__isRealSale(sale)) return; // p1_452 — buang test/void/cancel/refund
  const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
  if(t < sMs || t > eMs) return;
  const items = (() => { try { return JSON.parse(sale.items || '[]'); } catch(e) { return sale.items || []; } })();
@@ -2492,6 +2503,7 @@ window.renderChannelProfit = function() {
 
  if(typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) {
  salesHistory.forEach(sale => {
+ if(!window.__isRealSale(sale)) return; // p1_452 — buang test/void/cancel/refund
  const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
  if(t < startMs || t > endMs) return;
  const ch = sale.channel || 'POS Cashier';
@@ -15908,6 +15920,7 @@ function renderMgmtStaffSales() {
  targetStaff.forEach(s => performance[s] = { txCount: 0, gross: 0 });
  
  salesHistory.forEach(sale => {
+ if(!window.__isRealSale(sale)) return; // p1_452 — buang test/void/cancel/refund
  let name = sale.staff_name;
  if(name && performance[name]) {
  performance[name].txCount++;
@@ -21615,6 +21628,9 @@ function __computeProductSales() {
  });
  // Walk sales_history
  (salesHistory || []).forEach(s => {
+ if(s && s.is_test) return; // p1_452 — test order tak gerak stok sebenar
+ const st0 = (s && s.status ? s.status : '').toLowerCase();
+ if(st0.includes('void') || st0.includes('cancel')) return; // batal/void = tak terjual (refund dikendali pass negatif bawah)
  if(s.total <= 0) return; // skip refunds for "sold" tally — they reduce gross but separate count
  const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
  (s.items || []).forEach(it => {
@@ -23656,10 +23672,12 @@ window.renderManagerDashboard = function() {
  const prevCutoff = cutoff - periodMs;
 
  const sales = salesHistory.filter(s => {
+ if(!window.__isRealSale(s)) return false; // p1_452 — buang test/void/cancel/refund (selaras home dashboard)
  const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
  return dt>= cutoff;
  });
  const prevSales = salesHistory.filter(s => {
+ if(!window.__isRealSale(s)) return false; // p1_452
  const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
  return dt>= prevCutoff && dt < cutoff;
  });
@@ -23860,6 +23878,7 @@ window.renderManagerDashboard = function() {
      const expectedAtThisPoint = targetMonthly * (daysIntoMonth / totalDaysInMonth);
      let mtdRev = 0;
      salesHistory.forEach(s => {
+       if(!window.__isRealSale(s)) return; // p1_452 — buang test/void/cancel/refund
        const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
        const t = parseFloat(s.total || 0);
        if(dt >= monthStart && t > 0) mtdRev += t;
