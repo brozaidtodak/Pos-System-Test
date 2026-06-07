@@ -10036,7 +10036,7 @@ function renderCart() {
  <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
  <span style="font-weight:bold;">${item.quantity}</span>
  <button onclick="addToCart('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">+</button>
- <button onclick="openCartItemDiscount('${item.sku}')" title="Diskaun untuk item ni" style="background:${(item.discount_amount > 0) ? '#FDE68A' : '#F3F4F6'}; color:#92400E; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold; font-size:13px; margin-left:5px;">%</button>
+ <button onclick="openCartItemDiscount('${item.sku}')" title="Diskaun untuk item ni" style="background:${(item.discount_amount > 0) ? '#FDE68A' : '#F3F4F6'}; color:#92400E; border:none; padding:4px 7px; border-radius:5px; font-weight:600; font-size:9px; line-height:1.15; white-space:nowrap; margin-left:5px; cursor:pointer;">${(item.discount_amount > 0) ? 'Edit discount' : 'Apply discount on item'}</button>
  <button onclick="removeFromCart('${item.sku}')" style="color:#EF4444; background:#fee2e2; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold; margin-left:2px;">X</button>
  </div>
  </div>`;
