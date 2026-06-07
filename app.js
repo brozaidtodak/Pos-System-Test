@@ -138,7 +138,7 @@ window.showToast = function(msg, type) {
  type = type || 'info';
  const colors = {
  info: { bg:'#cd7c32', icon:'i' },
- success: { bg:'#10b981', icon:'' },
+ success: { bg:'#101010', icon:'' },
  warning: { bg:'#f59e0b', icon:'' },
  warn: { bg:'#f59e0b', icon:'' },
  error: { bg:'#dc2626', icon:'' }
@@ -1015,9 +1015,9 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  <h3 class="rp-section__title"><i data-lucide="shield-alert" style="width:14px;height:14px;"></i> Risk Watch</h3>
  <p class="rp-section__help">Aliff perlu pantau: berapa SKU dijual bawah floor, berapa pulang/rosak, jumlah kerugian.</p>
  <div class="rp-kpi-grid">
- <div class="rp-kpi" style="border-left:3px solid ${marginViolations > 0 ? '#EF4444' : '#10B981'};">
+ <div class="rp-kpi" style="border-left:3px solid ${marginViolations > 0 ? '#c0392b' : '#101010'};">
  <div class="rp-kpi__lbl"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> Bawah Floor</div>
- <div class="rp-kpi__val" style="color:${marginViolations > 0 ? '#EF4444' : '#10B981'};">${marginViolations}</div>
+ <div class="rp-kpi__val" style="color:${marginViolations > 0 ? '#c0392b' : '#101010'};">${marginViolations}</div>
  <div class="rp-kpi__sub">SKU jual bawah floor price</div>
  </div>
  <div class="rp-kpi" id="rpWatchReturnsCard" style="border-left:3px solid #9CA3AF;">
@@ -1128,10 +1128,10 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  const cardL = document.getElementById('rpWatchLossCard');
  if(elRC) elRC.textContent = String(retCount);
  if(elLO) elLO.textContent = 'RM ' + lossRm.toFixed(2);
- if(cardR) cardR.style.borderLeftColor = retCount > 0 ? '#D97706' : '#10B981';
- if(cardL) cardL.style.borderLeftColor = lossRm > 0 ? '#D97706' : '#10B981';
- if(elRC) elRC.style.color = retCount > 0 ? '#D97706' : '#10B981';
- if(elLO) elLO.style.color = lossRm > 0 ? '#D97706' : '#10B981';
+ if(cardR) cardR.style.borderLeftColor = retCount > 0 ? '#D97706' : '#101010';
+ if(cardL) cardL.style.borderLeftColor = lossRm > 0 ? '#D97706' : '#101010';
+ if(elRC) elRC.style.color = retCount > 0 ? '#D97706' : '#101010';
+ if(elLO) elLO.style.color = lossRm > 0 ? '#D97706' : '#101010';
  } catch(e) { /* silent — keep dashes */ }
  })();
 };
@@ -1294,8 +1294,8 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  ${channelRows.map(c => {
  const pct = myRevenue > 0 ? (c.revenue / myRevenue * 100).toFixed(0) : '0';
  const isTop = topChannel && c.channel === topChannel.channel;
- return `<tr ${isTop ? 'style="background:rgba(16,185,129,.05);"' : ''}>
- <td><strong>${escAttr(c.channel)}</strong>${isTop ? ' <span style="background:#10B981; color:#FFF; padding:1px 6px; border-radius:50px; font-size:9px; font-weight:700;">TOP</span>' : ''}</td>
+ return `<tr ${isTop ? 'style="background:rgba(16, 16, 16,.05);"' : ''}>
+ <td><strong>${escAttr(c.channel)}</strong>${isTop ? ' <span style="background:#101010; color:#FFF; padding:1px 6px; border-radius:50px; font-size:9px; font-weight:700;">TOP</span>' : ''}</td>
  <td style="text-align:right;">${c.orders}</td>
  <td style="text-align:right;">${fmtRM(c.revenue)}</td>
  <td style="text-align:right;">${pct}%</td>
@@ -1317,7 +1317,7 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  </div>
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Anggaran Komisen</div>
- <div class="rp-kpi__val" style="color:#10B981;">${fmtRM(myComm.amount || 0)}</div>
+ <div class="rp-kpi__val" style="color:#101010;">${fmtRM(myComm.amount || 0)}</div>
  <div class="rp-kpi__sub">menunggu approval Bos</div>
  </div>
  </div>
@@ -1332,7 +1332,7 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  <div class="rp-kpi-grid">
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Diluluskan</div>
- <div class="rp-kpi__val" style="color:#10B981;">${fmtRM(claimsTotal)}</div>
+ <div class="rp-kpi__val" style="color:#101010;">${fmtRM(claimsTotal)}</div>
  <div class="rp-kpi__sub">bulan ni</div>
  </div>
  <div class="rp-kpi">
@@ -1472,7 +1472,7 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
  </div>
  <div class="rp-kpi" style="${pendingPack > 5 ? 'border:2px solid #D97706;' : ''}">
  <div class="rp-kpi__lbl"><i data-lucide="clock" style="width:12px;height:12px;"></i> Backlog</div>
- <div class="rp-kpi__val" style="color:${pendingPack > 5 ? '#D97706' : '#10B981'};">${pendingPack}</div>
+ <div class="rp-kpi__val" style="color:${pendingPack > 5 ? '#D97706' : '#101010'};">${pendingPack}</div>
  <div class="rp-kpi__sub">pesanan belum pack (current)</div>
  </div>
  <!-- p1_133 — Returns / Damages KPI (async filled from returns_log) -->
@@ -1525,7 +1525,7 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
  <div class="rp-kpi-grid">
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Diluluskan</div>
- <div class="rp-kpi__val" style="color:#10B981;">${fmtRM(claimsTotal)}</div>
+ <div class="rp-kpi__val" style="color:#101010;">${fmtRM(claimsTotal)}</div>
  <div class="rp-kpi__sub">bulan ni</div>
  </div>
  <div class="rp-kpi">
@@ -1569,7 +1569,7 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
  if(elS) elS.textContent = loss > 0 ? `RM ${loss.toFixed(2)} loss impact` : 'item dilaporkan period ini';
  if(card) {
  if(count > 0) card.style.border = '2px solid #D97706';
- if(elN) elN.style.color = count > 0 ? '#D97706' : '#10B981';
+ if(elN) elN.style.color = count > 0 ? '#D97706' : '#101010';
  }
  } catch(e) { /* silent */ }
  })();
@@ -1709,7 +1709,7 @@ window.__rpRenderBizdevTemplate = function(body, u, range) {
  <div class="rp-kpi-grid">
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Diluluskan</div>
- <div class="rp-kpi__val" style="color:#10B981;">${fmtRM(claimsTotal)}</div>
+ <div class="rp-kpi__val" style="color:#101010;">${fmtRM(claimsTotal)}</div>
  <div class="rp-kpi__sub">bulan ni (claim parking/petrol/etc)</div>
  </div>
  <div class="rp-kpi">
@@ -1843,14 +1843,14 @@ window.__mwLoadHistory = async function() {
  <td style="text-align:right;">${posts}</td>
  <td style="text-align:right;">${views.toFixed(1)}</td>
  <td style="text-align:right;">${likes}</td>
- <td style="text-align:right; color:${leads > 0 ? '#10B981' : '#6B7280'}; font-weight:${leads > 0 ? 700 : 400};">${leads}</td>
+ <td style="text-align:right; color:${leads > 0 ? '#101010' : '#6B7280'}; font-weight:${leads > 0 ? 700 : 400};">${leads}</td>
  <td style="font-size:11px; color:#6B7280; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escAttr((p.notes || '').slice(0, 50))}</td>
  </tr>`;
  }).join('')}
  </tbody>
  </table>`;
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:14px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:14px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -1945,7 +1945,7 @@ window.renderReturnsLog = async function() {
  const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
  const fmtRMC = (n) => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
  if(problemWrap) {
- if(!problems.length) problemWrap.innerHTML = '<p style="color:#10B981; padding:14px;">Tiada SKU bermasalah dalam period ni — bagus.</p>';
+ if(!problems.length) problemWrap.innerHTML = '<p style="color:#101010; padding:14px;">Tiada SKU bermasalah dalam period ni — bagus.</p>';
  else problemWrap.innerHTML = `<table class="rp-comm-table">
  <thead><tr><th>SKU</th><th>Nama / Supplier</th><th style="text-align:right;">Entries</th><th style="text-align:right;">Units</th><th style="text-align:right;">Cost Impact</th></tr></thead>
  <tbody>${problems.map(p => `
@@ -1953,21 +1953,21 @@ window.renderReturnsLog = async function() {
  <td><strong>${escAttr(p.sku)}</strong></td>
  <td style="font-size:12px;">${escAttr(p.name).slice(0, 50)}<br><span style="color:#6B7280; font-size:11px;">Supplier: ${escAttr(p.supplier) || '—'}</span></td>
  <td style="text-align:right;">${p.entries}</td>
- <td style="text-align:right; color:#EF4444; font-weight:700;">${p.qty}</td>
- <td style="text-align:right; color:#EF4444; font-weight:700;">${fmtRMC(p.costImpact)}</td>
+ <td style="text-align:right; color:#c0392b; font-weight:700;">${p.qty}</td>
+ <td style="text-align:right; color:#c0392b; font-weight:700;">${fmtRMC(p.costImpact)}</td>
  </tr>`).join('')}</tbody></table>`;
  }
 
  // Full table
  if(!rows.length) {
- wrap.innerHTML = '<p style="color:#10B981; padding:20px; text-align:center;">Tiada entries — bagus.</p>';
+ wrap.innerHTML = '<p style="color:#101010; padding:20px; text-align:center;">Tiada entries — bagus.</p>';
  return;
  }
  wrap.innerHTML = `<table class="rp-comm-table">
  <thead><tr><th>Tarikh</th><th>SKU</th><th>Type</th><th>Reason</th><th style="text-align:right;">Qty</th><th>Channel</th><th>Reporter</th></tr></thead>
  <tbody>
  ${rows.slice(0, 100).map(r => {
- const typeColor = { return:'#cd7c32', damaged:'#EF4444', missing:'#D97706', expired:'#a05f22' }[r.type] || '#6B7280';
+ const typeColor = { return:'#cd7c32', damaged:'#c0392b', missing:'#D97706', expired:'#a05f22' }[r.type] || '#6B7280';
  const typeLabel = { return:'Return', damaged:'Rosak', missing:'Hilang', expired:'Expired' }[r.type] || r.type;
  return `<tr>
  <td style="font-size:11px; color:#6B7280;">${new Date(r.reported_at).toLocaleString('en-MY', { dateStyle:'short', timeStyle:'short' })}</td>
@@ -1984,7 +1984,7 @@ window.renderReturnsLog = async function() {
  ${rows.length > 100 ? `<p style="font-size:11px; color:#9CA3AF; text-align:center; margin-top:10px;">Papar 100 pertama dari ${rows.length} rows.</p>` : ''}`;
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -2142,11 +2142,11 @@ window.renderSupplierPerf = async function() {
  </thead>
  <tbody>
  ${rows.map((r, i) => {
- const leadColor = r.avgLead == null ? '#9CA3AF' : (r.avgLead <= 7 ? '#10B981' : (r.avgLead <= 21 ? '#D97706' : '#EF4444'));
+ const leadColor = r.avgLead == null ? '#9CA3AF' : (r.avgLead <= 7 ? '#101010' : (r.avgLead <= 21 ? '#D97706' : '#c0392b'));
  const leadStr = r.avgLead == null ? '—' : r.avgLead.toFixed(1) + ' hari';
  const lastStr = r.lastDelivery ? r.lastDelivery.toLocaleDateString('en-MY') : '—';
  const daysSinceLast = r.lastDelivery ? Math.floor((Date.now() - r.lastDelivery.getTime()) / 86400000) : null;
- const lastColor = daysSinceLast == null ? '#9CA3AF' : (daysSinceLast > 90 ? '#EF4444' : (daysSinceLast > 30 ? '#D97706' : '#10B981'));
+ const lastColor = daysSinceLast == null ? '#9CA3AF' : (daysSinceLast > 90 ? '#c0392b' : (daysSinceLast > 30 ? '#D97706' : '#101010'));
  return `<tr ${i < 3 ? 'style="background:rgba(252,211,77,.04);"' : ''}>
  <td>#${i+1}</td>
  <td><strong>${escAttr(r.supplier)}</strong></td>
@@ -2161,7 +2161,7 @@ window.renderSupplierPerf = async function() {
  </table>`;
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -2278,7 +2278,7 @@ window.renderBrandPerf = function() {
  </thead>
  <tbody>
  ${rows.map((r, i) => {
- const trendColor = r.trendPct > 0 ? '#10B981' : (r.trendPct < 0 ? '#EF4444' : '#6B7280');
+ const trendColor = r.trendPct > 0 ? '#101010' : (r.trendPct < 0 ? '#c0392b' : '#6B7280');
  const trendIcon = r.trendPct > 0 ? '↑' : (r.trendPct < 0 ? '↓' : '→');
  const trendStr = r.prevRevenue > 0 ? `${trendIcon} ${Math.abs(r.trendPct).toFixed(1)}%` : 'NEW';
  const rankColor = i === 0 ? '#FCD34D' : (i === 1 ? '#9CA3AF' : (i === 2 ? '#FB923C' : '#E5E7EB'));
@@ -2364,7 +2364,7 @@ window.__cpPeriod = 'mtd';
 window.__cpDefaultFees = {
  'Shopee':         { fee: 8.0, processing: 2.5, label: 'Shopee', color: '#EE4D2D' },
  'TikTok Shop':    { fee: 5.0, processing: 2.0, label: 'TikTok Shop', color: '#000000' },
- 'POS Cashier':  { fee: 0.0, processing: 0.5, label: 'POS Cashier', color: '#10B981' },
+ 'POS Cashier':  { fee: 0.0, processing: 0.5, label: 'POS Cashier', color: '#101010' },
  'Web EasyStore':  { fee: 0.0, processing: 2.5, label: 'Web EasyStore', color: '#cd7c32' },
  'WhatsApp':       { fee: 0.0, processing: 0.5, label: 'WhatsApp', color: '#22C55E' }
 };
@@ -2493,7 +2493,7 @@ window.renderChannelProfit = function() {
  } else {
  grid.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-bottom:14px;">' +
  rows.map(r => {
- const marginColor = r.netMarginPct >= 30 ? '#10B981' : (r.netMarginPct >= 15 ? '#D97706' : '#EF4444');
+ const marginColor = r.netMarginPct >= 30 ? '#101010' : (r.netMarginPct >= 15 ? '#D97706' : '#c0392b');
  return `<div class="rp-section" style="margin-bottom:0; border-top:4px solid ${r.color};">
  <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
  <span style="width:10px; height:10px; border-radius:50%; background:${r.color};"></span>
@@ -2533,8 +2533,8 @@ window.renderChannelProfit = function() {
  </thead>
  <tbody>
  ${rows.map((r, i) => {
- const marginColor = r.netMarginPct >= 30 ? '#10B981' : (r.netMarginPct >= 15 ? '#D97706' : '#EF4444');
- return `<tr ${i === 0 ? 'style="background:rgba(16,185,129,.06);"' : ''}>
+ const marginColor = r.netMarginPct >= 30 ? '#101010' : (r.netMarginPct >= 15 ? '#D97706' : '#c0392b');
+ return `<tr ${i === 0 ? 'style="background:rgba(16, 16, 16,.06);"' : ''}>
  <td><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${r.color}; margin-right:6px;"></span><strong>${r.channel}</strong></td>
  <td style="text-align:right;">${r.orders}</td>
  <td style="text-align:right;">${fmtRMC(r.revenue)}</td>
@@ -2638,7 +2638,7 @@ window.renderReorderSuggest = function() {
  window.__rsAllRows = rows;
  window.__rsApplyFilter();
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -2672,7 +2672,7 @@ window.__rsApplyFilter = function() {
  }
 
  if(!rows.length) {
- wrap.innerHTML = '<p style="color:#10B981; padding:30px; text-align:center;">Tiada SKU perlu reorder pada settings ni — bagus.</p>';
+ wrap.innerHTML = '<p style="color:#101010; padding:30px; text-align:center;">Tiada SKU perlu reorder pada settings ni — bagus.</p>';
  return;
  }
  const escAttr = (s) => String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -2693,7 +2693,7 @@ window.__rsApplyFilter = function() {
  </thead>
  <tbody>
  ${rows.slice(0, 100).map(r => {
- const riskColor = r.isOutOfStock ? '#991B1B' : (r.isUrgent ? '#EF4444' : (r.daysTillStockout < 14 ? '#D97706' : '#10B981'));
+ const riskColor = r.isOutOfStock ? '#991B1B' : (r.isUrgent ? '#c0392b' : (r.daysTillStockout < 14 ? '#D97706' : '#101010'));
  const riskLabel = r.isOutOfStock ? 'OUT' : (r.daysTillStockout >= 999 ? '—' : r.daysTillStockout + 'd');
  const rowBg = r.isOutOfStock ? 'background:#FEE2E2;' : (r.isUrgent ? 'background:#FEF2F2;' : '');
  const locPill = r.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escAttr(r.location_bin)}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>';
@@ -2766,9 +2766,9 @@ window.__rpRenderSalesSimpleTemplate = function(body, u, range) {
 
  <!-- Commission card (if Aliff dah kira) -->
  ${myComm ? `
- <div class="rp-section" style="background:rgba(16,185,129,.06); border-left:4px solid #10B981; text-align:center; padding:20px;">
+ <div class="rp-section" style="background:rgba(16, 16, 16,.06); border-left:4px solid #101010; text-align:center; padding:20px;">
  <div style="font-size:12px; color:#065F46; font-weight:700; text-transform:uppercase; margin-bottom:6px;">Komisen Anggaran (menunggu approval Bos)</div>
- <div style="font-size:32px; font-weight:800; color:#10B981;">${fmtRM(myComm.amount || 0)}</div>
+ <div style="font-size:32px; font-weight:800; color:#101010;">${fmtRM(myComm.amount || 0)}</div>
  <div style="font-size:11px; color:#6B7280; margin-top:4px;">${myComm.rate || '—'}% × jualan</div>
  </div>
  ` : `
@@ -2830,9 +2830,9 @@ window.__rpRenderInventorySimpleTemplate = function(body, u, range) {
  <!-- 2 big numbers side-by-side -->
  <div class="rp-section">
  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
- <div style="text-align:center; padding:24px; background:rgba(16,185,129,.06); border-radius:12px; border:1px solid #BBF7D0;">
+ <div style="text-align:center; padding:24px; background:rgba(16, 16, 16,.06); border-radius:12px; border:1px solid #BBF7D0;">
  <div style="font-size:12px; color:#065F46; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Saya Dah Pack</div>
- <div style="font-size:48px; font-weight:900; color:#10B981; letter-spacing:-2px; line-height:1;">${packed}</div>
+ <div style="font-size:48px; font-weight:900; color:#101010; letter-spacing:-2px; line-height:1;">${packed}</div>
  <div style="font-size:12px; color:#6B7280; margin-top:6px;">pesanan period ini</div>
  </div>
  <div style="text-align:center; padding:24px; background:${backlog > 5 ? 'rgba(217,119,6,.08)' : 'rgba(107,114,128,.05)'}; border-radius:12px; border:1px solid ${backlog > 5 ? '#FCD34D' : '#E5E7EB'};">
@@ -2882,7 +2882,7 @@ window.renderPriceHistory = async function() {
  window.__phRows = data || [];
  window.__phApplyFilter();
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -2926,7 +2926,7 @@ window.__phApplyFilter = function() {
  <tbody>
  ${rows.slice(0, 100).map(r => {
  const delta = Number(r.delta || 0);
- const deltaColor = delta > 0 ? '#EF4444' : (delta < 0 ? '#10B981' : '#6B7280');
+ const deltaColor = delta > 0 ? '#c0392b' : (delta < 0 ? '#101010' : '#6B7280');
  const deltaSign = delta > 0 ? '+' : '';
  return `<tr>
  <td style="font-size:11px; color:#6B7280;">${new Date(r.changed_at).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' })}</td>
@@ -2955,14 +2955,14 @@ window.renderStockCheck = async function() {
  if(!list) return;
  list.innerHTML = '<p style="color:#9CA3AF; padding:40px; text-align:center;">Memuatkan…</p>';
  try {
- if(typeof db === 'undefined' || !db) { list.innerHTML = '<p style="color:#EF4444; padding:20px;">DB tak available.</p>'; return; }
+ if(typeof db === 'undefined' || !db) { list.innerHTML = '<p style="color:#c0392b; padding:20px;">DB tak available.</p>'; return; }
  const { data, error } = await db.from('stock_check_reports').select('*').order('submitted_at', { ascending: false }).limit(50);
  if(error) throw error;
  window.__scReports = data || [];
  window.__scRenderList();
  window.__scRefreshCounts();
  } catch(e) {
- list.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ list.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -3000,7 +3000,7 @@ window.__scRenderList = function() {
  <div style="display:flex; gap:14px; font-size:12px; color:#374151;">
  <span><i data-lucide="package" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.items_checked} checked</span>
  <span style="${r.items_variance > 0 ? 'color:#D97706;' : ''}"><i data-lucide="alert-triangle" style="width:11px;height:11px;vertical-align:-1px;"></i> ${r.items_variance} variance</span>
- <span style="${r.rm_variance < 0 ? 'color:#EF4444;' : ''}"><i data-lucide="dollar-sign" style="width:11px;height:11px;vertical-align:-1px;"></i> RM ${Number(r.rm_variance || 0).toFixed(2)}</span>
+ <span style="${r.rm_variance < 0 ? 'color:#c0392b;' : ''}"><i data-lucide="dollar-sign" style="width:11px;height:11px;vertical-align:-1px;"></i> RM ${Number(r.rm_variance || 0).toFixed(2)}</span>
  </div>
  </div>
  </div>
@@ -3341,7 +3341,7 @@ window.scSetTab = function(tab, btn){
 window.__scArchive = [];
 window.scLoadArchive = async function(){
  const tb = document.getElementById('scArchiveBody'); if(!tb) return;
- if(typeof db==='undefined'||!db){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#EF4444;">DB tak available.</td></tr>'; return; }
+ if(typeof db==='undefined'||!db){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#c0392b;">DB tak available.</td></tr>'; return; }
  tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#9CA3AF;">Memuatkan…</td></tr>';
  try {
  const { data: ships } = await db.from('cost_shipments').select('*').order('order_date',{ascending:false, nullsFirst:false}).order('updated_at',{ascending:false}).limit(500);
@@ -3361,7 +3361,7 @@ window.scLoadArchive = async function(){
  rows: its.map(it=>({ sku:it.sku||'', rmb:Number(it.cost_rmb)||0, qty:parseInt(it.qty,10)||0 })) };
  });
  scRenderArchive();
- } catch(e){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#EF4444;">Error: '+(e.message||e)+'</td></tr>'; }
+ } catch(e){ tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#c0392b;">Error: '+(e.message||e)+'</td></tr>'; }
 };
 
 window.scRenderArchive = function(){
@@ -3513,7 +3513,7 @@ window.renderFloorPrice = function() {
  return `<tr style="background:#FEF2F2;"><td><strong>${p.sku}</strong></td><td style="font-size:12px;">${p.name || ''}</td><td style="text-align:right;">RM ${fp.toFixed(2)}</td><td style="text-align:right;">RM ${sp.toFixed(2)}</td><td style="text-align:right; color:#991B1B; font-weight:700;">-RM ${loss.toFixed(2)}</td></tr>`;
  }).join('') + '</tbody></table>';
  } else if(belowList) {
- belowList.innerHTML = '<p style="font-size:12px; color:#10B981; margin-top:14px;">Tiada SKU jual bawah floor — bagus.</p>';
+ belowList.innerHTML = '<p style="font-size:12px; color:#101010; margin-top:14px;">Tiada SKU jual bawah floor — bagus.</p>';
  }
  } catch(e){}
  // p1_173 — auto-render product list (default tab)
@@ -3645,7 +3645,7 @@ window.__psListFilter = function() {
  const totalSet = all.filter(p => Number(p.price || 0) > 0 && Number(p.cost_rmb || 0) > 0).length;
  const totalNoPrice = all.filter(p => !(Number(p.price || 0) > 0)).length;
  const totalNoCost = all.filter(p => Number(p.price || 0) > 0 && !(Number(p.cost_rmb || 0) > 0)).length;
- if(sumEl) sumEl.innerHTML = `Tunjuk <strong>${rows.length}</strong> / ${all.length} produk · <span style="color:#10B981;">${totalSet} dah set</span> · <span style="color:#F59E0B;">${totalNoCost} tiada cost</span> · <span style="color:#EF4444;">${totalNoPrice} belum set price</span>`;
+ if(sumEl) sumEl.innerHTML = `Tunjuk <strong>${rows.length}</strong> / ${all.length} produk · <span style="color:#101010;">${totalSet} dah set</span> · <span style="color:#F59E0B;">${totalNoCost} tiada cost</span> · <span style="color:#c0392b;">${totalNoPrice} belum set price</span>`;
  if(!rows.length) { wrap.innerHTML = '<p style="padding:24px; text-align:center; color:#9CA3AF;">Tiada padanan.</p>'; return; }
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
  // p1_354 — pagination 50/page (elak sangkut) + reset ke halaman 1 bila filter berubah
@@ -3706,7 +3706,7 @@ window.__psListFilter = function() {
  + calcCell('psr_' + i + '_komisen', komisen)
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();">${numInp('psr_' + i + '_shopee', Number(p.shopee_price || 0), 'RM')}</td>`
  + `<td class="ps-list-cell" style="padding:6px 10px; text-align:right;" onclick="event.stopPropagation();">${numInp('psr_' + i + '_tiktok', Number(p.tiktok_price || 0), 'RM')}</td>`
- + `<td class="ps-list-cell" style="padding:10px; text-align:right; color:${stock <= 0 ? '#EF4444' : '#111827'}; font-weight:600;">${stock}</td></tr>`;
+ + `<td class="ps-list-cell" style="padding:10px; text-align:right; color:${stock <= 0 ? '#c0392b' : '#111827'}; font-weight:600;">${stock}</td></tr>`;
  }).join('');
  const from = rows.length ? start + 1 : 0, to = start + slice.length;
  const bs = "padding:5px 11px; border:1px solid #E5E7EB; background:#fff; border-radius:7px; cursor:pointer; font-size:12px; font-weight:700; color:#374151;";
@@ -3991,11 +3991,11 @@ window.__psLoadAudit = async function() {
  wrap.innerHTML = `<table style="width:100%; border-collapse:collapse; font-size:12.5px;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">Tarikh</th><th style="text-align:left; padding:8px;">SKU</th><th style="text-align:right; padding:8px;">Old</th><th style="text-align:right; padding:8px;">New</th><th style="text-align:right; padding:8px;">Δ</th><th style="text-align:left; padding:8px;">By</th></tr></thead><tbody>` +
  rows.map(r => {
  const delta = Number(r.delta || 0);
- const dColor = delta > 0 ? '#EF4444' : (delta < 0 ? '#10B981' : '#9CA3AF');
+ const dColor = delta > 0 ? '#c0392b' : (delta < 0 ? '#101010' : '#9CA3AF');
  return `<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:8px;">${new Date(r.changed_at).toLocaleString('en-MY')}</td><td style="padding:8px;"><strong>${escHtml(r.sku || '')}</strong></td><td style="text-align:right; padding:8px;">RM ${Number(r.old_price || 0).toFixed(2)}</td><td style="text-align:right; padding:8px; font-weight:700;">RM ${Number(r.new_price || 0).toFixed(2)}</td><td style="text-align:right; padding:8px; color:${dColor}; font-weight:700;">${delta > 0 ? '+' : ''}RM ${delta.toFixed(2)}</td><td style="padding:8px;">${escHtml(r.changed_by || '-')}</td></tr>`;
  }).join('') + '</tbody></table>';
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -4104,7 +4104,7 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  <!-- Stock Check Queue -->
  <div class="rp-section" style="${pendingChecks.length > 0 ? 'border-left:4px solid #D97706;' : ''}">
  <h3 class="rp-section__title"><i data-lucide="inbox" style="width:14px;height:14px;"></i> Antrian Review Stock Check ${pendingChecks.length > 0 ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:50px; font-size:11px; margin-left:6px;">${pendingChecks.length} pending</span>` : ''}</h3>
- ${pendingChecks.length === 0 ? '<p style="font-size:12px; color:#10B981; padding:8px 0;">Tiada report menunggu — tip-top.</p>' : `
+ ${pendingChecks.length === 0 ? '<p style="font-size:12px; color:#101010; padding:8px 0;">Tiada report menunggu — tip-top.</p>' : `
  <table class="rp-comm-table">
  <thead><tr><th>Period</th><th>Submitted By</th><th style="text-align:right;">Variance</th><th>Aksi</th></tr></thead>
  <tbody>
@@ -4130,11 +4130,11 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  </div>
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Naik</div>
- <div class="rp-kpi__val" style="color:#EF4444;">${priceIncreases}</div>
+ <div class="rp-kpi__val" style="color:#c0392b;">${priceIncreases}</div>
  </div>
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Turun</div>
- <div class="rp-kpi__val" style="color:#10B981;">${priceDecreases}</div>
+ <div class="rp-kpi__val" style="color:#101010;">${priceDecreases}</div>
  </div>
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Tindakan</div>
@@ -4148,7 +4148,7 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  <tbody>
  ${priceChanges.slice(0, 5).map(p => {
  const d = Number(p.delta || 0);
- const c = d > 0 ? '#EF4444' : '#10B981';
+ const c = d > 0 ? '#c0392b' : '#101010';
  return `<tr><td><strong>${escAttr(p.sku)}</strong></td><td style="color:${c};">${d > 0 ? '+' : ''}${fmtRM(d).replace('RM ','')}</td><td style="color:${c};">${p.delta_pct == null ? '—' : (d > 0 ? '+' : '') + Number(p.delta_pct).toFixed(1) + '%'}</td><td style="font-size:11px; color:#6B7280;">${new Date(p.changed_at).toLocaleDateString('en-MY')}</td></tr>`;
  }).join('')}
  </tbody>
@@ -4163,19 +4163,19 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  <div class="rp-approval-card">
  <h4 class="rp-approval-card__title" style="color:#EE4D2D;"><i data-lucide="shopping-bag" style="width:13px;height:13px;"></i> Shopee</h4>
  <div class="rp-appr-row"><span>Total runs</span><strong>${shopeeRuns}</strong></div>
- <div class="rp-appr-row"><span>Berjaya</span><strong style="color:#10B981;">${shopeeRuns - shopeeErrors}</strong></div>
+ <div class="rp-appr-row"><span>Berjaya</span><strong style="color:#101010;">${shopeeRuns - shopeeErrors}</strong></div>
  <div class="rp-appr-row"><span>Errors</span><strong class="${shopeeErrors > 0 ? 'rp-danger' : ''}">${shopeeErrors}</strong></div>
  </div>
  <div class="rp-approval-card">
  <h4 class="rp-approval-card__title"><i data-lucide="music" style="width:13px;height:13px;"></i> TikTok Shop</h4>
  <div class="rp-appr-row"><span>Total runs</span><strong>${tiktokRuns}</strong></div>
- <div class="rp-appr-row"><span>Berjaya</span><strong style="color:#10B981;">${tiktokRuns - tiktokErrors}</strong></div>
+ <div class="rp-appr-row"><span>Berjaya</span><strong style="color:#101010;">${tiktokRuns - tiktokErrors}</strong></div>
  <div class="rp-appr-row"><span>Errors</span><strong class="${tiktokErrors > 0 ? 'rp-danger' : ''}">${tiktokErrors}</strong></div>
  </div>
  </div>
  ${(shopeeErrors + tiktokErrors > 0) ? `
  <p class="soft-note" style="margin-top:10px;"><i data-lucide="alert-triangle"></i> ${shopeeErrors + tiktokErrors} error(s) total — investigate dalam Settings → Sync.</p>
- ` : '<p style="font-size:12px; color:#10B981; margin-top:8px;">All systems green.</p>'}
+ ` : '<p style="font-size:12px; color:#101010; margin-top:8px;">All systems green.</p>'}
  </div>
 
  <!-- Permission Changes Audit -->
@@ -4202,7 +4202,7 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  <div class="rp-kpi-grid">
  <div class="rp-kpi">
  <div class="rp-kpi__lbl">Diluluskan</div>
- <div class="rp-kpi__val" style="color:#10B981;">${fmtRM(claimsTotal)}</div>
+ <div class="rp-kpi__val" style="color:#101010;">${fmtRM(claimsTotal)}</div>
  <div class="rp-kpi__sub">bulan ni</div>
  </div>
  <div class="rp-kpi">
@@ -4359,7 +4359,7 @@ window.renderTeamReports = async function() {
  rows = data || [];
  }
  } catch(e) {
- grid.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ grid.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  return;
  }
 
@@ -4513,7 +4513,7 @@ window.__teamOpenSubmission = async function(id) {
  const prep = payload.prepared_by_name || 'Unknown';
  bodyHtml = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
  <div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Kadar</div><div style="font-size:24px; font-weight:800; color:#111827;">${rate}%</div></div>
- <div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Amaun</div><div style="font-size:24px; font-weight:800; color:#10B981;">RM ${amount.toFixed(2)}</div></div>
+ <div><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Amaun</div><div style="font-size:24px; font-weight:800; color:#101010;">RM ${amount.toFixed(2)}</div></div>
  <div style="grid-column:1 / -1; padding-top:8px; border-top:1px solid #E5E7EB;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;">Disediakan oleh</div><div style="font-size:13px; color:#374151;">${escAttr(prep)}</div></div>
  </div>`;
  }
@@ -4645,7 +4645,7 @@ window.renderFeedbackSection = async function() {
  </div>
  <div style="font-weight:700; font-size:13.5px; color:#111; margin-bottom:4px;">${escHtml(r.title)}</div>
  <div style="font-size:12.5px; color:#374151; line-height:1.5; margin-bottom:8px; white-space:pre-wrap;">${escHtml(r.body)}</div>
- ${hasReply ? `<div style="margin-top:8px; padding:10px; background:rgba(16,185,129,.06); border-left:3px solid #10B981; border-radius:6px;">
+ ${hasReply ? `<div style="margin-top:8px; padding:10px; background:rgba(16, 16, 16,.06); border-left:3px solid #101010; border-radius:6px;">
  <div style="font-size:10px; color:#065F46; font-weight:700; text-transform:uppercase; margin-bottom:4px;"><i data-lucide="reply" style="width:11px; height:11px; vertical-align:middle;"></i> Reply Bos</div>
  ${r.bos_reply ? `<div style="font-size:12.5px; color:#111; white-space:pre-wrap;">${escHtml(r.bos_reply)}</div>` : ''}
  ${r.bos_action ? `<div style="font-size:11px; color:#065F46; margin-top:4px;"><strong>Tindakan:</strong> ${escHtml(r.bos_action)}</div>` : ''}
@@ -4713,7 +4713,7 @@ window.renderPaymentProofs = async function() {
  if(statsEl) {
  statsEl.innerHTML = `
  <div class="rp-kpi-card"><div class="rp-kpi-card__label">Jualan Senarai</div><div class="rp-kpi-card__value">${total.toLocaleString()}</div><div class="rp-kpi-card__sub">RM ${totalRm.toLocaleString(undefined,{maximumFractionDigits:2})} jumlah</div></div>
- <div class="rp-kpi-card"><div class="rp-kpi-card__label">Ada Resit</div><div class="rp-kpi-card__value" style="color:#10B981;">${withProof.toLocaleString()}</div><div class="rp-kpi-card__sub">${nonCash > 0 ? Math.round(withProof / nonCash * 100) : 0}% bukan-Cash dah upload</div></div>
+ <div class="rp-kpi-card"><div class="rp-kpi-card__label">Ada Resit</div><div class="rp-kpi-card__value" style="color:#101010;">${withProof.toLocaleString()}</div><div class="rp-kpi-card__sub">${nonCash > 0 ? Math.round(withProof / nonCash * 100) : 0}% bukan-Cash dah upload</div></div>
  <div class="rp-kpi-card"><div class="rp-kpi-card__label">Tiada Resit</div><div class="rp-kpi-card__value" style="color:${missing > 0 ? '#DC2626' : '#9CA3AF'};">${missing.toLocaleString()}</div><div class="rp-kpi-card__sub">bukan-Cash · belum upload</div></div>
  `;
  }
@@ -5301,7 +5301,7 @@ table.items-table .col-total { text-align: right; width: 22%; font-weight: 600; 
 <body>
 <div class="no-print">
  <button onclick="window.print()">Print / Save PDF</button>
- <button onclick="window.opener && window.opener.__sendReceiptPdfWhatsApp(${sale.id}); window.close();" style="background:#10B981;">Hantar WhatsApp</button>
+ <button onclick="window.opener && window.opener.__sendReceiptPdfWhatsApp(${sale.id}); window.close();" style="background:#101010;">Hantar WhatsApp</button>
  <button onclick="window.opener && window.opener.__sendReceiptPdfEmail(${sale.id}); window.close();" style="background:#cd7c32;">Hantar Email</button>
  <button class="secondary" onclick="window.close()">Close</button>
  <span class="hint">Print/Save PDF untuk fail. WhatsApp/Email akan generate PDF + upload + hantar link auto.</span>
@@ -5650,7 +5650,7 @@ window.renderFeedbackInbox = async function() {
  </div>
  <button class="rp-manual-save" onclick="window.__fbiSave(${r.id})" style="font-size:11px; padding:6px 12px;"><i data-lucide="save" style="width:11px; height:11px;"></i> Simpan</button>
  </div>
- </div>` : (r.bos_reply || r.bos_action) ? `<div style="background:rgba(16,185,129,.06); padding:10px; border-left:3px solid #10B981; border-radius:6px;">
+ </div>` : (r.bos_reply || r.bos_action) ? `<div style="background:rgba(16, 16, 16,.06); padding:10px; border-left:3px solid #101010; border-radius:6px;">
  <div style="font-size:10px; color:#065F46; font-weight:700; text-transform:uppercase; margin-bottom:4px;"><i data-lucide="reply" style="width:11px; height:11px; vertical-align:middle;"></i> Reply Bos</div>
  ${r.bos_reply ? `<div style="font-size:12.5px; color:#111; white-space:pre-wrap;">${escHtml(r.bos_reply)}</div>` : ''}
  ${r.bos_action ? `<div style="font-size:11px; color:#065F46; margin-top:4px;"><strong>Tindakan:</strong> ${escHtml(r.bos_action)}</div>` : ''}
@@ -5659,7 +5659,7 @@ window.renderFeedbackInbox = async function() {
  }).join('');
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- wrap.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ wrap.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -6384,7 +6384,7 @@ window.renderDashboard = function() {
  tbodyLines.innerHTML = topArr.map((o, i) => `<tr style="cursor:pointer;" onclick="window.__dashGoto('inv_database')">
  <td style="width:24px; font-weight:bold; color:#888;">#${i+1}</td>
  <td><strong>${o.name}</strong></td>
- <td style="color:#10b981; font-weight:700;">${o.qty} sold</td>
+ <td style="color:#101010; font-weight:700;">${o.qty} sold</td>
  <td style="text-align:right; font-weight:600;">RM ${fmtMoney(o.revenue)}</td>
  </tr>`).join('');
  }
@@ -6905,13 +6905,13 @@ window.__renderOrderDetail = function(sale) {
  const tax = parseFloat(m.tax_amount || m.sst_amount || 0);
  document.getElementById('odBreakdown').innerHTML =
  '<div style="display:flex; justify-content:space-between;"><span style="color:#64748B;">Subtotal</span><span>RM ' + subtotal.toFixed(2) + '</span></div>'
- + (discount > 0 ? '<div style="display:flex; justify-content:space-between; color:#10B981;"><span>Discount</span><span>−RM ' + discount.toFixed(2) + '</span></div>' : '')
+ + (discount > 0 ? '<div style="display:flex; justify-content:space-between; color:#101010;"><span>Discount</span><span>−RM ' + discount.toFixed(2) + '</span></div>' : '')
  + (shipping > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#64748B;">Shipping</span><span>RM ' + shipping.toFixed(2) + '</span></div>' : '')
  + (tax > 0 ? '<div style="display:flex; justify-content:space-between;"><span style="color:#64748B;">SST</span><span>RM ' + tax.toFixed(2) + '</span></div>' : '')
  + '<div style="display:flex; justify-content:space-between; padding-top:8px; border-top:1px solid #E2E8F0; font-weight:800; font-size:15px;"><span>Total</span><span>RM ' + total.toFixed(2) + '</span></div>';
 
  const ch = sale.channel || 'POS Cashier';
- const chColor = ch === 'TikTok Shop' ? '#000' : (ch === 'Shopee' ? '#ee4d2d' : (String(ch).includes('EasyStore') ? '#10B981' : '#cd7c32'));
+ const chColor = ch === 'TikTok Shop' ? '#000' : (ch === 'Shopee' ? '#ee4d2d' : (String(ch).includes('EasyStore') ? '#101010' : '#cd7c32'));
  document.getElementById('odChannelIcon').textContent = ch === 'TikTok Shop' ? 'T' : (ch === 'Shopee' ? 'S' : (String(ch).includes('EasyStore') ? 'E' : 'W'));
  document.getElementById('odChannelName').textContent = ch;
  document.getElementById('odChannelCard').style.borderLeft = '3px solid ' + chColor;
@@ -7266,7 +7266,7 @@ window.renderCheckSessions = async function() {
  <div style="background:#FEF3C7; padding:12px; border-radius:8px; border-left:4px solid #D97706;"><div style="font-size:10px; color:#92400E; text-transform:uppercase; font-weight:700;">Aktif</div><div style="font-size:22px; font-weight:900;">${active}</div><div style="font-size:11px; color:#6B7280;">sedang kira</div></div>
  <div style="background:#ffedd5; padding:12px; border-radius:8px; border-left:4px solid #b86a26;"><div style="font-size:10px; color:#7c4a1a; text-transform:uppercase; font-weight:700;">Menunggu Review</div><div style="font-size:22px; font-weight:900;">${review}</div><div style="font-size:11px; color:#6B7280;">Zack semak</div></div>
  <div style="background:#E0E7FF; padding:12px; border-radius:8px; border-left:4px solid #cd7c32;"><div style="font-size:10px; color:#3730A3; text-transform:uppercase; font-weight:700;">Bos Inbox</div><div style="font-size:22px; font-weight:900;">${forwarded}</div><div style="font-size:11px; color:#6B7280;">menunggu Bos</div></div>
- <div style="background:#D1FAE5; padding:12px; border-radius:8px; border-left:4px solid #10B981;"><div style="font-size:10px; color:#065F46; text-transform:uppercase; font-weight:700;">Approved</div><div style="font-size:22px; font-weight:900;">${approved}</div><div style="font-size:11px; color:#6B7280;">selesai</div></div>
+ <div style="background:#D1FAE5; padding:12px; border-radius:8px; border-left:4px solid #101010;"><div style="font-size:10px; color:#065F46; text-transform:uppercase; font-weight:700;">Approved</div><div style="font-size:22px; font-weight:900;">${approved}</div><div style="font-size:11px; color:#6B7280;">selesai</div></div>
  `;
  }
  const filtered = window.__scsFilter === 'all' ? rows : rows.filter(s => s.status === window.__scsFilter);
@@ -7315,7 +7315,7 @@ window.renderCheckSessions = async function() {
  ${s.status === 'active' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsSubmitForReview(${s.id})" style="font-size:11px;"><i data-lucide="send" style="width:11px;height:11px;"></i> Submit ke Review</button>` : ''}
  ${s.status === 'review' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsForwardToBos(${s.id})" style="font-size:11px;"><i data-lucide="forward" style="width:11px;height:11px;"></i> Forward ke Bos</button>` : ''}
  ${isMgmt && s.status !== 'approved' ? `<button class="sy-btn secondary" onclick="window.__scsCancelSession(${s.id})" style="font-size:11px; color:#991B1B; border-color:#FCA5A5;"><i data-lucide="x-circle" style="width:11px;height:11px;"></i> Batal Sesi</button>` : ''}
- ${s.status === 'forwarded' && (typeof window.isBoss === 'function' && window.isBoss(u)) ? `<button class="sy-btn secondary" onclick="window.__scsApprove(${s.id})" style="font-size:11px; background:#10B981; color:#FFF;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> Approve</button>` : ''}
+ ${s.status === 'forwarded' && (typeof window.isBoss === 'function' && window.isBoss(u)) ? `<button class="sy-btn secondary" onclick="window.__scsApprove(${s.id})" style="font-size:11px; background:#101010; color:#FFF;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> Approve</button>` : ''}
  </div>
  <!-- p1_211 — Per-session SKU list (collapsed by default, lazy-loaded on click) -->
  <div id="scsSkuList-${s.id}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
@@ -7325,7 +7325,7 @@ window.renderCheckSessions = async function() {
  }).join('');
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- list.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ list.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -7721,7 +7721,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
  <div style="font-size:12px; color:#6B7280;">
  Total: <strong style="color:#111;">${items.length}</strong> ·
- <span style="color:#10B981;">${checked.length} dah check</span> ·
+ <span style="color:#101010;">${checked.length} dah check</span> ·
  <span style="color:#9CA3AF;">${pending.length} belum</span>
  </div>
  <div style="font-size:12px; color:var(--primary); font-weight:800;">${totalPct}%</div>
@@ -7747,7 +7747,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  box.dataset.loaded = '1';
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- box.innerHTML = '<p style="color:#EF4444; font-size:11.5px; padding:10px;">Error: ' + e.message + '</p>';
+ box.innerHTML = '<p style="color:#c0392b; font-size:11.5px; padding:10px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -8165,9 +8165,9 @@ window.renderStockCheckHistory = async function() {
  // KPI cards
  statsEl.innerHTML = `
  <div style="background:#fff8f0; padding:14px; border-radius:8px;"><div style="font-size:10px; color:#7c4a1a; font-weight:700; text-transform:uppercase;">Total SKU</div><div style="font-size:22px; font-weight:900;">${total}</div><div style="font-size:11px; color:#6B7280;">products_master</div></div>
- <div style="background:#F0FDF4; padding:14px; border-radius:8px; border-left:4px solid #10B981;"><div style="font-size:10px; color:#065F46; font-weight:700; text-transform:uppercase;">Audited 30 hari</div><div style="font-size:22px; font-weight:900; color:#10B981;">${audited30}</div><div style="font-size:11px; color:#6B7280;">${coverPct}% coverage</div></div>
+ <div style="background:#F0FDF4; padding:14px; border-radius:8px; border-left:4px solid #101010;"><div style="font-size:10px; color:#065F46; font-weight:700; text-transform:uppercase;">Audited 30 hari</div><div style="font-size:22px; font-weight:900; color:#101010;">${audited30}</div><div style="font-size:11px; color:#6B7280;">${coverPct}% coverage</div></div>
  <div style="background:${stale30 > 0 ? '#FEF3C7' : '#F3F4F6'}; padding:14px; border-radius:8px; border-left:4px solid ${stale30 > 0 ? '#D97706' : '#9CA3AF'};"><div style="font-size:10px; color:#92400E; font-weight:700; text-transform:uppercase;">Stale > 30 hari</div><div style="font-size:22px; font-weight:900; color:${stale30 > 0 ? '#D97706' : '#9CA3AF'};">${stale30}</div><div style="font-size:11px; color:#6B7280;">perlu audit balik</div></div>
- <div style="background:${withVariance > 0 ? '#FEE2E2' : '#F0FDF4'}; padding:14px; border-radius:8px; border-left:4px solid ${withVariance > 0 ? '#EF4444' : '#10B981'};"><div style="font-size:10px; color:${withVariance > 0 ? '#991B1B' : '#065F46'}; font-weight:700; text-transform:uppercase;">Variance</div><div style="font-size:22px; font-weight:900; color:${withVariance > 0 ? '#EF4444' : '#10B981'};">${withVariance}</div><div style="font-size:11px; color:#6B7280;">QC ≠ Sistem</div></div>
+ <div style="background:${withVariance > 0 ? '#FEE2E2' : '#F0FDF4'}; padding:14px; border-radius:8px; border-left:4px solid ${withVariance > 0 ? '#c0392b' : '#101010'};"><div style="font-size:10px; color:${withVariance > 0 ? '#991B1B' : '#065F46'}; font-weight:700; text-transform:uppercase;">Variance</div><div style="font-size:22px; font-weight:900; color:${withVariance > 0 ? '#c0392b' : '#101010'};">${withVariance}</div><div style="font-size:11px; color:#6B7280;">QC ≠ Sistem</div></div>
  `;
 
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
@@ -8197,7 +8197,7 @@ window.renderStockCheckHistory = async function() {
  timelineEl.innerHTML = '<p style="color:#9CA3AF; padding:20px; text-align:center;">Tiada audit dilakukan setakat ini.</p>';
  } else {
  timelineEl.innerHTML = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">Tarikh</th><th style="text-align:left; padding:8px;">Auditor</th><th style="text-align:right; padding:8px;">SKU Diaudit</th><th style="text-align:right; padding:8px;">Variance</th><th style="text-align:left; padding:8px;">Age</th></tr></thead><tbody>` +
- timeline.map(t => `<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:8px;"><strong>${fmtDate(t.date)}</strong></td><td style="padding:8px;">${escHtml(t.by)}</td><td style="text-align:right; padding:8px; font-weight:700;">${t.count}</td><td style="text-align:right; padding:8px; color:${t.variance > 0 ? '#EF4444' : '#10B981'}; font-weight:700;">${t.variance}</td><td style="padding:8px; color:#6B7280; font-size:11px;">${fmtAge(t.date + 'T08:00:00+08:00')}</td></tr>`).join('') + '</tbody></table>';
+ timeline.map(t => `<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:8px;"><strong>${fmtDate(t.date)}</strong></td><td style="padding:8px;">${escHtml(t.by)}</td><td style="text-align:right; padding:8px; font-weight:700;">${t.count}</td><td style="text-align:right; padding:8px; color:${t.variance > 0 ? '#c0392b' : '#101010'}; font-weight:700;">${t.variance}</td><td style="padding:8px; color:#6B7280; font-size:11px;">${fmtAge(t.date + 'T08:00:00+08:00')}</td></tr>`).join('') + '</tbody></table>';
  }
 
  // Top 20 stale (sort by last_audited_at ASC, then nulls last — but for "stale", nulls are MOST stale)
@@ -8217,18 +8217,18 @@ window.renderStockCheckHistory = async function() {
  .sort((a, b) => Math.abs(b.last_audited_qty - b.last_audited_system_qty) - Math.abs(a.last_audited_qty - a.last_audited_system_qty))
  .slice(0, 30);
  if(varianceRows.length === 0) {
- varianceEl.innerHTML = '<p style="color:#10B981; padding:20px; text-align:center; font-weight:600;"><i data-lucide="check-circle" style="width:14px; height:14px; vertical-align:-2px;"></i> Tiada variance dilaporkan. Semua kiraan matched.</p>';
+ varianceEl.innerHTML = '<p style="color:#101010; padding:20px; text-align:center; font-weight:600;"><i data-lucide="check-circle" style="width:14px; height:14px; vertical-align:-2px;"></i> Tiada variance dilaporkan. Semua kiraan matched.</p>';
  } else {
  varianceEl.innerHTML = `<table style="width:100%; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:8px;">SKU</th><th style="text-align:left; padding:8px;">Nama</th><th style="text-align:left; padding:8px;">Lokasi</th><th style="text-align:right; padding:8px;">Sistem</th><th style="text-align:right; padding:8px;">Fizikal</th><th style="text-align:right; padding:8px;">Selisih</th><th style="text-align:left; padding:8px;">Audited</th></tr></thead><tbody>` +
  varianceRows.map(r => {
  const diff = r.last_audited_qty - r.last_audited_system_qty;
- const diffColor = diff < 0 ? '#EF4444' : '#10B981';
+ const diffColor = diff < 0 ? '#c0392b' : '#101010';
  return `<tr style="border-bottom:1px solid #F3F4F6; background:${Math.abs(diff) >= 5 ? '#FEF2F2' : 'transparent'};"><td style="padding:8px;"><strong>${escHtml(r.sku)}</strong></td><td style="padding:8px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml((r.name || '').slice(0, 50))}</td><td style="padding:8px;">${locPill(r.location_bin)}</td><td style="text-align:right; padding:8px;">${r.last_audited_system_qty}</td><td style="text-align:right; padding:8px; font-weight:700;">${r.last_audited_qty}</td><td style="text-align:right; padding:8px; color:${diffColor}; font-weight:800;">${diff > 0 ? '+' : ''}${diff}</td><td style="padding:8px; font-size:11px; color:#6B7280;">${r.last_audited_at ? fmtAge(r.last_audited_at) : '-'}</td></tr>`;
  }).join('') + '</tbody></table>';
  }
  if(window.lucide && lucide.createIcons) lucide.createIcons();
  } catch(e) {
- statsEl.innerHTML = '<p style="color:#EF4444; padding:20px;">Error: ' + e.message + '</p>';
+ statsEl.innerHTML = '<p style="color:#c0392b; padding:20px;">Error: ' + e.message + '</p>';
  }
 };
 
@@ -8328,7 +8328,7 @@ window.__stRenderSkuList = function() {
  box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
  <div style="font-size:12px; color:#6B7280;">
  Total: <strong style="color:#111;">${products.length}</strong>${sessionLocations ? ' (dalam lokasi sesi)' : ''} ·
- <span style="color:#10B981;">${checked.length} dah check</span> ·
+ <span style="color:#101010;">${checked.length} dah check</span> ·
  <span style="color:#92400E;">${pending.length} belum</span>
  </div>
  <div style="font-size:13px; color:var(--primary); font-weight:800;">${totalPct}%</div>
@@ -8590,9 +8590,9 @@ function renderStockTake() {
  let stampHtml = '';
  if(auditTimestamps[p.sku]) {
  const ageDays = Math.floor((Date.now() - Date.parse(auditTimestamps[p.sku])) / 86400000);
- const ageColor = ageDays > 30 ? '#D97706' : (ageDays > 7 ? '#6B7280' : '#10B981');
+ const ageColor = ageDays > 30 ? '#D97706' : (ageDays > 7 ? '#6B7280' : '#101010');
  const ageLabel = ageDays === 0 ? 'hari ini' : ageDays + ' hari lepas';
- stampHtml = `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:5px; padding:3px 8px; background:rgba(16,185,129,.1); border-radius:50px; font-size:10.5px; font-weight:700; color:${ageColor};"><span>✓</span> Disemak ${ageLabel}</div>`;
+ stampHtml = `<div style="display:inline-flex; align-items:center; gap:6px; margin-top:5px; padding:3px 8px; background:rgba(16, 16, 16,.1); border-radius:50px; font-size:10.5px; font-weight:700; color:${ageColor};"><span>✓</span> Disemak ${ageLabel}</div>`;
  }
 
  const currentLoc = p.location_bin || locText;
@@ -8612,7 +8612,7 @@ function renderStockTake() {
  ${p.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:4px; font-size:10.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;"><i data-lucide="map-pin" style="width:9px; height:9px; vertical-align:-1px;"></i> ${p.location_bin}</span>` : ''}
  </div>
  <p style="font-size:13px; font-weight:600; margin:2px 0 4px;">${p.name}</p>
- <p style="font-size:11px; color:${sold30 > 5 ? '#10B981' : (sold30 > 0 ? '#D97706' : '#9CA3AF')}; margin:0; font-weight:600;">Sold 30d: ${sold30} unit</p>
+ <p style="font-size:11px; color:${sold30 > 5 ? '#101010' : (sold30 > 0 ? '#D97706' : '#9CA3AF')}; margin:0; font-weight:600;">Sold 30d: ${sold30} unit</p>
  ${stampHtml}
  </div>
  <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
@@ -8666,7 +8666,7 @@ function renderStockTake() {
  <p style="font-size:14px; font-weight:bold; margin-bottom:5px;">${p.name}</p>
  <p style="font-size:11px; color:#888; margin-bottom:2px;">Brand: ${p.brand || '—'}</p>
  <p style="font-size:11px; color:#888; margin-bottom:2px;">Scan code: <span style="font-family:monospace;">${scanCode}</span></p>
- <p style="font-size:11px; color:${sold30 > 5 ? '#10B981' : (sold30 > 0 ? '#D97706' : '#9CA3AF')}; margin-bottom:2px; font-weight:600;">Sold 30d: ${sold30} unit</p>
+ <p style="font-size:11px; color:${sold30 > 5 ? '#101010' : (sold30 > 0 ? '#D97706' : '#9CA3AF')}; margin-bottom:2px; font-weight:600;">Sold 30d: ${sold30} unit</p>
  </div>
  </div>
 
@@ -9969,7 +9969,7 @@ function renderCart() {
  bayarBtn.disabled = false;
  bayarBtn.style.opacity = '';
  bayarBtn.style.cursor = 'pointer';
- bayarBtn.style.boxShadow = '0 6px 20px rgba(16,185,129,0.35)';
+ bayarBtn.style.boxShadow = '0 6px 20px rgba(16, 16, 16,0.35)';
  }
  }
  };
@@ -10029,14 +10029,14 @@ function renderCart() {
  : '';
  const __img = __cartImg[skuU] || window.__cartNoImg;
  return `
- <div class="cart-item" style="${belowFloor ? 'border-left:3px solid #EF4444; background:rgba(254,226,226,.15);' : ''}">
+ <div class="cart-item" style="${belowFloor ? 'border-left:3px solid #c0392b; background:rgba(254,226,226,.15);' : ''}">
  <img src="${__img}" loading="lazy" onerror="this.onerror=null;this.src=window.__cartNoImg;" style="width:48px; height:48px; object-fit:cover; border-radius:8px; border:1px solid #E5E7EB; flex-shrink:0; margin-right:10px;" alt="">
  <div style="flex:1; min-width:0;"><strong style="font-size:13px; color:#111;">[${item.sku}] ${item.name}</strong><br><small style="color:#666;">${(item.discount_amount && item.original_price) ? `<s style="color:#9CA3AF;">RM${item.original_price.toFixed(2)}</s> ` : ''}RM${item.price.toFixed(2)} x ${item.quantity}</small> ${(item.discount_amount && item.discount_amount > 0) ? `<span style="display:inline-block; margin-left:5px; padding:1px 6px; background:#FEF3C7; color:#92400E; border-radius:50px; font-size:10px; font-weight:700;" title="${item.discount_reason || 'Diskaun manual'}">-RM ${item.discount_amount.toFixed(2)}</span>` : ''} ${floorBadge}<div style="margin-top:5px;"><button onclick="openCartItemDiscount('${item.sku}')" title="Diskaun untuk item ni" style="width:auto !important; height:auto !important; display:inline-block; white-space:nowrap; background:${(item.discount_amount > 0) ? '#FDE68A' : '#F3F4F6'}; color:#92400E; border:1px solid ${(item.discount_amount > 0) ? '#F59E0B' : '#E5E7EB'}; padding:4px 12px; border-radius:6px; font-weight:600; font-size:10.5px; line-height:1.4; cursor:pointer;">${(item.discount_amount > 0) ? 'Edit discount' : '+ Apply discount on item'}</button></div></div>
  <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
  <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
  <span style="font-weight:bold;">${item.quantity}</span>
  <button onclick="addToCart('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">+</button>
- <button onclick="removeFromCart('${item.sku}')" style="color:#EF4444; background:#fee2e2; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold; margin-left:5px;">X</button>
+ <button onclick="removeFromCart('${item.sku}')" style="color:#c0392b; background:#fee2e2; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold; margin-left:5px;">X</button>
  </div>
  </div>`;
  }).join('');
@@ -10256,10 +10256,10 @@ window.__cartProofRefresh = function() {
  if(!row) return;
  const f = window.__proofState && window.__proofState.file;
  if(f) {
- row.innerHTML = `<div style="display:flex; align-items:center; gap:8px; background:#D1FAE5; border:1px solid #10B981; color:#065F46; padding:10px 12px; border-radius:10px; font-size:12.5px; font-weight:700;">
+ row.innerHTML = `<div style="display:flex; align-items:center; gap:8px; background:#D1FAE5; border:1px solid #101010; color:#065F46; padding:10px 12px; border-radius:10px; font-size:12.5px; font-weight:700;">
  <i data-lucide="camera" style="width:16px;height:16px;flex-shrink:0;"></i>
  <span style="flex:1;">Resit dah siap <span style="font-weight:500; opacity:0.75;">(${(f.size/1024).toFixed(0)} KB)</span></span>
- <button type="button" onclick="document.getElementById('proofCameraInput').click()" style="background:#fff; border:1px solid #10B981; color:#065F46; padding:6px 10px; border-radius:7px; cursor:pointer; font-size:11.5px; font-weight:700;">Tukar</button>
+ <button type="button" onclick="document.getElementById('proofCameraInput').click()" style="background:#fff; border:1px solid #101010; color:#065F46; padding:6px 10px; border-radius:7px; cursor:pointer; font-size:11.5px; font-weight:700;">Tukar</button>
  <button type="button" onclick="window.__proofClearFile()" title="Buang resit" style="background:none; border:none; color:#991B1B; cursor:pointer; padding:4px;"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
  </div>`;
  } else {
@@ -10447,7 +10447,7 @@ window.cpkFilterCustomers = function(q) {
  const nm = (c.name || '').toLowerCase();
  return ph.includes(query) || nm.includes(query);
  }).slice(0, 30);
- if(!matches.length) { res.innerHTML = `<p style="color:#EF4444; font-size:13px; padding:12px; text-align:center; margin:0;">Tiada match untuk "${query}". Daftar baru di bawah.</p>`; return; }
+ if(!matches.length) { res.innerHTML = `<p style="color:#c0392b; font-size:13px; padding:12px; text-align:center; margin:0;">Tiada match untuk "${query}". Daftar baru di bawah.</p>`; return; }
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
  res.innerHTML = matches.map(c => {
  const pts = parseInt(c.points || 0);
@@ -10884,7 +10884,7 @@ function renderPromotions() {
  <td><strong>${p.code}</strong></td>
  <td>${p.discount_type}</td>
  <td style="font-weight:bold;">${p.discount_type === 'percent' ? p.discount_value + '%' : 'RM' + parseFloat(p.discount_value).toFixed(2)}</td>
- <td>${p.active ? '<span style="color:#10B981; font-weight:bold;">Active </span>' : '<span style="color:#EF4444;">Inactive</span>'}</td>
+ <td>${p.active ? '<span style="color:#101010; font-weight:bold;">Active </span>' : '<span style="color:#c0392b;">Inactive</span>'}</td>
  </tr>`).join('');
  });
 }
@@ -13213,7 +13213,7 @@ window.finRender = function() {
  document.getElementById('finKpiExpense').textContent = formatRM(exp);
  const netEl = document.getElementById('finKpiNet');
  netEl.textContent = formatRM(net);
- netEl.style.color = net>= 0 ? '#10B981' : '#EF4444';
+ netEl.style.color = net>= 0 ? '#101010' : '#c0392b';
  document.getElementById('finKpiAR').textContent = formatRM(ar.sum);
  document.getElementById('finKpiARDelta').textContent = ar.count + ' invois';
  document.getElementById('finKpiMargin').textContent = margin.toFixed(1) + '%';
@@ -13292,7 +13292,7 @@ function __finRenderRevenueDonut(period) {
  });
  const data = [pos, b2b, quoteConv];
  const labels = ['POS Cashier', 'B2B Invoice', 'Quote → Sale'];
- const colors = ['#10B981', '#cd7c32', '#cd7c32'];
+ const colors = ['#101010', '#cd7c32', '#cd7c32'];
  if(__finRevDonut) __finRevDonut.destroy();
  if(typeof Chart === 'undefined') return;
  __finRevDonut = new Chart(ctx, {
@@ -13319,7 +13319,7 @@ function __finRenderExpenseDonut(period) {
  });
  const data = [cats.OPEX, cats.COGS, cats.CAPEX];
  const labels = ['OPEX', 'COGS', 'CAPEX'];
- const colors = ['#EF4444', '#F59E0B', '#cd7c32'];
+ const colors = ['#c0392b', '#F59E0B', '#cd7c32'];
  if(__finExpDonut) __finExpDonut.destroy();
  if(typeof Chart === 'undefined') return;
  __finExpDonut = new Chart(ctx, {
@@ -13351,8 +13351,8 @@ function __finRenderTrendChart() {
  financeChartInstance = new Chart(ctx, {
  type: 'bar',
  data: { labels, datasets: [
- { label: 'Revenue', data: revData, backgroundColor: 'rgba(16,185,129,0.6)', borderColor:'#10B981', borderWidth:1 },
- { label: 'Expense', data: expData, backgroundColor: 'rgba(239,68,68,0.6)', borderColor:'#EF4444', borderWidth:1 },
+ { label: 'Revenue', data: revData, backgroundColor: 'rgba(16, 16, 16,0.6)', borderColor:'#101010', borderWidth:1 },
+ { label: 'Expense', data: expData, backgroundColor: 'rgba(192, 57, 43,0.6)', borderColor:'#c0392b', borderWidth:1 },
  { label: 'Net', data: netData, type: 'line', borderColor: '#B45309', backgroundColor: 'rgba(180,83,9,0.1)', tension: 0.3, fill: true }
 ]},
  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
@@ -13376,7 +13376,7 @@ function __finRenderLedger() {
  });
  rows.sort((a,b)=> (parseInt(b.year)-parseInt(a.year)) || (FIN_MONTHS.indexOf(b.month)-FIN_MONTHS.indexOf(a.month)));
  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod untuk filter ni.</td></tr>'; return; }
- const catColors = { OPEX:'#EF4444', COGS:'#F59E0B', CAPEX:'#cd7c32' };
+ const catColors = { OPEX:'#c0392b', COGS:'#F59E0B', CAPEX:'#cd7c32' };
  let total = 0;
  tbody.innerHTML = rows.map(f => {
  total += parseFloat(f.amount || 0);
@@ -13385,12 +13385,12 @@ function __finRenderLedger() {
  <td>${escapeHtml(f.month)} ${f.year}</td>
  <td><span style="background:${color}; color:#FFF; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700;">${escapeHtml(f.category)}</span></td>
  <td>${escapeHtml(f.description||'')}</td>
- <td style="text-align:right; color:#EF4444; font-weight:700;">-${formatRM(f.amount)}</td>
+ <td style="text-align:right; color:#c0392b; font-weight:700;">-${formatRM(f.amount)}</td>
  <td><button onclick="window.deleteFinance(${f.id})" class="fin-btn fin-btn--ghost" style="padding:3px 8px; font-size:11px;" title="Padam"></button></td>
  </tr>`;
  }).join('');
  const sum = document.getElementById('finLedgerSummary');
- if(sum) sum.innerHTML = `<strong>${rows.length}</strong> rekod · Total expense period: <strong style="color:#EF4444;">${formatRM(total)}</strong>`;
+ if(sum) sum.innerHTML = `<strong>${rows.length}</strong> rekod · Total expense period: <strong style="color:#c0392b;">${formatRM(total)}</strong>`;
 }
 
 // ===== EXPENSE MODAL =====
@@ -13446,7 +13446,7 @@ window.finPrintPL = function() {
  table{width:100%;border-collapse:collapse;margin-top:20px;} td,th{padding:8px 12px;text-align:left;border-bottom:1px solid #E5E7EB;}
  th{background:#FFFBEB;color:#92400E;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;}
 .num{text-align:right;font-variant-numeric:tabular-nums;}.net{font-weight:900;background:#FFFBEB;font-size:16px;}
-.pos{color:#10B981;}.neg{color:#EF4444;}.footer{margin-top:40px;font-size:11px;color:#6B7280;}</style>
+.pos{color:#101010;}.neg{color:#c0392b;}.footer{margin-top:40px;font-size:11px;color:#6B7280;}</style>
  </head><body>
  <h1> Profit & Loss Statement</h1>
  <p><strong>${escapeHtml(shop.name||'10 CAMP')}</strong> · ${escapeHtml(shop.address||'')}<br>
@@ -13605,7 +13605,7 @@ function renderMgmtPlaceholders() {
  // update memo switch
  document.getElementById("memoToggle").checked = globalMemo.active;
  document.getElementById("memoStatusLabel").textContent = globalMemo.active ? "AKTIF" : "TIDAK AKTIF";
- document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#10B981" : "red";
+ document.getElementById("memoStatusLabel").style.color = globalMemo.active ? "#101010" : "red";
  document.getElementById("memoInputText").value = globalMemo.text;
  
  // Global Staff Directory Rendering
@@ -13703,7 +13703,7 @@ function renderSalesMgmtTarget() {
  let irfanPct = Math.min((irfanTotal / (moyySettings.target || 1)) * 100, 100);
  
  if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${ariffPct}%;background:var(--primary);height:100%;border-radius:5px;"></div></div>`;
- if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${irfanPct}%;background:#10B981;height:100%;border-radius:5px;"></div></div>`;
+ if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${irfanPct}%;background:#101010;height:100%;border-radius:5px;"></div></div>`;
  
  if(commAriff) commAriff.textContent = `RM ${(ariffTotal * (moyySettings.commRate / 100)).toFixed(2)}`;
  if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * (moyySettings.commRate / 100)).toFixed(2)}`;
@@ -13732,7 +13732,7 @@ function renderSalesMgmtTarget() {
  if(tbodyPending) {
  let pendingRecords = salesHistory.filter(s => s.status === 'Unpaid' || s.status === 'To Fulfil');
  if(pendingRecords.length === 0) {
- tbodyPending.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#10B981; font-weight:bold;"> Hebat! Tiada sebarang hutang atau invois tergantung.</td></tr>`;
+ tbodyPending.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:10px; color:#101010; font-weight:bold;"> Hebat! Tiada sebarang hutang atau invois tergantung.</td></tr>`;
  } else {
  let phtml = "";
  pendingRecords.forEach(p => {
@@ -14094,9 +14094,9 @@ window.renderHrToday = async function() {
  if(clockState === 'in') {
  statusEl.textContent = T('hr_today_clock_status_in', 'Currently Working') + (clockInTime ? ' · ' + clockInTime.slice(0,5) : '');
  btnLabelEl.textContent = T('hr_today_clock_btn_out', 'Clock Out');
- btn.style.background = '#EF4444';
+ btn.style.background = '#c0392b';
  card.style.background = 'linear-gradient(135deg, #FEE2E2, #FECACA)';
- card.style.borderLeftColor = '#EF4444';
+ card.style.borderLeftColor = '#c0392b';
  statusEl.style.color = '#7F1D1D';
  } else if(clockState === 'out') {
  statusEl.textContent = T('hr_today_clock_status_out', 'Clocked Out');
@@ -14109,10 +14109,10 @@ window.renderHrToday = async function() {
  } else {
  statusEl.textContent = T('hr_today_clock_status_none', 'Not Clocked In');
  btnLabelEl.textContent = T('hr_today_clock_btn', 'Clock In');
- btn.style.background = '#10B981';
+ btn.style.background = '#101010';
  btn.style.pointerEvents = 'auto';
  card.style.background = 'linear-gradient(135deg, #ECFDF5, #D1FAE5)';
- card.style.borderLeftColor = '#10B981';
+ card.style.borderLeftColor = '#101010';
  statusEl.style.color = '#064E3B';
  }
  }
@@ -14186,7 +14186,7 @@ window.renderHrClockHistory = async function() {
  }
  const stat = r.clock_out_time ? T('hr_today_clock_status_out', 'Clocked Out')
  : (r.clock_in_time ? T('hr_today_clock_status_in', 'Currently Working') : '-');
- const statColor = r.clock_out_time ? '#10B981' : '#F59E0B';
+ const statColor = r.clock_out_time ? '#101010' : '#F59E0B';
  return '<tr>'
  + '<td>' + (r.date || '-') + '</td>'
  + '<td style="font-family:monospace;">' + inT + '</td>'
@@ -14263,8 +14263,8 @@ window.renderHrClaim = function() {
  ? '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:6px;font-weight:700;">Ditolak</span>'
  : '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:6px;font-weight:700;">Menunggu</span>';
  const actions = (isBos && c.status === 'pending') ?
- `<button onclick="window.hrcApproveClaim('${c.id}')" style="background:#10B981;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;">Lulus</button>
-  <button onclick="window.hrcRejectClaim('${c.id}')" style="background:#EF4444;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Tolak</button>` : '';
+ `<button onclick="window.hrcApproveClaim('${c.id}')" style="background:#101010;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;">Lulus</button>
+  <button onclick="window.hrcRejectClaim('${c.id}')" style="background:#c0392b;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Tolak</button>` : '';
  const who = isBos ? `<br><small style="color:#888;">${c.staff_name}</small>` : '';
  return `<tr>
  <td>${c.date || '-'}${who}</td>
@@ -14461,7 +14461,7 @@ window.renderStaffSchedule = function() {
  else if(code === 'OFF') { col = "red"; fw = "bold"; }
  else if(code === 'AL') { bg = "#cd7c32"; col = "white"; fw = "bold"; }
  else if(code === 'MC') { bg = "#fbbf24"; fw = "bold"; }
- else if(code === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
+ else if(code === 'EL') { bg = "#c0392b"; col = "white"; fw = "bold"; }
  else if(code === 'PH') { bg = "#f472b6"; col = "white"; fw = "bold"; }
  
  let attachStr = code === 'MC' && shiftData && shiftData.mc_name ? `<br><span style="font-size:9px;" title="${shiftData.mc_name}"></span>` : "";
@@ -14536,7 +14536,7 @@ window.saveQuickShiftInline = function(el, staff, date, id, shiftCode) {
  else if(shiftCode === 'OFF') { bg = "#FAFAFA"; col = "red"; fw = "bold"; }
  else if(shiftCode === 'AL') { bg = "#cd7c32"; col = "white"; fw = "bold"; }
  else if(shiftCode === 'MC') { bg = "#fbbf24"; fw = "bold"; }
- else if(shiftCode === 'EL') { bg = "#ef4444"; col = "white"; fw = "bold"; }
+ else if(shiftCode === 'EL') { bg = "#c0392b"; col = "white"; fw = "bold"; }
  else { bg = "#FFF"; col = "#ccc"; }
 
  let td = el.parentElement;
@@ -14605,7 +14605,7 @@ window.renderPendingSchedules = function() {
  if(req.shift === 'OFF') { col = "red"; }
  else if(req.shift === 'AL') { badgeBg = "#cd7c32"; col="white"; }
  else if(req.shift === 'MC') { badgeBg = "#fbbf24"; }
- else if(req.shift === 'EL') { badgeBg = "#ef4444"; col="white"; }
+ else if(req.shift === 'EL') { badgeBg = "#c0392b"; col="white"; }
 
  let attachStr = req.shift === 'MC' ? ` ${req.mc_name}` : "-";
 
@@ -14616,8 +14616,8 @@ window.renderPendingSchedules = function() {
  <td><span style="background:${badgeBg}; color:${col}; padding:3px 8px; border-radius:4px; font-weight:bold;">${req.shift}</span></td>
  <td><small>${attachStr}</small></td>
  <td>
- <button onclick="approveRequest(${req.id})" style="background:#10b981; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:5px;">Terima</button>
- <button onclick="rejectRequest(${req.id})" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Tolak</button>
+ <button onclick="approveRequest(${req.id})" style="background:#101010; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:5px;">Terima</button>
+ <button onclick="rejectRequest(${req.id})" style="background:#c0392b; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Tolak</button>
  </td>
  </tr>
  `;
@@ -14742,8 +14742,8 @@ window.renderAuditLogs = async function() {
  logs.forEach(log => {
  let actDate = new Date(log.created_at).toLocaleString('ms-MY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
  let badge = log.action_type === 'LULUS' 
- ? `<span style="background:#10B981; color:white; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">LULUS</span>` 
- : `<span style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">TOLAK</span>`;
+ ? `<span style="background:#101010; color:white; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">LULUS</span>` 
+ : `<span style="background:#c0392b; color:white; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px;">TOLAK</span>`;
  
  html += `<tr>
  <td style="font-size:11px; color:#555;">${actDate}</td>
@@ -14795,7 +14795,7 @@ function renderWarehouseLowStock() {
  });
 
  if(lowStocks.length === 0) {
- tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#10B981;"> Semua stok di atas reorder point.</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#101010;"> Semua stok di atas reorder point.</td></tr>';
  return;
  }
 
@@ -15283,7 +15283,7 @@ window.renderMemoBoard = function() {
  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
  };
- const deptColor = { general:'#6B7280', sales:'#10B981', inv:'#cd7c32', admin:'#cd7c32', hr:'#EC4899', finance:'#B45309' };
+ const deptColor = { general:'#6B7280', sales:'#101010', inv:'#cd7c32', admin:'#cd7c32', hr:'#EC4899', finance:'#B45309' };
 
  // Filter
  const q = (window.__memoSearch || '').toLowerCase();
@@ -15617,7 +15617,7 @@ function renderCustomerIssues() {
  <td>
  ${c.status === 'OPEN' 
  ? `<button class="btn-success" style="padding:2px 8px; font-size:10px; background:var(--secondary);" onclick="resolveIssue(${c.id})">Mark Resolved</button>` 
- : `<span style="color:#10B981; font-weight:bold;">TUTUP </span>`}
+ : `<span style="color:#101010; font-weight:bold;">TUTUP </span>`}
  </td>
  </tr>
  `).join('');
@@ -15901,7 +15901,7 @@ window.renderMarketplaces = async function() {
  // Summary strip — 3 stat cards
  html += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px;">';
  html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #CD7C32; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Connected</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + connectedCount + ' / ' + platforms.length + '</div><div style="font-size:11px; color:#9CA3AF; margin-top:2px;">platforms active</div></div>';
- html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #10B981; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Total Mapped</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + totalMapped + '</div><div style="font-size:11px; color:#9CA3AF; margin-top:2px;">across all platforms</div></div>';
+ html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #101010; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Total Mapped</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + totalMapped + '</div><div style="font-size:11px; color:#9CA3AF; margin-top:2px;">across all platforms</div></div>';
  html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #cd7c32; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Master Catalog</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + mapStats.total + '</div><div style="font-size:11px; color:#9CA3AF; margin-top:2px;">products_master rows</div></div>';
  html += '</div>';
 
@@ -15933,7 +15933,7 @@ window.renderMarketplaces = async function() {
  // Platform cards — whole card clickable → channel detail page
  html += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">';
  platforms.forEach(p => {
- const statusColor = p.connected ? '#10B981' : '#9CA3AF';
+ const statusColor = p.connected ? '#101010' : '#9CA3AF';
  const statusLabel = p.connected ? 'Connected' : 'Not connected';
  html += '<div onclick="window.__mpOpenChannel && window.__mpOpenChannel(\'' + p.key + '\')" style="background:#FFF; border:1px solid #E5E7EB; border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:box-shadow .15s, transform .1s;" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,0,0,.08)\'; this.style.transform=\'translateY(-2px)\';" onmouseout="this.style.boxShadow=\'none\'; this.style.transform=\'none\';">';
  // Header row: icon + name + chevron
@@ -16042,7 +16042,7 @@ window.__mpOpenChannel = function(key) {
  if(!p) { window.renderMarketplaces(); return; }
  const fmtTs = window.__mpFmtTs;
  const pct = p.total > 0 ? Math.round((p.mapped / (p.limit || p.total)) * 100) : 0;
- const statusColor = p.connected ? '#10B981' : '#9CA3AF';
+ const statusColor = p.connected ? '#101010' : '#9CA3AF';
  const statusLabel = p.connected ? 'Connected' : 'Not connected';
  const esc = (s) => String(s == null ? '' : s).replace(/'/g, "\\'");
 
@@ -16066,7 +16066,7 @@ window.__mpOpenChannel = function(key) {
  html += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:20px;">';
  html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid ' + p.color + '; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Products Mapped</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + p.mapped + (p.limit ? ' <span style="font-size:13px; color:#9CA3AF; font-weight:500;">/ ' + p.limit + '</span>' : '') + '</div></div>';
  html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #cd7c32; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Last Sync</div><div style="font-size:16px; font-weight:700; color:#101010; margin-top:8px;">' + fmtTs(p.lastSync) + '</div></div>';
- html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #10B981; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Coverage</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + pct + '%</div></div>';
+ html += '<div class="stat-card" style="padding:14px 16px; background:#FFF; border:1px solid #E5E7EB; border-left:4px solid #101010; border-radius:10px;"><div style="font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; font-weight:600;">Coverage</div><div style="font-size:24px; font-weight:800; color:#101010; margin-top:4px;">' + pct + '%</div></div>';
  html += '</div>';
 
  // Action tiles — Orders / Products / Sync
@@ -16083,7 +16083,7 @@ window.__mpOpenChannel = function(key) {
  html += tile('clipboard-list', '#cd7c32', 'Orders', 'Lihat & urus pesanan dari ' + p.name + ' (auto-tapis channel ni).',
  "window.__mpChannelOrders && window.__mpChannelOrders('" + esc(p.channelValue || '') + "')");
  // Products → product database
- html += tile('package', '#10B981', 'Products', 'Urus katalog produk & mapping listing.',
+ html += tile('package', '#101010', 'Products', 'Urus katalog produk & mapping listing.',
  "switchHub(['databaseSection'], 'Collection', null); if(typeof renderProductDatabase==='function') renderProductDatabase();");
  // Sync tiles from platform.actions
  (p.actions || []).forEach(a => {
@@ -16448,9 +16448,9 @@ window.loadAdminAttendance = async function() {
  <tr>
  <td style="font-weight:bold;">${r.staff_name}</td>
  <td>${r.date}</td>
- <td style="color:#10B981;">${r.clock_in_time}</td>
+ <td style="color:#101010;">${r.clock_in_time}</td>
  <td>${p1}</td>
- <td style="color:#EF4444;">${cout}</td>
+ <td style="color:#c0392b;">${cout}</td>
  <td>${p2}</td>
  </tr>
  `;
@@ -16645,7 +16645,7 @@ window.renderQuotePOS = function(searchTerm = "") {
  
  activeProducts.slice(0, 50).forEach(product => {
  const hasStock = true; // Use master inventory logic if needed in future
- const stockStatusHtml = `<p class="product-stock" style="color:#10B981">Available</p>`;
+ const stockStatusHtml = `<p class="product-stock" style="color:#101010">Available</p>`;
  
  const card = document.createElement('div');
  card.className = "product-card";
@@ -17044,7 +17044,7 @@ window.renderQuoteLogs = function() {
 
  // p1_158 — was innerHTML += in quote logs loop (Safari OOM trigger)
  tbody.innerHTML = filteredLogs.map(log => {
- const isSuper = log.superseded ? `<span style="background:#EF4444; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Lama</span>` : `<span style="background:#10B981; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Latest</span>`;
+ const isSuper = log.superseded ? `<span style="background:#c0392b; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Lama</span>` : `<span style="background:#101010; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Latest</span>`;
  const custPart = (log.customer || "").split("-")[0] || "Guest";
  const dateObj = new Date(log.createdAt || log.created_at);
  const logYear = isNaN(dateObj) ? "-" : dateObj.getFullYear();
@@ -17059,7 +17059,7 @@ window.renderQuoteLogs = function() {
  <td>v${log.version} ${isSuper}</td>
  <td>
  <button onclick="window.loadQuoteIntoCart('${log.id}')" class="btn-dark" style="padding:6px 10px; font-size:10px; margin:0; margin-right:5px;">Edit / Load</button>
- <button onclick="window.deleteQuoteLog('${log.id}')" class="btn-primary" style="background:#EF4444; padding:6px 10px; font-size:10px; margin:0;">Delete</button>
+ <button onclick="window.deleteQuoteLog('${log.id}')" class="btn-primary" style="background:#c0392b; padding:6px 10px; font-size:10px; margin:0;">Delete</button>
  </td>
  </tr>
  `;
@@ -17894,14 +17894,14 @@ window.renderWhAudit = function() {
  
  tbody.innerHTML = audits.map(a => {
  let meta = a.metadata || {};
- let diffColor = meta.difference> 0 ? '#10B981' : '#EF4444';
+ let diffColor = meta.difference> 0 ? '#101010' : '#c0392b';
  return `
  <tr>
  <td><strong>${meta.sku || 'N/A'}</strong><br><span style="color:${diffColor}; font-weight:bold;">${meta.difference> 0 ? '+'+meta.difference : meta.difference} unit</span></td>
  <td>${meta.reported_by || 'Staf'}</td>
  <td>
  <button class="btn-success" style="padding:4px 8px; font-size:10px; margin-bottom:4px;" onclick="window.approveDiscrepancy('${a.id}', '${meta.sku}', ${meta.difference})">Lulus</button><br>
- <button class="btn-primary" style="background:#EF4444; border:none; padding:4px 8px; font-size:10px;" onclick="window.rejectRequest('${a.id}')">Tolak</button>
+ <button class="btn-primary" style="background:#c0392b; border:none; padding:4px 8px; font-size:10px;" onclick="window.rejectRequest('${a.id}')">Tolak</button>
  </td>
  </tr>
  `;
@@ -18613,7 +18613,7 @@ window.renderInventoryLedger = function() {
  const dateObj = new Date(t.created_at);
  const dateStr = dateObj.toLocaleDateString('ms-MY') + ' ' + dateObj.toLocaleTimeString('ms-MY', {hour: '2-digit', minute:'2-digit'});
  
- let qtyColor = t.transaction_type === 'OUT' || t.qty < 0 ? '#EF4444' : '#10B981';
+ let qtyColor = t.transaction_type === 'OUT' || t.qty < 0 ? '#c0392b' : '#101010';
  let qtyPrefix = (t.transaction_type === 'OUT' || t.qty < 0) && t.qty> 0 ? '-' : (t.qty> 0 ? '+' : '');
  let actionStr = t.transaction_type; 
  
@@ -18884,13 +18884,13 @@ window.renderPickingListUI = function(isSorted = false) {
  return;
  }
  
- let html = isSorted ? `<h3 style="color:#10B981; margin-bottom:15px; font-size:16px;">▶ Laluan Kutipan Dijana</h3>` : `<h3 style="color:#6B7280; margin-bottom:15px; font-size:14px;">Senarai Draf (Belum Disusun)</h3>`;
+ let html = isSorted ? `<h3 style="color:#101010; margin-bottom:15px; font-size:16px;">▶ Laluan Kutipan Dijana</h3>` : `<h3 style="color:#6B7280; margin-bottom:15px; font-size:14px;">Senarai Draf (Belum Disusun)</h3>`;
  
  html += '<div style="display:flex; flex-direction:column; gap:10px;">';
  
  pickingListItems.forEach((item, idx) => {
- let stepNum = isSorted ? `<div style="background:#10B981; color:white; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">${idx+1}</div>` : '';
- let locBadge = item.location.includes('ZZZZZ') ? `<span style="color:#EF4444; font-weight:bold;">Tiada Lokasi Ditetapkan</span>` : `<span style="background:#E0E7FF; color:#3730A3; padding:4px 8px; border-radius:4px; font-weight:bold; font-family:monospace;">${item.location}</span>`;
+ let stepNum = isSorted ? `<div style="background:#101010; color:white; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:12px;">${idx+1}</div>` : '';
+ let locBadge = item.location.includes('ZZZZZ') ? `<span style="color:#c0392b; font-weight:bold;">Tiada Lokasi Ditetapkan</span>` : `<span style="background:#E0E7FF; color:#3730A3; padding:4px 8px; border-radius:4px; font-weight:bold; font-family:monospace;">${item.location}</span>`;
  
  html += `
  <div style="background:white; border:1px solid #D1D5DB; border-radius:8px; padding:15px; display:flex; align-items:center; gap:15px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
@@ -19786,7 +19786,7 @@ window.renderSupplierList = function() {
  <td><a href="#" onclick="event.preventDefault(); window.openSupplierModal(${s.id})" style="color:var(--primary); font-weight:bold; text-decoration:none;">${s.name}</a><br><span style="color:#888; font-size:10px;">${s.contact_person || ''}</span></td>
  <td>${s.country || '-'}</td>
  <td>${s.lead_time_days ? s.lead_time_days + 'd' : '-'}</td>
- <td>${s.is_active ? '<span style="color:#10B981; font-weight:bold;">Aktif</span>' : '<span style="color:#9CA3AF;">Tak Aktif</span>'}</td>
+ <td>${s.is_active ? '<span style="color:#101010; font-weight:bold;">Aktif</span>' : '<span style="color:#9CA3AF;">Tak Aktif</span>'}</td>
  <td><button class="btn-danger" style="font-size:10px; padding:2px 6px; margin:0;" onclick="window.toggleSupplierActive(${s.id}, ${!s.is_active})">${s.is_active ? 'Disable' : 'Enable'}</button></td>
  </tr>
  `).join('');
@@ -20289,7 +20289,7 @@ window.bulkImportBinPreview = function() {
  <table class="data-table" style="font-size:11px;">
  <thead style="background:#FAFAFA; position:sticky; top:0;"><tr><th>SKU</th><th>Nama</th><th>Sebelum</th><th>Selepas</th></tr></thead>
  <tbody>${parsed.slice(0, 100).map(r => `
- <tr><td><strong>${r.sku}</strong></td><td>${r.name.slice(0,50)}</td><td style="color:#999;">${r.oldLoc}</td><td style="color:#10B981; font-weight:bold;">${r.newLoc}</td></tr>
+ <tr><td><strong>${r.sku}</strong></td><td>${r.name.slice(0,50)}</td><td style="color:#999;">${r.oldLoc}</td><td style="color:#101010; font-weight:bold;">${r.newLoc}</td></tr>
  `).join('')}</tbody>
  </table>
  </div>`;
@@ -20545,7 +20545,7 @@ window.renderInventoryAging = function() {
  let html = '';
  Object.values(buckets).forEach(bk => {
  const pct = totalCost> 0 ? (bk.cost / totalCost * 100) : 0;
- const color = bk.min>= 366 ? '#DC2626' : bk.min>= 181 ? '#D97706' : bk.min>= 91 ? '#CA8A04' : '#10B981';
+ const color = bk.min>= 366 ? '#DC2626' : bk.min>= 181 ? '#D97706' : bk.min>= 91 ? '#CA8A04' : '#101010';
  html += `
  <tr style="background:${bk.qty> 0 ? '#FFF' : '#FAFAFA'};">
  <td><strong style="color:${color};">${bk.label}</strong></td>
@@ -20999,10 +20999,10 @@ window.renderProductSales = function() {
  }
 
  tbody.innerHTML = slice.map(r => {
- const balanceColor = r.balance < 0 ? '#DC2626' : (r.balance < 5 ? '#D97706' : '#10B981');
+ const balanceColor = r.balance < 0 ? '#DC2626' : (r.balance < 5 ? '#D97706' : '#101010');
  const balanceText = r.balance < 0 ? `−${Math.abs(r.balance).toFixed(0)}` : r.balance.toFixed(0);
  const lastSaleStr = r.lastSale ? new Date(r.lastSale).toISOString().slice(0,10) : '-';
- const lastSaleColor = r.lastSale && (Date.now() - new Date(r.lastSale).getTime()) < 90*86400000 ? '#10B981' : '#9CA3AF';
+ const lastSaleColor = r.lastSale && (Date.now() - new Date(r.lastSale).getTime()) < 90*86400000 ? '#101010' : '#9CA3AF';
  const stockColor = r.stock === 0 ? '#DC2626' : (r.stock < (r.reorder_point || 5) ? '#D97706' : '#111');
  const recentBadge = r.recentSold> 0 ? `<span style="background:#D1FAE5; color:#065F46; padding:1px 5px; border-radius:3px; font-size:10px; margin-left:4px;"></span>` : '';
  return `
@@ -22078,8 +22078,8 @@ window.renderCustomersV2 = function() {
  // p1_243: Lucide member badge (was emoji ⭐), tags +N more, consent text labels (was emoji)
  tbody.innerHTML = slice.map((c, idx) => {
  const consent = [];
- if(c.accepts_email_marketing) consent.push('<i data-lucide="mail-check" title="Email consent" style="width:14px;height:14px;color:#10B981;vertical-align:-2px;"></i>');
- if(c.accepts_sms_marketing) consent.push('<i data-lucide="message-square" title="SMS consent" style="width:14px;height:14px;color:#10B981;vertical-align:-2px;"></i>');
+ if(c.accepts_email_marketing) consent.push('<i data-lucide="mail-check" title="Email consent" style="width:14px;height:14px;color:#101010;vertical-align:-2px;"></i>');
+ if(c.accepts_sms_marketing) consent.push('<i data-lucide="message-square" title="SMS consent" style="width:14px;height:14px;color:#101010;vertical-align:-2px;"></i>');
  const allTags = (c.tags || '').split(',').map(t => t.trim()).filter(Boolean);
  const tags = allTags.slice(0, 3);
  const tagBadges = tags.map(t => `<span style="background:#E0E7FF; color:#3730A3; padding:1px 6px; border-radius:3px; font-size:9px; margin-right:2px;">${t}</span>`).join('') + (allTags.length > 3 ? `<span style="background:#F3F4F6; color:#6B7280; padding:1px 6px; border-radius:3px; font-size:9px;">+${allTags.length - 3}</span>` : '');
@@ -22094,7 +22094,7 @@ window.renderCustomersV2 = function() {
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')"><strong>${(c.name||'').slice(0, 50)}</strong></td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="font-family:monospace; font-size:11px;">${c.phone || '-'}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="font-size:11px;">${c.email || '-'}</td>
- <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; font-weight:bold; color:${(c.total_spent||0)> 1000 ? '#10B981' : '#111'};">${(c.total_spent||0).toFixed(2)}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; font-weight:bold; color:${(c.total_spent||0)> 1000 ? '#101010' : '#111'};">${(c.total_spent||0).toFixed(2)}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right;">${c.total_orders || 0}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; color:#F59E0B; font-weight:bold;">${c.points || 0}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:center;">${memberBadge}</td>
@@ -22696,7 +22696,7 @@ function dashSparkline(svgEl, values, opts) {
 function dashDonut(slices) {
  if(!slices.length) return '<svg class="dash-donut__svg" viewBox="0 0 130 130"><circle cx="65" cy="65" r="50" fill="none" stroke="#E5E7EB" stroke-width="20"/></svg>';
  const total = slices.reduce((s, x) => s + x.value, 0) || 1;
- const palette = ['#CD7C32', '#cd7c32', '#10B981', '#cd7c32', '#F59E0B', '#EF4444', '#6B7280'];
+ const palette = ['#CD7C32', '#cd7c32', '#101010', '#cd7c32', '#F59E0B', '#c0392b', '#6B7280'];
  const C = 2 * Math.PI * 50;
  let offset = 0;
  let segs = '';
@@ -22722,7 +22722,7 @@ function dashDonut(slices) {
 function dashAvatarColor(name) {
  let hash = 0;
  for(let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
- const palette = ['#CD7C32', '#cd7c32', '#10B981', '#cd7c32', '#F59E0B', '#EF4444', '#cd7c32', '#EC4899'];
+ const palette = ['#CD7C32', '#cd7c32', '#101010', '#cd7c32', '#F59E0B', '#c0392b', '#cd7c32', '#EC4899'];
  return palette[Math.abs(hash) % palette.length];
 }
 function dashInitials(name) {
@@ -22777,7 +22777,7 @@ window.__renderDashOverviewMemo = function() {
  list.innerHTML = '<p style="font-size:12.5px; color:var(--neutral-500); margin:0; padding:12px 0; text-align:center;">Tiada memo aktif buat masa ni.</p>';
  return;
  }
- const deptColor = { general:'#6B7280', sales:'#cd7c32', inv:'#10B981', admin:'#cd7c32', hr:'#F59E0B', finance:'#DC2626', marketing:'#EC4899' };
+ const deptColor = { general:'#6B7280', sales:'#cd7c32', inv:'#101010', admin:'#cd7c32', hr:'#F59E0B', finance:'#DC2626', marketing:'#EC4899' };
  // p1_74 fix #4: escape helper for body preview (avoid XSS via memo body)
  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  list.innerHTML = top.map(m => {
@@ -23736,11 +23736,11 @@ window.renderSegments = function() {
 
  // RFM table
  const segColors = {
- 'Champion': '#10B981',
+ 'Champion': '#101010',
  'Loyal': '#cd7c32',
  'Potential Loyalist': '#cd7c32',
  'New Customer': '#F59E0B',
- 'At Risk': '#EF4444',
+ 'At Risk': '#c0392b',
  'Hibernating': '#9CA3AF'
  };
  document.getElementById('segRfmTbody').innerHTML = Object.entries(segmentMap).map(([name, list]) => {
@@ -23882,7 +23882,7 @@ window.renderPromotionsV2 = async function() {
  <td>${p.discount_type||'-'}<br><span style="font-size:10px; color:#666;">${condStr}</span></td>
  <td style="font-weight:bold;">${valDisp}</td>
  <td>
- ${isLive ? '<span style="color:#10B981; font-weight:bold;"> Active</span>' : (p.active ? '<span style="color:#F59E0B;">⏰ Scheduled</span>' : '<span style="color:#9CA3AF;"> Inactive</span>')}
+ ${isLive ? '<span style="color:#101010; font-weight:bold;"> Active</span>' : (p.active ? '<span style="color:#F59E0B;">⏰ Scheduled</span>' : '<span style="color:#9CA3AF;"> Inactive</span>')}
  <br><button onclick="window.togglePromoActive(${p.id}, ${!p.active})" class="btn-primary" style="font-size:10px; padding:2px 8px; margin-top:4px;">${p.active ? 'Disable' : 'Enable'}</button>
  </td>
  </tr>`;
@@ -24767,9 +24767,9 @@ window.cpRefreshProofBadge = function() {
  badge.style.display = 'block';
  if(hasProof) {
  const f = window.__proofState.file;
- badge.style.background = '#D1FAE5'; badge.style.borderColor = '#10B981'; badge.style.color = '#065F46';
+ badge.style.background = '#D1FAE5'; badge.style.borderColor = '#101010'; badge.style.color = '#065F46';
  badge.innerHTML = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><i data-lucide="camera" style="width:16px;height:16px;"></i> Resit ditangkap <span style="font-weight:400; opacity:0.75;">(${(f.size / 1024).toFixed(0)} KB)</span></div>
- <button type="button" onclick="document.getElementById('proofCameraInput').click(); return false;" style="width:100%; background:#fff; border:1px solid #10B981; color:#065F46; padding:10px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Snap Semula</button>`;
+ <button type="button" onclick="document.getElementById('proofCameraInput').click(); return false;" style="width:100%; background:#fff; border:1px solid #101010; color:#065F46; padding:10px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Snap Semula</button>`;
  } else {
  badge.style.background = '#FEF3C7'; badge.style.borderColor = '#F59E0B'; badge.style.color = '#92400E';
  badge.innerHTML = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><i data-lucide="alert-circle" style="width:16px;height:16px;"></i> Belum ada resit pembayaran</div>
@@ -25737,7 +25737,7 @@ window.openB2BDetail = async function(id) {
  if(!wrap) return;
  const rows = data || [];
  if(rows.length === 0) {
- wrap.innerHTML = '<p style="color:#10B981; padding:8px; font-size:11px;">Tiada returns / damage berkaitan B2B ni.</p>';
+ wrap.innerHTML = '<p style="color:#101010; padding:8px; font-size:11px;">Tiada returns / damage berkaitan B2B ni.</p>';
  } else {
  wrap.innerHTML = `<table style="width:100%; font-size:11px; border-collapse:collapse;"><thead><tr style="background:var(--card-bg);"><th style="text-align:left; padding:5px;">Tarikh</th><th style="text-align:left; padding:5px;">SKU</th><th style="text-align:left; padding:5px;">Type</th><th style="text-align:right; padding:5px;">Qty</th><th style="text-align:right; padding:5px;">Loss RM</th></tr></thead><tbody>` +
  rows.map(r => `<tr><td style="padding:4px;">${r.reported_at ? new Date(r.reported_at).toLocaleDateString('en-MY') : '-'}</td><td style="padding:4px; font-family:monospace;">${escHtml(r.sku||'-')}</td><td style="padding:4px;">${escHtml(r.type||'-')}</td><td style="padding:4px; text-align:right;">${r.qty||0}</td><td style="padding:4px; text-align:right; color:#991B1B;">RM ${Number(r.cost_impact||0).toFixed(2)}</td></tr>`).join('') +
@@ -25915,7 +25915,7 @@ window.renderDataBackup = function() {
  : JSON.parse(localStorage.getItem('syncConflictLog_v1') || '[]');
  } catch(e) { log = []; }
  if(!log.length) {
- logEl.innerHTML = '<em style="color:#10B981;"> Tiada conflict — bagus!</em>';
+ logEl.innerHTML = '<em style="color:#101010;"> Tiada conflict — bagus!</em>';
  } else {
  logEl.innerHTML = `
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -28000,7 +28000,7 @@ window.__waSendBroadcast = function() {
  const status = document.getElementById('waSendStatus');
  if(status) {
  status.innerHTML = `
- <div style="background:#F0FDF4; padding:10px; border-radius:6px; border-left:4px solid #10B981;">
+ <div style="background:#F0FDF4; padding:10px; border-radius:6px; border-left:4px solid #101010;">
  Sent batch ${start+1}–${end} of ${matches.length}.
  ${remaining> 0
  ? `<br><strong>${remaining}</strong> customer left. Klik <em>Send batch</em> untuk continue.`
@@ -29298,7 +29298,7 @@ window.esSyncRefresh = async function() {
  } else {
  badge.classList.add('unarmed');
  badge.style.color = '#DC2626';
- badge.style.background = 'rgba(239,68,68,.12)';
+ badge.style.background = 'rgba(192, 57, 43,.12)';
  badgeTxt.textContent = 'STALE — check webhook';
  if(card) card.style.borderLeftColor = 'var(--danger)';
  }
@@ -29339,8 +29339,8 @@ window.connectShopee = async function() {
  const setStatus = (txt, color) => {
  if(!status) return;
  status.textContent = txt;
- status.style.background = color === 'ok' ? 'rgba(16,185,129,.12)' : (color === 'err' ? 'rgba(239,68,68,.12)' : 'rgba(0,0,0,.06)');
- status.style.color = color === 'ok' ? '#10B981' : (color === 'err' ? '#EF4444' : 'var(--text-muted)');
+ status.style.background = color === 'ok' ? 'rgba(16, 16, 16,.12)' : (color === 'err' ? 'rgba(192, 57, 43,.12)' : 'rgba(0,0,0,.06)');
+ status.style.color = color === 'ok' ? '#101010' : (color === 'err' ? '#c0392b' : 'var(--text-muted)');
  };
  try {
  setStatus('Loading auth link…', '');
@@ -29374,7 +29374,7 @@ window.__refreshTiktokConnStatus = async function() {
  try {
  const res = await fetch('/api/tiktok-sync-status', { cache: 'no-store' });
  const json = await res.json();
- if(json.error) { pill.textContent = 'ERROR'; pill.style.color = '#EF4444'; return; }
+ if(json.error) { pill.textContent = 'ERROR'; pill.style.color = '#c0392b'; return; }
  if(!json.connected) {
  pill.textContent = 'NOT CONNECTED';
  pill.style.background = 'rgba(0,0,0,.06)'; pill.style.color = 'var(--text-muted)';
@@ -29384,8 +29384,8 @@ window.__refreshTiktokConnStatus = async function() {
  const c = json.connected;
  const hasCutover = !!c.direct_sync_cutover;
  pill.textContent = hasCutover ? 'CONNECTED (direct)' : 'CONNECTED (dryrun)';
- pill.style.background = hasCutover ? 'rgba(16,185,129,.12)' : 'rgba(245,158,11,.12)';
- pill.style.color = hasCutover ? '#10B981' : '#D97706';
+ pill.style.background = hasCutover ? 'rgba(16, 16, 16,.12)' : 'rgba(245,158,11,.12)';
+ pill.style.color = hasCutover ? '#101010' : '#D97706';
  const expIn = new Date(c.access_token_expire_at).getTime() - Date.now();
  const expHr = Math.max(0, Math.floor(expIn / 3600000));
  if(info) {
@@ -29397,7 +29397,7 @@ window.__refreshTiktokConnStatus = async function() {
  }
  } catch(e) {
  pill.textContent = 'ERROR';
- pill.style.color = '#EF4444';
+ pill.style.color = '#c0392b';
  }
 };
 
@@ -29413,7 +29413,7 @@ window.tiktokSyncOrders = async function(mode) {
  try {
  const res = await fetch(`/api/tiktok-sync?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
  const json = await res.json();
- if(json.error) { setMsg('Error: ' + json.error, '#EF4444'); return; }
+ if(json.error) { setMsg('Error: ' + json.error, '#c0392b'); return; }
  if(json.refused) {
  setMsg(json.note || 'Import refused (cutover not set)', '#D97706');
  return;
@@ -29423,13 +29423,13 @@ window.tiktokSyncOrders = async function(mode) {
  if(typeof json.mapped === 'number') lines.push(`Mapped: ${json.mapped} · Baharu: ${json.new || 0}`);
  if(typeof json.inserted === 'number') {
  lines.push(`Inserted: ${json.inserted}`);
- setMsg(lines.join(' · '), '#10B981');
+ setMsg(lines.join(' · '), '#101010');
  if(typeof showToast === 'function') showToast(`TikTok: ${json.inserted} order baharu disimpan.`, 'success');
  } else {
  if(json.note) lines.push(json.note);
  setMsg(lines.join(' · '));
  }
- } catch(e) { setMsg('Network error: ' + e.message, '#EF4444'); }
+ } catch(e) { setMsg('Network error: ' + e.message, '#c0392b'); }
 };
 
 // p1_98 Fasa 2 — Pull Shopee orders into sales_history
@@ -29447,7 +29447,7 @@ window.shopeeSyncOrders = async function(mode) {
  const res = await fetch(`/api/shopee-sync?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
  const json = await res.json();
  if(json.error) {
- setMsg('Error: ' + json.error, '#EF4444');
+ setMsg('Error: ' + json.error, '#c0392b');
  return;
  }
  const lines = [
@@ -29457,14 +29457,14 @@ window.shopeeSyncOrders = async function(mode) {
  ];
  if(json.mode === 'import' && typeof json.inserted === 'number') {
  lines.push(`Inserted: ${json.inserted}`);
- setMsg(lines.join(' · '), '#10B981');
+ setMsg(lines.join(' · '), '#101010');
  if(typeof showToast === 'function') showToast(`Shopee: ${json.inserted} order baharu disimpan.`, 'success');
  } else {
  if(json.note) lines.push(json.note);
  setMsg(lines.join(' · '));
  }
  } catch(e) {
- setMsg('Network error: ' + e.message, '#EF4444');
+ setMsg('Network error: ' + e.message, '#c0392b');
  }
 };
 
@@ -29483,7 +29483,7 @@ window.shopeeStockSync = async function(mode) {
  const res = await fetch(`/api/shopee-stock-sync?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
  const json = await res.json();
  if(json.error) {
- setMsg('Error: ' + json.error, '#EF4444');
+ setMsg('Error: ' + json.error, '#c0392b');
  return;
  }
  const lines = [`Mode: ${json.mode} · env: ${json.env}`];
@@ -29493,14 +29493,14 @@ window.shopeeStockSync = async function(mode) {
  if(typeof json.pushed === 'number') {
  lines.push(`Pushed: ${json.pushed}`);
  if(json.errors && json.errors.length) lines.push(`Errors: ${json.errors.length}`);
- setMsg(lines.join(' · '), json.ok ? '#10B981' : '#D97706');
+ setMsg(lines.join(' · '), json.ok ? '#101010' : '#D97706');
  if(typeof showToast === 'function') showToast(`Shopee stock pushed: ${json.pushed} models.`, json.ok ? 'success' : 'warn');
  } else {
  if(json.note) lines.push(json.note);
  setMsg(lines.join(' · '));
  }
  } catch(e) {
- setMsg('Network error: ' + e.message, '#EF4444');
+ setMsg('Network error: ' + e.message, '#c0392b');
  }
 };
 
@@ -29512,7 +29512,7 @@ window.shopeeRefreshCronStatus = async function() {
  try {
  const res = await fetch('/api/shopee-sync-status', { cache: 'no-store' });
  const json = await res.json();
- if(json.error) { el.textContent = 'Error: ' + json.error; el.style.color = '#EF4444'; return; }
+ if(json.error) { el.textContent = 'Error: ' + json.error; el.style.color = '#c0392b'; return; }
  if(!json.last_run) {
  el.textContent = 'Belum pernah jalan (cron baru deploy, tunggu max 15 min).';
  el.style.color = 'var(--text-muted)';
@@ -29534,7 +29534,7 @@ window.shopeeRefreshCronStatus = async function() {
  el.style.color = lr.error_message ? '#D97706' : 'var(--success)';
  } catch(e) {
  el.textContent = 'Network error';
- el.style.color = '#EF4444';
+ el.style.color = '#c0392b';
  }
 };
 
@@ -29556,7 +29556,7 @@ window.shopeeRefreshConnInfo = async function() {
  const expIn = new Date(c.access_token_expire_at).getTime() - Date.now();
  const expHr = Math.max(0, Math.floor(expIn / 3600000));
  status.textContent = `CONNECTED (${json.env})`;
- status.style.background = 'rgba(16,185,129,.12)'; status.style.color = '#10B981';
+ status.style.background = 'rgba(16, 16, 16,.12)'; status.style.color = '#101010';
  el.style.display = '';
  el.textContent = `Shop ID: ${c.shop_id} · Token expire ${expHr}h · Connected: ${new Date(c.created_at).toLocaleDateString()}`;
  } catch(e) { /* silent */ }

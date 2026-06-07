@@ -7,8 +7,8 @@
     --text-main: #101010; 
     --text-muted: #6F6F6F; 
     --border-color: #E2E2E2;
-    --success: #10B981;
-    --danger: #EF4444; 
+    --success: #101010;
+    --danger: #c0392b; 
     --warning: #F59E0B;
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --radius-md: 12px;
@@ -210,7 +210,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .btn-primary { background: var(--primary); border-color: var(--primary); }
 .btn-secondary { background: #fff; color: #374151; border: 1px solid #D1D5DB; }
 .btn-secondary:hover { background: #F9FAFB; border-color: #9CA3AF; }
-.btn-success { background: var(--success, #10B981); border-color: var(--success, #10B981); } /* p1_246 — buang width:100% lama, sebab Export CSV jadi full-width */
+.btn-success { background: var(--success, #101010); border-color: var(--success, #101010); } /* p1_246 — buang width:100% lama, sebab Export CSV jadi full-width */
 .btn-dark { background: var(--secondary, #101010); border-color: var(--secondary, #101010); }
 .btn-dark:hover { background: #2A2520; }
 .btn-danger { background: #DC2626; border-color: #DC2626; }
