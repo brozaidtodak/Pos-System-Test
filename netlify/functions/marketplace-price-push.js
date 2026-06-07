@@ -91,12 +91,15 @@ exports.handler = async (event) => {
                 shopee_custom: customShopee != null,
                 tiktok_custom: customTiktok != null,
                 shopee_item_id: m.shopee_item_id || null,
-                shopee_model_id: m.shopee_model_id != null ? m.shopee_model_id : null
+                shopee_model_id: m.shopee_model_id != null ? m.shopee_model_id : null,
+                tiktok_product_id: m.tiktok_product_id || null,
+                tiktok_sku_id: m.tiktok_sku_id || null
             };
         }).filter(x => x.base > 0 || x.shopee_price > 0 || x.tiktok_price > 0);
 
         out.products = plan.length;
         out.shopee_targets = plan.filter(x => x.shopee_item_id).length;
+        out.tiktok_targets = plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id).length;
 
         if (mode === 'dryrun') {
             out.sample = plan.slice(0, 15).map(x => ({ sku: x.sku, base: x.base, shopee: x.shopee_price + (x.shopee_custom ? ' (custom)' : ''), tiktok: x.tiktok_price + (x.tiktok_custom ? ' (custom)' : ''), shopee_mapped: !!x.shopee_item_id }));
@@ -125,25 +128,25 @@ exports.handler = async (event) => {
         }
         out.shopee = shopeeRes;
 
-        // ---- PUSH: TikTok (resolve product/sku via catalog, mapping not persisted) ----
-        const tiktokRes = { pushed: 0, failed: 0, errors: [], unmatched: 0, skipped: !doTiktok };
-        if (doTiktok) try {
+        // ---- PUSH: TikTok (p1_426 — use PERSISTED mapping tiktok_product_id + tiktok_sku_id) ----
+        // Old approach pulled the ACTIVATE catalog and matched by seller_sku, which fails for
+        // multi-variant products whose TikTok variant seller_sku != POS sku (e.g. VD035/036/047/048).
+        // All 621 mapped products have both ids persisted, so target them directly + reliably.
+        const tiktokRes = { pushed: 0, failed: 0, errors: [], unmapped: 0, skipped: !doTiktok };
+        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id) : [];
+        if (doTiktok) tiktokRes.unmapped = plan.filter(x => !x.tiktok_product_id || !x.tiktok_sku_id).length;
+        if (tiktokMapped.length) try {
             const tok = await tiktok.getValidToken();
             const cipher = await tiktok.ensureShopCipher(tok);
-            const products = await tiktok.getTiktokProducts(tok.access_token, cipher);
-            const want = new Map(plan.map(x => [x.sku, x.tiktok_price]));
-            const bySku = {};
-            for (const prod of products) {
-                for (const sk of (prod.skus || [])) {
-                    const sellerSku = (sk.seller_sku || '').toUpperCase();
-                    if (!want.has(sellerSku)) continue;
-                    (bySku[String(prod.id)] = bySku[String(prod.id)] || []).push({ id: String(sk.id), price: { amount: String(want.get(sellerSku)), currency: CURRENCY } });
-                }
+            const byProduct = {};
+            for (const x of tiktokMapped) {
+                (byProduct[String(x.tiktok_product_id)] = byProduct[String(x.tiktok_product_id)] || [])
+                    .push({ id: String(x.tiktok_sku_id), price: { amount: String(x.tiktok_price), currency: CURRENCY } });
             }
-            for (const [productId, skuList] of Object.entries(bySku)) {
+            for (const [productId, skuList] of Object.entries(byProduct)) {
                 const r = await tiktok.ttRequest('POST', `/product/202309/products/${productId}/prices/update`, { body: { skus: skuList }, accessToken: tok.access_token, shopCipher: cipher });
                 if (r.code === 0) tiktokRes.pushed += skuList.length;
-                else tiktokRes.errors.push({ product_id: productId, code: r.code, message: r.message });
+                else tiktokRes.errors.push({ product_id: productId, code: r.code, message: r.message, sku_ids: skuList.map(s => s.id) });
             }
             tiktokRes.failed = tiktokRes.errors.length;
         } catch (e) {
