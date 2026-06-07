@@ -17374,7 +17374,7 @@ window.calculateEditableTotal = function() {
 // ===================================
 // p1_226 — All Master Product form field IDs (for clear/load/save loops)
 window.__mpAllFieldIds = [
- 'mpName','mpSku','mpBrand','mpCategory','mpModelNo','mpParentSku','mpUnit','mpPrice','mpCostPrice','mpInitQty',
+ 'mpName','mpSku','mpBrand','mpCategory','mpModelNo','mpParentSku','mpUnit','mpPrice','mpCompareAt','mpCostPrice','mpInitQty',
  'mpVariantColor','mpVariantSize','mpErpBarcode','mpVariantOptions','mpHasVariants','mpDefaultVariantSku',
  'mpWeightKg','mpLengthCm','mpWidthCm','mpHeightCm','mpLocationBin',
  'mpDescription','mpImageUrl','mpCommissionRate','mpIsPublished',
@@ -17444,6 +17444,7 @@ window.saveMasterProduct = async function() {
  sku, name,
  unit: get('mpUnit') || 'pcs',
  price,
+ compare_at_price: getNum('mpCompareAt'),
  cost_price: getNum('mpCostPrice'),
  shopee_price: getNum('mpShopeePrice'),
  tiktok_price: getNum('mpTiktokPrice'),
@@ -17594,7 +17595,7 @@ window.loadMasterProductForEdit = async function() {
  set('mpBrand', p.brand); set('mpCategory', p.category);
  set('mpModelNo', p.model_no); set('mpParentSku', p.parent_sku);
  set('mpUnit', p.unit || 'pcs');
- set('mpPrice', p.price); set('mpCostPrice', p.cost_price);
+ set('mpPrice', p.price); set('mpCompareAt', p.compare_at_price); set('mpCostPrice', p.cost_price);
  set('mpShopeePrice', p.shopee_price); set('mpTiktokPrice', p.tiktok_price);
  set('mpInitQty', ''); // edit mode tak override stock
  set('mpVariantColor', p.variant_color); set('mpVariantSize', p.variant_size);
@@ -18176,6 +18177,7 @@ window.openPdpModal = function(sku) {
  set('pdpCategory', prod.category);
  set('pdpBrand', prod.brand);
  set('pdpPrice', prod.price || 0);
+ set('pdpCompareAt', prod.compare_at_price || '');
  set('pdpCost', prod.cost_price || 0);
  set('pdpShopeePrice', prod.shopee_price); set('pdpTiktokPrice', prod.tiktok_price);
  set('pdpShopeeMode', prod.shopee_price_mode || 'rm'); set('pdpTiktokMode', prod.tiktok_price_mode || 'rm');
@@ -18588,6 +18590,7 @@ window.savePdpData = async function() {
  category: get('pdpCategory') || null,
  brand: get('pdpBrand') || null,
  price: parseFloat(get('pdpPrice')) || 0,
+ compare_at_price: get('pdpCompareAt') ? (parseFloat(get('pdpCompareAt')) || null) : null,
  cost_price: parseFloat(get('pdpCost')) || 0,
  shopee_price: (function(){ const v=get('pdpShopeePrice'); return (v===''||v==null)?null:(parseFloat(v)||null); })(),
  tiktok_price: (function(){ const v=get('pdpTiktokPrice'); return (v===''||v==null)?null:(parseFloat(v)||null); })(),
@@ -19310,7 +19313,7 @@ window.bulkPopulateFilters = function() {
 // Core columns (checkbox/Img/SKU/Nama) sentiasa ada. Selebihnya boleh toggle.
 const BULK_FIELD_DEFS = [
  { g:'Harga',     key:'price',    label:'Harga',        type:'num',   f:'price' },
- { g:'Harga',     key:'compare',  label:'Compared',     type:'num',   f:'compare_at_price' },
+ { g:'Harga',     key:'compare',  label:'Compare-at',   type:'num',   f:'compare_at_price' },
  { g:'Harga',     key:'cost',     label:'Kos',          type:'num',   f:'cost_price' },
  { g:'Harga',     key:'floor',    label:'Floor Price',  type:'num',   f:'floor_price' },
  { g:'Inventori', key:'skuedit',  label:'SKU (boleh tukar)', type:'skuedit' },
@@ -19325,7 +19328,11 @@ const BULK_FIELD_DEFS = [
 ];
 const BULK_FIELD_BY_KEY = {}; BULK_FIELD_DEFS.forEach(d => BULK_FIELD_BY_KEY[d.key] = d);
 const BULK_COLS_DEFAULT = ['brand','category','price','compare','cost','stock','status'];
-window.__bulkCols = (function(){ try { const s = JSON.parse(localStorage.getItem('bulk_cols_v1')); if(Array.isArray(s) && s.length) { const v = s.filter(k => BULK_FIELD_BY_KEY[k]); if(v.length) return v; } } catch(e){} return BULK_COLS_DEFAULT.slice(); })();
+window.__bulkCols = (function(){ try { const s = JSON.parse(localStorage.getItem('bulk_cols_v1')); if(Array.isArray(s) && s.length) { const v = s.filter(k => BULK_FIELD_BY_KEY[k]); if(v.length) {
+ // p1_410 — one-time: surface Compare-at for users whose saved cols predate it (insert after price)
+ if(!v.includes('compare')) { const pi = v.indexOf('price'); if(pi >= 0) v.splice(pi+1, 0, 'compare'); else v.push('compare'); try { localStorage.setItem('bulk_cols_v1', JSON.stringify(v)); } catch(e){} }
+ return v;
+ } } } catch(e){} return BULK_COLS_DEFAULT.slice(); })();
 window.__bulkColCount = function(){ return 4 + (window.__bulkCols || []).filter(k => (BULK_FIELD_BY_KEY[k] || {}).type !== 'skuedit').length; }; // checkbox+Img+SKU+Nama + dynamic (skuedit toggles the core SKU cell, no extra column)
 
 // Build the dynamic table header to match active columns
