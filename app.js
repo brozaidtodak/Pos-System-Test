@@ -982,9 +982,10 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  salesHistory.forEach(sale => {
  const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
  if(t < startMs || t > endMs) return;
- // Match by staff_id (sales attribution) — fallback name
- if((sale.staff_id && sale.staff_id === s.staff_id) || (sale.cashier_name && sale.cashier_name === s.name)) {
- revenue += Number(sale.total || sale.amount || 0);
+ if(sale.is_test) return; // p1_451 — test order tak masuk komisen
+ // Match by staff_id / cashier_name / staff_name (sales attribution)
+ if((sale.staff_id && sale.staff_id === s.staff_id) || (sale.cashier_name && sale.cashier_name === s.name) || (sale.staff_name && sale.staff_name === s.name)) {
+ revenue += window.__saleCommissionBase(sale); // p1_451 — base unit-SKU (harga×qty − diskaun), bukan total resit
  orders++;
  }
  });
@@ -16831,6 +16832,28 @@ function __getCommissionRate(staffName) {
  return 5; // sensible default
 }
 
+// p1_451 — Base komisen = UNIT SKU berjaya terjual (harga sebenar dibayar), Zaid:
+// "komisen 5% pada setiap 1 unit sku berjaya terjual, BUKAN 5% pada total resit".
+// Base = jumlah (harga × qty − diskaun item) merentas semua item produk.
+// SENGAJA buang shipping/tax/caj peringkat-resit (bukan unit SKU).
+// Pulangan bertanda negatif utk baris refund (total resit negatif) supaya komisen dipatah balik.
+window.__saleCommissionBase = function(s) {
+ if (!s) return 0;
+ let items = s.items;
+ if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = null; } }
+ if (!Array.isArray(items)) return 0;
+ let base = 0;
+ items.forEach(it => {
+ const price = Number(it.price || 0) || 0;
+ const qty = Number(it.qty != null ? it.qty : (it.quantity != null ? it.quantity : 1)) || 0;
+ const disc = Number(it.discount || 0) || 0;
+ base += (price * qty - disc);
+ });
+ base = round2(base);
+ const recv = parseFloat(s.total_amount || s.total || 0) || 0;
+ return recv < 0 ? -base : base;
+};
+
 // Commission period state
 window.__cmRange = window.__cmRange || 'month';
 window.__cmSetRange = function(range, btn) {
@@ -16874,9 +16897,11 @@ window.renderPersonalCommission = function() {
  const own = sales.filter(s => s.staff_name === staffName);
  let gross = 0, refunds = 0, txCount = 0, refundCount = 0;
  own.forEach(s => {
- const amt = parseFloat(s.total_amount || s.total || 0);
- if (amt < 0) { refunds = round2(refunds + Math.abs(amt)); refundCount++; }
- else { gross = round2(gross + amt); txCount++; }
+ // p1_451 — base = unit SKU (harga×qty − diskaun), bukan total resit
+ const recv = parseFloat(s.total_amount || s.total || 0) || 0;
+ const base = Math.abs(window.__saleCommissionBase(s));
+ if (recv < 0) { refunds = round2(refunds + base); refundCount++; }
+ else { gross = round2(gross + base); txCount++; }
  });
  const net = round2(gross - refunds);
  const rate = __getCommissionRate(staffName);
@@ -16936,10 +16961,12 @@ window.renderPersonalCommission = function() {
  tbody.innerHTML = personal.sales
 .slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
 .map(s => {
- const amt = parseFloat(s.total_amount || s.total || 0);
+ // p1_451 — papar base unit-SKU (harga×qty − diskaun), komisen = 5% atasnya
+ const recv = parseFloat(s.total_amount || s.total || 0) || 0;
+ const isRefund = recv < 0;
+ const amt = window.__saleCommissionBase(s);
  const dateStr = new Date(s.created_at).toLocaleDateString('en-MY', {day:'numeric', month:'short', year:'numeric'});
  const ref = s.id ? '#'+s.id : '—';
- const isRefund = amt < 0;
  const comm = round2(amt * rate / 100);
  const amtCol = isRefund ? '#dc2626' : '#059669';
  return '<tr>'
@@ -16971,12 +16998,13 @@ window.__cmShowStaffSales = function(staffName) {
  }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
  const rate = (typeof __getCommissionRate === 'function') ? __getCommissionRate(staffName) : 0;
  let gross = 0, refunds = 0;
- own.forEach(s => { const amt = parseFloat(s.total_amount || s.total || 0); if (amt < 0) refunds = round2(refunds + Math.abs(amt)); else gross = round2(gross + amt); });
+ own.forEach(s => { const recv = parseFloat(s.total_amount || s.total || 0) || 0; const base = Math.abs(window.__saleCommissionBase(s)); if (recv < 0) refunds = round2(refunds + base); else gross = round2(gross + base); });
  const net = round2(gross - refunds);
  const earned = round2(net * rate / 100);
  const fmt = (n) => 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
  const body = own.length ? own.map(s => {
- const amt = parseFloat(s.total_amount || s.total || 0); const isRefund = amt < 0;
+ const recv = parseFloat(s.total_amount || s.total || 0) || 0; const isRefund = recv < 0;
+ const amt = window.__saleCommissionBase(s);
  const comm = round2(amt * rate / 100);
  const dt = new Date(s.created_at).toLocaleString('en-MY', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
  const col = isRefund ? '#c0392b' : '#101010';
@@ -27524,9 +27552,9 @@ window.I18N = {
  rp_appr_total_rm: { bm: 'Jumlah RM', en: 'Total RM' },
  // Commission calculator
  rp_comm_title: { bm: 'Pengiraan Komisen Staff Jualan', en: 'Sales Staff Commission Calculator' },
- rp_comm_help: { bm: 'Sales MTD setiap staff jualan. Aliff isi kadar / amaun komisen, klik Simpan untuk hantar ke Bos approve.', en: 'MTD sales per sales staff. Aliff enters commission rate / amount, click Save to send for Boss approval.' },
+ rp_comm_help: { bm: 'Nilai produk terjual (harga × qty − diskaun) setiap staff — base komisen per unit SKU, BUKAN total resit (tak masuk shipping/tax). Aliff isi kadar / amaun komisen, klik Simpan untuk hantar ke Bos approve.', en: 'Product value sold (price × qty − discount) per staff — the per-unit-SKU commission base, NOT receipt total (excludes shipping/tax). Aliff enters commission rate / amount, click Save for Boss approval.' },
  rp_comm_col_staff: { bm: 'Staff', en: 'Staff' },
- rp_comm_col_sales: { bm: 'Sales MTD (RM)', en: 'MTD Sales (RM)' },
+ rp_comm_col_sales: { bm: 'Base Komisen (RM)', en: 'Commission Base (RM)' },
  rp_comm_col_orders: { bm: 'Bilangan Pesanan', en: 'Order Count' },
  rp_comm_col_rate: { bm: 'Kadar % (opsyenal)', en: 'Rate % (optional)' },
  rp_comm_col_amount: { bm: 'Komisen (RM)', en: 'Commission (RM)' },
