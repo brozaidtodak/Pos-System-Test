@@ -6447,12 +6447,29 @@ window.renderDashboard = function() {
 
 // p1_439 — Sales Trajectory: Daily / Weekly / Monthly / Custom analytic graph
 window.__stMode = window.__stMode || 'daily';
-window.__stSetMode = function(mode) {
- window.__stMode = mode || 'daily';
- const cr = document.getElementById('stCustomRow');
- if(cr) cr.style.display = (window.__stMode === 'custom') ? 'flex' : 'none';
- window.renderSalesTrajectory();
+// p1_448 — Sales Trajectory + Analisis Jualan KONGSI satu tempoh tarikh.
+// Dulu dua kawalan berasingan (#stMode vs #saMode) boleh tunjuk tempoh berlainan
+// jadi angka tak sepadan (Farhan: atas 12k bawah 6k). Setter ni segerak kedua-dua.
+window.__salesSetPeriod = function(mode) {
+ mode = mode || 'daily';
+ window.__stMode = mode;
+ window.__saMode = mode;
+ ['stMode','saMode'].forEach(id => { const e = document.getElementById(id); if(e && e.value !== mode) e.value = mode; });
+ ['stCustomRow','saCustomRow'].forEach(id => { const e = document.getElementById(id); if(e) e.style.display = (mode === 'custom') ? 'flex' : 'none'; });
+ if(window.renderSalesTrajectory) window.renderSalesTrajectory();
+ if(window.renderSalesAnalytics) window.renderSalesAnalytics();
 };
+// Segerak input tarikh custom merentas kedua-dua pasang (stFrom<->saFrom, stTo<->saTo)
+window.__salesSetDates = function(srcEl) {
+ if(srcEl && srcEl.id) {
+ const v = srcEl.value;
+ const targets = /From$/.test(srcEl.id) ? ['stFrom','saFrom'] : ['stTo','saTo'];
+ targets.forEach(id => { const e = document.getElementById(id); if(e && e.value !== v) e.value = v; });
+ }
+ if(window.renderSalesTrajectory) window.renderSalesTrajectory();
+ if(window.renderSalesAnalytics) window.renderSalesAnalytics();
+};
+window.__stSetMode = function(mode) { window.__salesSetPeriod(mode); };
 window.renderSalesTrajectory = function() {
  const ctx = document.getElementById('salesChart');
  if(!ctx || typeof Chart === 'undefined') return;
@@ -6529,12 +6546,7 @@ window.__SA_CHANNELS = [
  { key:'web',      label:'EasyStore/Web', color:'#FF6B35', match:(c)=>c.includes('easystore')||c.includes('web') },
  { key:'other',    label:'Lain-lain',     color:'#9CA3AF', match:()=>true }
 ];
-window.__saSetMode = function(mode) {
- window.__saMode = mode || 'daily';
- const cr = document.getElementById('saCustomRow');
- if(cr) cr.style.display = (window.__saMode === 'custom') ? 'flex' : 'none';
- window.renderSalesAnalytics();
-};
+window.__saSetMode = function(mode) { window.__salesSetPeriod(mode); };
 window.renderSalesAnalytics = function() {
  if(typeof Chart === 'undefined') return;
  const trendCtx = document.getElementById('saTrendChart');
