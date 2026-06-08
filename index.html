@@ -1856,6 +1856,19 @@
  <div class="menu-item" data-group="marketing" data-tab="admin_mktweekly" onclick="switchHub(['marketingWeeklySection'], 'Marketing Weekly Data', this); if(typeof renderMktWeekly==='function') renderMktWeekly();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
  <i data-lucide="megaphone" style="width:16px; height:16px;"></i> <span data-i18n="sb_mkt_weekly">Marketing Data (Weekly)</span>
  </div>
+ <!-- p1_467 — Marketing module: 4 sub-item baru -->
+ <div class="menu-item" data-group="marketing" data-tab="admin_social_media" onclick="switchHub(['socialMediaSection'], 'Social Media', this); if(typeof renderSocialMedia==='function') renderSocialMedia();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="share-2" style="width:16px; height:16px;"></i> <span data-i18n="sb_social_media">Social Media</span>
+ </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_content_schedule" onclick="switchHub(['contentScheduleSection'], 'Content Schedule', this); if(typeof renderContentSchedule==='function') renderContentSchedule();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="calendar-days" style="width:16px; height:16px;"></i> <span data-i18n="sb_content_schedule">Content Schedule</span>
+ </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_ads" onclick="switchHub(['adsSection'], 'Ads', this); if(typeof renderAds==='function') renderAds();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="badge-dollar-sign" style="width:16px; height:16px;"></i> <span data-i18n="sb_ads">Ads</span>
+ </div>
+ <div class="menu-item" data-group="marketing" data-tab="admin_mkt_reports" onclick="switchHub(['marketingReportsSection'], 'Marketing Reports', this); if(typeof renderMarketingReports==='function') renderMarketingReports();" style="display:flex; align-items:center; gap:8px; padding-left:35px; font-size:13px;">
+ <i data-lucide="bar-chart-3" style="width:16px; height:16px;"></i> <span data-i18n="sb_mkt_reports">Reports</span>
+ </div>
 
  <!-- p1_96: REPORTS — staff self-report + Bos drill-down + posted reports inbox -->
  <div class="menu-item" data-group-toggle="reports" onclick="toggleSidebarGroup('reports')" style="background:none; font-weight:900; color:var(--primary); text-transform:uppercase; font-size:11px; margin-top:15px; margin-bottom:5px;">
@@ -4221,6 +4234,22 @@
  <button class="fin-btn fin-btn--gold" onclick="window.__rlSubmit()"><i data-lucide="save" style="width:13px;height:13px;"></i> Simpan Log</button>
  </div>
  </div>
+ </div>
+
+ <!-- ============================================== -->
+ <!-- p1_467 — MARKETING MODULE: Social / Content / Ads / Reports -->
+ <!-- ============================================== -->
+ <div id="socialMediaSection" class="tab-section" style="display:none;">
+ <div id="socialMediaBody"></div>
+ </div>
+ <div id="contentScheduleSection" class="tab-section" style="display:none;">
+ <div id="contentScheduleBody"></div>
+ </div>
+ <div id="adsSection" class="tab-section" style="display:none;">
+ <div id="adsBody"></div>
+ </div>
+ <div id="marketingReportsSection" class="tab-section" style="display:none;">
+ <div id="marketingReportsBody"></div>
  </div>
 
  <!-- ============================================== -->
@@ -7640,6 +7669,7 @@
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
  { id:'p1_263', label:'Marketplace integration indicator tiap product (Zaid: "setiap product wajib ada indicator yang menandakan dia dah integrated dengan tiktok dan shopee"). Schema check: products_master takde dedicated columns shopee/tiktok yet — semua sync data live dalam metadata JSONB (pattern same as easystore_* keys). Visual indicator dalam renderProductDatabase pd-card grid: position absolute top:6px left:6px (kiri atas, sebelah status badge Live/Draft kanan atas). Dua chips small: SP (brand Shopee orange #EE4D2D fill bila integrated, grey #E5E7EB outline bila tak) dan TT (TikTok black bila integrated, grey bila tak). Lucide check icon bila syncd, X icon bila tak. Hover title explain status. Read data: metadata.shopee_item_id atau metadata.shopee_synced_at → shopeeIntegrated; same logic untuk TikTok. PDP modal extend dengan card baru "Marketplace Integration" antara Organization dan SEO: 2 grid 1fr 1fr — Shopee Item ID + TikTok Product ID inputs dengan brand colored chips beside labels (SP orange, TT black). Bawah ada syncStatus line yang papar "Shopee last sync: <timestamp> · TikTok last sync: <timestamp>" atau "Belum pernah sync auto" kalau kosong. openPdpModal populate values dari metadata. savePdpData merge ke metadata.shopee_item_id + tiktok_product_id (preserved alongside other metadata). Zaid boleh edit manually for now; future sync flow can auto-fill + set _synced_at timestamps. app.js v359→v360.', d:'done' },
+ { id:'p1_467', label:'Modul MARKETING — 4 sub-item baru (Zaid: "wujudkan sidebar marketing sub-item: social media, content schedule, ads, reports + plankan isi penting"). Keputusan Zaid: SEMUA staf nampak modul; data kewangan iklan (spend/revenue/ROAS) di sebalik PIN 1999; bina semua 4 sekali. Ditambah ke group sidebar data-group="marketing" sedia ada (rail Marketing dah wujud). 2 table baru Supabase: marketing_content + marketing_ads (RLS authenticated all, mirror stock_check_sessions). (1) SOCIAL MEDIA (renderSocialMedia): dashboard agregat TikTok/IG/FB (posts/views/likes/leads) dari staff_report_submissions marketing_weekly + delta vs period sebelum, period pills 7/30/90/YTD, direktori akaun (localStorage mktSocialAccounts_v1), senarai kandungan terkini disiarkan. (2) CONTENT SCHEDULE (renderContentSchedule): CRUD marketing_content — thumb produk (masterProducts), tajuk, platform chips, jenis, tarikh, assignee, status (idea/draft/scheduled/posted); filter status+platform; modal tambah/edit; Tandai Disiarkan; padam. (3) ADS (renderAds): CRUD marketing_ads — KPI Spend/Revenue/Blended ROAS/Conversions/Kos-Order + jadual kempen (ROAS warna), DUIT disorok •••🔒 sampai __confidentialGate PIN 1999; modal tambah/edit; filter status. (4) REPORTS (renderMarketingReports): roll-up blok Sosial + Output Kandungan + Iklan (duit PIN) + akauntabiliti hantaran mingguan + butang Cetak (window.open). Helper kongsi: __mktLoadWeekly/__mktAggWeekly/__mktRangeMs/__mktPills/__mktThumb/__mktMoney/__mktRoas. app.js v526->v527, sw v83->v84.', d:'done' },
  { id:'p1_466', label:'Senarai Pick — tambah lajur GAMBAR rujukan (Zaid: "bila staff extract packing list ni dia takde gambar, tolong adakan gambar rujukan"). __aoPrintPickingList dulu cuma Lokasi Rak/SKU/Nama/Qty/Order/Tick — staff susah cari barang tanpa visual. FIX: (1) helper baru window.__aoImgFor(sku) cari masterProducts.images[0] (selari __aoBinFor). (2) bySku simpan img. (3) lajur "Gambar" baru (antara SKU & Nama Produk) papar <img class=pic 60x60 object-fit:cover>; onerror fallback ke kotak "No Img" (dashed). (4) CSS .pic/.pic-none + print-color-adjust:exact supaya gambar keluar bila print. Gambar dari masterProducts (sama sumber product database/stock take). app.js v525->v526, sw v82->v83.', d:'done' },
  { id:'p1_465', label:'Stock Take — baris kekal boleh diklik dalam mod review (popup adapt sorok/tunjuk sistem) (Zaid: "alamak tekan row, tapi dah tak responsive pulak" — selepas sesi Submit ke Review, p1_461 matikan klik baris jadi Zack tak boleh tekan). FIX: (1) __scsToggleSkuList simpan window.__scsSessStatusCache[sessionId] = status sesi. (2) trOpen kini SENTIASA clickable (buang cabang reveal yg matikan onclick) — title berubah "Tekan untuk isi kiraan fizikal" (active) / "Tekan untuk semak / betulkan kiraan" (review). (3) __scsOpenCountPopup kira popReveal dari cache status; bila review/forwarded/approved, kotak info popup TUNJUK "Kuantiti sistem: X · Selisih: Y · mod semakan" (biru, eye icon) ganti nota "blind count" (kelabu, eye-off). Jadi Zack boleh tekan baris masa review untuk semak/betulkan kiraan sambil nampak sistem; semasa active kekal blind. app.js v524->v525, sw v81->v82.', d:'done' },
  { id:'p1_464', label:'Stock Take — tambah BARCODE dalam popup blind-count (Zaid: "tambah juga barcode pada popup"). __scsOpenCountPopup kini cari produk dlm masterProducts ikut SKU, ambil barcodeVal = barcode || erp_barcode || SKU (fallback). Render CODE128 SVG guna JsBarcode (dah load via CDN index.html, format sama label printer generateBarcodes) — strip barcode di antara header & body popup, displayValue ON (nombor bawah bar). Tujuan: staff boleh padan barcode skrin dgn sticker fizikal produk masa kira, pastikan SKU betul. Guard typeof JsBarcode (kalau offline/tak load, strip auto-sorok). app.js v523->v524, sw v80->v81.', d:'done' },
@@ -12555,7 +12585,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=526"></script>
+ <script src="app.js?v=527"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
