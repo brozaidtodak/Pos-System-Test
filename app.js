@@ -6576,7 +6576,9 @@ window.refreshRailBadges = function() {
 // p1_453 — Gate PIN untuk DATA SULIT (PNC): untung/margin, kos, leaderboard staf.
 // Buka dengan PIN 1999, unlock kekal utk sesi ni sahaja. (managerDashboardSection
 // TIDAK digate sebab ia sebahagian Home; commission manager-view digate berasingan.)
-window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection'];
+// p1_517 — Reports management-only + PIN 1999 (Zaid). Tambah Analytics + Returns/Damage + Payment Proofs
+// ke senarai gated (selain financial sedia ada). Laporan Saya (personal) kekal terbuka utk staf.
+window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection'];
 window.__CONF_PIN = '1999';
 window.__confIsUnlocked = function() {
  try { return sessionStorage.getItem('confUnlocked_v1') === '1'; } catch(e) { return window.__confUnlockedMem === true; }
