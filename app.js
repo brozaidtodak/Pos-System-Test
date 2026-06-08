@@ -8692,8 +8692,11 @@ window.__scsPublishRender = function() {
  const rows = items.map((i, idx) => {
   const live = window.__scsLiveQty(i.sku);
   const counted = Number(i.counted_qty);
-  // p1_507 — "Set Ke" default ke Final Qty (muktamad reviewer) kalau ada, fallback counted_qty
-  const setTo = (i.final_qty != null) ? Number(i.final_qty) : counted;
+  // p1_511 — "Set Ke" = FINAL QTY (samakan dgn kolum Final Qty review): final_qty ?? Semakan 2 ?? Kiraan 1.
+  // Sebab final_qty kadang tak di-save manual (kotak cuma papar prefill), publish kena ikut Semakan 2
+  // (muktamad reviewer) BUKAN Kiraan 1. Elak publish ambil DIKIRA bila ada Semakan 2 yang lain.
+  const setTo = (i.final_qty != null) ? Number(i.final_qty)
+              : (i.counted_qty_2 != null ? Number(i.counted_qty_2) : counted);
   const diff = setTo - live;
   const checked = diff !== 0 ? 'checked' : ''; // default tick hanya yang ada beza
   const diffColor = diff === 0 ? '#6B7280' : (diff > 0 ? '#166534' : '#991B1B');
@@ -8703,7 +8706,7 @@ window.__scsPublishRender = function() {
    <td style="padding:6px 8px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;">${esc(i.sku)}</td>
    <td style="padding:6px 8px; font-size:11.5px;">${esc((i.product_name || i.name || '').slice(0, 40))}</td>
    <td style="padding:6px 8px; text-align:right; font-size:12px; color:#6B7280;">${live}</td>
-   <td style="padding:6px 8px; text-align:right; font-size:12px; font-weight:700;">${counted}${(i.final_qty != null && Number(i.final_qty) !== counted) ? `<div style="font-size:9px; color:#4338CA; font-weight:700;">final ${i.final_qty}</div>` : ''}</td>
+   <td style="padding:6px 8px; text-align:right; font-size:12px; font-weight:700;">${counted}${(setTo !== counted) ? `<div style="font-size:9px; color:#4338CA; font-weight:700;">final ${setTo}</div>` : ''}</td>
    <td style="padding:6px 8px; text-align:right; font-size:11.5px; font-weight:700; color:${diffColor};">${diffTxt}</td>
    <td style="padding:6px 8px; text-align:center;"><input type="number" data-scs-pub-qty="${idx}" value="${setTo}" min="0" style="width:64px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:6px; text-align:center; font-weight:700;"></td>
   </tr>`;
@@ -24067,12 +24070,14 @@ window.__aoExportReceipts = async function(){
  const batch = rowMeta.slice(i, i + CONC);
  await Promise.all(batch.map(async (rm) => {
  try {
- const res = await fetch(rm.s.payment_proof_url, { cache: 'no-store' });
+ const res = await fetch(rm.s.payment_proof_url, { cache: 'no-store', mode: 'cors' });
  if(!res.ok) throw new Error('HTTP ' + res.status);
- const blob = await res.blob();
- imgFolder.file(rm.fname, blob);
+ // arrayBuffer = paling kompatibel utk JSZip (Blob kadang jadi entry kosong)
+ const buf = await res.arrayBuffer();
+ if(!buf || !buf.byteLength) throw new Error('empty body');
+ imgFolder.file(rm.fname, buf, { binary: true });
  rm.saved = true; okImg++;
- } catch(e) { rm.saved = false; failImg++; }
+ } catch(e) { rm.saved = false; failImg++; console.warn('Resit fetch gagal', rm.s.id, rm.s.payment_proof_url, e && e.message); }
  }));
  }
 
