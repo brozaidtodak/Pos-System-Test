@@ -22899,6 +22899,13 @@ window.__aoBinFor = function(sku) {
  const p = masterProducts.find(x => x.sku === sku);
  return (p && p.location_bin) ? String(p.location_bin) : '';
 };
+
+// p1_466 — gambar rujukan untuk Senarai Pick (cari dari masterProducts ikut SKU)
+window.__aoImgFor = function(sku) {
+ if(typeof masterProducts === 'undefined') return '';
+ const p = masterProducts.find(x => x.sku === sku);
+ return (p && Array.isArray(p.images) && p.images[0]) ? String(p.images[0]) : '';
+};
 // p1_323 — helper: ambil setting kedai untuk header cetak
 window.__aoShopHeader = function() {
  let shop = {};
@@ -23015,7 +23022,7 @@ window.__aoPrintPickingList = function() {
  orders.forEach(s => {
  (Array.isArray(s.items) ? s.items : []).forEach(it => {
  const sku = it.sku || '?';
- if(!bySku[sku]) bySku[sku] = { sku, name: it.name || sku, bin: window.__aoBinFor(sku), qty: 0, ordCount: 0 };
+ if(!bySku[sku]) bySku[sku] = { sku, name: it.name || sku, bin: window.__aoBinFor(sku), img: window.__aoImgFor(sku), qty: 0, ordCount: 0 };
  const qn = window.__aoItemQty(it);
  bySku[sku].qty += qn; bySku[sku].ordCount += 1; totalUnits += qn;
  });
@@ -23038,7 +23045,9 @@ window.__aoPrintPickingList = function() {
  .center { text-align:center; }
  .bin { font-family:'SF Mono',Menlo,monospace; background:#FEF3C7; font-weight:bold; }
  .qty { font-size:16px; font-weight:bold; text-align:center; }
- @media print { @page { margin:1.2cm; } button { display:none; } }
+ .pic { width:60px; height:60px; object-fit:cover; border:1px solid #ccc; border-radius:5px; display:block; margin:auto; }
+ .pic-none { width:60px; height:60px; border:1px dashed #ccc; border-radius:5px; display:flex; align-items:center; justify-content:center; color:#bbb; font-size:9px; margin:auto; }
+ @media print { @page { margin:1.2cm; } button { display:none; } body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
  </style></head><body>
  <div class="header">
  <h1>${esc(shop.name)}</h1>
@@ -23046,11 +23055,12 @@ window.__aoPrintPickingList = function() {
  <div class="sub">${esc(today)} · ${orders.length} order · ${rows.length} SKU · ${totalUnits} unit · disusun ikut lokasi rak</div>
  </div>
  <table>
- <thead><tr><th class="center">Lokasi Rak</th><th>SKU</th><th>Nama Produk</th><th class="center">Qty</th><th class="center">Order</th><th class="center">Tick</th></tr></thead>
+ <thead><tr><th class="center">Lokasi Rak</th><th>SKU</th><th class="center">Gambar</th><th>Nama Produk</th><th class="center">Qty</th><th class="center">Order</th><th class="center">Tick</th></tr></thead>
  <tbody>
  ${rows.map(r => `<tr>
  <td class="center bin">${esc(r.bin || '—')}</td>
  <td><strong>${esc(r.sku)}</strong></td>
+ <td class="center">${r.img ? `<img class="pic" src="${esc(r.img)}" alt="${esc(r.sku)}" onerror="this.outerHTML='<div class=\\'pic-none\\'>No Img</div>'">` : `<div class="pic-none">No Img</div>`}</td>
  <td>${esc((r.name || '').slice(0, 70))}</td>
  <td class="qty">${r.qty}</td>
  <td class="center">${r.ordCount}</td>
