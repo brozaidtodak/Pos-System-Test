@@ -2373,9 +2373,17 @@ a:focus-visible {
  -webkit-text-fill-color: #E4E4E7; /* p1_438 — iOS: force input text fill in dark mode */
  border-color: #3F3F46;
 }
-/* p1_438 — cashier search: guarantee typed text is visible (iOS auto-dark could hide it) */
-#searchInput { background: #FFFFFF; color: #101010; -webkit-text-fill-color: #101010; }
-[data-theme="dark"] #searchInput { background: #18181B; color: #E4E4E7; -webkit-text-fill-color: #E4E4E7; }
+/* p1_438 + p1_471 — cashier search: guarantee typed text is visible (iOS phone dark-mode
+   could auto-darken the box + hide black text). !important so nothing can override on mobile. */
+#searchInput { background: #FFFFFF !important; color: #101010 !important; -webkit-text-fill-color: #101010 !important; caret-color: var(--primary, #CD7C32); opacity: 1; }
+#searchInput::placeholder { color: #9CA3AF !important; -webkit-text-fill-color: #9CA3AF !important; opacity: 1; }
+[data-theme="dark"] #searchInput { background: #18181B !important; color: #E4E4E7 !important; -webkit-text-fill-color: #E4E4E7 !important; }
+[data-theme="dark"] #searchInput::placeholder { color: #9CA3AF !important; -webkit-text-fill-color: #9CA3AF !important; }
+/* p1_471 — phone: search takes full width, action buttons drop to their own row (was squeezed in one flex line) */
+@media (max-width: 640px) {
+ .pos-prodsearch-box { flex: 1 1 100% !important; min-width: 0 !important; }
+ .pos-prodsearch-row > #btnCustomSale, .pos-prodsearch-row > #btnPosLayoutToggle { flex: 1 1 auto; }
+}
 [data-theme="dark"].table-responsive,
 [data-theme="dark"].data-table thead { background: #18181B; }
 [data-theme="dark"].mode-bar { background: #27272A; border-color: #3F3F46; }
