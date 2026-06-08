@@ -30260,13 +30260,9 @@ window.shareProduct = function(sku) {
  if (p.material) specs.push('Bahan: ' + p.material);
  if (p.color) specs.push('Warna: ' + p.color);
 
- // Public URL — deep link to EasyStore product if mapping exists, else attribute to 10camp.com.
- let url = 'https://10camp.com';
- try {
- const meta = p.metadata || {};
- if (meta.easystore_product_id) url = 'https://10camp.com/products/' + meta.easystore_product_id;
- else if (p.public_url) url = p.public_url;
- } catch(e){}
+ // p1_472 — Public URL = landing-page deep link (?p=SKU) yang auto-buka PDP produk tu di
+ // www.10camp.com (handler p1_416). URL lama /products/{easystore_id} DAH MATI lepas EasyStore dibuang.
+ const url = 'https://www.10camp.com/?p=' + encodeURIComponent(sku);
 
  // Assemble public-safe message.
  const lines = [];
@@ -30355,12 +30351,8 @@ window.shareProductWA = function(sku) {
  if (p.material) specs.push('Bahan: ' + p.material);
  if (p.color) specs.push('Warna: ' + p.color);
 
- let url = 'https://10camp.com';
- try {
- const meta = p.metadata || {};
- if (meta.easystore_product_id) url = 'https://10camp.com/products/' + meta.easystore_product_id;
- else if (p.public_url) url = p.public_url;
- } catch(e){}
+ // p1_472 — landing deep link (?p=SKU) ganti URL EasyStore mati.
+ const url = 'https://www.10camp.com/?p=' + encodeURIComponent(sku);
 
  // WhatsApp uses *bold* for asterisks. Wrap title in *...* for prominence.
  const lines = [];
