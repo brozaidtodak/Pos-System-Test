@@ -25,7 +25,7 @@
  <link rel="shortcut icon" href="assets/brand/logo/10camp-logo-color.png">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=54">
- <link rel="stylesheet" href="design-tokens.css?v=87">
+ <link rel="stylesheet" href="design-tokens.css?v=88">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -7815,6 +7815,7 @@
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
  { id:'p1_263', label:'Marketplace integration indicator tiap product (Zaid: "setiap product wajib ada indicator yang menandakan dia dah integrated dengan tiktok dan shopee"). Schema check: products_master takde dedicated columns shopee/tiktok yet — semua sync data live dalam metadata JSONB (pattern same as easystore_* keys). Visual indicator dalam renderProductDatabase pd-card grid: position absolute top:6px left:6px (kiri atas, sebelah status badge Live/Draft kanan atas). Dua chips small: SP (brand Shopee orange #EE4D2D fill bila integrated, grey #E5E7EB outline bila tak) dan TT (TikTok black bila integrated, grey bila tak). Lucide check icon bila syncd, X icon bila tak. Hover title explain status. Read data: metadata.shopee_item_id atau metadata.shopee_synced_at → shopeeIntegrated; same logic untuk TikTok. PDP modal extend dengan card baru "Marketplace Integration" antara Organization dan SEO: 2 grid 1fr 1fr — Shopee Item ID + TikTok Product ID inputs dengan brand colored chips beside labels (SP orange, TT black). Bawah ada syncStatus line yang papar "Shopee last sync: <timestamp> · TikTok last sync: <timestamp>" atau "Belum pernah sync auto" kalau kosong. openPdpModal populate values dari metadata. savePdpData merge ke metadata.shopee_item_id + tiktok_product_id (preserved alongside other metadata). Zaid boleh edit manually for now; future sync flow can auto-fill + set _synced_at timestamps. app.js v359→v360.', d:'done' },
+ { id:'p1_492', label:'Modal edit produk (pdpModal) ditiru layout EasyStore — 2 kolum (Zaid screenshot EasyStore product editor "tiru layout ni"). Dulu single-column max-width 800px (11 kad bertindan). Kini grid 2-kolum (.pdp-edit-grid; minmax 2.1fr/1fr, collapse 1-kolum <980px). KIRI (main): Media/Images, Title+Pricing, Description, Metafields, Inventory, Variants, SEO, Danger. KANAN (sidebar): Visibility (status Active/Draft), Online Channels (Marketplace Integration dipindah, single-col), Collections & Notes (Organization dipindah). Semua ID input dikekal (pdpStatus/pdpShopee*/pdpTiktok*/pdpCollection/pdpTags/pdpNotes) — wiring openPdpModal + savePdpData tak berubah. Div balance 62/62. Tukar index.html + design-tokens.css (v87->v88) + sw pos-store-v108->v109.', d:'done' },
  { id:'p1_491', label:'Variant editor: gambar jadi EDITABLE (Zaid: "gambar variant tak boleh edit, make it editable; SKU CR=roundneck takde collar, CC=collar oren"). renderPdpSiblingVariants dulu lajur gambar = thumbnail display je, takde input. Kini cell gambar tambah input URL pv_<i>_img (pre-isi v.images join koma; sokong banyak URL pisah koma, pertama=cover). __pdpSaveVariants baca pv_<i>_img → split/trim/filter → kalau beza dari prod.images, payload.images = array baru (simpan per variant). Header "" → "Gambar", min-width 920→1040. Membolehkan Zack set gambar betul ikut variant (CR roundneck vs CC collar oren). Tukar app.js (v546->v547) + sw pos-store-v107->v108.', d:'done' },
  { id:'p1_490', label:'Audit gambar variant tersilap + tag DISCONTINUED (Zaid: "check semua gambar variant, baju 10camp pakai gambar khemah Poon Saan"). PUNCA: fail generik product-images/products/httpscdnshopify...fil_1..N = gambar VD037 (VIDALIDO Poon Saan tent) tersilap ditampal ke 13 kumpulan lain (audit img dikongsi >1 parent group). Arahan Zaid: 13 kumpulan stok habis tak renew → tag discontinued, JANGAN buang data. (1) SQL non-destruktif: is_published=false + metadata.discontinued=true/at/reason untuk 16 SKU (15 + VD037; exclude shirt). products_master/stock_check/sales SEMUA kekal. (2) UI: pill "Discontinued" (icon archive) di pdbStatusPills + filter fStatus===discontinued (metadata.discontinued===true) + chip map. (3) Baju 10camp (10CAMP-SHIRT) BUKAN discontinued — set metadata.easystore_product_id=15889798; pending fetch gambar sebenar (live EasyStore API tak reachable sebab 10camp.com dah jadi tapak kita). Tukar index.html + app.js (v545->v546) + sw pos-store-v106->v107.', d:'done' },
  { id:'p1_489', label:'Import gambar produk dari EASYSTORE (Zaid: "guna cara sama macam import Shopee/TikTok, tapi kali ni sedut dari EasyStore"). Mirror p1_425. Backend baru netlify/functions/easystore-image-import.js — GET ?sku=X → cari products_master.metadata.easystore_product_id → LIVE EasyStore API GET /products/{id}.json (header EasyStore-Access-Token, base 10camp.com/api/3.0) → extract product.images[].src; FALLBACK metadata.easystore_images_backup (URL asal masa migrasi p1_318). Return senarai URL (READ-ONLY; client tambah, user Save). netlify.toml redirect /api/easystore-image-import. Client: butang hijau "Import EasyStore" di Media card PDP → importPdpMediaFromEasyStore → tambah ke pdpMediaUrls + gallery + toast (source api/backup). Cth OP005 = es_id 15668822, 13 gambar. NOTA: live API perlu env EASYSTORE_TOKEN; kalau takde, guna backup. Tukar index.html + app.js (v544->v545) + sw pos-store-v105->v106.', d:'done' },
@@ -12769,18 +12770,12 @@
  <button class="btn-success" onclick="window.savePdpData()" style="padding:8px 16px;">Save</button>
  </div>
 
- <!-- PDP Content Container -->
- <div style="max-width:800px; margin:20px auto; padding:0 20px; display:flex; flex-direction:column; gap:20px;">
- <input type="hidden" id="pdpOriginalSku">
+ <!-- PDP Content Container — p1_492 EasyStore-style 2-column layout -->
+ <div class="pdp-edit-grid" style="max-width:1180px; margin:20px auto; padding:0 20px;">
 
- <!-- Card: Status -->
- <div style="background:#fff; border-radius:8px; padding:15px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">
- <strong style="color:#202223;">Product status</strong>
- <select id="pdpStatus" class="login-input" style="width:auto; margin:0; padding:6px 12px;">
- <option value="true">Active</option>
- <option value="false">Draft</option>
- </select>
- </div>
+ <!-- ============ LEFT COLUMN (main) ============ -->
+ <div style="display:flex; flex-direction:column; gap:20px; min-width:0;">
+ <input type="hidden" id="pdpOriginalSku">
 
  <!-- Card: Media -->
  <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -12935,52 +12930,7 @@
  </div>
  </div>
 
- <!-- p1_228 Card: Organization (Collection / Tags / Notes) -->
- <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
- <strong style="color:#202223; display:block; margin-bottom:12px;">Organization</strong>
- <div style="margin-bottom:12px;">
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Collection</label>
- <input type="text" id="pdpCollection" class="login-input" list="pdpCollectionList" placeholder="e.g. Camping Essentials, Pet Outdoor">
- <datalist id="pdpCollectionList"></datalist>
- </div>
- <div style="margin-bottom:12px;">
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Tags (pisahkan dengan koma)</label>
- <input type="text" id="pdpTags" class="login-input" placeholder="hiking, 2-person, lightweight">
- </div>
- <div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Notes (internal — staff/Zack reference)</label>
- <textarea id="pdpNotes" class="login-input" rows="2" placeholder="e.g. Slow mover, last shipment Mar 2026..."></textarea>
- </div>
- </div>
-
- <!-- p1_263 Card: Marketplace Integration -->
- <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
- <strong style="color:#202223; display:block; margin-bottom:12px;">Marketplace Integration</strong>
- <p style="font-size:12px; color:#6d7175; margin:0 0 14px;">Satu Product ID / Item ID per produk &mdash; auto dikongsi SEMUA variant bila Save (ID peringkat variant diurus auto oleh sync). Badge integration jadi hijau dlm Product Master grid.</p>
- <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
- <div>
- <label style="display:flex; align-items:center; gap:5px; font-size:13px; color:#6d7175; margin-bottom:5px;"><span style="background:#EE4D2D; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">SP</span> Shopee Item ID</label>
- <input type="text" id="pdpShopeeItemId" class="login-input" placeholder="e.g. 24576123456" inputmode="numeric">
- </div>
- <div>
- <label style="display:flex; align-items:center; gap:5px; font-size:13px; color:#6d7175; margin-bottom:5px;"><span style="background:#000; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">TT</span> TikTok Product ID</label>
- <input type="text" id="pdpTiktokProductId" class="login-input" placeholder="e.g. 1729387654321...">
- </div>
- </div>
- <!-- p1_417 — direct buy links (editable). Customer landing buy buttons guna link ni kalau diisi. -->
- <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
- <div>
- <label style="display:flex; align-items:center; gap:5px; font-size:13px; color:#6d7175; margin-bottom:5px;"><span style="background:#EE4D2D; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">SP</span> Link Direct Shopee</label>
- <input type="url" id="pdpShopeeUrl" class="login-input" placeholder="https://shopee.com.my/product/...">
- </div>
- <div>
- <label style="display:flex; align-items:center; gap:5px; font-size:13px; color:#6d7175; margin-bottom:5px;"><span style="background:#000; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">TT</span> Link Direct TikTok</label>
- <input type="url" id="pdpTiktokUrl" class="login-input" placeholder="https://vt.tiktok.com/... (Zack isi nanti)">
- </div>
- </div>
- <p style="font-size:11px; color:#9CA3AF; margin:0 0 8px;">Link direct customer-landing. Kosong = fallback (Shopee cari ikut SKU / TikTok shop). Auto-isi Shopee bila Item ID ada.</p>
- <p id="pdpSyncStatus" style="font-size:11px; color:#9CA3AF; margin:0;"></p>
- </div>
+ <!-- p1_492 — Organization + Marketplace cards dipindah ke RIGHT sidebar (lihat bawah) -->
 
  <!-- p1_228 Card: SEO -->
  <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -13009,6 +12959,64 @@
  <button type="button" onclick="window.pdpDeleteProduct()" style="background:#d82c0d; color:#fff; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; font-weight:700; font-size:13px; white-space:nowrap;"><i data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px;"></i> Delete Product</button>
  </div>
  </div>
+
+ </div><!-- /LEFT column -->
+
+ <!-- ============ RIGHT COLUMN (sidebar) ============ -->
+ <div style="display:flex; flex-direction:column; gap:20px; min-width:0;">
+
+ <!-- Visibility (status) -->
+ <div style="background:#fff; border-radius:8px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+ <strong style="color:#202223; display:block; margin-bottom:10px;">Visibility</strong>
+ <select id="pdpStatus" class="login-input" style="width:100%; margin:0; padding:8px 12px;">
+ <option value="true">Active (Live)</option>
+ <option value="false">Draft (Unpublish)</option>
+ </select>
+ </div>
+
+ <!-- Online Channels (Marketplace Integration) — dipindah dari LEFT -->
+ <div style="background:#fff; border-radius:8px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+ <strong style="color:#202223; display:block; margin-bottom:8px;">Online Channels</strong>
+ <p style="font-size:11.5px; color:#6d7175; margin:0 0 12px;">Satu ID per produk — auto kongsi semua variant bila Save. Badge jadi hijau dlm grid.</p>
+ <div style="margin-bottom:10px;">
+ <label style="display:flex; align-items:center; gap:5px; font-size:12.5px; color:#6d7175; margin-bottom:5px;"><span style="background:#EE4D2D; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">SP</span> Shopee Item ID</label>
+ <input type="text" id="pdpShopeeItemId" class="login-input" placeholder="e.g. 24576123456" inputmode="numeric">
+ </div>
+ <div style="margin-bottom:10px;">
+ <label style="display:flex; align-items:center; gap:5px; font-size:12.5px; color:#6d7175; margin-bottom:5px;"><span style="background:#000; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">TT</span> TikTok Product ID</label>
+ <input type="text" id="pdpTiktokProductId" class="login-input" placeholder="e.g. 1729387654321...">
+ </div>
+ <div style="margin-bottom:10px;">
+ <label style="display:flex; align-items:center; gap:5px; font-size:12.5px; color:#6d7175; margin-bottom:5px;"><span style="background:#EE4D2D; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">SP</span> Link Direct Shopee</label>
+ <input type="url" id="pdpShopeeUrl" class="login-input" placeholder="https://shopee.com.my/product/...">
+ </div>
+ <div style="margin-bottom:10px;">
+ <label style="display:flex; align-items:center; gap:5px; font-size:12.5px; color:#6d7175; margin-bottom:5px;"><span style="background:#000; color:#fff; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800;">TT</span> Link Direct TikTok</label>
+ <input type="url" id="pdpTiktokUrl" class="login-input" placeholder="https://vt.tiktok.com/... (Zack isi nanti)">
+ </div>
+ <p style="font-size:11px; color:#9CA3AF; margin:0 0 6px;">Kosong = fallback. Auto-isi Shopee bila Item ID ada.</p>
+ <p id="pdpSyncStatus" style="font-size:11px; color:#9CA3AF; margin:0;"></p>
+ </div>
+
+ <!-- Collections / Organization — dipindah dari LEFT -->
+ <div style="background:#fff; border-radius:8px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+ <strong style="color:#202223; display:block; margin-bottom:12px;">Collections &amp; Notes</strong>
+ <div style="margin-bottom:12px;">
+ <label style="display:block; font-size:12.5px; color:#6d7175; margin-bottom:5px;">Collection</label>
+ <input type="text" id="pdpCollection" class="login-input" list="pdpCollectionList" placeholder="e.g. Camping Essentials">
+ <datalist id="pdpCollectionList"></datalist>
+ </div>
+ <div style="margin-bottom:12px;">
+ <label style="display:block; font-size:12.5px; color:#6d7175; margin-bottom:5px;">Tags (pisah koma)</label>
+ <input type="text" id="pdpTags" class="login-input" placeholder="hiking, lightweight">
+ </div>
+ <div>
+ <label style="display:block; font-size:12.5px; color:#6d7175; margin-bottom:5px;">Notes (internal)</label>
+ <textarea id="pdpNotes" class="login-input" rows="3" placeholder="e.g. Slow mover..."></textarea>
+ </div>
+ </div>
+
+ </div><!-- /RIGHT column -->
 
  </div>
 </div>

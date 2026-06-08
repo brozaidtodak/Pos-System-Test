@@ -3845,3 +3845,7 @@ a:focus-visible {
 .soft-note--inline { background: none; border: none; padding: 2px 0; margin: 5px 0 0; font-size: 10.5px; }
 /* sedikit lebih tegas (caution sebenar) tapi masih muted */
 .soft-note--warn { color: #9A6B4F; background: #FBF6F1; border-color: #EFE0D4; }
+
+/* p1_492 — Product editor (pdpModal) EasyStore-style 2-column layout */
+.pdp-edit-grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 980px) { .pdp-edit-grid { grid-template-columns: 1fr; } }
