@@ -23447,10 +23447,11 @@ window.__aoViewOrder = function(saleId) {
  if(isImg) return `<div style="margin-bottom:14px;"><div style="font-size:12px; color:#6B7280; margin-bottom:6px;">Bukti bayar <span style="color:#9CA3AF;">(tekan gambar untuk zoom)</span>:</div><img src="${esc(proof)}" loading="lazy" onclick="window.__ppOpenImg && window.__ppOpenImg(this.src)" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" style="max-width:170px; max-height:170px; object-fit:contain; border-radius:8px; border:1px solid #E5E7EB; cursor:zoom-in; display:block;"><a href="${esc(proof)}" target="_blank" rel="noopener" style="display:none; margin-top:6px; align-items:center; gap:4px; color:var(--primary); font-weight:700; font-size:11.5px; text-decoration:none;"><i data-lucide="external-link" style="width:11px;height:11px;"></i> Buka tab baru</a></div>`;
  return `<div style="margin-bottom:14px;"><span style="font-size:12px; color:#6B7280;">Bukti bayar: </span><a href="${esc(proof)}" target="_blank" rel="noopener" style="color:var(--primary); font-weight:700; font-size:12px; text-decoration:none;"><i data-lucide="external-link" style="width:12px;height:12px;vertical-align:-1px;"></i> Buka</a></div>`;
  })()) : ''}
- <div style="display:flex; gap:8px;">
- <button onclick="window.__aoPrintPackingSlip && window.__aoPrintPackingSlip(${s.id})" style="flex:1.4; background:#CD7C32; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak Packing Slip</button>
- <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; background:#fff8f0; border:1px solid #fdba74; color:#7c4a1a; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit</button>
- <button onclick="document.getElementById('aoViewOverlay').remove()" style="flex:1; background:#101010; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;">Tutup</button>
+ <div style="display:flex; gap:8px; flex-wrap:wrap;">
+ <button onclick="window.__aoPrintPackingSlip && window.__aoPrintPackingSlip(${s.id})" style="flex:1.4; min-width:150px; background:#CD7C32; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak Packing Slip</button>
+ <button id="aoEmailReceiptBtn" onclick="window.__aoSendReceiptEmail(${s.id})" style="flex:1.2; min-width:150px; background:#E0E7FF; border:1px solid #A5B4FC; color:#3730A3; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="mail" style="width:13px;height:13px;vertical-align:-2px;"></i> Hantar Resit Email</button>
+ <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; min-width:90px; background:#fff8f0; border:1px solid #fdba74; color:#7c4a1a; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit</button>
+ <button onclick="document.getElementById('aoViewOverlay').remove()" style="flex:1; min-width:80px; background:#101010; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;">Tutup</button>
  </div>
  </div>
  </div>
@@ -23459,6 +23460,41 @@ window.__aoViewOrder = function(saleId) {
  tmp.innerHTML = html;
  document.body.appendChild(tmp.firstChild);
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+// p1_475 — Hantar resit email ke pelanggan dari panel order detail All Orders.
+// Guna /api/send-receipt-email (Resend, dari admin@10camp.com). Server baca
+// sales_history.customer_email → kalau order takde email, prompt + simpan dulu.
+window.__aoSendReceiptEmail = async function(saleId) {
+ if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return;
+ const s = salesHistory.find(x => x.id === saleId);
+ if(!s) { if(typeof showToast === 'function') showToast('Order tak jumpa dalam ingatan — cuba Refresh.', 'warn'); return; }
+ const md = s.metadata || {};
+ let email = (s.customer_email || md.buyer_email || '').trim();
+ if(!email) {
+  email = (prompt('Order #' + saleId + ' takde email pelanggan.\nMasukkan email untuk hantar resit:', '') || '').trim();
+  if(!email) return;
+ }
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if(typeof showToast === 'function') showToast('Email tak sah: ' + email, 'warn'); return; }
+ if(!confirm('Hantar resit Order #' + saleId + ' ke:\n' + email + '\n\n(dari admin@10camp.com)')) return;
+ const btn = document.getElementById('aoEmailReceiptBtn');
+ const orig = btn ? btn.innerHTML : '';
+ if(btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;vertical-align:-2px;"></i> Menghantar…'; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
+ try {
+  // Kalau email beza dari DB (dari prompt / buyer_email), simpan dulu — server baca dari DB
+  if((s.customer_email || '').trim().toLowerCase() !== email.toLowerCase() && typeof db !== 'undefined' && db) {
+   try { await db.from('sales_history').update({ customer_email: email }).eq('id', saleId); s.customer_email = email; } catch(e) { console.warn('simpan email gagal:', e.message); }
+  }
+  const res = await fetch('/api/send-receipt-email', {
+   method: 'POST', headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({ sale_id: saleId, force: true })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(data.success) { if(typeof showToast === 'function') showToast('Resit dihantar ke ' + (data.to || email) + '.', 'success'); }
+  else if(data.skipped) { if(typeof showToast === 'function') showToast('Tak jadi hantar: ' + (data.reason || 'skipped') + (/RESEND_API_KEY/.test(data.reason||'') ? ' — env Resend belum set di Netlify.' : ''), 'warn'); }
+  else { if(typeof showToast === 'function') showToast('Gagal hantar: ' + (data.error || data.reason || res.status), 'error'); }
+ } catch(e) { if(typeof showToast === 'function') showToast('Network error: ' + e.message, 'error'); }
+ if(btn) { btn.disabled = false; btn.innerHTML = orig; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
 };
 
 // p1_320 — set fulfilment state (packed / shipped+tracking / completed). Simpan ke metadata.fulfilment + update status.
