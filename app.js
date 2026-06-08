@@ -8243,6 +8243,11 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
  const thumb = i.image_url
   ? `<img src="${esc(i.image_url)}" alt="" style="width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid #E5E7EB; flex-shrink:0;" onerror="this.style.display='none'">`
   : `<div style="width:60px; height:60px; border-radius:8px; background:#F3F4F6; border:1px solid #E5E7EB; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i data-lucide="image-off" style="width:20px;height:20px; color:#9CA3AF;"></i></div>`;
+ // p1_464 — barcode dlm popup: ambil dari products_master (barcode/erp_barcode), fallback SKU
+ // (label printer 10 CAMP encode SKU jadi CODE128 — sama supaya padan sticker fizikal)
+ let __prod = null;
+ try { __prod = (typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts.find(p => p.sku === i.sku) : null; } catch(e){}
+ const barcodeVal = String((__prod && (__prod.barcode || __prod.erp_barcode)) || i.sku || '').trim();
  const ov = document.createElement('div');
  ov.id = 'scsCountPopupOverlay';
  ov.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:9990; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(2px);';
@@ -8256,6 +8261,7 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
     ${i.location_bin ? `<div style="margin-top:5px;"><span style="background:#FEF3C7; color:#92400E; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace;"><i data-lucide="map-pin" style="width:9px;height:9px; vertical-align:-1px;"></i> ${esc(i.location_bin)}</span></div>` : ''}
    </div>
   </div>
+  ${barcodeVal ? `<div style="padding:12px 18px 4px; text-align:center; border-bottom:1px solid #F3F4F6;"><svg id="scsBarcodeSvg-${itemId}" style="max-width:100%; height:auto;"></svg></div>` : ''}
   <div style="padding:16px 18px;">
    <label style="display:block; font-size:11.5px; font-weight:700; color:#374151; margin-bottom:6px;">Kuantiti Dikira (fizikal)</label>
    <input type="number" min="0" inputmode="numeric" id="scsQtyInput-${itemId}" value="${isChecked ? i.counted_qty : ''}" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.__scsPopupSave(${itemId}, ${sessionId}, '${skuEsc}', ${sysQtyArg});}" style="width:100%; padding:11px 12px; border:1.5px solid var(--border-color); border-radius:9px; font-size:20px; font-weight:700; text-align:center; color:#111;">
@@ -8271,6 +8277,13 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
  </div>`;
  document.body.appendChild(ov);
  if(window.lucide && lucide.createIcons) lucide.createIcons();
+ // p1_464 — render barcode CODE128 (sama format label printer) supaya staff boleh padan sticker
+ try {
+ if(barcodeVal && typeof JsBarcode !== 'undefined') {
+ const bsvg = document.getElementById('scsBarcodeSvg-' + itemId);
+ if(bsvg) JsBarcode(bsvg, barcodeVal, { format:'CODE128', width:1.6, height:38, displayValue:true, fontSize:12, margin:4 });
+ }
+ } catch(e) { const bsvg = document.getElementById('scsBarcodeSvg-' + itemId); if(bsvg && bsvg.parentElement) bsvg.parentElement.style.display = 'none'; }
  const qf = document.getElementById('scsQtyInput-' + itemId);
  if(qf) { qf.focus(); qf.select(); }
 };
