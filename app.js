@@ -8125,6 +8125,12 @@ window.__scsToggleSkuList = async function(sessionId) {
  // p1_459 — cache items so the blind-count popup can read display fields by id
  window.__scsItemsCache = window.__scsItemsCache || {};
  window.__scsItemsCache[sessionId] = items;
+ // p1_461 — reveal system qty + variance ONCE the session leaves blind-count (active).
+ // Active = blind count (Zack/staff kira tanpa nampak sistem). Review/forwarded/approved
+ // = reviewer view: tunjuk Sistem + Selisih + Catatan supaya Zack boleh verify.
+ let __sessStatus = 'active';
+ try { const { data: ss } = await db.from('stock_check_sessions').select('status').eq('id', sessionId).single(); if(ss && ss.status) __sessStatus = ss.status; } catch(e){}
+ const reveal = __sessStatus !== 'active';
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
  const checked = items.filter(i => i.counted_qty != null);
  const pending = items.filter(i => i.counted_qty == null);
@@ -8150,16 +8156,24 @@ window.__scsToggleSkuList = async function(sessionId) {
  : `<div style="width:40px; height:40px; border-radius:4px; background:#F3F4F6; border:1px solid #E5E7EB; display:flex; align-items:center; justify-content:center;"><i data-lucide="image-off" style="width:14px;height:14px; color:#9CA3AF;"></i></div>`;
  const dikiraCell = isChecked
  ? `<span style="font-weight:700; color:#111;">${i.counted_qty}</span>`
- : `<span style="display:inline-flex; align-items:center; gap:3px; color:var(--primary); font-weight:700; font-size:11px;"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Kira</span>`;
- const catatanCell = isChecked
- ? (i.note ? `<span style="display:inline-block; padding:3px 6px; background:#FEF9C3; border-left:2px solid #CA8A04; color:#713F12; font-style:italic; line-height:1.4;"><i data-lucide="message-square" style="width:9px;height:9px; vertical-align:-1px; margin-right:3px;"></i>${escHtml(i.note)}</span>` : '<span style="color:#D1D5DB;">—</span>')
+ : (reveal ? '<span style="color:#D1D5DB;">—</span>' : `<span style="display:inline-flex; align-items:center; gap:3px; color:var(--primary); font-weight:700; font-size:11px;"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Kira</span>`);
+ const catatanCell = i.note
+ ? `<span style="display:inline-block; padding:3px 6px; background:#FEF9C3; border-left:2px solid #CA8A04; color:#713F12; font-style:italic; line-height:1.4;"><i data-lucide="message-square" style="width:9px;height:9px; vertical-align:-1px; margin-right:3px;"></i>${escHtml(i.note)}</span>`
  : '<span style="color:#D1D5DB;">—</span>';
- return `<tr onclick="window.__scsOpenCountPopup(${i.id}, ${sessionId})" title="Tekan untuk isi kiraan fizikal" style="border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#FFF7ED'" onmouseout="this.style.background=''">
+ // p1_461 — reviewer view (reveal): tunjuk Sistem + Selisih, baris TAK clickable (kiraan dah siap)
+ const sistemCell = reveal ? `<td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#6B7280; font-weight:700;">${i.system_qty != null ? i.system_qty : '-'}</td>` : '';
+ const selisihCell = reveal ? `<td style="padding:8px 10px; text-align:right; font-size:11.5px; font-weight:700; color:${variance == null ? '#D1D5DB' : (variance === 0 ? '#065F46' : (variance > 0 ? '#92400E' : '#991B1B'))};">${variance == null ? '—' : (variance > 0 ? '+' + variance : variance)}</td>` : '';
+ const trOpen = reveal
+ ? `<tr style="border-bottom:1px solid #F3F4F6;">`
+ : `<tr onclick="window.__scsOpenCountPopup(${i.id}, ${sessionId})" title="Tekan untuk isi kiraan fizikal" style="border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#FFF7ED'" onmouseout="this.style.background=''">`;
+ return `${trOpen}
  <td style="padding:6px 8px; width:48px;">${thumbHtml}</td>
  <td style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(i.sku || '-')}</td>
  <td style="padding:8px 10px; font-size:11.5px; color:#374151;">${escHtml(productName.slice(0, 60))}</td>
  <td style="padding:8px 10px; font-size:11px;">${i.location_bin ? `<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(i.location_bin)}</span>` : '<span style="color:#D1D5DB;">—</span>'}</td>
+ ${sistemCell}
  <td style="padding:8px 10px; text-align:right; font-size:11.5px;">${dikiraCell}</td>
+ ${selisihCell}
  <td style="padding:8px 10px; font-size:11px;">${catatanCell}</td>
  <td style="padding:8px 10px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:${badgeBg}; color:${badgeFg}; font-size:10px; font-weight:700;"><i data-lucide="${badgeIcon}" style="width:10px;height:10px;"></i> ${badgeTxt}</span></td>
  <td style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="event.stopPropagation(); window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="event.stopPropagation(); window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
@@ -8181,7 +8195,9 @@ window.__scsToggleSkuList = async function(sessionId) {
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">SKU</th>
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Nama</th>
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Lokasi</th>
+ ${reveal ? '<th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Sistem</th>' : ''}
  <th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Dikira</th>
+ ${reveal ? '<th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Selisih</th>' : ''}
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Catatan</th>
  <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Status</th>
  <th style="padding:8px 6px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Aksi</th>
