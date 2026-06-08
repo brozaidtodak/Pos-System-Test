@@ -60,6 +60,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/easystore-image-import"
+  to = "/.netlify/functions/easystore-image-import"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/marketplace-image-import-all"
   to = "/.netlify/functions/marketplace-image-import-all"
   status = 200

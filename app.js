@@ -20270,6 +20270,35 @@ window.importPdpMediaFromMarketplace = async function() {
  if(btn){ btn.disabled = false; btn.innerHTML = orig; }
 };
 
+// p1_489 — import gambar produk dari EASYSTORE (guna easystore_product_id; fallback
+// metadata.easystore_images_backup dari migrasi p1_318). Sama cara macam marketplace
+// import — return senarai URL, client tambah ke gallery, user tekan Save. Read-only.
+window.importPdpMediaFromEasyStore = async function() {
+ const sku = (document.getElementById('pdpOriginalSku')?.value || '').trim();
+ if(!sku) { showToast('SKU tak dijumpai.', 'warning'); return; }
+ const btn = document.getElementById('pdpImportEsBtn');
+ const orig = btn ? btn.innerHTML : '';
+ if(btn){ btn.disabled = true; btn.innerHTML = 'Mengimport...'; }
+ try {
+ const r = await fetch('/api/easystore-image-import?sku=' + encodeURIComponent(sku));
+ const j = await r.json();
+ if(!j.ok || !Array.isArray(j.images) || !j.images.length) {
+ showToast(j.note || j.error || 'Tiada gambar dijumpai dari EasyStore untuk produk ni.', 'warning');
+ } else {
+ const el = document.getElementById('pdpMediaUrls');
+ let urls = el.value ? el.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+ const before = urls.length;
+ for(const u of j.images){ if(!urls.includes(u)) urls.push(u); }
+ el.value = urls.join(',');
+ renderPdpMediaGallery(urls);
+ const added = urls.length - before;
+ const src = j.source === 'backup' ? ' (dari backup migrasi)' : '';
+ showToast(`${added} gambar baru diimport dari EasyStore${src} (jumpa ${j.count}). Tekan Save untuk simpan.`, 'success');
+ }
+ } catch(e){ console.error('import gambar easystore:', e); showToast('Ralat import: ' + e.message, 'error'); }
+ if(btn){ btn.disabled = false; btn.innerHTML = orig; }
+};
+
 // p1_424 — upload gambar produk terus ke Supabase storage (bucket product-images, public).
 // Sokong JPG/PNG/WebP/AVIF/GIF. URL ditambah ke pdpMediaUrls → kena tekan Save untuk simpan.
 window.uploadPdpMedia = async function(input) {
