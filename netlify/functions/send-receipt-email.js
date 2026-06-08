@@ -60,22 +60,53 @@ async function sb(path, opts = {}) {
     return res.json().catch(() => null);
 }
 
-function buildEmailHtml(sale) {
+// p1_477 — ambil gambar produk (products_master.images[0]) untuk SKU dalam order.
+async function fetchItemImages(sale) {
+    try {
+        const items = Array.isArray(sale.items) ? sale.items : [];
+        const skus = [...new Set(items.map(it => (it && it.sku ? String(it.sku).trim() : '')).filter(Boolean))];
+        if(!skus.length) return {};
+        const inList = skus.map(s => encodeURIComponent('"' + s.replace(/"/g, '') + '"')).join(',');
+        const rows = await sb(`/products_master?select=sku,images&sku=in.(${inList})`);
+        const map = {};
+        (rows || []).forEach(r => {
+            let img = '';
+            if(Array.isArray(r.images)) img = r.images[0] || '';
+            else if(typeof r.images === 'string') { try { const a = JSON.parse(r.images); img = Array.isArray(a) ? (a[0] || '') : r.images; } catch(_) { img = r.images; } }
+            if(img) map[r.sku] = img;
+        });
+        return map;
+    } catch(e) { return {}; }
+}
+
+function buildEmailHtml(sale, imgMap) {
+    imgMap = imgMap || {};
     const items = Array.isArray(sale.items) ? sale.items : [];
-    const subtotal = items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
+    // p1_477 — qty: POS Cashier guna `quantity`, marketplace guna `qty`
+    const qtyOf = (it) => Number(it.quantity != null ? it.quantity : it.qty) || 0;
+    const subtotal = items.reduce((s, it) => s + (Number(it.price) || 0) * qtyOf(it), 0);
     const total = Number(sale.total_amount || sale.total || 0);
     const discount = Math.max(0, subtotal - total);
     const invId = `INV-${sale.id}`;
 
-    const itemRows = items.map(it => `
+    // p1_477 — gambar produk untuk rujukan customer
+    const itemRows = items.map(it => {
+        const img = imgMap[it.sku] || '';
+        const q = qtyOf(it);
+        const imgCell = img
+            ? `<td style="padding:8px 10px; border-bottom:1px solid #E5E7EB; width:56px;"><img src="${escHtml(img)}" width="46" height="46" alt="" style="width:46px; height:46px; object-fit:cover; border-radius:6px; border:1px solid #E5E7EB; display:block;"></td>`
+            : `<td style="padding:8px 10px; border-bottom:1px solid #E5E7EB; width:56px;"></td>`;
+        return `
         <tr>
+            ${imgCell}
             <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; font-family:'SF Mono',Menlo,monospace; font-size:12px; color:#6B7280;">${escHtml(it.sku || '-')}</td>
             <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; font-size:13.5px; color:#111;">${escHtml(it.name || '-')}</td>
-            <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; text-align:center; font-size:13px; color:#374151;">${it.quantity || 0}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; text-align:center; font-size:13px; color:#374151;">${q}</td>
             <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; text-align:right; font-size:13px; color:#374151;">${fmtRM(it.price)}</td>
-            <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; text-align:right; font-size:13px; font-weight:700; color:#111;">${fmtRM((Number(it.price)||0) * (Number(it.quantity)||0))}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #E5E7EB; text-align:right; font-size:13px; font-weight:700; color:#111;">${fmtRM((Number(it.price)||0) * q)}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const channelLabel = sale.channel || 'POS Cashier';
     const pmLabel = sale.payment_method || 'Cash';
@@ -120,6 +151,7 @@ function buildEmailHtml(sale) {
                     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E5E7EB; border-radius:8px; overflow:hidden;">
                         <thead style="background:#F9FAFB;">
                             <tr>
+                                <th style="padding:10px 12px; text-align:left; font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;"></th>
                                 <th style="padding:10px 12px; text-align:left; font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">SKU</th>
                                 <th style="padding:10px 12px; text-align:left; font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Item</th>
                                 <th style="padding:10px 12px; text-align:center; font-size:11px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Qty</th>
@@ -173,39 +205,42 @@ exports.handler = async (event) => {
     if(event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
     if(event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: JSON.stringify({ error: 'POST only' }) };
 
-    // Env var sanity
-    if(!RESEND_KEY) return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'RESEND_API_KEY tak set dalam Netlify env' }) };
-    if(!SERVICE_KEY) return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'SUPABASE_SERVICE_KEY tak set' }) };
-
     let body;
     try { body = JSON.parse(event.body || '{}'); }
     catch(e) { return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
     const saleId = parseInt(body.sale_id, 10);
     const force = !!body.force;
+    const preview = !!body.preview;   // p1_477 — pulang HTML tanpa hantar (untuk preview)
     if(!saleId) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'sale_id required' }) };
+
+    // Env var sanity. Preview cuma perlu SERVICE_KEY (baca order); hantar sebenar perlu RESEND_KEY.
+    if(!SERVICE_KEY) return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'SUPABASE_SERVICE_KEY tak set' }) };
+    if(!preview && !RESEND_KEY) return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'RESEND_API_KEY tak set dalam Netlify env' }) };
 
     try {
         const rows = await sb(`/sales_history?id=eq.${saleId}&select=*`);
         const sale = rows && rows[0];
         if(!sale) return { statusCode: 404, headers: cors, body: JSON.stringify({ error: 'sale not found' }) };
 
+        // p1_477 — gambar produk untuk SKU dalam order (rujukan customer)
+        const imgMap = await fetchItemImages(sale);
+        const html = buildEmailHtml(sale, imgMap);
+        const subject = `Resit 10 CAMP — INV-${sale.id} (${(Number(sale.total_amount || sale.total) || 0).toFixed(2)} RM)`;
         const email = (sale.customer_email || '').trim();
-        if(!email) {
-            // Mark skipped untuk transparency
-            await sb(`/sales_history?id=eq.${saleId}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ email_status: 'skipped_no_email' })
-            });
-            return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'No customer_email' }) };
+
+        // p1_477 — PREVIEW: pulang HTML sahaja, tak hantar, tak ubah DB
+        if(preview) {
+            return { statusCode: 200, headers: cors, body: JSON.stringify({ preview: true, html, subject, to: email }) };
         }
 
+        if(!email) {
+            await sb(`/sales_history?id=eq.${saleId}`, { method: 'PATCH', body: JSON.stringify({ email_status: 'skipped_no_email' }) });
+            return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'No customer_email' }) };
+        }
         if(sale.email_sent_at && !force) {
             return { statusCode: 200, headers: cors, body: JSON.stringify({ skipped: true, reason: 'Already sent', sent_at: sale.email_sent_at }) };
         }
-
-        const html = buildEmailHtml(sale);
-        const subject = `Resit 10 CAMP — INV-${sale.id} (${(Number(sale.total_amount || sale.total) || 0).toFixed(2)} RM)`;
 
         const resendRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',

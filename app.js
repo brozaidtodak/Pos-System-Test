@@ -23476,9 +23476,11 @@ window.__aoViewOrder = function(saleId) {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
-// p1_475 — Hantar resit email ke pelanggan dari panel order detail All Orders.
-// Guna /api/send-receipt-email (Resend, dari admin@10camp.com). Server baca
-// sales_history.customer_email → kalau order takde email, prompt + simpan dulu.
+// p1_475/p1_477 — Hantar resit email ke pelanggan dari panel order detail All Orders.
+// Guna /api/send-receipt-email (Resend, dari admin@10camp.com). Flow: resolve email →
+// PREVIEW (server pulang HTML, tak hantar) → staff semak → tekan Hantar Sekarang.
+window.__aoEmailPreviewCtx = window.__aoEmailPreviewCtx || null;
+
 window.__aoSendReceiptEmail = async function(saleId) {
  if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) return;
  const s = salesHistory.find(x => x.id === saleId);
@@ -23490,15 +23492,67 @@ window.__aoSendReceiptEmail = async function(saleId) {
   if(!email) return;
  }
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if(typeof showToast === 'function') showToast('Email tak sah: ' + email, 'warn'); return; }
- if(!confirm('Hantar resit Order #' + saleId + ' ke:\n' + email + '\n\n(dari admin@10camp.com)')) return;
  const btn = document.getElementById('aoEmailReceiptBtn');
  const orig = btn ? btn.innerHTML : '';
- if(btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;vertical-align:-2px;"></i> Menghantar…'; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
+ if(btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;vertical-align:-2px;"></i> Menyediakan preview…'; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
  try {
-  // Kalau email beza dari DB (dari prompt / buyer_email), simpan dulu — server baca dari DB
+  // Simpan email kalau beza (server baca dari DB utk preview + hantar)
   if((s.customer_email || '').trim().toLowerCase() !== email.toLowerCase() && typeof db !== 'undefined' && db) {
    try { await db.from('sales_history').update({ customer_email: email }).eq('id', saleId); s.customer_email = email; } catch(e) { console.warn('simpan email gagal:', e.message); }
   }
+  const res = await fetch('/api/send-receipt-email', {
+   method: 'POST', headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({ sale_id: saleId, preview: true })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(data.preview && data.html) { window.__aoShowEmailPreview(saleId, email, data.html); }
+  else if(data.skipped) { if(typeof showToast === 'function') showToast('Tak boleh preview: ' + (data.reason || 'skipped'), 'warn'); }
+  else { if(typeof showToast === 'function') showToast('Gagal sediakan preview: ' + (data.error || data.reason || res.status), 'error'); }
+ } catch(e) { if(typeof showToast === 'function') showToast('Network error: ' + e.message, 'error'); }
+ if(btn) { btn.disabled = false; btn.innerHTML = orig; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
+};
+
+// p1_477 — modal preview email sebelum hantar betul
+window.__aoShowEmailPreview = function(saleId, email, html) {
+ window.__aoEmailPreviewCtx = { saleId, email };
+ const esc = (v) => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ const existing = document.getElementById('aoEmailPreviewOverlay'); if(existing) existing.remove();
+ const overlay = document.createElement('div');
+ overlay.id = 'aoEmailPreviewOverlay';
+ overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:4200; display:flex; align-items:center; justify-content:center; padding:20px;';
+ overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+ overlay.innerHTML = `
+  <div style="background:#fff; max-width:640px; width:100%; max-height:92vh; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.35);">
+   <div style="padding:16px 20px; border-bottom:1px solid #F0F0F0; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+    <div>
+     <div style="font-size:16px; font-weight:800; color:#101010;"><i data-lucide="eye" style="width:16px;height:16px;vertical-align:-3px;"></i> Preview Resit Email</div>
+     <div style="font-size:12px; color:#6B7280; margin-top:3px;">Akan dihantar ke <strong>${esc(email)}</strong> &middot; dari admin@10camp.com</div>
+    </div>
+    <button onclick="document.getElementById('aoEmailPreviewOverlay').remove()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; line-height:1;">×</button>
+   </div>
+   <div style="flex:1; overflow:auto; background:#F3F4F6;">
+    <iframe id="aoEmailPreviewFrame" title="Preview resit" style="width:100%; height:60vh; border:none; background:#F9FAFB; display:block;"></iframe>
+   </div>
+   <div style="padding:14px 20px; border-top:1px solid #F0F0F0; display:flex; gap:10px;">
+    <button onclick="document.getElementById('aoEmailPreviewOverlay').remove()" style="flex:1; background:#fff; border:1px solid #E5E7EB; color:#374151; padding:11px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:700;">Batal</button>
+    <button id="aoEmailPreviewSendBtn" onclick="window.__aoEmailSendNow()" style="flex:2; background:#CD7C32; border:none; color:#fff; padding:11px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:800;"><i data-lucide="send" style="width:14px;height:14px;vertical-align:-2px;"></i> Hantar Sekarang</button>
+   </div>
+  </div>`;
+ document.body.appendChild(overlay);
+ const frame = document.getElementById('aoEmailPreviewFrame');
+ if(frame) { try { frame.srcdoc = html; } catch(e) { try { const d = frame.contentWindow.document; d.open(); d.write(html); d.close(); } catch(_){} } }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+// p1_477 — hantar betul selepas preview disahkan
+window.__aoEmailSendNow = async function() {
+ const ctx = window.__aoEmailPreviewCtx || {};
+ const saleId = ctx.saleId, email = ctx.email;
+ if(!saleId) return;
+ const sendBtn = document.getElementById('aoEmailPreviewSendBtn');
+ const orig = sendBtn ? sendBtn.innerHTML : '';
+ if(sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px;vertical-align:-2px;"></i> Menghantar…'; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
+ try {
   const res = await fetch('/api/send-receipt-email', {
    method: 'POST', headers: { 'Content-Type': 'application/json' },
    body: JSON.stringify({ sale_id: saleId, force: true })
@@ -23506,9 +23560,9 @@ window.__aoSendReceiptEmail = async function(saleId) {
   const data = await res.json().catch(() => ({}));
   if(data.success) {
    if(typeof showToast === 'function') showToast('Resit dihantar ke ' + (data.to || email) + '.', 'success');
-   // Update rekod tempatan + refresh popup supaya badge "dihantar" terus muncul
-   s.email_status = 'sent';
-   s.email_sent_at = new Date().toISOString();
+   const s = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory.find(x => x.id === saleId) : null;
+   if(s) { s.email_status = 'sent'; s.email_sent_at = new Date().toISOString(); }
+   const pv = document.getElementById('aoEmailPreviewOverlay'); if(pv) pv.remove();
    const ov = document.getElementById('aoViewOverlay');
    if(ov) { ov.remove(); if(typeof window.__aoViewOrder === 'function') window.__aoViewOrder(saleId); }
    return;
@@ -23516,7 +23570,7 @@ window.__aoSendReceiptEmail = async function(saleId) {
   else if(data.skipped) { if(typeof showToast === 'function') showToast('Tak jadi hantar: ' + (data.reason || 'skipped') + (/RESEND_API_KEY/.test(data.reason||'') ? ' — env Resend belum set di Netlify.' : ''), 'warn'); }
   else { if(typeof showToast === 'function') showToast('Gagal hantar: ' + (data.error || data.reason || res.status), 'error'); }
  } catch(e) { if(typeof showToast === 'function') showToast('Network error: ' + e.message, 'error'); }
- if(btn) { btn.disabled = false; btn.innerHTML = orig; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
+ if(sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = orig; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
 };
 
 // p1_320 — set fulfilment state (packed / shipped+tracking / completed). Simpan ke metadata.fulfilment + update status.

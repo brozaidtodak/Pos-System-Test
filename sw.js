@@ -3,7 +3,7 @@
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
-    caches.open('pos-store-v93').then((cache) => cache.addAll([
+    caches.open('pos-store-v94').then((cache) => cache.addAll([
       './index.html',
       './style.css',
       './app.js'
@@ -15,7 +15,7 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(keyList.map((key) => {
-        if (key !== 'pos-store-v93') {
+        if (key !== 'pos-store-v94') {
           return caches.delete(key);
         }
       }));
