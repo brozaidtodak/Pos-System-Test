@@ -9087,7 +9087,9 @@ window.__scsToggleSkuList = async function(sessionId) {
  <td style="padding:8px 10px; font-size:11px;">${isChecked && i.counted_by_name ? `<div style="display:flex; align-items:center; gap:4px; color:#374151;"><i data-lucide="user" style="width:11px;height:11px; color:#9CA3AF;"></i> ${escHtml(i.counted_by_name)} <span style="color:#9CA3AF; font-size:9px;">(kira)</span></div>` : '<span style="color:#D1D5DB;">—</span>'}${i.counted_by_2_name ? `<div style="display:flex; align-items:center; gap:4px; margin-top:3px; color:#4338CA; font-size:10px;"><i data-lucide="shield-check" style="width:10px;height:10px; flex-shrink:0;"></i> ${escHtml(i.counted_by_2_name)} <span style="color:#9CA3AF; font-size:9px;">(semak 2)</span></div>` : ''}</td>
  <td style="padding:8px 10px; text-align:center;">${(i.counted_qty_2 != null)
   ? `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:800; ${Number(i.counted_qty_2)===Number(i.counted_qty) ? 'background:#D1FAE5; color:#065F46;' : 'background:#FEE2E2; color:#991B1B;'}"><i data-lucide="${Number(i.counted_qty_2)===Number(i.counted_qty)?'shield-check':'alert-triangle'}" style="width:10px;height:10px;"></i> ${i.counted_qty_2}${Number(i.counted_qty_2)===Number(i.counted_qty)?'':' ≠'}</span>${i.counted_by_2_name ? `<div style="font-size:9px; color:#9CA3AF; margin-top:2px;">${escHtml(i.counted_by_2_name)}</div>` : ''}`
-  : (isChecked ? `<span style="font-size:9.5px; color:#92400E; background:#FEF3C7; padding:2px 7px; border-radius:999px; font-weight:700;">Perlu semak</span>` : '<span style="color:#D1D5DB;">—</span>')}</td>
+  : (isChecked ? (variance === 0
+    ? `<span style="display:inline-flex; align-items:center; gap:3px; font-size:9.5px; color:#065F46; background:#ECFDF5; padding:2px 7px; border-radius:999px; font-weight:700;"><i data-lucide="check" style="width:9px;height:9px;"></i> Tak perlu</span>`
+    : `<span style="font-size:9.5px; color:#92400E; background:#FEF3C7; padding:2px 7px; border-radius:999px; font-weight:700;">Perlu semak</span>`) : '<span style="color:#D1D5DB;">—</span>')}</td>
  <td style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="event.stopPropagation(); window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="event.stopPropagation(); window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
  </tr>`;
  }).join('');
@@ -9143,6 +9145,8 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
  const sysQtyArg = i.system_qty != null ? i.system_qty : 'null';
  const productName = i.product_name || i.name || '';
  const isChecked = i.counted_qty != null;
+ // p1_495 — kalau kiraan TEPAT (variance 0 = padan sistem), tak perlu semakan ke-2
+ const isTepat = isChecked && i.variance != null && Number(i.variance) === 0;
  // p1_465 — kalau sesi dah lepas blind-count (review/forwarded/approved), popup TUNJUK sistem
  const popReveal = !!((window.__scsSessStatusCache || {})[sessionId]) && window.__scsSessStatusCache[sessionId] !== 'active';
  const thumb = i.image_url
@@ -9178,6 +9182,9 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
     ? `<div style="display:flex; align-items:center; gap:6px; margin-top:10px; padding:7px 10px; background:#EEF2FF; border-radius:8px; font-size:11px; color:#3730A3;"><i data-lucide="eye" style="width:12px;height:12px; flex-shrink:0;"></i><span>Kuantiti sistem: <strong>${i.system_qty != null ? i.system_qty : '-'}</strong> · mod semakan</span></div>`
     : `<div style="display:flex; align-items:center; gap:6px; margin-top:10px; padding:7px 10px; background:#F9FAFB; border-radius:8px; font-size:10.5px; color:#9CA3AF;"><i data-lucide="eye-off" style="width:12px;height:12px; flex-shrink:0;"></i><span>Kiraan sistem disorok — kira ikut fizikal sahaja (blind count).</span></div>`}
    <button onclick="window.__scsPopupSave(${itemId}, ${sessionId}, '${skuEsc}', ${sysQtyArg})" style="width:100%; margin-top:14px; background:var(--primary); border:none; color:#fff; padding:12px; border-radius:9px; cursor:pointer; font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px;"><i data-lucide="check" style="width:15px;height:15px;"></i> Simpan Kiraan</button>
+   ` : (isTepat ? `
+   <!-- TEPAT — kiraan padan sistem, tak perlu semakan 2 -->
+   <div style="display:flex; align-items:center; gap:9px; padding:13px 14px; background:#D1FAE5; border-radius:10px; font-size:12.5px; color:#065F46;"><i data-lucide="shield-check" style="width:20px;height:20px; flex-shrink:0;"></i><span><strong>Tepat</strong> — kiraan padan dengan sistem. Tak perlu semakan ke-2.${i.counted_by_name ? ' <span style="color:#047857;">(dikira: '+esc(i.counted_by_name)+')</span>' : ''}</span></div>
    ` : `
    <!-- SEMAKAN KE-2 (double confirm, blind) -->
    <div style="display:flex; align-items:center; gap:6px; padding:8px 10px; background:#D1FAE5; border-radius:8px; font-size:11.5px; color:#065F46; margin-bottom:12px;"><i data-lucide="check-circle" style="width:13px;height:13px; flex-shrink:0;"></i><span>Kiraan 1 dah siap${i.counted_by_name ? ' oleh <strong>'+esc(i.counted_by_name)+'</strong>' : ''}.</span></div>
@@ -9186,7 +9193,7 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
    <input type="number" min="0" inputmode="numeric" id="scsQty2Input-${itemId}" value="${i.counted_qty_2 != null ? i.counted_qty_2 : ''}" placeholder="0" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.__scsPopupSave2(${itemId}, ${sessionId}, '${skuEsc}');}" style="width:100%; padding:11px 12px; border:1.5px solid #6366F1; border-radius:9px; font-size:20px; font-weight:700; text-align:center; color:#111;">
    <div style="display:flex; align-items:center; gap:6px; margin-top:10px; padding:7px 10px; background:#EEF2FF; border-radius:8px; font-size:10.5px; color:#4338CA;"><i data-lucide="eye-off" style="width:12px;height:12px; flex-shrink:0;"></i><span>Kiraan 1 disorok — kira ikut fizikal sendiri. Sistem akan banding padan/tak.</span></div>
    <button onclick="window.__scsPopupSave2(${itemId}, ${sessionId}, '${skuEsc}')" style="width:100%; margin-top:14px; background:#4F46E5; border:none; color:#fff; padding:12px; border-radius:9px; cursor:pointer; font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px;"><i data-lucide="shield-check" style="width:15px;height:15px;"></i> ${i.counted_qty_2 != null ? 'Kemaskini Semakan 2' : 'Simpan Semakan 2'}</button>
-   `}
+   `)}
    <button onclick="window.__scsClosePopup()" style="width:100%; margin-top:9px; background:none; border:none; color:#9CA3AF; padding:6px; cursor:pointer; font-size:11.5px; font-weight:600;">Tutup</button>
   </div>
  </div>`;
