@@ -93,8 +93,16 @@ async function spGetValidToken() {
     }
     return tok;
 }
+// status return SELESAI (barang betul-betul dipulangkan/refund) — Zaid: simpan COMPLETE sahaja.
+const SP_DONE = ['CLOSED', 'REFUND_PAID', 'COMPLETED'];
+function isDoneReturn(source, status) {
+    const st = String(status || '').toUpperCase();
+    if (source === 'tiktok') return st === 'RETURN_OR_REFUND_REQUEST_COMPLETE';
+    return SP_DONE.includes(st); // shopee
+}
+
 // Pull Shopee returns in 15-day windows (API cap). Returns { rows, raw, count }.
-async function spPullReturns(fromSec, toSec) {
+async function spPullReturns(fromSec, toSec, onlyDone) {
     const tok = await spGetValidToken();
     const raw = [];
     const rows = [];
@@ -110,6 +118,7 @@ async function spPullReturns(fromSec, toSec) {
             const list = (r.response && r.response.return) || [];
             for (const ret of list) {
                 if (raw.length < 2) raw.push(ret);
+                if (onlyDone && !isDoneReturn('shopee', ret.status)) continue; // skip yang belum selesai / batal
                 const items = ret.item || ret.item_list || [];
                 if (items.length) {
                     items.forEach((it, it_i) => {
@@ -182,7 +191,7 @@ async function ttEnsureCipher(tok) {
     if (!shop) throw new Error('No authorized TikTok shop');
     return { cipher: shop.cipher, id: String(shop.id) };
 }
-async function ttPullReturns(fromSec) {
+async function ttPullReturns(fromSec, onlyDone) {
     const tok = await ttGetValidToken();
     const shop = await ttEnsureCipher(tok);
     const raw = [];
@@ -203,6 +212,7 @@ async function ttPullReturns(fromSec) {
             const reason = ret.return_reason_text || ret.return_reason || 'return';
             const orderId = ret.order_id || '';
             const status = ret.return_status || ret.status || '';
+            if (onlyDone && !isDoneReturn('tiktok', status)) continue; // skip belum selesai / batal
             const cAt = ret.create_time || ret.created_time || 0;
             const lis = ret.return_line_items || ret.line_items || [];
             if (lis.length) {
@@ -248,12 +258,13 @@ exports.handler = async (event) => {
     const params = event.queryStringParameters || {};
     const mode = params.mode === 'import' ? 'import' : 'dryrun';
     const channel = (params.channel || '').toLowerCase(); // '' = both
+    const onlyDone = params.status !== 'all'; // default: return SELESAI sahaja (Zaid). ?status=all = semua.
     const sinceMs = params.since ? Date.parse(params.since) : Date.now() - 15 * 24 * 60 * 60 * 1000;
     if (isNaN(sinceMs)) return json(400, { error: 'invalid ?since date (YYYY-MM-DD)' });
     const fromSec = Math.floor(sinceMs / 1000);
     const toSec = Math.floor(Date.now() / 1000);
 
-    const out = { mode, since: new Date(sinceMs).toISOString(), channels: {} };
+    const out = { mode, since: new Date(sinceMs).toISOString(), only_completed: onlyDone, channels: {} };
     let rows = [];
     const raw = {};
 
@@ -261,7 +272,7 @@ exports.handler = async (event) => {
     if (channel !== 'tiktok') {
         if (!SP_PARTNER_ID || !SP_PARTNER_KEY) { out.channels.shopee = { skipped: 'creds not set' }; }
         else {
-            try { const r = await spPullReturns(fromSec, toSec); rows = rows.concat(r.rows); raw.shopee = r.raw; out.channels.shopee = { found: r.count }; }
+            try { const r = await spPullReturns(fromSec, toSec, onlyDone); rows = rows.concat(r.rows); raw.shopee = r.raw; out.channels.shopee = { found: r.count }; }
             catch (e) { out.channels.shopee = { error: String(e.message || e) }; }
         }
     }
@@ -269,7 +280,7 @@ exports.handler = async (event) => {
     if (channel !== 'shopee') {
         if (!TT_APP_KEY || !TT_APP_SECRET) { out.channels.tiktok = { skipped: 'creds not set' }; }
         else {
-            try { const r = await ttPullReturns(fromSec); rows = rows.concat(r.rows); raw.tiktok = r.raw; out.channels.tiktok = { found: r.count }; }
+            try { const r = await ttPullReturns(fromSec, onlyDone); rows = rows.concat(r.rows); raw.tiktok = r.raw; out.channels.tiktok = { found: r.count }; }
             catch (e) { out.channels.tiktok = { error: String(e.message || e) }; }
         }
     }
