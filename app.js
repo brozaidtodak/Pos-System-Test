@@ -24193,7 +24193,7 @@ window.__aoViewOrder = function(saleId) {
  const grandTotal = parseFloat(s.total_amount || s.total || 0) || 0;
  const proof = s.payment_proof_url || '';
  const isMarketplace = /shopee|tiktok/i.test(s.channel || '');
- const infoRow = (label, val) => val ? `<div style="display:flex; gap:8px; font-size:12.5px; padding:3px 0;"><span style="color:#6B7280; min-width:120px;">${label}</span><span style="font-weight:600; color:#111827;">${esc(val)}</span></div>` : '';
+ const infoRow = (label, val) => val ? `<div style="display:flex; gap:8px; font-size:12.5px; padding:3px 0; min-width:0;"><span style="color:#6B7280; min-width:64px; flex-shrink:0;">${label}</span><span style="font-weight:600; color:#111827; min-width:0; word-break:break-word; overflow-wrap:anywhere;">${esc(val)}</span></div>` : '';
  // p1_476 — status resit email (sebab Payment Proofs dah digabung ke All Orders)
  const emailSent = s.email_status === 'sent' && !!s.email_sent_at;
  const emailFailed = s.email_status && /^(failed|error)/i.test(s.email_status);
@@ -24248,8 +24248,8 @@ window.__aoViewOrder = function(saleId) {
  </div>
  </div>
  <div style="padding:18px 22px;">
- <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
- <div>
+ <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; margin-bottom:16px;">
+ <div style="min-width:0;">
  <div style="font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:#9CA3AF; text-transform:uppercase; margin-bottom:6px;">Pelanggan</div>
  ${infoRow('Nama', s.customer_name || 'Walk-In')}
  ${infoRow('Phone', s.customer_phone)}
@@ -24257,7 +24257,7 @@ window.__aoViewOrder = function(saleId) {
  ${emailBadge}
  ${isMarketplace && !s.customer_phone ? '<div style="font-size:11px; color:#9CA3AF; padding-top:4px;">Alamat penuh ada di seller centre ' + esc(s.channel) + '.</div>' : ''}
  </div>
- <div>
+ <div style="min-width:0;">
  <div style="font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:#9CA3AF; text-transform:uppercase; margin-bottom:6px;">Order</div>
  ${infoRow('No. Ref', orderRef)}
  ${infoRow('Bayar', s.payment_method)}
