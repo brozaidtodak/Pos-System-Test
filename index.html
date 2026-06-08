@@ -1613,6 +1613,10 @@
  <div class="menu-item" data-tab="nav_sys_fifo" onclick="event.stopPropagation(); switchHub(['fifoSection'], 'FIFO Listing', this); if(typeof renderFifoListing==='function') renderFifoListing();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="layers" style="width:15px; height:15px;"></i> <span>FIFO Listing</span>
  </div>
+ <!-- p1_478 — Inventory History (log masuk/keluar stok, ikut format sheet Input/Output) -->
+ <div class="menu-item" data-tab="nav_sys_invhistory" onclick="event.stopPropagation(); switchHub(['inventoryHistorySection'], 'Inventory History', this); if(typeof renderInventoryHistory==='function') renderInventoryHistory();" style="display:flex; align-items:center; gap:10px;">
+ <i data-lucide="history" style="width:15px; height:15px;"></i> <span>Inventory History</span>
+ </div>
  </div>
  <!-- p1_280 — Customers parent (collapsible) -->
  <div class="menu-item nav-parent" data-nav-parent="customers" onclick="window.toggleNavGroup('customers', event)">
@@ -3886,6 +3890,70 @@
  <div class="rp-section">
  <h3 class="rp-section__title"><i data-lucide="table" style="width:14px;height:14px;"></i> Senarai Perubahan</h3>
  <div id="phTableWrap"><p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p></div>
+ </div>
+ </div>
+ </div>
+
+ <!-- p1_478 — INVENTORY HISTORY (log masuk/keluar stok; format ikut sheet Input/Output) -->
+ <div id="inventoryHistorySection" class="tab-section" style="display:none;">
+ <div class="rp-wrap">
+ <div class="rp-header">
+ <div>
+ <h2 class="rp-title"><i data-lucide="history" style="width:22px; height:22px; color:var(--primary);"></i> Inventory History</h2>
+ <p class="rp-subtitle">Log pergerakan stok — INPUT (stok masuk dari batch/restock) &amp; OUTPUT (stok keluar dari jualan). Ref · Product · Units · Cost/Price · Total · Date.</p>
+ </div>
+ <div style="display:flex; gap:8px; flex-wrap:wrap;">
+ <button class="sy-btn secondary" onclick="window.__ihExportCsv && window.__ihExportCsv()"><i data-lucide="download" style="width:13px;height:13px;"></i> Export CSV</button>
+ <button class="sy-btn secondary" onclick="window.renderInventoryHistory && window.renderInventoryHistory()"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Refresh</button>
+ </div>
+ </div>
+
+ <!-- Filter bar -->
+ <div class="rp-section">
+ <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+ <button class="rm-pill rm-pill--active" data-ih-dir="all" onclick="window.__ihSetDir('all', this)">Semua</button>
+ <button class="rm-pill" data-ih-dir="INPUT" onclick="window.__ihSetDir('INPUT', this)">Input (Masuk)</button>
+ <button class="rm-pill" data-ih-dir="OUTPUT" onclick="window.__ihSetDir('OUTPUT', this)">Output (Keluar)</button>
+ </div>
+ <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; align-items:end;">
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">PERIOD</label>
+ <select id="ihPeriod" class="rp-comm-input" style="width:100%; text-align:left;" onchange="window.__ihPeriodChange()">
+ <option value="all" selected>Semua</option>
+ <option value="today">Hari Ini</option>
+ <option value="7">7 Hari</option>
+ <option value="30">30 Hari</option>
+ <option value="90">90 Hari</option>
+ <option value="custom">Julat tarikh…</option>
+ </select>
+ </div>
+ <div id="ihCustomRange" style="display:none; grid-column:span 2; gap:8px; grid-template-columns:1fr 1fr auto; align-items:end;">
+ <div><label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">DARI</label><input type="date" id="ihFrom" class="rp-comm-input" style="width:100%;"></div>
+ <div><label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">HINGGA</label><input type="date" id="ihTo" class="rp-comm-input" style="width:100%;"></div>
+ <button class="sy-btn" onclick="window.__ihApply()" style="height:38px;">Tapis</button>
+ </div>
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">CARI SKU / NAMA</label>
+ <input type="text" id="ihSearch" class="rp-comm-input" style="width:100%; text-align:left;" placeholder="Cth: BD163" oninput="window.__ihApply()">
+ </div>
+ </div>
+ </div>
+
+ <!-- KPI summary -->
+ <div class="rp-section">
+ <div class="rp-kpi-grid">
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Jumlah Rekod</div><div class="rp-kpi__val" id="ihKpiTotal">—</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Unit Masuk (Input)</div><div class="rp-kpi__val" id="ihKpiIn" style="color:#065F46;">—</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Unit Keluar (Output)</div><div class="rp-kpi__val" id="ihKpiOut" style="color:#991B1B;">—</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Net (Masuk − Keluar)</div><div class="rp-kpi__val" id="ihKpiNet">—</div></div>
+ </div>
+ </div>
+
+ <!-- Movement table -->
+ <div class="rp-section">
+ <h3 class="rp-section__title"><i data-lucide="table" style="width:14px;height:14px;"></i> Senarai Pergerakan</h3>
+ <div id="ihTableWrap"><p style="color:#9CA3AF; padding:20px; text-align:center;">Memuatkan…</p></div>
+ <div id="ihPager" style="display:flex; justify-content:center; align-items:center; gap:12px; margin-top:14px; font-size:13px; color:#555;"></div>
  </div>
  </div>
  </div>
@@ -7706,6 +7774,7 @@
  { id:'p1_71', label:'Email + password login (Supabase Auth) bersama PIN. Sebelum ni POS PIN-only (p1_22). Sekarang login overlay ada 2 tab: PIN (existing flow tak berubah) + Email (baharu). Flow Email: submitEmailLogin → db.auth.signInWithPassword({email, password}) → padan authUsers ikut email (case-insensitive) → loginAs(user). Hanya staff yang ada dalam authUsers boleh login (kalau email Supabase Auth tak padan dengan mana-mana staff, signOut + tolak). handleLogout sekarang panggil db.auth.signOut juga supaya session bersih. Entry authUsers "brozaidtodak" ditukar: name → "Zaid", email → zaid@todak.com (pin_hash kekal — PIN 1999 masih jalan untuk transisi). Display text "Zaid (brozaidtodak)" dikemaskini. Setup awal: Zaid kena cipta Supabase Auth user (zaid@todak.com + password baharu) sendiri kat Supabase dashboard — password tak pernah lalu code/chat. Staff lain akan migrate sesi-sesi seterusnya', d:'done' },
  { id:'p1_73', label:'Investor Dashboard dibuang dari POS — pindah ke 10cc Command Centre (owner-only back-office). Skop: (1) Sidebar item "Investor Dashboard" + mode tab Investor dipadam dari UI. (2) investorSection HTML (~120 lines: cap table strip, health score ring, growth charts, unit economics, risk radar) dibuang dari index.html. (3) authUsers entry brolantodak (INV001) dipadam — persona investor tak wujud lagi dalam POS authUsers (10 → 9 staff, kemudian dibawa balik ke 8 active staff sebab Tester pun masih ada). (4) ROLE_CAPS.investor dipadam — role investor tak boleh dipilih lagi dalam Add/Edit Staff dropdown. (5) computeInvestorMetrics + renderInvestor functions (~325 lines) dibuang dari app.js. (6) __seedInvestorAccess() boot migration dipadam. (7) MODE_LIST, getModesAccess, pickDefaultMode, setMode, modeLabels semua bersihkan ref investor. (8) PERM_MODES + PERM_LABELS dalam Permissions Centre tak masuk investor lagi. (9) HR_JOB_SCOPE_BY_ROLE buang entry investor; Bos dikenali via isBoss helper kekal. (10) mode_investor translation dipadam. (11) Welcome screen taglines + iconByRole — investor entries dipadam, Bos guna jawatan check. (12) homeTab override untuk defaultMode==="investor" dibuang. (13) sm-mode-row "Investor" checkbox dalam Staff Mgmt modal dipadam. Class .investor-only kekal dalam markup tapi tidak digunakan — harmless legacy. Tester (TST001) + roles sales/inventory/mgmt unaffected. Investor stuff (cap table, ARR, runway) akan dibina semula dalam 10cc.10camp.com sebagai owner-only back-office', d:'done' },
  { id:'p1_263', label:'Marketplace integration indicator tiap product (Zaid: "setiap product wajib ada indicator yang menandakan dia dah integrated dengan tiktok dan shopee"). Schema check: products_master takde dedicated columns shopee/tiktok yet — semua sync data live dalam metadata JSONB (pattern same as easystore_* keys). Visual indicator dalam renderProductDatabase pd-card grid: position absolute top:6px left:6px (kiri atas, sebelah status badge Live/Draft kanan atas). Dua chips small: SP (brand Shopee orange #EE4D2D fill bila integrated, grey #E5E7EB outline bila tak) dan TT (TikTok black bila integrated, grey bila tak). Lucide check icon bila syncd, X icon bila tak. Hover title explain status. Read data: metadata.shopee_item_id atau metadata.shopee_synced_at → shopeeIntegrated; same logic untuk TikTok. PDP modal extend dengan card baru "Marketplace Integration" antara Organization dan SEO: 2 grid 1fr 1fr — Shopee Item ID + TikTok Product ID inputs dengan brand colored chips beside labels (SP orange, TT black). Bawah ada syncStatus line yang papar "Shopee last sync: <timestamp> · TikTok last sync: <timestamp>" atau "Belum pernah sync auto" kalau kosong. openPdpModal populate values dari metadata. savePdpData merge ke metadata.shopee_item_id + tiktok_product_id (preserved alongside other metadata). Zaid boleh edit manually for now; future sync flow can auto-fill + set _synced_at timestamps. app.js v359→v360.', d:'done' },
+ { id:'p1_478', label:'System sidebar dapat sub-item baru "Inventory History" — log pergerakan stok masuk/keluar (Zaid bagi sheet rujukan tab Input/Output: Ref·Product·Input/Output·Units·Cost/Price·Total·Date; format diambil via rclone tencc: export sheet gid 461694781). Sumber data dalam-memori: INPUT = inventory_batches (qty_received, cost_price, inbound_date, notes), OUTPUT = sales_history jualan sebenar (__isRealSale; setiap item = stok keluar, qty guna __aoItemQty, price item). renderInventoryHistory: refresh inventory_batches via __fetchAllRows (>1000 guard), bina __ihRows (sort tarikh desc), papar KPI (jumlah rekod, unit masuk, unit keluar, net) + jadual 8 lajur (Ref/Product/badge INPUT hijau-OUTPUT merah/Units ±/Cost/Total/Date/Nota) + pagination 100/page. Filter: pills Semua/Input/Output, period Semua/Hari Ini/7/30/90/custom, cari SKU/nama. Butang Export CSV (__ihExportCsv ikut format sheet). Sidebar: nav_sys_invhistory selepas FIFO Listing → switchHub([inventoryHistorySection]). Tukar index.html + app.js (v533->v534) + sw pos-store-v94->v95.', d:'done' },
  { id:'p1_477', label:'Resit email: PREVIEW sebelum hantar + gambar produk dalam email (Zaid: "sebelum benar2 hantar, boleh pilih tengok preview email; kalau boleh nak gambar product jugak bila send so customer dapat tengok gambar barang dibeli"). (1) send-receipt-email.js: mod preview baru — POST {sale_id, preview:true} pulang {preview,html,subject,to} TANPA hantar/ubah DB (preview cuma perlu SUPABASE_SERVICE_KEY, bukan RESEND_API_KEY). (2) Gambar produk dalam email: helper fetchItemImages query products_master (sku in.(...)) → map sku→images[0]; buildEmailHtml(sale,imgMap) tambah lajur gambar (46x46) di jadual item + header kosong; qtyOf handle quantity (POS) vs qty (marketplace) utk qty+subtotal betul. (3) Client __aoSendReceiptEmail rewrite: resolve email (prompt/validasi/simpan kalau beza) → POST preview → __aoShowEmailPreview buka modal iframe (srcdoc=html) papar "akan dihantar ke <email>" + butang Batal / Hantar Sekarang. __aoEmailSendNow (guna __aoEmailPreviewCtx) → POST force:true → toast + set email_status/email_sent_at lokal + tutup preview + refresh popup (badge hijau muncul). Tukar netlify/functions/send-receipt-email.js + app.js (v532->v533) + sw pos-store-v93->v94.', d:'done' },
  { id:'p1_476', label:'All Orders popup (__aoViewOrder): (A) badge status "Resit emel dihantar" + (B) gambar produk dalam jadual barang. (A) Zaid: Payment Proofs dah digabung ke All Orders, tiada tempat tengok status email. Baca s.email_status + s.email_sent_at (sedia di salesHistory select * boot): emailSent (sent + ada masa) → badge hijau "Resit emel dihantar · <tarikh/masa>" bawah baris Email; failed/error → badge merah "Email gagal — cuba hantar semula". Butang tukar: dah sent → "Hantar Semula Resit" hijau (mail-check); belum → "Hantar Resit Email" biru. __aoSendReceiptEmail success: set s.email_status=sent + email_sent_at=now lokal, remove+reopen overlay supaya badge muncul serta-merta. (B) Zaid: "tambah gambar product, senang nak buat rujukan" — jadual BARANG UNTUK PACK tambah lajur "Gambar" (42x42 thumbnail dari __aoImgFor(sku) = masterProducts.images[0]; onerror/takde → kotak dashed "No Img"). colspan empty-state 5→6. Tukar app.js (v531->v532) + sw pos-store-v92->v93.', d:'done' },
  { id:'p1_475', label:'All Orders popup (order detail __aoViewOrder): butang "Hantar Resit Email" ke pelanggan (Zaid: guna acc admin@10camp.com yang disetup tempoh hari). Reuse netlify function send-receipt-email.js sedia ada (p1_237 — Resend, from admin@10camp.com / RECEIPT_FROM, render HTML resit penuh, update sales_history.email_sent_at + email_status). Tambah butang biru dalam baris aksi popup (flex-wrap supaya tak sempit) → __aoSendReceiptEmail(saleId): cari sale, email = customer_email || metadata.buyer_email; kalau takde → prompt + validasi format; kalau email beza dari DB → UPDATE sales_history.customer_email dulu (server baca dari DB) → POST /api/send-receipt-email {sale_id, force:true} → toast hasil (success/skipped/gagal; kalau RESEND_API_KEY tak set, toast bagitau env Resend belum set Netlify). Tukar app.js (v530->v531) + sw pos-store-v91->v92. NOTA: bergantung pada env Netlify RESEND_API_KEY + SUPABASE_SERVICE_KEY + RECEIPT_FROM.', d:'done' },
@@ -12632,7 +12701,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=533"></script>
+ <script src="app.js?v=534"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

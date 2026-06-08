@@ -3303,6 +3303,172 @@ window.__rpRenderInventorySimpleTemplate = function(body, u, range) {
  if(window.lucide && lucide.createIcons) lucide.createIcons();
 };
 
+// ============= p1_478 — INVENTORY HISTORY (log masuk/keluar stok) =============
+// INPUT = inventory_batches (qty_received). OUTPUT = sales_history jualan sebenar
+// (setiap item = stok keluar). Format ikut sheet 10 CAMP "Input / Output":
+// Ref · Product · Input/Output · Units · Cost/Price · Total · Date. Bina dari global
+// dalam-memori (inventoryBatches + salesHistory + masterProducts).
+window.__ihState = window.__ihState || { dir:'all', q:'', period:'all', from:'', to:'', page:1, perPage:100 };
+window.__ihRows = window.__ihRows || [];
+
+window.__ihBuildRows = function() {
+ const rows = [];
+ const nameOf = (sku, fallback) => {
+  const p = (typeof masterProducts !== 'undefined' ? masterProducts : []).find(x => x.sku === sku);
+  return (p && p.name) || fallback || '';
+ };
+ // INPUT — setiap batch = stok masuk
+ (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+  if(!b || !b.sku) return;
+  const units = Number(b.qty_received != null ? b.qty_received : b.qty_remaining) || 0;
+  if(units <= 0) return;
+  const cost = Number(b.cost_price) || 0;
+  rows.push({ sku: b.sku, product: nameOf(b.sku, ''), dir: 'INPUT', units, price: cost, total: units * cost, date: b.inbound_date || b.created_at || null, note: b.notes || 'Stok masuk' });
+ });
+ // OUTPUT — setiap item dalam jualan sebenar = stok keluar
+ (typeof salesHistory !== 'undefined' ? salesHistory : []).forEach(s => {
+  if(!window.__isRealSale(s)) return;
+  let items = s.items;
+  if(typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = []; } }
+  if(!Array.isArray(items)) return;
+  items.forEach(it => {
+   const sku = (it && (it.sku || it.SKU || '')).toString().trim();
+   if(!sku) return;
+   const units = window.__aoItemQty ? window.__aoItemQty(it) : (parseInt(it.qty != null ? it.qty : it.quantity) || 0);
+   if(units <= 0) return;
+   const price = Number(it.price) || 0;
+   rows.push({ sku, product: it.name || nameOf(sku, ''), dir: 'OUTPUT', units, price, total: units * price, date: s.created_at || null, note: 'Jualan #' + s.id + (s.channel ? ' · ' + s.channel : '') + (s.customer_name ? ' · ' + s.customer_name : '') });
+  });
+ });
+ rows.sort((a, b) => (b.date ? new Date(b.date).getTime() : 0) - (a.date ? new Date(a.date).getTime() : 0));
+ return rows;
+};
+
+window.__ihDateRange = function() {
+ const st = window.__ihState;
+ if(st.period === 'all') return { from: -Infinity, to: Infinity };
+ if(st.period === 'today') { const d = new Date(); d.setHours(0,0,0,0); return { from: d.getTime(), to: Infinity }; }
+ if(st.period === 'custom') {
+  const f = st.from ? new Date(st.from + 'T00:00:00').getTime() : -Infinity;
+  const t = st.to ? new Date(st.to + 'T23:59:59.999').getTime() : Infinity;
+  return { from: f, to: t };
+ }
+ const days = parseInt(st.period) || 0;
+ return { from: Date.now() - days * 86400000, to: Infinity };
+};
+
+window.__ihFiltered = function() {
+ const st = window.__ihState;
+ const dr = window.__ihDateRange();
+ const q = (st.q || '').toLowerCase().trim();
+ return window.__ihRows.filter(r => {
+  if(st.dir !== 'all' && r.dir !== st.dir) return false;
+  if(q && !((r.sku||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q))) return false;
+  if(dr.from !== -Infinity || dr.to !== Infinity) {
+   const t = r.date ? new Date(r.date).getTime() : 0;
+   if(t < dr.from || t > dr.to) return false;
+  }
+  return true;
+ });
+};
+
+window.renderInventoryHistory = async function() {
+ // Refresh inventory_batches penuh (boleh > 1000 bila bisnes membesar — boot guna .limit capped 1000)
+ try { if(typeof window.__fetchAllRows === 'function') { const b = await window.__fetchAllRows('inventory_batches','inbound_date',false); if(Array.isArray(b) && b.length) inventoryBatches = b; } } catch(e){}
+ window.__ihRows = window.__ihBuildRows();
+ window.__ihState.page = 1;
+ window.__ihApply();
+};
+
+window.__ihSetDir = function(dir, btn) {
+ window.__ihState.dir = dir;
+ window.__ihState.page = 1;
+ document.querySelectorAll('[data-ih-dir]').forEach(b => b.classList.toggle('rm-pill--active', b === btn));
+ window.__ihApply();
+};
+
+window.__ihPeriodChange = function() {
+ const sel = document.getElementById('ihPeriod');
+ window.__ihState.period = sel ? sel.value : 'all';
+ const cr = document.getElementById('ihCustomRange');
+ if(cr) cr.style.display = (window.__ihState.period === 'custom') ? 'grid' : 'none';
+ if(window.__ihState.period !== 'custom') { window.__ihState.page = 1; window.__ihApply(); }
+};
+
+window.__ihPage = function(n) { window.__ihState.page = n; window.__ihApply(); };
+
+window.__ihApply = function() {
+ const st = window.__ihState;
+ st.q = (document.getElementById('ihSearch') || {}).value || '';
+ if(st.period === 'custom') { st.from = (document.getElementById('ihFrom') || {}).value || ''; st.to = (document.getElementById('ihTo') || {}).value || ''; }
+ const wrap = document.getElementById('ihTableWrap');
+ const pager = document.getElementById('ihPager');
+ if(!wrap) return;
+ const all = window.__ihFiltered();
+ let inUnits = 0, outUnits = 0;
+ all.forEach(r => { if(r.dir === 'INPUT') inUnits += r.units; else outUnits += r.units; });
+ const setK = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+ setK('ihKpiTotal', all.length.toLocaleString());
+ setK('ihKpiIn', '+' + inUnits.toLocaleString());
+ setK('ihKpiOut', '−' + outUnits.toLocaleString());
+ const net = inUnits - outUnits;
+ const netEl = document.getElementById('ihKpiNet');
+ if(netEl) { netEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString(); netEl.style.color = net >= 0 ? '#065F46' : '#991B1B'; }
+ const perPage = st.perPage;
+ const totalPages = Math.max(1, Math.ceil(all.length / perPage));
+ if(st.page > totalPages) st.page = totalPages;
+ const start = (st.page - 1) * perPage;
+ const slice = all.slice(start, start + perPage);
+ if(!slice.length) { wrap.innerHTML = '<p style="color:#9CA3AF; padding:24px; text-align:center;">Tiada rekod pergerakan padan filter.</p>'; if(pager) pager.innerHTML = ''; return; }
+ const esc = (typeof hesc === 'function') ? hesc : (x) => String(x==null?'':x);
+ const fmtRM = (n) => 'RM ' + (Number(n)||0).toFixed(2);
+ const fmtDt = (d) => d ? new Date(d).toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+ const rowsHtml = slice.map(r => {
+  const dirBadge = r.dir === 'INPUT'
+   ? '<span style="display:inline-flex; align-items:center; gap:4px; background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:800;"><i data-lucide="arrow-down-to-line" style="width:11px;height:11px;"></i> INPUT</span>'
+   : '<span style="display:inline-flex; align-items:center; gap:4px; background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:800;"><i data-lucide="arrow-up-from-line" style="width:11px;height:11px;"></i> OUTPUT</span>';
+  return `<tr style="border-bottom:1px solid #F3F4F6;">
+   <td style="padding:7px 9px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;">${esc(r.sku)}</td>
+   <td style="padding:7px 9px; font-size:11.5px; max-width:260px;">${esc((r.product||'').slice(0,60))}</td>
+   <td style="padding:7px 9px; text-align:center;">${dirBadge}</td>
+   <td style="padding:7px 9px; text-align:right; font-weight:800; font-size:13px; color:${r.dir==='INPUT'?'#065F46':'#991B1B'};">${r.dir==='INPUT'?'+':'−'}${r.units}</td>
+   <td style="padding:7px 9px; text-align:right; font-size:11.5px; color:#6B7280;">${r.price ? fmtRM(r.price) : '-'}</td>
+   <td style="padding:7px 9px; text-align:right; font-size:11.5px; font-weight:700;">${r.total ? fmtRM(r.total) : '-'}</td>
+   <td style="padding:7px 9px; font-size:11px; color:#6B7280; white-space:nowrap;">${esc(fmtDt(r.date))}</td>
+   <td style="padding:7px 9px; font-size:10.5px; color:#9CA3AF; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(r.note)}">${esc(r.note)}</td>
+  </tr>`;
+ }).join('');
+ wrap.innerHTML = `<div style="overflow-x:auto; border:1px solid #F0F0F0; border-radius:10px;">
+  <table style="width:100%; border-collapse:collapse; font-size:12px;">
+   <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">
+    <th style="text-align:left; padding:8px 9px;">Ref</th><th style="text-align:left; padding:8px 9px;">Product</th><th style="text-align:center; padding:8px 9px;">Input / Output</th><th style="text-align:right; padding:8px 9px;">Units</th><th style="text-align:right; padding:8px 9px;">Cost/Price</th><th style="text-align:right; padding:8px 9px;">Total</th><th style="text-align:left; padding:8px 9px;">Date</th><th style="text-align:left; padding:8px 9px;">Nota</th>
+   </tr></thead><tbody>${rowsHtml}</tbody>
+  </table></div>`;
+ if(pager) {
+  const btn = (lbl, pg, disabled) => `<button onclick="window.__ihPage(${pg})" ${disabled?'disabled':''} style="background:${disabled?'#F9FAFB':'#fff'}; border:1px solid #E5E7EB; color:${disabled?'#D1D5DB':'#374151'}; padding:6px 12px; border-radius:7px; cursor:${disabled?'not-allowed':'pointer'}; font-size:12px; font-weight:700;">${lbl}</button>`;
+  pager.innerHTML = `${btn('« Awal', 1, st.page<=1)} ${btn('‹ Prev', st.page-1, st.page<=1)} <span>Halaman ${st.page} / ${totalPages} · ${all.length.toLocaleString()} rekod</span> ${btn('Next ›', st.page+1, st.page>=totalPages)} ${btn('Akhir »', totalPages, st.page>=totalPages)}`;
+ }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+window.__ihExportCsv = function() {
+ const all = window.__ihFiltered();
+ if(!all.length) { if(typeof showToast === 'function') showToast('Tiada rekod untuk export.', 'warn'); return; }
+ const q = (v) => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+ const lines = [['Ref','Product','Input / Output','Units','Cost/Price','Total','Date','Nota'].join(',')];
+ all.forEach(r => {
+  const dt = r.date ? new Date(r.date).toLocaleDateString('en-GB') : '';
+  lines.push([q(r.sku), q(r.product), q(r.dir), r.units, (r.price||0).toFixed(2), (r.total||0).toFixed(2), q(dt), q(r.note)].join(','));
+ });
+ const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url; a.download = 'inventory-history-' + new Date().toISOString().slice(0,10) + '.csv';
+ document.body.appendChild(a); a.click(); document.body.removeChild(a);
+ setTimeout(() => URL.revokeObjectURL(url), 1000);
+ if(typeof showToast === 'function') showToast(all.length + ' rekod di-export.', 'success');
+};
+
 // p1_111 — Price History Report
 window.__phRows = [];
 
