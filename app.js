@@ -7667,10 +7667,17 @@ window.__scsActiveSessionId = null;
 window.__scsSelectedLocations = new Set();
 window.__scsSelectedStaff = new Set();
 window.__scsLocations = [];
+window.__scsHideCancelled = true; // p1_460 — sorok sesi Batal/cancelled by default (kurangkan clutter)
 
 window.__scsSetFilter = function(s, btn) {
  window.__scsFilter = s;
  document.querySelectorAll('[data-scs-filter]').forEach(b => b.classList.toggle('rm-pill--active', b.dataset.scsFilter === s));
+ window.renderCheckSessions();
+};
+
+// p1_460 — toggle sorok/tunjuk sesi yang dah dibatalkan (cancelled)
+window.__scsToggleCancelled = function() {
+ window.__scsHideCancelled = !window.__scsHideCancelled;
  window.renderCheckSessions();
 };
 
@@ -7696,17 +7703,31 @@ window.renderCheckSessions = async function() {
  <div style="background:#D1FAE5; padding:12px; border-radius:8px; border-left:4px solid #101010;"><div style="font-size:10px; color:#065F46; text-transform:uppercase; font-weight:700;">Approved</div><div style="font-size:22px; font-weight:900;">${approved}</div><div style="font-size:11px; color:#6B7280;">selesai</div></div>
  `;
  }
- const filtered = window.__scsFilter === 'all' ? rows : rows.filter(s => s.status === window.__scsFilter);
+ let filtered = window.__scsFilter === 'all' ? rows : rows.filter(s => s.status === window.__scsFilter);
+ // p1_460 — sorok sesi cancelled bila toggle ON; update label butang ikut bilangan
+ const cancelledCount = filtered.filter(s => s.status === 'cancelled').length;
+ if(window.__scsHideCancelled) filtered = filtered.filter(s => s.status !== 'cancelled');
+ const toggleBtn = document.getElementById('scsToggleCancelledBtn');
+ if(toggleBtn) {
+ if(cancelledCount === 0) { toggleBtn.style.display = 'none'; }
+ else {
+ toggleBtn.style.display = '';
+ toggleBtn.innerHTML = window.__scsHideCancelled
+ ? `<i data-lucide="eye" style="width:12px;height:12px;vertical-align:-1px;"></i> Tunjuk Sesi Batal (${cancelledCount})`
+ : `<i data-lucide="eye-off" style="width:12px;height:12px;vertical-align:-1px;"></i> Sorok Sesi Batal (${cancelledCount})`;
+ }
+ }
  if(!filtered.length) {
  list.innerHTML = '<p style="color:#9CA3AF; padding:30px; text-align:center;">Tiada sesi padan filter. Klik <strong>Sesi Baharu</strong> untuk mulakan.</p>';
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
  return;
  }
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
  const u = window.currentUser || {};
  const isMgmt = (typeof window.isBoss === 'function' && window.isBoss(u)) || u.role === 'mgmt';
- const STATUS_LBL = { active:'Aktif', review:'Menunggu Review', forwarded:'Bos Acknowledged', approved:'Approved', rejected:'Rejected' };
- const STATUS_BG = { active:'#FEF3C7', review:'#ffedd5', forwarded:'#E0E7FF', approved:'#D1FAE5', rejected:'#FEE2E2' };
- const STATUS_FG = { active:'#92400E', review:'#7c4a1a', forwarded:'#3730A3', approved:'#065F46', rejected:'#991B1B' };
+ const STATUS_LBL = { active:'Aktif', review:'Menunggu Review', forwarded:'Bos Acknowledged', approved:'Approved', rejected:'Rejected', cancelled:'Dibatalkan' };
+ const STATUS_BG = { active:'#FEF3C7', review:'#ffedd5', forwarded:'#E0E7FF', approved:'#D1FAE5', rejected:'#FEE2E2', cancelled:'#F3F4F6' };
+ const STATUS_FG = { active:'#92400E', review:'#7c4a1a', forwarded:'#3730A3', approved:'#065F46', rejected:'#991B1B', cancelled:'#6B7280' };
 
  list.innerHTML = filtered.map(s => {
  const pct = s.items_total > 0 ? Math.round((s.items_checked / s.items_total) * 100) : 0;
@@ -7741,7 +7762,7 @@ window.renderCheckSessions = async function() {
  ${(s.status === 'active' || s.status === 'review') ? `<button class="sy-btn secondary" onclick="window.__scsEditSession(${s.id})" style="font-size:11px;"><i data-lucide="edit-3" style="width:11px;height:11px;"></i> Edit / Tambah SKU</button>` : ''}
  ${s.status === 'active' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsSubmitForReview(${s.id})" style="font-size:11px;"><i data-lucide="send" style="width:11px;height:11px;"></i> Submit ke Review</button>` : ''}
  ${s.status === 'review' && isMgmt ? `<button class="sy-btn secondary" onclick="window.__scsForwardToBos(${s.id})" style="font-size:11px;"><i data-lucide="forward" style="width:11px;height:11px;"></i> Forward ke Bos</button>` : ''}
- ${isMgmt && s.status !== 'approved' ? `<button class="sy-btn secondary" onclick="window.__scsCancelSession(${s.id})" style="font-size:11px; color:#991B1B; border-color:#FCA5A5;"><i data-lucide="x-circle" style="width:11px;height:11px;"></i> Batal Sesi</button>` : ''}
+ ${isMgmt && s.status !== 'approved' && s.status !== 'cancelled' ? `<button class="sy-btn secondary" onclick="window.__scsCancelSession(${s.id})" style="font-size:11px; color:#991B1B; border-color:#FCA5A5;"><i data-lucide="x-circle" style="width:11px;height:11px;"></i> Batal Sesi</button>` : ''}
  ${s.status === 'forwarded' && (typeof window.isBoss === 'function' && window.isBoss(u)) ? `<button class="sy-btn secondary" onclick="window.__scsApprove(${s.id})" style="font-size:11px; background:#101010; color:#FFF;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> Approve</button>` : ''}
  </div>
  <!-- p1_211 — Per-session SKU list (collapsed by default, lazy-loaded on click) -->
