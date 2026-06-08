@@ -11886,6 +11886,8 @@ document.addEventListener('keydown', function(e) {
 window.posAttachCustomer = function() {
  const modal = document.getElementById('customerPickerModal');
  if(!modal) return alert('Customer picker unavailable.');
+ // p1_481 — reset cache pelanggan-jualan-lepas supaya kira semula ikut CRM terkini
+ window.__pastCustomersCache = null;
  // Reset state
  const s = document.getElementById('cpkSearch'); if(s) s.value = '';
  const res = document.getElementById('cpkResults');
@@ -11909,9 +11911,14 @@ window.cpkFilterCustomers = function(q) {
  const nm = (c.name || '').toLowerCase();
  return ph.includes(query) || nm.includes(query);
  }).slice(0, 30);
- if(!matches.length) { res.innerHTML = `<p style="color:#c0392b; font-size:13px; padding:12px; text-align:center; margin:0;">Tiada match untuk "${query}". Daftar baru di bawah.</p>`; return; }
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
- res.innerHTML = matches.map(c => {
+ // p1_481 — carian sejarah jualan: pelanggan lama yang TAK wujud dalam CRM pun muncul
+ const past = (typeof window.__getPastCustomers === 'function' ? window.__getPastCustomers() : []).filter(c => {
+  return (c.phone||'').toLowerCase().includes(query) || (c.name||'').toLowerCase().includes(query) || (c.email||'').toLowerCase().includes(query);
+ }).slice(0, 12);
+ window.__pastMatchList = past;
+ if(!matches.length && !past.length) { res.innerHTML = `<p style="color:#c0392b; font-size:13px; padding:12px; text-align:center; margin:0;">Tiada match untuk "${query}". Daftar baru di bawah.</p>`; return; }
+ const crmHtml = matches.map(c => {
  const pts = parseInt(c.points || 0);
  const badge = c.is_member ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-left:6px;">VIP</span>' : '';
  return `<div onclick="window.cpkPickCustomer(${c.id})" style="padding:10px 14px; border-bottom:1px solid #F3F4F6; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -11922,6 +11929,17 @@ window.cpkFilterCustomers = function(q) {
  <i data-lucide="chevron-right" style="width:14px; height:14px; color:#9CA3AF;"></i>
  </div>`;
  }).join('');
+ const pastHtml = past.length ? (
+  '<div style="padding:7px 14px; background:#FFF7ED; font-size:10px; font-weight:800; color:#9A3412; text-transform:uppercase; letter-spacing:0.4px;">Dari jualan lepas (belum dalam CRM)</div>' +
+  past.map((c, idx) => `<div onclick="window.cpkPickPastCustomer(${idx})" style="padding:10px 14px; border-bottom:1px solid #F3F4F6; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onmouseover="this.style.background='#FFFBF5'" onmouseout="this.style.background=''">
+ <div>
+ <div style="font-size:13.5px; font-weight:700; color:#111;">${escHtml(c.name || '(tiada nama)')} <span style="background:#FEF3C7; color:#92400E; padding:1px 6px; border-radius:4px; font-size:9.5px; font-weight:700;">Jualan Lepas</span></div>
+ <div style="font-size:11.5px; color:#6B7280; margin-top:2px;">${escHtml(c.phone || '-')}${c.email ? ' · ' + escHtml(c.email) : ''}${c.channel ? ' · ' + escHtml(c.channel) : ''}</div>
+ </div>
+ <i data-lucide="chevron-right" style="width:14px; height:14px; color:#9CA3AF;"></i>
+ </div>`).join('')
+ ) : '';
+ res.innerHTML = crmHtml + pastHtml;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
@@ -11945,6 +11963,54 @@ window.cpkPickCustomer = function(id) {
  if(typeof window.cpSyncCustomerFromPos === 'function') window.cpSyncCustomerFromPos();
  document.getElementById('customerPickerModal').style.display = 'none';
  if(typeof showToast === 'function') showToast(`Customer attached: ${c.name || c.phone || '-'}`, 'success');
+};
+
+// p1_481 — bina senarai pelanggan dari SEJARAH JUALAN yang belum wujud dalam CRM
+// (walk-in/marketplace yang tak pernah didaftar). Dedup ikut phone (atau nama kalau
+// takde phone), ambil detail terkini. Cache per-buka-picker (reset di posAttachCustomer).
+window.__pastCustomersCache = window.__pastCustomersCache || null;
+window.__getPastCustomers = function() {
+ if(window.__pastCustomersCache) return window.__pastCustomersCache;
+ const crmPhones = new Set((typeof customersData !== 'undefined' ? customersData : []).map(c => (c.phone || '').replace(/[^0-9]/g, '')).filter(Boolean));
+ const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+ const sorted = sales.slice().sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+ const seen = new Set();
+ const out = [];
+ sorted.forEach(s => {
+  if(s.is_test) return;
+  const md = s.metadata || {};
+  const name = (s.customer_name || '').trim();
+  const phone = (s.customer_phone || '').trim();
+  const email = (s.customer_email || md.buyer_email || '').trim();
+  if(!name && !phone) return;
+  const phoneNorm = phone.replace(/[^0-9]/g, '');
+  if(phoneNorm && crmPhones.has(phoneNorm)) return; // dah ada dalam CRM
+  const key = phoneNorm || ('nm:' + name.toLowerCase());
+  if(seen.has(key)) return;
+  seen.add(key);
+  out.push({ name, phone, email, channel: s.channel || '', last: s.created_at || null });
+ });
+ window.__pastCustomersCache = out;
+ return out;
+};
+
+// p1_481 — pilih pelanggan dari hasil carian jualan lepas → attach detail (synthetic, tiada CRM id)
+window.cpkPickPastCustomer = function(idx) {
+ const c = (window.__pastMatchList || [])[idx];
+ if(!c) return;
+ const synthetic = { id: null, name: c.name || '', phone: c.phone || '', email: c.email || '', is_member: false, points: 0, total_spent: 0, total_orders: 0, __fromPastSale: true };
+ if(window.__ppEditPickerActive) {
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
+  set('ppEditCustName', c.name); set('ppEditCustPhone', c.phone); set('ppEditCustEmail', c.email);
+  window.__ppEditPickerActive = false;
+  document.getElementById('customerPickerModal').style.display = 'none';
+  if(typeof showToast === 'function') showToast(`Customer loaded: ${c.name || c.phone || '-'}`, 'success');
+  return;
+ }
+ window.posSetCustomer(synthetic);
+ if(typeof window.cpSyncCustomerFromPos === 'function') window.cpSyncCustomerFromPos();
+ document.getElementById('customerPickerModal').style.display = 'none';
+ if(typeof showToast === 'function') showToast(`Customer (jualan lepas) attached: ${c.name || c.phone || '-'}`, 'success');
 };
 
 window.cpkAddNewCustomer = async function() {
