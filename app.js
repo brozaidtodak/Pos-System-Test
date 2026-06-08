@@ -8692,7 +8692,9 @@ window.__scsPublishRender = function() {
  const rows = items.map((i, idx) => {
   const live = window.__scsLiveQty(i.sku);
   const counted = Number(i.counted_qty);
-  const diff = counted - live;
+  // p1_507 — "Set Ke" default ke Final Qty (muktamad reviewer) kalau ada, fallback counted_qty
+  const setTo = (i.final_qty != null) ? Number(i.final_qty) : counted;
+  const diff = setTo - live;
   const checked = diff !== 0 ? 'checked' : ''; // default tick hanya yang ada beza
   const diffColor = diff === 0 ? '#6B7280' : (diff > 0 ? '#166534' : '#991B1B');
   const diffTxt = diff === 0 ? 'sama' : (diff > 0 ? '+' + diff : '' + diff);
@@ -8701,9 +8703,9 @@ window.__scsPublishRender = function() {
    <td style="padding:6px 8px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;">${esc(i.sku)}</td>
    <td style="padding:6px 8px; font-size:11.5px;">${esc((i.product_name || i.name || '').slice(0, 40))}</td>
    <td style="padding:6px 8px; text-align:right; font-size:12px; color:#6B7280;">${live}</td>
-   <td style="padding:6px 8px; text-align:right; font-size:12px; font-weight:700;">${counted}</td>
+   <td style="padding:6px 8px; text-align:right; font-size:12px; font-weight:700;">${counted}${(i.final_qty != null && Number(i.final_qty) !== counted) ? `<div style="font-size:9px; color:#4338CA; font-weight:700;">final ${i.final_qty}</div>` : ''}</td>
    <td style="padding:6px 8px; text-align:right; font-size:11.5px; font-weight:700; color:${diffColor};">${diffTxt}</td>
-   <td style="padding:6px 8px; text-align:center;"><input type="number" data-scs-pub-qty="${idx}" value="${counted}" min="0" style="width:64px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:6px; text-align:center; font-weight:700;"></td>
+   <td style="padding:6px 8px; text-align:center;"><input type="number" data-scs-pub-qty="${idx}" value="${setTo}" min="0" style="width:64px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:6px; text-align:center; font-weight:700;"></td>
   </tr>`;
  }).join('');
  body.innerHTML = `
@@ -9295,6 +9297,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  <td style="padding:8px 10px; text-align:center;">${(i.counted_qty_2 != null)
   ? `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:800; ${Number(i.counted_qty_2)===Number(i.counted_qty) ? 'background:#D1FAE5; color:#065F46;' : 'background:#FEE2E2; color:#991B1B;'}"><i data-lucide="${Number(i.counted_qty_2)===Number(i.counted_qty)?'shield-check':'alert-triangle'}" style="width:10px;height:10px;"></i> ${i.counted_qty_2}${Number(i.counted_qty_2)===Number(i.counted_qty)?'':' ≠'}</span>${i.counted_by_2_name ? `<div style="font-size:9px; color:#9CA3AF; margin-top:2px;">${escHtml(i.counted_by_2_name)}</div>` : ''}`
   : ''}</td>
+ ${reveal ? `<td style="padding:8px 6px; text-align:center;" onclick="event.stopPropagation();">${isChecked ? `<input type="number" min="0" inputmode="numeric" id="scsFinal-${i.id}" value="${i.final_qty != null ? i.final_qty : (i.counted_qty_2 != null ? i.counted_qty_2 : i.counted_qty)}" title="Kuantiti muktamad untuk submit ke Bos (default: Semakan 2 / Kiraan 1). Enter untuk simpan." onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="window.__scsSaveFinalQty(${i.id}, ${sessionId}, this.value)" style="width:60px; padding:5px 6px; border:1.5px solid ${i.final_qty != null ? '#34D399' : '#C7D2FE'}; border-radius:6px; text-align:center; font-weight:800; font-size:12px; color:#065F46; background:${i.final_qty != null ? '#ECFDF5' : '#fff'};">` : '<span style="color:#D1D5DB;">—</span>'}</td>` : ''}
  <td style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="event.stopPropagation(); window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="event.stopPropagation(); window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
  </tr>`;
  }).join('');
@@ -9321,6 +9324,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Status</th>
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Oleh</th>
  <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Check 2</th>
+ ${reveal ? '<th style="text-align:center; padding:8px 10px; font-size:10px; color:#4338CA; text-transform:uppercase; letter-spacing:0.4px;">Final Qty</th>' : ''}
  <th style="padding:8px 6px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Aksi</th>
  </tr>
  </thead>
@@ -9688,6 +9692,30 @@ window.__scsMarkDamaged = async function(itemId, sessionId, sku, systemQty) {
 };
 
 // p1_217 — Stock Check Session edit/review/cancel handlers
+// p1_507 — simpan Final Qty (kuantiti muktamad untuk submit ke Bos). Save senyap (no full re-render);
+// kemaskini cache + warna kotak je supaya focus/scroll tak terganggu masa reviewer taip laju.
+window.__scsSaveFinalQty = async function(itemId, sessionId, raw) {
+ const el = document.getElementById('scsFinal-' + itemId);
+ const cache = (window.__scsItemsCache && window.__scsItemsCache[sessionId]) || [];
+ const item = cache.find(x => x.id === itemId);
+ const val = (raw == null || String(raw).trim() === '') ? null : Math.max(0, parseInt(raw, 10));
+ if(val != null && isNaN(val)) return;
+ const cur = (item && item.final_qty != null) ? Number(item.final_qty) : null;
+ if(cur === val) return; // tiada perubahan
+ const u = window.currentUser || {};
+ try {
+ if(typeof db === 'undefined' || !db) throw new Error('DB tak available');
+ const patch = { final_qty: val, final_by_name: val == null ? null : (u.name || 'Unknown'), final_at: val == null ? null : new Date().toISOString() };
+ const { error } = await db.from('stock_check_session_items').update(patch).eq('id', itemId);
+ if(error) throw error;
+ if(item) Object.assign(item, patch);
+ if(el) { el.style.borderColor = val != null ? '#34D399' : '#C7D2FE'; el.style.background = val != null ? '#ECFDF5' : '#fff'; }
+ if(typeof showToast === 'function') showToast('Final qty disimpan: ' + (val == null ? '—' : val), 'success');
+ } catch(e) {
+ if(typeof showToast === 'function') showToast('Final qty gagal simpan: ' + e.message, 'error');
+ }
+};
+
 window.__scsResetItem = async function(itemId, sessionId) {
  if(!confirm('Reset count untuk item ni? counted_qty + variance + flag akan dikosongkan.')) return;
  try {
