@@ -23349,19 +23349,32 @@ window.__aoViewOrder = function(saleId) {
  const price = parseFloat(it.price || 0) || 0;
  const line = qty * price;
  itemsSub += line;
+ // p1_476 — gambar produk untuk rujukan staff (pack/semak). Fallback kotak "No Img".
+ const img = (typeof window.__aoImgFor === 'function') ? window.__aoImgFor(it.sku) : '';
+ const imgCell = img
+   ? `<img src="${esc(img)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:42px; height:42px; object-fit:cover; border-radius:7px; border:1px solid #E5E7EB; display:block;"><span style="display:none; width:42px; height:42px; border:1px dashed #D1D5DB; border-radius:7px; align-items:center; justify-content:center; font-size:8px; color:#9CA3AF; text-align:center;">No Img</span>`
+   : `<span style="display:flex; width:42px; height:42px; border:1px dashed #D1D5DB; border-radius:7px; align-items:center; justify-content:center; font-size:8px; color:#9CA3AF; text-align:center;">No Img</span>`;
  return `<tr style="border-bottom:1px solid #F3F4F6;">
+ <td style="padding:8px 10px;">${imgCell}</td>
  <td style="padding:8px 10px; font-family:'SF Mono',Menlo,monospace; font-size:11.5px; color:#374151;">${esc(it.sku || '-')}</td>
  <td style="padding:8px 10px; font-size:12px;">${esc(it.name || '-')}</td>
  <td style="padding:8px 10px; text-align:center; font-weight:800; font-size:13px; color:var(--primary);">${qty}</td>
  <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#6B7280;">RM ${price.toFixed(2)}</td>
  <td style="padding:8px 10px; text-align:right; font-size:12px; font-weight:700;">RM ${line.toFixed(2)}</td>
  </tr>`;
- }).join('') : '<tr><td colspan="5" style="text-align:center; color:#9CA3AF; padding:18px; font-size:12px;">Tiada senarai barang direkod untuk order ni.</td></tr>';
+ }).join('') : '<tr><td colspan="6" style="text-align:center; color:#9CA3AF; padding:18px; font-size:12px;">Tiada senarai barang direkod untuk order ni.</td></tr>';
  const totalItems = items.reduce((n, it) => n + window.__aoItemQty(it), 0);
  const grandTotal = parseFloat(s.total_amount || s.total || 0) || 0;
  const proof = s.payment_proof_url || '';
  const isMarketplace = /shopee|tiktok/i.test(s.channel || '');
  const infoRow = (label, val) => val ? `<div style="display:flex; gap:8px; font-size:12.5px; padding:3px 0;"><span style="color:#6B7280; min-width:120px;">${label}</span><span style="font-weight:600; color:#111827;">${esc(val)}</span></div>` : '';
+ // p1_476 — status resit email (sebab Payment Proofs dah digabung ke All Orders)
+ const emailSent = s.email_status === 'sent' && !!s.email_sent_at;
+ const emailFailed = s.email_status && /^(failed|error)/i.test(s.email_status);
+ const emailSentWhen = emailSent ? new Date(s.email_sent_at).toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+ const emailBadge = emailSent
+   ? `<div style="display:inline-flex; align-items:center; gap:5px; margin-top:5px; background:#D1FAE5; color:#065F46; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;"><i data-lucide="mail-check" style="width:12px;height:12px;"></i> Resit emel dihantar · ${esc(emailSentWhen)}</div>`
+   : (emailFailed ? `<div style="display:inline-flex; align-items:center; gap:5px; margin-top:5px; background:#FEE2E2; color:#991B1B; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;"><i data-lucide="mail-x" style="width:12px;height:12px;"></i> Email gagal — cuba hantar semula</div>` : '');
  // p1_320 — fulfilment state + controls
  const f = md.fulfilment || {};
  const canFulfil = !['Completed','Cancelled','Refunded'].includes(m.canon);
@@ -23415,6 +23428,7 @@ window.__aoViewOrder = function(saleId) {
  ${infoRow('Nama', s.customer_name || 'Walk-In')}
  ${infoRow('Phone', s.customer_phone)}
  ${infoRow('Email', s.customer_email || md.buyer_email)}
+ ${emailBadge}
  ${isMarketplace && !s.customer_phone ? '<div style="font-size:11px; color:#9CA3AF; padding-top:4px;">Alamat penuh ada di seller centre ' + esc(s.channel) + '.</div>' : ''}
  </div>
  <div>
@@ -23429,7 +23443,7 @@ window.__aoViewOrder = function(saleId) {
  <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:14px;">
  <table style="width:100%; border-collapse:collapse;">
  <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">
- <th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:center; padding:7px 10px;">Qty</th><th style="text-align:right; padding:7px 10px;">Harga</th><th style="text-align:right; padding:7px 10px;">Jumlah</th>
+ <th style="text-align:left; padding:7px 10px;">Gambar</th><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:center; padding:7px 10px;">Qty</th><th style="text-align:right; padding:7px 10px;">Harga</th><th style="text-align:right; padding:7px 10px;">Jumlah</th>
  </tr></thead>
  <tbody>${itemRows}</tbody>
  </table>
@@ -23449,7 +23463,7 @@ window.__aoViewOrder = function(saleId) {
  })()) : ''}
  <div style="display:flex; gap:8px; flex-wrap:wrap;">
  <button onclick="window.__aoPrintPackingSlip && window.__aoPrintPackingSlip(${s.id})" style="flex:1.4; min-width:150px; background:#CD7C32; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak Packing Slip</button>
- <button id="aoEmailReceiptBtn" onclick="window.__aoSendReceiptEmail(${s.id})" style="flex:1.2; min-width:150px; background:#E0E7FF; border:1px solid #A5B4FC; color:#3730A3; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="mail" style="width:13px;height:13px;vertical-align:-2px;"></i> Hantar Resit Email</button>
+ <button id="aoEmailReceiptBtn" onclick="window.__aoSendReceiptEmail(${s.id})" style="flex:1.2; min-width:150px; background:${emailSent ? '#ECFDF5' : '#E0E7FF'}; border:1px solid ${emailSent ? '#86EFAC' : '#A5B4FC'}; color:${emailSent ? '#065F46' : '#3730A3'}; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="${emailSent ? 'mail-check' : 'mail'}" style="width:13px;height:13px;vertical-align:-2px;"></i> ${emailSent ? 'Hantar Semula Resit' : 'Hantar Resit Email'}</button>
  <button onclick="document.getElementById('aoViewOverlay').remove(); window.__ppEditSale && window.__ppEditSale(${s.id});" style="flex:1; min-width:90px; background:#fff8f0; border:1px solid #fdba74; color:#7c4a1a; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;"><i data-lucide="edit-3" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit</button>
  <button onclick="document.getElementById('aoViewOverlay').remove()" style="flex:1; min-width:80px; background:#101010; border:none; color:#fff; padding:10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700;">Tutup</button>
  </div>
@@ -23490,7 +23504,15 @@ window.__aoSendReceiptEmail = async function(saleId) {
    body: JSON.stringify({ sale_id: saleId, force: true })
   });
   const data = await res.json().catch(() => ({}));
-  if(data.success) { if(typeof showToast === 'function') showToast('Resit dihantar ke ' + (data.to || email) + '.', 'success'); }
+  if(data.success) {
+   if(typeof showToast === 'function') showToast('Resit dihantar ke ' + (data.to || email) + '.', 'success');
+   // Update rekod tempatan + refresh popup supaya badge "dihantar" terus muncul
+   s.email_status = 'sent';
+   s.email_sent_at = new Date().toISOString();
+   const ov = document.getElementById('aoViewOverlay');
+   if(ov) { ov.remove(); if(typeof window.__aoViewOrder === 'function') window.__aoViewOrder(saleId); }
+   return;
+  }
   else if(data.skipped) { if(typeof showToast === 'function') showToast('Tak jadi hantar: ' + (data.reason || 'skipped') + (/RESEND_API_KEY/.test(data.reason||'') ? ' — env Resend belum set di Netlify.' : ''), 'warn'); }
   else { if(typeof showToast === 'function') showToast('Gagal hantar: ' + (data.error || data.reason || res.status), 'error'); }
  } catch(e) { if(typeof showToast === 'function') showToast('Network error: ' + e.message, 'error'); }
