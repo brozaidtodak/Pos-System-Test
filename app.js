@@ -8491,31 +8491,62 @@ window.__scsPreviewReport = async function(sessionId) {
   let driftUnits = 0, driftRM = 0;
   const costOf = (sku) => { const p = (typeof masterProducts !== 'undefined' ? masterProducts : []).find(x => x.sku === sku); return p ? (Number(p.cost_price) || 0) : 0; };
   selisih.forEach(i => { const v = Number(i.variance) || 0; driftUnits += v; driftRM += v * costOf(i.sku); });
+  // nilai stok diaudit (counted_qty x kos)
+  let auditedRM = 0; checked.forEach(i => { auditedRM += (Number(i.counted_qty) || 0) * costOf(i.sku); });
   // top selisih (abs)
   const topVar = selisih.slice().sort((a, b) => Math.abs(Number(b.variance)) - Math.abs(Number(a.variance))).slice(0, 8);
   // prestasi per pengira (Kiraan 1)
   const byStaff = {};
   checked.forEach(i => { const n = (i.counted_by_name || 'Tak dinyatakan'); if(!byStaff[n]) byStaff[n] = { count: 0, tepat: 0 }; byStaff[n].count++; if(i.variance != null && Number(i.variance) === 0) byStaff[n].tepat++; });
   const staffRows = Object.entries(byStaff).map(([k, v]) => ({ k, ...v, acc: v.count ? Math.round(v.tepat / v.count * 100) : 0 })).sort((a, b) => b.count - a.count);
+  // ketepatan ikut lokasi/rak (guna rujukan pertama lokasi sebelum '-')
+  const rakOf = (bin) => { const b = String(bin || '').trim(); if(!b) return 'Tiada lokasi'; return b.split('-')[0].trim() || 'Tiada lokasi'; };
+  const byRak = {};
+  checked.forEach(i => { const r = rakOf(i.location_bin); if(!byRak[r]) byRak[r] = { count: 0, tepat: 0, selisih: 0 }; byRak[r].count++; if(i.variance != null && Number(i.variance) === 0) byRak[r].tepat++; else if(i.variance != null) byRak[r].selisih++; });
+  const rakRows = Object.entries(byRak).map(([k, v]) => ({ k, ...v, acc: v.count ? Math.round(v.tepat / v.count * 100) : 0 })).sort((a, b) => a.acc - b.acc);
+
+  // ── analytics merentas sesi (trend + SKU kronik) ──
+  let trendTxt = '', trendColor = '#6B7280', durTxt = '-', kronikRows = [];
+  try {
+   const { data: appSess } = await db.from('stock_check_sessions').select('id,name,created_at,approved_at,status').eq('status', 'approved').order('approved_at', { ascending: false });
+   const allApp = appSess || [];
+   // masa siap sesi ni
+   const cAt = sess && sess.created_at ? new Date(sess.created_at).getTime() : null;
+   const aAt = sess && sess.approved_at ? new Date(sess.approved_at).getTime() : null;
+   if(cAt && aAt && aAt >= cAt) { const mins = Math.round((aAt - cAt) / 60000); durTxt = mins < 90 ? (mins + ' minit') : (Math.round(mins / 60 * 10) / 10 + ' jam'); }
+   // sesi approved sebelum ni (untuk trend + kronik)
+   const ids = allApp.map(s => s.id);
+   if(ids.length) {
+    const { data: histRaw } = await db.from('stock_check_session_items').select('sku,variance,counted_qty,session_id').in('session_id', ids);
+    const hist = histRaw || [];
+    // trend: banding ketepatan sistem sesi ni vs sesi approved terdekat sebelum ni
+    const prior = allApp.filter(s => s.id !== sessionId).slice(0).sort((a, b) => new Date(b.approved_at) - new Date(a.approved_at)).find(s => new Date(s.approved_at) < new Date(sess.approved_at));
+    if(prior) {
+     const pItems = hist.filter(h => h.session_id === prior.id && h.counted_qty != null && h.variance != null);
+     if(pItems.length) {
+      const pAcc = Math.round(pItems.filter(h => Number(h.variance) === 0).length / pItems.length * 100);
+      const delta = sysAcc - pAcc;
+      trendTxt = (delta > 0 ? '▲ +' : (delta < 0 ? '▼ ' : '● ')) + delta + '% vs sesi lepas (' + pAcc + '%)';
+      trendColor = delta > 0 ? '#065F46' : (delta < 0 ? '#991B1B' : '#6B7280');
+     } else { trendTxt = 'sesi lepas tiada data'; }
+    } else { trendTxt = 'sesi approved pertama'; }
+    // SKU kronik: muncul dengan selisih dalam >=2 sesi approved
+    const skuSess = {};
+    hist.forEach(h => { if(h.variance != null && Number(h.variance) !== 0) { if(!skuSess[h.sku]) skuSess[h.sku] = new Set(); skuSess[h.sku].add(h.session_id); } });
+    kronikRows = Object.entries(skuSess).map(([sku, set]) => ({ sku, n: set.size })).filter(r => r.n >= 2).sort((a, b) => b.n - a.n).slice(0, 8);
+   }
+  } catch(_e) { /* analytics merentas sesi optional */ }
 
   const fmtRM = (n) => 'RM ' + (Number(n) || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dt = (iso) => iso ? new Date(iso).toLocaleString('en-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
   const kpi = (lbl, val, sub, color) => `<div style="background:#F9FAFB; border:1px solid #F0F0F0; border-radius:10px; padding:12px 14px;"><div style="font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">${lbl}</div><div style="font-size:22px; font-weight:800; color:${color || '#101010'}; margin-top:2px;">${val}</div>${sub ? `<div style="font-size:10.5px; color:#9CA3AF; margin-top:2px;">${sub}</div>` : ''}</div>`;
+  const nameOf = (i) => esc((i.product_name || i.name || '').slice(0, 36));
 
-  const body = document.getElementById('scsReportBody');
-  body.style.textAlign = 'left'; body.style.color = '';
-  body.innerHTML = `
-   <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px;">
-    <div>
-     <div style="font-size:11px; font-weight:800; color:#3730A3; text-transform:uppercase; letter-spacing:0.5px;"><i data-lucide="file-bar-chart-2" style="width:13px;height:13px;vertical-align:-2px;"></i> Laporan Stock Take</div>
-     <div style="font-size:18px; font-weight:800; color:#101010; margin-top:2px;">${esc((sess && sess.name) || 'Sesi')}</div>
-     <div style="font-size:11.5px; color:#6B7280; margin-top:3px;">Diluluskan: ${esc((sess && sess.approved_by_name) || 'Bos')} &middot; ${esc(dt(sess && sess.approved_at))}</div>
-    </div>
-    <div style="display:flex; gap:7px;">
-     <button onclick="window.print()" style="background:#fff; border:1px solid #E5E7EB; color:#374151; padding:7px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak</button>
-     <button onclick="document.getElementById('scsReportOverlay').remove()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; line-height:1;">×</button>
-    </div>
-   </div>
+  // ── kandungan laporan (dikongsi skrin + cetak) ──
+  const reportHTML = `
+   <div style="font-size:11px; font-weight:800; color:#3730A3; text-transform:uppercase; letter-spacing:0.5px;">Laporan Stock Take</div>
+   <div style="font-size:18px; font-weight:800; color:#101010; margin-top:2px;">${esc((sess && sess.name) || 'Sesi')}</div>
+   <div style="font-size:11.5px; color:#6B7280; margin-top:3px;">Diluluskan: ${esc((sess && sess.approved_by_name) || 'Bos')} &middot; ${esc(dt(sess && sess.approved_at))}</div>
 
    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin:16px 0;">
     ${kpi('Jumlah SKU', items.length, checked.length + ' dah check')}
@@ -8530,29 +8561,77 @@ window.__scsPreviewReport = async function(sessionId) {
     ${kpi('Anggaran Drift RM', (driftRM >= 0 ? '' : '−') + fmtRM(Math.abs(driftRM)), 'pada harga kos', driftRM === 0 ? '#065F46' : '#991B1B')}
    </div>
 
+   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:16px;">
+    ${kpi('Masa Siap Sesi', durTxt, 'create → approve')}
+    ${kpi('Trend Ketepatan', trendTxt || '-', 'banding sesi approved lepas', trendColor)}
+    ${kpi('Nilai Stok Diaudit', fmtRM(auditedRM), checked.length + ' item dikira × kos')}
+   </div>
+
    <div style="font-size:12px; font-weight:800; color:#374151; margin:6px 0;">Top Selisih (perbezaan terbesar)</div>
    <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:16px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px;">
      <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase;"><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:right; padding:7px 10px;">Sistem</th><th style="text-align:right; padding:7px 10px;">Dikira</th><th style="text-align:right; padding:7px 10px;">Selisih</th></tr></thead>
-     <tbody>${topVar.length ? topVar.map(i => { const v = Number(i.variance); return `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11px;">${esc(i.sku)}</td><td style="padding:7px 10px; font-size:11.5px;">${esc((i.product_name || i.name || '').slice(0, 36))}</td><td style="padding:7px 10px; text-align:right; color:#6B7280;">${i.system_qty != null ? i.system_qty : '-'}</td><td style="padding:7px 10px; text-align:right; font-weight:700;">${i.counted_qty}</td><td style="padding:7px 10px; text-align:right; font-weight:800; color:${v > 0 ? '#92400E' : '#991B1B'};">${v > 0 ? '+' + v : v}</td></tr>`; }).join('') : '<tr><td colspan="5" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada selisih — semua tepat ✓</td></tr>'}</tbody>
+     <tbody>${topVar.length ? topVar.map(i => { const v = Number(i.variance); return `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11px;">${esc(i.sku)}</td><td style="padding:7px 10px; font-size:11.5px;">${nameOf(i)}</td><td style="padding:7px 10px; text-align:right; color:#6B7280;">${i.system_qty != null ? i.system_qty : '-'}</td><td style="padding:7px 10px; text-align:right; font-weight:700;">${i.counted_qty}</td><td style="padding:7px 10px; text-align:right; font-weight:800; color:${v > 0 ? '#92400E' : '#991B1B'};">${v > 0 ? '+' + v : v}</td></tr>`; }).join('') : '<tr><td colspan="5" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada selisih — semua tepat ✓</td></tr>'}</tbody>
     </table>
    </div>
 
    <div style="font-size:12px; font-weight:800; color:#374151; margin:6px 0;">Prestasi Pengira (Kiraan 1)</div>
-   <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden;">
+   <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:16px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px;">
      <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase;"><th style="text-align:left; padding:7px 10px;">Staf</th><th style="text-align:right; padding:7px 10px;">Item Dikira</th><th style="text-align:right; padding:7px 10px;">Tepat</th><th style="text-align:right; padding:7px 10px;">Ketepatan</th></tr></thead>
      <tbody>${staffRows.length ? staffRows.map(r => `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px;">${esc(r.k)}</td><td style="padding:7px 10px; text-align:right;">${r.count}</td><td style="padding:7px 10px; text-align:right;">${r.tepat}</td><td style="padding:7px 10px; text-align:right; font-weight:700; color:${r.acc >= 90 ? '#065F46' : (r.acc >= 70 ? '#92400E' : '#991B1B')};">${r.acc}%</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada data</td></tr>'}</tbody>
     </table>
    </div>
 
-   <p style="font-size:10.5px; color:#9CA3AF; margin:14px 0 0; line-height:1.5;"><strong>Nota analytics:</strong> "% Kesilapan First Check" = berapa kerap semakan-2 (Tarmizi/Kael) jumpa nombor berbeza dari kiraan-1 (Fahmi). "Ketepatan Sistem" = kiraan fizikal padan stok sistem (selisih = stok hilang/lebih sebenar, bukan semestinya silap kira). "Drift RM" = anggaran nilai selisih pada harga kos.</p>
+   <div style="font-size:12px; font-weight:800; color:#374151; margin:6px 0;">Ketepatan Ikut Rak / Lokasi</div>
+   <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:16px;">
+    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+     <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase;"><th style="text-align:left; padding:7px 10px;">Rak</th><th style="text-align:right; padding:7px 10px;">Item</th><th style="text-align:right; padding:7px 10px;">Tepat</th><th style="text-align:right; padding:7px 10px;">Selisih</th><th style="text-align:right; padding:7px 10px;">Ketepatan</th></tr></thead>
+     <tbody>${rakRows.length ? rakRows.map(r => `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px; font-weight:700;">${esc(r.k)}</td><td style="padding:7px 10px; text-align:right;">${r.count}</td><td style="padding:7px 10px; text-align:right;">${r.tepat}</td><td style="padding:7px 10px; text-align:right; color:${r.selisih ? '#991B1B' : '#9CA3AF'};">${r.selisih}</td><td style="padding:7px 10px; text-align:right; font-weight:700; color:${r.acc >= 90 ? '#065F46' : (r.acc >= 70 ? '#92400E' : '#991B1B')};">${r.acc}%</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada data lokasi</td></tr>'}</tbody>
+    </table>
+   </div>
+
+   <div style="font-size:12px; font-weight:800; color:#374151; margin:6px 0;">SKU Kronik (selisih berulang ≥2 sesi)</div>
+   <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:8px;">
+    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+     <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase;"><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:right; padding:7px 10px;">Bil. Sesi Ada Selisih</th></tr></thead>
+     <tbody>${kronikRows.length ? kronikRows.map(r => `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11px;">${esc(r.sku)}</td><td style="padding:7px 10px; text-align:right; font-weight:800; color:#991B1B;">${r.n} sesi</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada SKU yang selisih berulang — bagus ✓</td></tr>'}</tbody>
+    </table>
+   </div>
+
+   <p style="font-size:10.5px; color:#9CA3AF; margin:14px 0 0; line-height:1.5;"><strong>Nota analytics:</strong> "% Kesilapan First Check" = berapa kerap semakan-2 (Tarmizi/Kael) jumpa nombor berbeza dari kiraan-1 (Fahmi). "Ketepatan Sistem" = kiraan fizikal padan stok sistem (selisih = stok hilang/lebih sebenar, bukan semestinya silap kira). "Drift RM" = anggaran nilai selisih pada harga kos. "Trend" banding Ketepatan Sistem dengan sesi approved sebelum ni. "SKU Kronik" = barang yang ada selisih dalam 2+ sesi (mungkin selalu salah letak / perlu disiasat).</p>
+  `;
+  window.__scsReportHTML = reportHTML;
+  window.__scsReportTitle = (sess && sess.name) || 'Laporan Stock Take';
+
+  const body = document.getElementById('scsReportBody');
+  body.style.textAlign = 'left'; body.style.color = '';
+  body.innerHTML = `
+   <div style="display:flex; justify-content:flex-end; gap:7px; margin-bottom:4px;">
+    <button onclick="window.__scsPrintReport()" style="background:#fff; border:1px solid #E5E7EB; color:#374151; padding:7px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700;"><i data-lucide="printer" style="width:13px;height:13px;vertical-align:-2px;"></i> Cetak</button>
+    <button onclick="document.getElementById('scsReportOverlay').remove()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; line-height:1;">×</button>
+   </div>
+   ${reportHTML}
   `;
   if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  } catch(e) {
   const body = document.getElementById('scsReportBody');
   if(body) body.innerHTML = '<p style="color:#DC2626; padding:20px; text-align:center;">Gagal muat laporan: ' + (e.message || e) + '</p>';
  }
+};
+
+// Cetak laporan dalam window bersih (overlay fixed tak boleh print elok)
+window.__scsPrintReport = function() {
+ const html = window.__scsReportHTML || '';
+ const title = window.__scsReportTitle || 'Laporan Stock Take';
+ if(!html) { alert('Tiada laporan untuk dicetak.'); return; }
+ const w = window.open('', '_blank');
+ if(!w) { alert('Popup disekat browser. Benarkan popup untuk cetak.'); return; }
+ w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + title + '</title>'
+  + '<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:24px;color:#101010;-webkit-print-color-adjust:exact;print-color-adjust:exact;}table{page-break-inside:auto;}tr{page-break-inside:avoid;}</style>'
+  + '</head><body>' + html
+  + '<scr' + 'ipt>setTimeout(function(){window.print();},300);</scr' + 'ipt></body></html>');
+ w.document.close();
 };
 
 window.__scsPublishOpen = async function(sessionId) {
