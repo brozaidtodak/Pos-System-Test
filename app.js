@@ -9015,6 +9015,20 @@ window.__scsToggleSkuList = async function(sessionId) {
  if(error) throw error;
  const items = data || [];
  if(!items.length) { box.innerHTML = '<p style="font-size:11.5px; color:#9CA3AF; padding:12px 0; text-align:center;">Tiada SKU dalam sesi ni.</p>'; return; }
+ // p1_488 — susun ikut RUJUKAN KEDUA lokasi (bhgn selepas '-' pertama). Cth A-F1 → guna "F1".
+ // Zaid: turutan kira ikut rujukan kedua (rak), bukan zon pertama (A/B/C). Lokasi kosong di hujung.
+ const __secondRef = (loc) => { const l = (loc || '').trim(); const i = l.indexOf('-'); return i >= 0 ? l.slice(i + 1).trim() : ''; };
+ items.sort((a, b) => {
+  const ra = __secondRef(a.location_bin), rb = __secondRef(b.location_bin);
+  if(!ra && !rb) return String(a.sku||'').localeCompare(String(b.sku||''), undefined, { numeric: true });
+  if(!ra) return 1; if(!rb) return -1;
+  const c = ra.localeCompare(rb, undefined, { numeric: true, sensitivity: 'base' });
+  if(c !== 0) return c;
+  const fa = String(a.location_bin||'').split('-')[0], fb = String(b.location_bin||'').split('-')[0];
+  const cf = fa.localeCompare(fb, undefined, { numeric: true });
+  if(cf !== 0) return cf;
+  return String(a.sku||'').localeCompare(String(b.sku||''), undefined, { numeric: true });
+ });
  // p1_459 — cache items so the blind-count popup can read display fields by id
  window.__scsItemsCache = window.__scsItemsCache || {};
  window.__scsItemsCache[sessionId] = items;
@@ -9070,6 +9084,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  ${selisihCell}
  <td style="padding:8px 10px; font-size:11px;">${catatanCell}</td>
  <td style="padding:8px 10px; text-align:center;"><span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; background:${badgeBg}; color:${badgeFg}; font-size:10px; font-weight:700;"><i data-lucide="${badgeIcon}" style="width:10px;height:10px;"></i> ${badgeTxt}</span></td>
+ <td style="padding:8px 10px; font-size:11px; color:${isChecked && i.counted_by_name ? '#374151' : '#D1D5DB'};">${isChecked && i.counted_by_name ? `<span style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="user" style="width:11px;height:11px; color:#9CA3AF;"></i> ${escHtml(i.counted_by_name)}</span>` : '—'}</td>
  <td style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="event.stopPropagation(); window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #FCA5A5; color:#991B1B; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="event.stopPropagation(); window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
  </tr>`;
  }).join('');
@@ -9094,6 +9109,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  ${reveal ? '<th style="text-align:right; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Selisih</th>' : ''}
  <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Catatan</th>
  <th style="text-align:center; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Status</th>
+ <th style="text-align:left; padding:8px 10px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Oleh</th>
  <th style="padding:8px 6px; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">Aksi</th>
  </tr>
  </thead>
