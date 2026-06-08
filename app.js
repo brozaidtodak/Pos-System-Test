@@ -12160,15 +12160,34 @@ window.processNewCheckout = async function() {
 
  if(transactionsPayload.length> 0) await db.from('inventory_transactions').insert(transactionsPayload);
 
- // Points & CRM System
+ // p1_484 — Auto-simpan pelanggan masa checkout (nama bukan Walk-In) supaya pelanggan
+ // baru/lama auto masuk senarai pelanggan + simpan EMAIL sekali. Padan ikut phone →
+ // email → nama (elak duplicate). Update senarai dalam-memori terus.
  const earnedPoints = Math.floor(totalVal);
- if(custNameText !== 'Walk-In') {
- const existing = customersData.find(c => c.name.toLowerCase() === custNameText.toLowerCase() || (c.phone === custPhoneText && custPhoneText !== ''));
+ if(custNameText && custNameText !== 'Walk-In') {
+ const custEmailText = ((document.getElementById("customerEmail") || {}).value || '').trim();
+ const phoneNorm = (custPhoneText || '').replace(/[^0-9]/g, '');
+ const existing = customersData.find(c =>
+ (phoneNorm && (c.phone || '').replace(/[^0-9]/g, '') === phoneNorm) ||
+ (custEmailText && (c.email || '').toLowerCase() === custEmailText.toLowerCase()) ||
+ (!phoneNorm && !custEmailText && (c.name || '').toLowerCase() === custNameText.toLowerCase())
+ );
+ try {
  if(!existing) {
- await db.from('customers').insert([{name: custNameText, phone: custPhoneText, points: earnedPoints}]);
+ const payload = { name: custNameText, points: earnedPoints };
+ if(custPhoneText) payload.phone = custPhoneText;
+ if(custEmailText) payload.email = custEmailText;
+ const { data: newCust } = await db.from('customers').insert([payload]).select().single();
+ if(newCust && typeof customersData !== 'undefined' && Array.isArray(customersData)) { customersData.push(newCust); window.__pastCustomersCache = null; }
  } else {
- await db.from('customers').update({points: (existing.points || 0) + earnedPoints, phone: custPhoneText || existing.phone}).eq('id', existing.id);
+ const upd = { points: (existing.points || 0) + earnedPoints };
+ if(custPhoneText && !existing.phone) upd.phone = custPhoneText;
+ if(custEmailText && !existing.email) upd.email = custEmailText;
+ await db.from('customers').update(upd).eq('id', existing.id);
+ existing.points = upd.points; if(upd.phone) existing.phone = upd.phone; if(upd.email) existing.email = upd.email;
+ window.__pastCustomersCache = null;
  }
+ } catch(e) { console.warn('auto-simpan pelanggan gagal:', e.message); }
  }
 
  // p1_201 — Custom manual discount applied first (staff entered amount)
