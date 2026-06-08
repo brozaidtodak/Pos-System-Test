@@ -8177,6 +8177,103 @@ window.renderCheckSessions = async function() {
 // Zaid: "tak semua product nak stock check, dia nak pilih products yang nak je"
 window.__scsSelectedSkus = new Set();
 
+// ============= p1_473 — SESI STOCK TAKE DARI JUALAN (All Orders) =============
+// Kumpul SKU yang terjual dalam julat tarikh (created_at) → unique + sorted →
+// pre-isi modal create session supaya staff hanya kira barang yang baru laku.
+// Order test/void/cancel/refund dibuang via __isRealSale. Hanya SKU yang wujud
+// dalam masterProducts disertakan (boleh snapshot system_qty + location).
+window.__scsSalesSkus = window.__scsSalesSkus || [];
+window.__scsSalesMeta = window.__scsSalesMeta || {};
+
+window.__scsSalesOpen = function() {
+ const modal = document.getElementById('scsSalesModal');
+ if(!modal) return;
+ const pad = (n) => String(n).padStart(2,'0');
+ const fmt = (d) => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+ const today = new Date();
+ const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 6); // 7 hari termasuk hari ni
+ const fromEl = document.getElementById('scsSalesFrom');
+ const toEl = document.getElementById('scsSalesTo');
+ if(fromEl) fromEl.value = fmt(weekAgo);
+ if(toEl) toEl.value = fmt(today);
+ window.__scsSalesSkus = [];
+ const prev = document.getElementById('scsSalesPreview');
+ if(prev) prev.innerHTML = '';
+ const gen = document.getElementById('scsSalesGenBtn');
+ if(gen) gen.disabled = true;
+ modal.style.display = 'flex';
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+window.__scsSalesCollect = function() {
+ const fromStr = (document.getElementById('scsSalesFrom') || {}).value || '';
+ const toStr = (document.getElementById('scsSalesTo') || {}).value || '';
+ const prev = document.getElementById('scsSalesPreview');
+ const gen = document.getElementById('scsSalesGenBtn');
+ if(!fromStr || !toStr) { if(prev) prev.innerHTML = '<p style="color:#DC2626; font-size:12px;">Sila pilih kedua-dua tarikh.</p>'; if(gen) gen.disabled = true; return; }
+ let fromMs = new Date(fromStr + 'T00:00:00').getTime();
+ let toMs = new Date(toStr + 'T23:59:59.999').getTime();
+ if(fromMs > toMs) { const tmp = fromMs; fromMs = new Date(toStr + 'T00:00:00').getTime(); toMs = tmp; } // tarikh terbalik → tukar
+ const sales = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+ const masterSkuSet = new Set((typeof masterProducts !== 'undefined' ? masterProducts : []).map(p => p.sku));
+ const found = new Set();    // SKU terjual yang ADA dalam master
+ const skipped = new Set();  // SKU terjual tapi takde dalam master
+ let orderCount = 0;
+ sales.forEach(s => {
+  if(!window.__isRealSale(s) || !s.created_at) return;
+  const t = new Date(s.created_at).getTime();
+  if(isNaN(t) || t < fromMs || t > toMs) return;
+  let items = s.items;
+  if(typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+  if(!Array.isArray(items) || !items.length) return;
+  let hit = false;
+  items.forEach(it => {
+   const sku = (it && (it.sku || it.SKU || '')).toString().trim();
+   if(!sku) return;
+   const qty = window.__aoItemQty ? window.__aoItemQty(it) : (parseInt(it.qty != null ? it.qty : it.quantity) || 0);
+   if(qty <= 0) return;
+   if(masterSkuSet.has(sku)) { found.add(sku); hit = true; }
+   else { skipped.add(sku); }
+  });
+  if(hit) orderCount++;
+ });
+ const skus = Array.from(found).sort((a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }));
+ window.__scsSalesSkus = skus;
+ window.__scsSalesMeta = { from: fromStr, to: toStr, orders: orderCount };
+ if(!skus.length) {
+  if(prev) prev.innerHTML = '<div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:12px; font-size:12.5px; color:#991B1B;">Tiada SKU terjual dalam tempoh ni (selain order test/cancel/refund).</div>';
+  if(gen) gen.disabled = true;
+  return;
+ }
+ const escH = (x) => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ const skipNote = skipped.size ? `<p style="font-size:11px; color:#9CA3AF; margin:8px 0 0;">${skipped.size} SKU terjual dilangkau (takde dalam master products).</p>` : '';
+ const chips = skus.map(s => `<span style="display:inline-block; font-family:'SF Mono',Menlo,monospace; font-size:10.5px; font-weight:700; background:#FFF; border:1px solid #E5E7EB; border-radius:5px; padding:2px 6px; margin:2px;">${escH(s)}</span>`).join('');
+ if(prev) prev.innerHTML = `
+  <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:12px;">
+   <div style="font-size:14px; font-weight:800; color:#166534;">${skus.length} SKU unik dijumpai</div>
+   <div style="font-size:11.5px; color:#15803D;">dari ${orderCount} order &middot; ${escH(fromStr)} hingga ${escH(toStr)}</div>
+  </div>
+  <div style="max-height:160px; overflow-y:auto; margin-top:8px; padding:6px; border:1px solid #F3F4F6; border-radius:8px;">${chips}</div>
+  ${skipNote}`;
+ if(gen) gen.disabled = false;
+};
+
+window.__scsSalesGenerate = async function() {
+ const skus = window.__scsSalesSkus || [];
+ if(!skus.length) return;
+ const meta = window.__scsSalesMeta || {};
+ const salesModal = document.getElementById('scsSalesModal');
+ if(salesModal) salesModal.style.display = 'none';
+ // Buka modal create (ia reset state + render picker), lepas tu pre-isi pilihan kita
+ await window.__scsOpenCreate();
+ window.__scsSelectedSkus.clear();
+ skus.forEach(s => window.__scsSelectedSkus.add(s));
+ const nameEl = document.getElementById('scsName');
+ if(nameEl) nameEl.value = 'Stock Take Jualan ' + (meta.from || '') + ' → ' + (meta.to || '');
+ if(typeof window.__scsRenderPicker === 'function') window.__scsRenderPicker();
+ if(typeof window.__scsUpdatePreview === 'function') window.__scsUpdatePreview();
+};
+
 window.__scsOpenCreate = async function() {
  const modal = document.getElementById('scsCreateModal');
  if(!modal) return;
