@@ -6578,7 +6578,7 @@ window.refreshRailBadges = function() {
 // TIDAK digate sebab ia sebahagian Home; commission manager-view digate berasingan.)
 // p1_517 — Reports management-only + PIN 1999 (Zaid). Tambah Analytics + Returns/Damage + Payment Proofs
 // ke senarai gated (selain financial sedia ada). Laporan Saya (personal) kekal terbuka utk staf.
-window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection'];
+window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection','marginReportSection'];
 window.__CONF_PIN = '1999';
 window.__confIsUnlocked = function() {
  try { return sessionStorage.getItem('confUnlocked_v1') === '1'; } catch(e) { return window.__confUnlockedMem === true; }
@@ -23337,6 +23337,100 @@ function __computeProductSales() {
 }
 
 window.invalidateProductSalesCache = function() { __prodSalesCache = null; };
+
+// ===================================
+// p1_518 — Margin Bulanan & Tahunan (Zaid: "kirakan margin setiap bulan dan tahun 2024-2026 dari record sales").
+// GROSS margin = Jualan (total order) − Kos produk (qty × cost_price per SKU). BUKAN untung bersih (10cc urus overhead).
+// Flag unit tanpa cost supaya ketepatan telus (selaras isu COGS POS tak lengkap, p1_457).
+// ===================================
+window.__marginRows = [];
+window.renderMarginReport = function() {
+ const wrap = document.getElementById('marginReportBody');
+ if(!wrap) return;
+ const sales = Array.isArray(salesHistory) ? salesHistory : [];
+ const costMap = {};
+ (Array.isArray(masterProducts) ? masterProducts : []).forEach(p => { if(p && p.sku) costMap[String(p.sku).toUpperCase().trim()] = Number(p.cost_price) || 0; });
+ const itemQty = (it) => window.__aoItemQty ? window.__aoItemQty(it) : (parseInt(it && (it.qty != null ? it.qty : it.quantity)) || 0);
+ const months = {}, years = {};
+ const mk = () => ({ rev: 0, cogs: 0, orders: 0, units: 0, missUnits: 0 });
+ sales.forEach(s => {
+  if(!window.__isRealSale(s) || !s.created_at) return;
+  const d = new Date(s.created_at); if(isNaN(d)) return;
+  const y = d.getFullYear(); if(y < 2024 || y > 2026) return;
+  const mkey = y + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const rev = Number(s.total_amount || s.total || 0) || 0;
+  let items = s.items; if(typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+  let cogs = 0, missUnits = 0, units = 0;
+  (Array.isArray(items) ? items : []).forEach(it => {
+   const sku = String((it && (it.sku || it.SKU)) || '').toUpperCase().trim();
+   const qty = itemQty(it); if(qty <= 0) return;
+   units += qty;
+   const c = costMap[sku];
+   if(c && c > 0) cogs += qty * c; else missUnits += qty;
+  });
+  const mb = months[mkey] || (months[mkey] = mk()); mb.rev += rev; mb.cogs += cogs; mb.orders++; mb.units += units; mb.missUnits += missUnits;
+  const yb = years[y] || (years[y] = mk()); yb.rev += rev; yb.cogs += cogs; yb.orders++; yb.units += units; yb.missUnits += missUnits;
+ });
+ const fmtRM = (n) => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+ const MONTHS_BM = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'];
+ const pct = (m, r) => r > 0 ? (m / r * 100) : 0;
+ const pctColor = (p) => p >= 30 ? '#065F46' : (p >= 10 ? '#92400E' : '#991B1B');
+ const exportRows = [];
+ let html = '';
+ const yrs = Object.keys(years).map(Number).sort();
+ if(!yrs.length) { wrap.innerHTML = '<p style="padding:20px; text-align:center; color:#9CA3AF;">Tiada jualan dalam 2024–2026.</p>'; return; }
+ yrs.forEach(y => {
+  const yb = years[y]; const ymargin = yb.rev - yb.cogs;
+  html += `<div style="margin-bottom:22px; border:1px solid #E5E7EB; border-radius:10px; overflow:hidden;">
+   <div style="background:#101010; color:#fff; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+    <strong style="font-size:15px;">${y}</strong>
+    <span style="font-size:12.5px;">Jualan ${fmtRM(yb.rev)} · Kos ${fmtRM(yb.cogs)} · <span style="font-weight:800; color:${ymargin >= 0 ? '#34D399' : '#FCA5A5'};">Margin ${fmtRM(ymargin)} (${pct(ymargin, yb.rev).toFixed(1)}%)</span></span>
+   </div>
+   <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+    <thead><tr style="background:#F9FAFB; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">
+     <th style="text-align:left; padding:7px 12px;">Bulan</th><th style="text-align:right; padding:7px 12px;">Order</th><th style="text-align:right; padding:7px 12px;">Jualan</th><th style="text-align:right; padding:7px 12px;">Kos</th><th style="text-align:right; padding:7px 12px;">Margin</th><th style="text-align:right; padding:7px 12px;">Margin %</th><th style="text-align:center; padding:7px 12px;">Tiada Kos</th>
+    </tr></thead><tbody>`;
+  for(let m = 1; m <= 12; m++) {
+   const mkey = y + '-' + String(m).padStart(2, '0'); const mb = months[mkey]; if(!mb) continue;
+   const margin = mb.rev - mb.cogs; const p = pct(margin, mb.rev);
+   exportRows.push([y, MONTHS_BM[m-1], mb.orders, mb.rev.toFixed(2), mb.cogs.toFixed(2), margin.toFixed(2), p.toFixed(1) + '%', mb.missUnits]);
+   html += `<tr style="border-top:1px solid #F3F4F6;">
+    <td style="padding:7px 12px; font-weight:600;">${MONTHS_BM[m-1]} ${y}</td>
+    <td style="padding:7px 12px; text-align:right; color:#6B7280;">${mb.orders}</td>
+    <td style="padding:7px 12px; text-align:right;">${fmtRM(mb.rev)}</td>
+    <td style="padding:7px 12px; text-align:right; color:#6B7280;">${fmtRM(mb.cogs)}</td>
+    <td style="padding:7px 12px; text-align:right; font-weight:800; color:${margin >= 0 ? '#065F46' : '#991B1B'};">${fmtRM(margin)}</td>
+    <td style="padding:7px 12px; text-align:right; font-weight:700; color:${pctColor(p)};">${p.toFixed(1)}%</td>
+    <td style="padding:7px 12px; text-align:center;">${mb.missUnits > 0 ? `<span title="${mb.missUnits} unit terjual takde cost_price — Kos & Margin bulan ni kurang tepat" style="color:#B45309; font-weight:700; font-size:11px;"><i data-lucide="alert-triangle" style="width:11px;height:11px;vertical-align:-1px;"></i> ${mb.missUnits}</span>` : '<span style="color:#10B981;">✓</span>'}</td>
+   </tr>`;
+  }
+  html += `</tbody></table></div>`;
+ });
+ // grand total
+ const gt = mk(); yrs.forEach(y => { const b = years[y]; gt.rev += b.rev; gt.cogs += b.cogs; gt.orders += b.orders; gt.missUnits += b.missUnits; });
+ const gm = gt.rev - gt.cogs;
+ html = `<div style="background:#FAF6EF; border:1px solid #F0C896; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+   <div><div style="font-size:11px; color:#92400E; text-transform:uppercase; letter-spacing:0.4px;">Jumlah 2024–2026</div>
+   <div style="font-size:13px; margin-top:2px;">Jualan <strong>${fmtRM(gt.rev)}</strong> · Kos <strong>${fmtRM(gt.cogs)}</strong> · Margin <strong style="color:${gm >= 0 ? '#065F46' : '#991B1B'};">${fmtRM(gm)} (${pct(gm, gt.rev).toFixed(1)}%)</strong></div></div>
+   <button onclick="window.__marginExportCsv()" style="background:#CD7C32; color:#fff; border:none; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700;"><i data-lucide="download" style="width:13px;height:13px;vertical-align:-2px;"></i> Export CSV</button>
+  </div>` + html
+  + `<p style="font-size:10.5px; color:#9CA3AF; line-height:1.6; margin-top:4px;"><strong>Nota:</strong> Ini <strong>Margin Kasar</strong> = Jualan (total order) − Kos produk (qty × cost_price setiap SKU). BUKAN untung bersih — yuran marketplace, gaji, sewa & overhead lain TAK ditolak (itu di 10cc). Lajur "Tiada Kos" = bilangan unit terjual yang SKU-nya takde cost_price; bulan dengan nilai tinggi bermakna Kos kurang & Margin nampak lebih tinggi dari sebenar — set cost_price produk tu untuk tepatkan.</p>`;
+ wrap.innerHTML = html;
+ window.__marginRows = exportRows;
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.__marginExportCsv = function() {
+ const rows = window.__marginRows || [];
+ if(!rows.length) { if(typeof showToast === 'function') showToast('Tiada data margin.', 'info'); return; }
+ const esc = (v) => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+ const lines = [['Tahun','Bulan','Order','Jualan (RM)','Kos (RM)','Margin (RM)','Margin %','Unit Tiada Kos'].join(',')];
+ rows.forEach(r => lines.push(r.map(esc).join(',')));
+ const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob); const a = document.createElement('a');
+ a.href = url; a.download = 'margin_bulanan_2024-2026.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+ setTimeout(() => URL.revokeObjectURL(url), 1000);
+ if(typeof showToast === 'function') showToast('Margin di-export ke CSV.', 'success');
+};
 
 // ===================================
 // p1_455 — LAPORAN SULIT (PNC): data kewangan sensitif dipindah dari Home.
