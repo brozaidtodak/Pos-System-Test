@@ -20875,6 +20875,10 @@ window.savePdpData = async function() {
  shopee_url: get('pdpShopeeUrl') || null,
  tiktok_url: get('pdpTiktokUrl') || null
  };
+ // p1_533 — disconnect BERSIH: bila staff padam Item/Product ID, buang sekali leftover
+ // sync (model_id/sku_id/synced_at) supaya betul-betul terputus + tag grid jadi grey.
+ if(!metadata.shopee_item_id) { metadata.shopee_model_id = null; metadata.shopee_synced_at = null; }
+ if(!metadata.tiktok_product_id) { metadata.tiktok_sku_id = null; metadata.tiktok_synced_at = null; }
 
  const updatePayload = {
  name: get('pdpName'),
@@ -28698,8 +28702,10 @@ window.renderProductDatabase = function() {
  const cost = p.cost_price ? Number(p.cost_price).toFixed(2) : null;
  // p1_263 — Marketplace integration indicators (Shopee / TikTok). Read dari metadata JSONB.
  const meta = (p.metadata && typeof p.metadata === 'object') ? p.metadata : {};
- const shopeeIntegrated = !!(meta.shopee_item_id || meta.shopee_synced_at);
- const tiktokIntegrated = !!(meta.tiktok_product_id || meta.tiktok_synced_at);
+ // p1_533 — integrated = ada ID mapping SAHAJA (bukan timestamp sync lama). Bila staff
+ // padam Product ID/Item ID (disconnect), tag jadi grey betul (dulu synced_at lama buat ia kekal hidup).
+ const shopeeIntegrated = !!meta.shopee_item_id;
+ const tiktokIntegrated = !!meta.tiktok_product_id;
  const integrationBadges = `
  <div class="pd-card__integrations" style="position:absolute; top:6px; left:6px; display:flex; gap:3px; z-index:2;">
  <span title="${shopeeIntegrated ? ('Tersambung Shopee · Item ' + (meta.shopee_item_id || '?') + (p.shopee_price != null ? ' · RM ' + Number(p.shopee_price).toFixed(2) : '') + ' · klik untuk detail') : 'BELUM di Shopee — harga/stok tak sync'}" style="background:${shopeeIntegrated ? '#EE4D2D' : '#E5E7EB'}; color:${shopeeIntegrated ? '#fff' : '#9CA3AF'}; padding:2px 5px; border-radius:3px; font-size:9px; font-weight:800; letter-spacing:0.3px; line-height:1; display:inline-flex; align-items:center; gap:2px;"><i data-lucide="${shopeeIntegrated ? 'check' : 'x'}" style="width:8px;height:8px;"></i> SP</span>
