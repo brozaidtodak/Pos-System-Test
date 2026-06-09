@@ -29,3 +29,9 @@ assets/brand/logo/10campers-unity-logo.png
 
 # Local Netlify folder
 .netlify
+
+# Android release signing — NEVER commit (p1_537)
+android/keystore.properties
+android/*.keystore
+*.keystore
+android/app/build/
