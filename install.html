@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pasang 10 CAMP POS App</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+ *{box-sizing:border-box;margin:0;padding:0;}
+ body{font-family:'Poppins',-apple-system,sans-serif;background:#101010;color:#FAF6EF;line-height:1.6;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:28px 18px 60px;}
+ .card{width:100%;max-width:440px;}
+ .logo{width:84px;height:84px;border-radius:20px;display:block;margin:8px auto 18px;box-shadow:0 8px 28px rgba(205,124,50,.35);}
+ h1{font-size:22px;font-weight:700;text-align:center;margin-bottom:4px;}
+ .sub{text-align:center;color:#A8A29A;font-size:13.5px;margin-bottom:26px;}
+ .dl{display:block;background:#CD7C32;color:#101010;text-decoration:none;font-weight:700;font-size:17px;text-align:center;padding:16px;border-radius:14px;margin-bottom:10px;box-shadow:0 6px 20px rgba(205,124,50,.4);}
+ .dl:active{transform:translateY(1px);}
+ .ver{text-align:center;font-size:12px;color:#6b675f;margin-bottom:28px;}
+ .sec-title{font-size:13px;font-weight:600;color:#CD7C32;text-transform:uppercase;letter-spacing:.5px;margin:0 0 12px;}
+ ol{list-style:none;counter-reset:s;}
+ li{counter-increment:s;position:relative;padding:0 0 16px 40px;font-size:14.5px;}
+ li::before{content:counter(s);position:absolute;left:0;top:-2px;width:27px;height:27px;background:#1d1d1d;border:1px solid #3a3530;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#CD7C32;}
+ li b{color:#fff;}
+ .box{background:#1a1714;border:1px solid #3a3027;border-radius:12px;padding:14px 16px;font-size:13px;color:#C9C3BA;margin:22px 0;}
+ .box b{color:#F0C896;}
+ .ios{border-color:#2a3a4a;background:#141a1f;}
+ .ios b{color:#8fb8d8;}
+ a.mail{color:#CD7C32;}
+</style>
+</head>
+<body>
+<div class="card">
+ <img src="/assets/icon-only.png" class="logo" alt="10 CAMP POS">
+ <h1>10 CAMP POS</h1>
+ <div class="sub">App rasmi staf &middot; untuk telefon Android</div>
+
+ <a class="dl" href="/10camp-pos.apk" download>Muat Turun App (Android)</a>
+ <div class="ver">Versi 1.0 &middot; ~3 MB</div>
+
+ <div class="sec-title">Cara pasang</div>
+ <ol>
+  <li>Tekan butang <b>Muat Turun App</b> di atas. Tunggu fail siap download.</li>
+  <li>Buka fail tu (tarik bar atas → tekan fail <b>10camp-pos.apk</b>).</li>
+  <li>Kalau telefon tanya <b>"Allow from this source"</b> / <b>"Benarkan dari sumber ini"</b> &mdash; tekan <b>Benarkan / Settings</b> dan hidupkan.</li>
+  <li>Tekan <b>Pasang / Install</b>.</li>
+  <li>Buka app <b>10 CAMP POS</b>, login guna ID &amp; PIN staf macam biasa.</li>
+ </ol>
+
+ <div class="box">
+  <b>Nota:</b> Android mungkin papar amaran "fail ini berbahaya" sebab app ni belum di Play Store lagi (masih dalam proses kelulusan Google). Ini normal &mdash; app ni selamat, milik 10 CAMP sendiri. Tekan <b>"Pasang juga / Install anyway"</b>.
+ </div>
+
+ <div class="box ios">
+  <b>Guna iPhone?</b> App iPhone belum boleh dipasang melalui link &mdash; ia akan diedar melalui <b>TestFlight</b> sebaik sahaja akaun Apple selesai disahkan. Sila tunggu jemputan.
+ </div>
+
+ <div class="sub" style="margin-top:24px;">Ada masalah? Hubungi admin &middot; <a class="mail" href="mailto:admin@10camp.com">admin@10camp.com</a></div>
+</div>
+</body>
+</html>
