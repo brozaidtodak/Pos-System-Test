@@ -11325,8 +11325,10 @@ function renderPOS(searchTerm = "") {
  ? `<p class="price price--has-sale"><span class="price__sale">${fmtPrice(priceNum)}</span><span class="price__was">${fmtPrice(compareAtNum)}</span></p>`
  : `<p class="price">${fmtPrice(priceNum)}</p>`;
 
+ const isOOS = totalStock <= 0;
  htmlBuf += `
- <div class="product-card">
+ <div class="product-card${isOOS ? ' is-oos' : ''}">
+ ${isOOS ? `<span class="product-card__oos"><i data-lucide="x-circle" style="width:12px;height:12px;"></i> STOK HABIS</span>` : ''}
  <img src="${thumb}" class="pos-detail-trigger" loading="lazy" decoding="async" onclick="window.posOpenProductDetail('${skuEsc}')" title="Klik untuk detail" onerror="this.src='https://placehold.co/300x200?text=No+Img'">
  <div class="product-card__badges">
  <span class="sku-badge">${p.sku}</span>
@@ -11336,7 +11338,7 @@ function renderPOS(searchTerm = "") {
  </div>
  <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
- <p class="product-card__stock">${totalStock <= 0 ? (window.t?window.t('cs_out_of_stock'):'Out of stock') : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
+ <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : ''}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
  <button onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? `style="background:#FED7AA; color:#9A3412; border:1px solid #FB923C;" title="${(window.t?window.t('cs_oos_hint'):'Out of stock — backorder')}"` : ''}>${(window.t?window.t('cs_add_to_cart'):'Add to Cart')}</button>
  </div>
  `;
