@@ -120,9 +120,9 @@ exports.handler = async (event) => {
     const params = event.queryStringParameters || {};
     const mode = ['peek','dryrun','push','map'].includes(params.mode) ? params.mode : 'peek';
     const limit = Math.min(parseInt(params.limit || '50', 10) || 50, 100);
-    const offset = Math.max(0, parseInt(params.offset || '0', 10) || 0); // p1_523 — paging
+    const pageOffset = Math.max(0, parseInt(params.offset || '0', 10) || 0); // p1_523 — paging
 
-    const out = { mode, env: ENV, limit, offset };
+    const out = { mode, env: ENV, limit, offset: pageOffset };
 
     try {
         const tok = await getValidToken();
@@ -148,8 +148,8 @@ exports.handler = async (event) => {
             // pusing seluruh katalog (dulu slice(0,limit) sahaja = first-N je yang sync selama-lamanya).
             const allEntries = Object.entries(byItem).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
             out.total_items = allEntries.length;
-            const itemEntries = allEntries.slice(offset, offset + limit);
-            out.next_offset = (offset + limit < allEntries.length) ? (offset + limit) : null; // null = dah habis sekali pusing
+            const itemEntries = allEntries.slice(pageOffset, pageOffset + limit);
+            out.next_offset = (pageOffset + limit < allEntries.length) ? (pageOffset + limit) : null; // null = dah habis sekali pusing
             out.matched = itemEntries.reduce((s, e) => s + e[1].length, 0);
             out.items_to_push = itemEntries.length;
             out.sample = itemEntries.reduce((a, e) => a.concat(e[1]), []).slice(0, 10).map(x => ({ sku: x.sku, pos_qty: x.pos_qty }));
