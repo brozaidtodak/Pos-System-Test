@@ -183,3 +183,14 @@
   to = "/.netlify/functions/returns-pull"
   status = 200
   force = true
+
+# p1_529 — Shopee cancelled/refund orders → returns_log
+[[redirects]]
+  from = "/api/shopee-refunds-pull"
+  to = "/.netlify/functions/shopee-refunds-pull"
+  status = 200
+  force = true
+
+# p1_529 — auto-import cancellation/refund Shopee setiap hari (2am MYT / 18:00 UTC)
+[functions."shopee-refunds-pull"]
+  schedule = "0 18 * * *"

@@ -2414,8 +2414,8 @@ window.renderReturnsLog = async function() {
  <thead><tr><th>Tarikh</th><th>SKU</th><th>Type</th><th>Reason</th><th style="text-align:right;">Qty</th><th>Channel</th><th>Reporter</th></tr></thead>
  <tbody>
  ${rows.slice(0, 100).map(r => {
- const typeColor = { return:'#cd7c32', damaged:'#c0392b', missing:'#D97706', expired:'#a05f22' }[r.type] || '#6B7280';
- const typeLabel = { return:'Return', damaged:'Rosak', missing:'Hilang', expired:'Expired' }[r.type] || r.type;
+ const typeColor = { return:'#cd7c32', damaged:'#c0392b', missing:'#D97706', expired:'#a05f22', cancel:'#6366F1' }[r.type] || '#6B7280';
+ const typeLabel = { return:'Return', damaged:'Rosak', missing:'Hilang', expired:'Expired', cancel:'Batal/Refund' }[r.type] || r.type;
  return `<tr>
  <td style="font-size:11px; color:#6B7280;">${new Date(r.reported_at).toLocaleString('en-MY', { dateStyle:'short', timeStyle:'short' })}</td>
  <td><strong>${escAttr(r.sku)}</strong></td>
