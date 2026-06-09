@@ -702,6 +702,67 @@ let customersData = [];
 let financeRecords = [];
 let financeChartInstance = null;
 let cart = [];
+// p1_557 — Multi-cart (sampai 3) POS Cashier: staff boleh "park" cart customer A, layan customer B,
+// tukar-tukar tanpa buang cart sesiapa. Simpanan dalam-memori sesi sahaja (reset bila reload).
+window.__CART_SLOTS = 3;
+window.__activeCartIdx = 0;
+window.__cartSlots = [];
+for (let __i = 0; __i < window.__CART_SLOTS; __i++) window.__cartSlots.push({ items: [], cust: null });
+window.__cartCustomerSnapshot = function(){
+ return {
+ posCustomer: window.posCustomer || null,
+ vip: window.__currentCheckoutVip || null,
+ name: (document.getElementById('customerName')||{}).value || '',
+ phone: (document.getElementById('customerPhone')||{}).value || '',
+ email: (document.getElementById('customerEmail')||{}).value || ''
+ };
+};
+window.__cartCustomerRestore = function(c){
+ c = c || {};
+ window.posCustomer = c.posCustomer || null;
+ window.__currentCheckoutVip = c.vip || null;
+ const n=document.getElementById('customerName'); if(n) n.value = c.name || '';
+ const p=document.getElementById('customerPhone'); if(p) p.value = c.phone || '';
+ const e=document.getElementById('customerEmail'); if(e) e.value = c.email || '';
+};
+window.switchCart = function(idx){
+ idx = Number(idx);
+ if(!(idx >= 0 && idx < window.__CART_SLOTS) || idx === window.__activeCartIdx) return;
+ // simpan cart + customer semasa ke slot aktif
+ window.__cartSlots[window.__activeCartIdx] = { items: cart.map(c => Object.assign({}, c)), cust: window.__cartCustomerSnapshot() };
+ // muat slot sasaran ke `cart` hidup secara in-place (kekal binding `cart` yang dirujuk di mana-mana)
+ const target = window.__cartSlots[idx] || { items: [], cust: null };
+ cart.length = 0;
+ (target.items || []).forEach(c => cart.push(Object.assign({}, c)));
+ window.__cartCustomerRestore(target.cust);
+ window.__activeCartIdx = idx;
+ if(typeof renderCart === 'function') renderCart();
+ if(typeof showToast === 'function') showToast('Tukar ke Cart ' + (idx+1), 'info');
+};
+window.__cartSlotCount = function(i){
+ if(i === window.__activeCartIdx) return cart.reduce((s,c)=>s+(Number(c.quantity||c.qty||1)||0),0);
+ const sl = window.__cartSlots[i];
+ return (sl && Array.isArray(sl.items)) ? sl.items.reduce((s,c)=>s+(Number(c.quantity||c.qty||1)||0),0) : 0;
+};
+window.__renderCartTabs = function(){
+ const anchor = document.getElementById('cartItems');
+ if(!anchor || !anchor.parentElement) return;
+ let bar = document.getElementById('posCartTabs');
+ if(!bar){
+ bar = document.createElement('div');
+ bar.id = 'posCartTabs';
+ bar.style.cssText = 'display:flex; gap:6px; margin-bottom:10px;';
+ anchor.parentElement.insertBefore(bar, anchor);
+ }
+ let html = '';
+ for(let i=0;i<window.__CART_SLOTS;i++){
+ const active = i === window.__activeCartIdx;
+ const cnt = window.__cartSlotCount(i);
+ const badge = cnt>0 ? ' <span style="display:inline-block; min-width:16px; padding:0 4px; border-radius:50px; font-size:10px; background:'+(active?'rgba(255,255,255,.25)':'#FEE2E2')+'; color:'+(active?'#fff':'#991B1B')+';">'+cnt+'</span>' : '';
+ html += '<button onclick="window.switchCart('+i+')" title="Cart '+(i+1)+'" style="flex:1; padding:7px 4px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700; border:1px solid '+(active?'var(--primary)':'var(--border-color,#E5E7EB)')+'; background:'+(active?'var(--primary)':'#fff')+'; color:'+(active?'#fff':'#374151')+';">Cart '+(i+1)+badge+'</button>';
+ }
+ bar.innerHTML = html;
+};
 let salesChartInst = null; // Chart.js Object
 
 // ===================================
@@ -11948,6 +12009,7 @@ function renderCart() {
  const subLabel = document.getElementById("cartSubtotalVal");
  const btnPay = document.getElementById("btnOpenPayment");
  if(!container) return; container.innerHTML = ""; let total = 0; let totalItems = 0;
+ if(typeof window.__renderCartTabs === 'function') window.__renderCartTabs(); // p1_557 — tab multi-cart
  if(typeof window.__cartProofRefresh === 'function') window.__cartProofRefresh(); // p1_383 — snap-resit row
  
  // safe update helper for mobile bar
