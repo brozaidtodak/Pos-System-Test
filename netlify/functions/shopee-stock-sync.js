@@ -166,8 +166,10 @@ exports.handler = async (event) => {
                 else pushed += list.length;
             }
             out.pushed = pushed;
+            out.failed = errors.length; // p1_556 (#6) — surface kegagalan supaya cron tak lapor failed:0/ok:true palsu
             if (errors.length) out.errors = errors.slice(0, 10);
             out.ok = errors.length === 0;
+            if (errors.length && pushed === 0) out.error = `Semua ${errors.length} push gagal (cth: ${errors[0].message || errors[0].error})`;
             return json(200, out);
         }
 
@@ -186,7 +188,7 @@ exports.handler = async (event) => {
             for (const it of list) itemIds.push(it.item_id);
             if (!(r.response && r.response.has_next_page)) break;
             offset += 100;
-        } while (++guard < 20 && itemIds.length < limit);
+        } while (++guard < 20); // p1_556 (#33) — page sampai habis (bounded guard); cap proses guna cappedIds slice di bawah, bukan henti listing awal
 
         out.shopee_items_total = itemIds.length;
         const cappedIds = itemIds.slice(0, limit);

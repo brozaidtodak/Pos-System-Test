@@ -80,7 +80,8 @@ exports.handler = async (event) => {
         };
         const plan = rows.map(r => {
             const m = (r.metadata && typeof r.metadata === 'object') ? r.metadata : {};
-            const base = (r.price_marketplace != null ? Number(r.price_marketplace) : Number(r.price)) || 0;
+            const __mp = Number(r.price_marketplace); // p1_556 (#32) — 0/negatif = unset, fallback ke harga POS (elak base 0 buang SKU dari push)
+            const base = (isFinite(__mp) && __mp > 0) ? __mp : (Number(r.price) || 0);
             const customShopee = computeCustom(r.shopee_price, r.shopee_price_mode, base);
             const customTiktok = computeCustom(r.tiktok_price, r.tiktok_price_mode, base);
             return {
@@ -117,9 +118,8 @@ exports.handler = async (event) => {
                 (byItem[String(x.shopee_item_id)] = byItem[String(x.shopee_item_id)] || []).push(x);
             }
             for (const [itemId, list] of Object.entries(byItem)) {
-                const price_list = list.map(x => x.shopee_model_id != null
-                    ? { model_id: Number(x.shopee_model_id), original_price: x.shopee_price }
-                    : { original_price: x.shopee_price });
+                // p1_556 (#19) — Shopee update_price perlu model_id setiap entry (0 utk single-variant), mirror laluan stok
+                const price_list = list.map(x => ({ model_id: x.shopee_model_id != null ? Number(x.shopee_model_id) : 0, original_price: x.shopee_price }));
                 const r = await shopee.shopeePost('/api/v2/product/update_price', {}, { item_id: Number(itemId), price_list }, tok.access_token, tok.shop_id);
                 if (r.error) shopeeRes.errors.push({ item_id: itemId, error: r.error, message: r.message });
                 else shopeeRes.pushed += list.length;
