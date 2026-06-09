@@ -49,13 +49,13 @@ window.__isPOSAppPreview = /[?&]posapp=1/.test(location.search || '') && !/TenCa
  'body.pos-app-scoped .app-header{display:none!important;}',
  // Top bar
  '#posAppTopBar{display:none;}',
- 'body.pos-app-scoped #posAppTopBar{display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:9500; height:calc(54px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 16px 0 16px; background:#101010; color:#FAF6EF; box-shadow:0 2px 12px rgba(0,0,0,.28);}',
+ 'body.pos-app-scoped #posAppTopBar{display:flex; align-items:center; gap:10px; position:fixed; top:0; left:0; right:0; z-index:100; height:calc(54px + env(safe-area-inset-top)); padding:env(safe-area-inset-top) 16px 0 16px; background:#101010; color:#FAF6EF; box-shadow:0 2px 12px rgba(0,0,0,.28);}',
  '#posAppTopBar .pat-title{flex:1; font-weight:700; font-size:17px; letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}',
  '#posAppTopBar .pat-logout{flex:0 0 auto; background:rgba(255,255,255,.08); border:0; color:#FAF6EF; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .06s;}',
  '#posAppTopBar .pat-logout:active{transform:scale(.9);}',
  // Bottom tab bar
  '#posAppTabBar{display:none;}',
- 'body.pos-app-scoped #posAppTabBar{display:flex; position:fixed; bottom:0; left:0; right:0; z-index:9500; height:calc(62px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom); background:#fff; border-top:1px solid var(--border-color,#e8e2d8); box-shadow:0 -2px 16px rgba(0,0,0,.07);}',
+ 'body.pos-app-scoped #posAppTabBar{display:flex; position:fixed; bottom:0; left:0; right:0; z-index:100; height:calc(62px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom); background:#fff; border-top:1px solid var(--border-color,#e8e2d8); box-shadow:0 -2px 16px rgba(0,0,0,.07);}',
  '.posAppTab{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; background:none; cursor:pointer; color:#9a948b; font-family:inherit; font-size:11px; font-weight:600; padding:7px 2px; -webkit-tap-highlight-color:transparent; transition:transform .06s, color .15s;}',
  '.posAppTab i{width:23px; height:23px;}',
  '.posAppTab.active{color:#CD7C32;}',
@@ -64,6 +64,8 @@ window.__isPOSAppPreview = /[?&]posapp=1/.test(location.search || '') && !/TenCa
  'body.pos-app-scoped #main-content{max-width:none!important; margin:0!important; width:100%!important; padding:calc(54px + env(safe-area-inset-top) + 10px) 12px calc(72px + env(safe-area-inset-bottom)) 12px !important;}',
  // Tap feedback ringan
  'body.pos-app-scoped .product-card:active{transform:scale(.97); transition:transform .05s;}',
+ // p1_553 — kalau floating cart bar (pos-mobile-mode) muncul, angkat ia ATAS bar tab supaya tak bertindih.
+ 'body.pos-app-scoped #mobileCartFloatingBar{bottom:calc(70px + env(safe-area-inset-bottom))!important;}',
  // Pill MODE PREVIEW turun bawah top bar dalam app scope
  'body.pos-app-scoped #__posAppPreviewBanner{top:calc(env(safe-area-inset-top) + 64px)!important;}'
  ].join('');
