@@ -32,7 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // p1_440: Mobile app (Cashier-only) scope. The native shell appends "TenCampPOSApp"
 // to the user-agent (capacitor.config.json appendUserAgent). On the web/desktop POS
 // this token is absent, so none of the scoping below ever runs there — web stays full.
-window.__isPOSApp = /TenCampPOSApp/.test(navigator.userAgent || '');
+// App native append "TenCampPOSApp" ke user-agent. Untuk PREVIEW/test dalam browser biasa
+// (tanpa build native), buka dgn ?posapp=1 — selamat sebab pengguna web biasa takkan letak param ni.
+window.__isPOSApp = /TenCampPOSApp/.test(navigator.userAgent || '') || /[?&]posapp=1/.test(location.search || '');
 // p1_534 — App skop (Zaid): Cashier + All Orders + My Commission + Stock Take.
 // Web/desktop tiada token TenCampPOSApp → scoping tak jalan, kekal back-office penuh.
 (function __initPosAppScopeCss(){
