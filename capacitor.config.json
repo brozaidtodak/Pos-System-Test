@@ -4,7 +4,9 @@
   "webDir": "mobile-shell",
   "appendUserAgent": "TenCampPOSApp",
   "server": {
-    "url": "https://10camp.com/#staff",
+    "url": "https://www.10camp.com/#staff",
+    "hostname": "www.10camp.com",
+    "allowNavigation": ["www.10camp.com", "10camp.com"],
     "cleartext": false
   }
 }
