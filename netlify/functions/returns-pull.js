@@ -269,6 +269,18 @@ exports.handler = async (event) => {
     const fromSec = Math.floor(sinceMs / 1000);
     const toSec = Math.floor(Date.now() / 1000);
 
+    // ?debug=shopee — pulang response MENTAH Shopee get_return_list (1 window) utk diagnose
+    if (params.debug === 'shopee') {
+        try {
+            const tok = await spGetValidToken();
+            const wFrom = fromSec, wTo = Math.min(fromSec + 15 * 24 * 3600, toSec);
+            const r = await spGet('/api/v2/returns/get_return_list', {
+                page_no: 1, page_size: 20, create_time_from: wFrom, create_time_to: wTo
+            }, tok.access_token, tok.shop_id);
+            return json(200, { debug: 'shopee', shop_id: tok.shop_id, window: [new Date(wFrom * 1000).toISOString(), new Date(wTo * 1000).toISOString()], raw: r });
+        } catch (e) { return json(200, { debug: 'shopee', error: String(e.message || e) }); }
+    }
+
     const out = { mode, since: new Date(sinceMs).toISOString(), only_completed: onlyDone, channels: {} };
     let rows = [];
     const raw = {};
