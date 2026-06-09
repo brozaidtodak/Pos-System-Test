@@ -14,48 +14,131 @@
  header .brand b{color:#CD7C32;}
  header .spacer{flex:1;}
  header .hint{font-size:11.5px;color:#8a847b;}
- .stage{flex:1;display:flex;min-height:0;}
- /* Kiri — back-office */
- .pane-office{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid #2c2620;}
- .pane-label{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:11px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#A8A29A;background:#15120f;}
+ .stage{flex:1;display:flex;min-height:0;gap:18px;padding:18px;}
+ .pane{display:flex;flex-direction:column;min-height:0;min-width:0;}
+ .pane-label{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 2px 9px;font-size:11px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#A8A29A;}
  .pane-label .dot{width:8px;height:8px;border-radius:50%;background:#CD7C32;}
- .pane-office iframe{flex:1;width:100%;border:0;background:#fff;}
- /* Kanan — phone */
- .pane-phone{flex:0 0 460px;display:flex;flex-direction:column;align-items:center;background:#0c0a08;}
- .pane-phone .pane-label{align-self:stretch;justify-content:center;}
- .phone-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;min-height:0;width:100%;}
- .phone{width:394px;height:100%;max-height:840px;border:11px solid #232323;border-radius:40px;overflow:hidden;background:#000;box-shadow:0 14px 40px rgba(0,0,0,.55);position:relative;}
- .phone iframe{width:100%;height:100%;border:0;background:#fff;}
- .reload{background:none;border:1px solid #3a342c;color:#CD7C32;font:600 11px Poppins;padding:4px 10px;border-radius:8px;cursor:pointer;}
+
+ /* ---- KIRI: back-office dalam bingkai browser ---- */
+ .pane-office{flex:1;}
+ .browser{flex:1;display:flex;flex-direction:column;min-height:0;border-radius:12px;overflow:hidden;background:#202124;box-shadow:0 12px 44px rgba(0,0,0,.5);}
+ .b-tabstrip{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:9px 13px 0;background:#323639;}
+ .b-dots{display:flex;gap:7px;}
+ .b-dots i{width:12px;height:12px;border-radius:50%;display:block;}
+ .b-dots .r{background:#ff5f57;} .b-dots .y{background:#febc2e;} .b-dots .g{background:#28c840;}
+ .b-tab{display:flex;align-items:center;gap:8px;background:#202124;color:#e8eaed;font-size:12px;padding:8px 16px;border-radius:9px 9px 0 0;max-width:240px;}
+ .b-tab .fav{width:13px;height:13px;border-radius:3px;background:#CD7C32;flex:0 0 auto;}
+ .b-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:13px;padding:8px 13px;background:#202124;}
+ .b-nav{display:flex;gap:15px;color:#9aa0a6;}
+ .b-nav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+ .b-url{flex:1;display:flex;align-items:center;gap:8px;background:#3c4043;color:#e8eaed;border-radius:15px;padding:6px 14px;font-size:12.5px;}
+ .b-url svg{width:13px;height:13px;stroke:#9aa0a6;fill:none;stroke-width:2;}
+ .b-url .muted{color:#9aa0a6;}
+ .b-star{color:#9aa0a6;}
+ .b-star svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+ .browser iframe{flex:1;width:100%;border:0;background:#fff;}
+
+ /* ---- KANAN: app staf (phone/tablet) ---- */
+ .pane-device{flex:0 0 auto;}
+ .pane-device .pane-label{justify-content:space-between;}
+ .seg{display:flex;background:#0c0a08;border:1px solid #2c2620;border-radius:9px;padding:3px;gap:2px;}
+ .seg button{background:none;border:0;color:#A8A29A;font:600 11px Poppins;letter-spacing:.5px;padding:5px 12px;border-radius:7px;cursor:pointer;transition:all .12s;text-transform:uppercase;}
+ .seg button.active{background:#CD7C32;color:#101010;}
+ .dstage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;}
+ .scaler{transition:transform .18s ease;}
+ .device{background:#000;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.6);}
+ .device.phone{border:11px solid #232323;border-radius:40px;}
+ .device.tablet{border:13px solid #232323;border-radius:26px;}
+ .device iframe{width:100%;height:100%;border:0;background:#fff;display:block;}
+ .reload{background:none;border:1px solid #3a342c;color:#CD7C32;font:600 11px Poppins;padding:4px 9px;border-radius:8px;cursor:pointer;}
  .reload:hover{background:#241f19;}
- @media(max-width:1100px){ .pane-phone{flex-basis:380px;} .phone{width:340px;} }
 </style>
 </head>
 <body>
 <header>
  <span class="brand"><b>10 CAMP</b> &middot; Paparan Serentak</span>
  <span class="spacer"></span>
- <span class="hint">Back-office (laptop) + App staf (phone) &mdash; hidup serentak</span>
+ <span class="hint">Back-office (browser) + App staf (phone / tablet) &mdash; serentak</span>
 </header>
 <div class="stage">
- <section class="pane-office">
- <div class="pane-label"><span class="dot"></span> Back-office &mdash; paparan laptop
+
+ <!-- KIRI: back-office dalam bingkai browser -->
+ <section class="pane pane-office">
+ <div class="pane-label"><span class="dot"></span> Back-office &mdash; paparan browser laptop
  <span style="flex:1"></span>
- <button class="reload" onclick="document.getElementById('fOffice').src=document.getElementById('fOffice').src">Muat semula</button>
+ <button class="reload" onclick="var f=document.getElementById('fOffice');f.src=f.src;">Muat semula</button>
+ </div>
+ <div class="browser">
+ <div class="b-tabstrip">
+ <div class="b-dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+ <div class="b-tab"><span class="fav"></span> 10 CAMP &mdash; Back-office</div>
+ </div>
+ <div class="b-toolbar">
+ <div class="b-nav">
+ <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+ <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+ <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+ </div>
+ <div class="b-url">
+ <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+ <span><span class="muted">www.</span>10camp.com</span>
+ </div>
+ <span class="b-star"><svg viewBox="0 0 24 24"><path d="M12 17.3l-5.4 3 1-6L3 9.8l6-.9L12 3l3 5.9 6 .9-4.6 4.5 1 6z"/></svg></span>
  </div>
  <iframe id="fOffice" src="https://www.10camp.com/" title="Back-office"></iframe>
- </section>
- <aside class="pane-phone">
- <div class="pane-label"><span class="dot"></span> App staf &mdash; paparan phone
- <span style="flex:1"></span>
- <button class="reload" onclick="document.getElementById('fPhone').src=document.getElementById('fPhone').src">Muat semula</button>
  </div>
- <div class="phone-wrap">
- <div class="phone">
+ </section>
+
+ <!-- KANAN: app staf (phone / tablet) -->
+ <aside class="pane pane-device" id="paneDevice">
+ <div class="pane-label"><span style="display:flex;align-items:center;gap:8px;"><span class="dot"></span> App staf</span>
+ <span style="display:flex;align-items:center;gap:8px;">
+ <button class="reload" onclick="var f=document.getElementById('fPhone');f.src=f.src;">Muat semula</button>
+ <span class="seg" id="seg">
+ <button data-dev="phone" class="active">Phone</button>
+ <button data-dev="tablet">Tablet</button>
+ </span>
+ </span>
+ </div>
+ <div class="dstage" id="dstage">
+ <div class="scaler" id="scaler">
+ <div class="device phone" id="device">
  <iframe id="fPhone" src="https://www.10camp.com/?posapp=1#staff" title="App staf"></iframe>
  </div>
  </div>
+ </div>
  </aside>
+
 </div>
+<script>
+ var SIZES = { phone:{w:390,h:844,bez:22}, tablet:{w:834,h:1112,bez:26} };
+ var mode = 'phone';
+ var device = document.getElementById('device');
+ var scaler = document.getElementById('scaler');
+ var dstage = document.getElementById('dstage');
+ var paneDevice = document.getElementById('paneDevice');
+
+ function apply(){
+ var s = SIZES[mode];
+ device.className = 'device ' + mode;
+ device.style.width = s.w + 'px';
+ device.style.height = s.h + 'px';
+ var maxW = window.innerWidth * 0.46;
+ var availH = dstage.clientHeight - 8;
+ var scale = Math.min(maxW / (s.w + s.bez), availH / (s.h + s.bez), 1);
+ if(!(scale > 0)) scale = 1;
+ scaler.style.transform = 'scale(' + scale + ')';
+ paneDevice.style.flexBasis = ((s.w + s.bez) * scale + 24) + 'px';
+ }
+ document.getElementById('seg').addEventListener('click', function(e){
+ var b = e.target.closest('button'); if(!b) return;
+ mode = b.getAttribute('data-dev');
+ [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('active', x === b); });
+ apply();
+ });
+ window.addEventListener('resize', apply);
+ setTimeout(apply, 60);
+ apply();
+</script>
 </body>
 </html>
