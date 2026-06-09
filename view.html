@@ -14,21 +14,42 @@
  header .brand b{color:#CD7C32;}
  header .spacer{flex:1;}
  header .hint{font-size:11.5px;color:#8a847b;}
- .stage{flex:1;display:flex;min-height:0;gap:18px;padding:18px;}
+ .stage{flex:1;display:flex;justify-content:center;min-height:0;gap:18px;padding:18px;}
  .pane{display:flex;flex-direction:column;min-height:0;min-width:0;}
- .pane-label{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 2px 9px;font-size:11px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#A8A29A;}
+ .pane-office{flex:1 1 auto;}
+ .pane-device{flex:0 0 auto;}
+ .pane-label{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px 9px;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#A8A29A;}
+ .pane-label .lbl{display:flex;align-items:center;gap:8px;}
  .pane-label .dot{width:8px;height:8px;border-radius:50%;background:#CD7C32;}
+ .ctrls{display:flex;align-items:center;gap:8px;}
 
- /* ---- KIRI: back-office dalam bingkai browser ---- */
- .pane-office{flex:1;}
- .browser{flex:1;display:flex;flex-direction:column;min-height:0;border-radius:12px;overflow:hidden;background:#202124;box-shadow:0 12px 44px rgba(0,0,0,.5);}
- .b-tabstrip{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:9px 13px 0;background:#323639;}
+ .seg{display:flex;background:#0c0a08;border:1px solid #2c2620;border-radius:9px;padding:3px;gap:2px;}
+ .seg button{background:none;border:0;color:#A8A29A;font:600 11px Poppins;letter-spacing:.4px;padding:5px 11px;border-radius:7px;cursor:pointer;transition:all .12s;text-transform:uppercase;}
+ .seg button.active{background:#CD7C32;color:#101010;}
+ .seg button:not(.active):hover{color:#FAF6EF;}
+ .reload{background:none;border:1px solid #3a342c;color:#CD7C32;font:600 11px Poppins;padding:5px 9px;border-radius:8px;cursor:pointer;}
+ .reload:hover{background:#241f19;}
+
+ .dstage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;}
+ .scaler{transition:transform .18s ease;}
+
+ /* Device wrapper — saiz ditetapkan via iframe inline px; bezel via border */
+ .device{display:inline-block;vertical-align:top;background:#000;overflow:hidden;}
+ .device iframe{display:block;border:0;background:#fff;}
+ .device.desktop{border:0;border-radius:11px;box-shadow:0 12px 44px rgba(0,0,0,.5);}
+ .device.tablet{border:13px solid #232323;border-radius:26px;box-shadow:0 16px 50px rgba(0,0,0,.6);}
+ .device.phone{border:11px solid #232323;border-radius:40px;box-shadow:0 16px 50px rgba(0,0,0,.6);}
+
+ /* Chrome browser desktop (hanya mode desktop) */
+ .chrome-desktop{display:none;}
+ .device.desktop .chrome-desktop{display:block;}
+ .b-tabstrip{display:flex;align-items:center;gap:12px;padding:9px 13px 0;background:#323639;}
  .b-dots{display:flex;gap:7px;}
  .b-dots i{width:12px;height:12px;border-radius:50%;display:block;}
  .b-dots .r{background:#ff5f57;} .b-dots .y{background:#febc2e;} .b-dots .g{background:#28c840;}
- .b-tab{display:flex;align-items:center;gap:8px;background:#202124;color:#e8eaed;font-size:12px;padding:8px 16px;border-radius:9px 9px 0 0;max-width:240px;}
+ .b-tab{display:flex;align-items:center;gap:8px;background:#202124;color:#e8eaed;font-size:12px;padding:8px 16px;border-radius:9px 9px 0 0;max-width:260px;}
  .b-tab .fav{width:13px;height:13px;border-radius:3px;background:#CD7C32;flex:0 0 auto;}
- .b-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:13px;padding:8px 13px;background:#202124;}
+ .b-toolbar{display:flex;align-items:center;gap:13px;padding:8px 13px;background:#202124;}
  .b-nav{display:flex;gap:15px;color:#9aa0a6;}
  .b-nav svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
  .b-url{flex:1;display:flex;align-items:center;gap:8px;background:#3c4043;color:#e8eaed;border-radius:15px;padding:6px 14px;font-size:12.5px;}
@@ -36,39 +57,42 @@
  .b-url .muted{color:#9aa0a6;}
  .b-star{color:#9aa0a6;}
  .b-star svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
- .browser iframe{flex:1;width:100%;border:0;background:#fff;}
 
- /* ---- KANAN: app staf (phone/tablet) ---- */
- .pane-device{flex:0 0 auto;}
- .pane-device .pane-label{justify-content:space-between;}
- .seg{display:flex;background:#0c0a08;border:1px solid #2c2620;border-radius:9px;padding:3px;gap:2px;}
- .seg button{background:none;border:0;color:#A8A29A;font:600 11px Poppins;letter-spacing:.5px;padding:5px 12px;border-radius:7px;cursor:pointer;transition:all .12s;text-transform:uppercase;}
- .seg button.active{background:#CD7C32;color:#101010;}
- .dstage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;}
- .scaler{transition:transform .18s ease;}
- .device{background:#000;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.6);}
- .device.phone{border:11px solid #232323;border-radius:40px;}
- .device.tablet{border:13px solid #232323;border-radius:26px;}
- .device iframe{width:100%;height:100%;border:0;background:#fff;display:block;}
- .reload{background:none;border:1px solid #3a342c;color:#CD7C32;font:600 11px Poppins;padding:4px 9px;border-radius:8px;cursor:pointer;}
- .reload:hover{background:#241f19;}
+ /* Chrome browser mudah-alih (mode tablet/phone bagi back-office) */
+ .chrome-mobile{display:none;}
+ .device.tablet .chrome-mobile,.device.phone .chrome-mobile{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#323639;}
+ .m-url{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;background:#3c4043;color:#e8eaed;border-radius:16px;padding:6px 12px;font-size:12.5px;}
+ .m-url svg{width:13px;height:13px;stroke:#9aa0a6;fill:none;stroke-width:2;}
+ .m-dots{display:flex;flex-direction:column;gap:3px;}
+ .m-dots i{width:4px;height:4px;border-radius:50%;background:#9aa0a6;display:block;}
+ /* App staf (kanan) takde chrome browser — ia app, bukan browser */
 </style>
 </head>
 <body>
 <header>
  <span class="brand"><b>10 CAMP</b> &middot; Paparan Serentak</span>
  <span class="spacer"></span>
- <span class="hint">Back-office (browser) + App staf (phone / tablet) &mdash; serentak</span>
+ <span class="hint">Back-office (browser) + App staf &mdash; serentak</span>
 </header>
 <div class="stage">
 
- <!-- KIRI: back-office dalam bingkai browser -->
+ <!-- KIRI: back-office (browser) — Desktop / Tablet / Phone -->
  <section class="pane pane-office">
- <div class="pane-label"><span class="dot"></span> Back-office &mdash; paparan browser laptop
- <span style="flex:1"></span>
+ <div class="pane-label">
+ <span class="lbl"><span class="dot"></span> Back-office &mdash; browser</span>
+ <span class="ctrls">
  <button class="reload" onclick="var f=document.getElementById('fOffice');f.src=f.src;">Muat semula</button>
+ <span class="seg" id="segL">
+ <button data-dev="desktop" class="active">Desktop</button>
+ <button data-dev="tablet">Tablet</button>
+ <button data-dev="phone">Phone</button>
+ </span>
+ </span>
  </div>
- <div class="browser">
+ <div class="dstage" id="dstageL">
+ <div class="scaler" id="scalerL">
+ <div class="device desktop" id="deviceL">
+ <div class="chrome-desktop">
  <div class="b-tabstrip">
  <div class="b-dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
  <div class="b-tab"><span class="fav"></span> 10 CAMP &mdash; Back-office</div>
@@ -85,24 +109,35 @@
  </div>
  <span class="b-star"><svg viewBox="0 0 24 24"><path d="M12 17.3l-5.4 3 1-6L3 9.8l6-.9L12 3l3 5.9 6 .9-4.6 4.5 1 6z"/></svg></span>
  </div>
+ </div>
+ <div class="chrome-mobile">
+ <div class="m-url">
+ <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+ 10camp.com
+ </div>
+ <span class="m-dots"><i></i><i></i><i></i></span>
+ </div>
  <iframe id="fOffice" src="https://www.10camp.com/" title="Back-office"></iframe>
+ </div>
+ </div>
  </div>
  </section>
 
- <!-- KANAN: app staf (phone / tablet) -->
+ <!-- KANAN: app staf (Phone / Tablet) -->
  <aside class="pane pane-device" id="paneDevice">
- <div class="pane-label"><span style="display:flex;align-items:center;gap:8px;"><span class="dot"></span> App staf</span>
- <span style="display:flex;align-items:center;gap:8px;">
+ <div class="pane-label">
+ <span class="lbl"><span class="dot"></span> App staf</span>
+ <span class="ctrls">
  <button class="reload" onclick="var f=document.getElementById('fPhone');f.src=f.src;">Muat semula</button>
- <span class="seg" id="seg">
+ <span class="seg" id="segR">
  <button data-dev="phone" class="active">Phone</button>
  <button data-dev="tablet">Tablet</button>
  </span>
  </span>
  </div>
- <div class="dstage" id="dstage">
- <div class="scaler" id="scaler">
- <div class="device phone" id="device">
+ <div class="dstage" id="dstageR">
+ <div class="scaler" id="scalerR">
+ <div class="device phone" id="deviceR">
  <iframe id="fPhone" src="https://www.10camp.com/?posapp=1#staff" title="App staf"></iframe>
  </div>
  </div>
@@ -111,34 +146,40 @@
 
 </div>
 <script>
- var SIZES = { phone:{w:390,h:844,bez:22}, tablet:{w:834,h:1112,bez:26} };
- var mode = 'phone';
- var device = document.getElementById('device');
- var scaler = document.getElementById('scaler');
- var dstage = document.getElementById('dstage');
- var paneDevice = document.getElementById('paneDevice');
+ var LEFT = { desktop:{w:1280,h:800}, tablet:{w:834,h:1112}, phone:{w:390,h:844} };
+ var RIGHT = { phone:{w:390,h:844}, tablet:{w:834,h:1112} };
+ var leftMode = 'desktop', rightMode = 'phone';
+ var deviceL=document.getElementById('deviceL'), scalerL=document.getElementById('scalerL'), dstageL=document.getElementById('dstageL'), fOffice=document.getElementById('fOffice');
+ var deviceR=document.getElementById('deviceR'), scalerR=document.getElementById('scalerR'), dstageR=document.getElementById('dstageR'), fPhone=document.getElementById('fPhone'), paneDevice=document.getElementById('paneDevice');
 
- function apply(){
- var s = SIZES[mode];
- device.className = 'device ' + mode;
- device.style.width = s.w + 'px';
- device.style.height = s.h + 'px';
- var maxW = window.innerWidth * 0.46;
- var availH = dstage.clientHeight - 8;
- var scale = Math.min(maxW / (s.w + s.bez), availH / (s.h + s.bez), 1);
- if(!(scale > 0)) scale = 1;
- scaler.style.transform = 'scale(' + scale + ')';
- paneDevice.style.flexBasis = ((s.w + s.bez) * scale + 24) + 'px';
+ function setSize(dev, ifr, s, mode){ dev.className='device '+mode; ifr.style.width=s.w+'px'; ifr.style.height=s.h+'px'; }
+ function fit(dev, scaler, availW, availH){
+ var ow=dev.offsetWidth, oh=dev.offsetHeight;
+ var sc=Math.min((availW-12)/ow, (availH-12)/oh, 1);
+ if(!(sc>0)) sc=1;
+ scaler.style.transform='scale('+sc+')';
+ return ow*sc;
  }
- document.getElementById('seg').addEventListener('click', function(e){
- var b = e.target.closest('button'); if(!b) return;
- mode = b.getAttribute('data-dev');
- [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('active', x === b); });
+ function apply(){
+ setSize(deviceR, fPhone, RIGHT[rightMode], rightMode);
+ setSize(deviceL, fOffice, LEFT[leftMode], leftMode);
+ // Kanan dahulu — had 42% lebar tetingkap, set flex-basis pane
+ var rW = fit(deviceR, scalerR, window.innerWidth*0.42, dstageR.clientHeight);
+ paneDevice.style.flexBasis = (rW + 24) + 'px';
+ // Kiri isi baki ruang
+ fit(deviceL, scalerL, dstageL.clientWidth, dstageL.clientHeight);
+ }
+ function wire(segId, isLeft){
+ document.getElementById(segId).addEventListener('click', function(e){
+ var b=e.target.closest('button'); if(!b) return;
+ if(isLeft) leftMode=b.getAttribute('data-dev'); else rightMode=b.getAttribute('data-dev');
+ [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('active', x===b); });
  apply();
  });
+ }
+ wire('segL', true); wire('segR', false);
  window.addEventListener('resize', apply);
- setTimeout(apply, 60);
- apply();
+ setTimeout(apply, 60); apply();
 </script>
 </body>
 </html>
