@@ -73,8 +73,10 @@ exports.handler = async () => {
     const offset = await lastShopeeOffset();
 
     // Run both reconciles. Shopee paginates with ?limit + ?offset (cursor di log); TikTok pulls all.
+    // p1_528 — limit 100 TIMEOUT (40s, 0 push, offset stuck). 40 selamat (terbukti ~siap dlm had).
+    // 370 item / 40 = ~10 run sepusing (every 20 min ≈ 3.3 jam) — ok utk heal drift.
     const [shopee, tiktok] = await Promise.all([
-        reconcile('shopee', `${SITE_URL}/api/shopee-stock-sync?mode=push&limit=100&offset=${offset}`),
+        reconcile('shopee', `${SITE_URL}/api/shopee-stock-sync?mode=push&limit=40&offset=${offset}`),
         reconcile('tiktok', `${SITE_URL}/api/tiktok-stock-sync?mode=push`)
     ]);
 
