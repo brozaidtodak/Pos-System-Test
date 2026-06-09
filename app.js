@@ -94,7 +94,7 @@ window.__isPOSAppPreview = /[?&]posapp=1/.test(location.search || '') && !/TenCa
 window.__POS_APP_TABS = [
  { key:'cashier',    icon:'shopping-cart',  label:'Cashier', sections:['posSection'],           title:'POS / Cashier' },
  { key:'orders',     icon:'receipt',        label:'Orders',  sections:['allOrdersSection'],     title:'All Orders',    render:'renderAllOrders' },
- { key:'commission', icon:'coins',          label:'Komisen', sections:['commissionSection'],     title:'My Commission' },
+ { key:'commission', icon:'coins',          label:'Komisen', sections:['commissionSection'],     title:'My Commission', render:'renderPersonalCommission' },
  { key:'stock',      icon:'clipboard-check',label:'Stok',    sections:['checkSessionsSection'], title:'Stock Take',    render:'renderCheckSessions' }
 ];
 // Top bar native: tajuk skrin semasa + butang logout.
@@ -1308,8 +1308,8 @@ window.__rpRenderSalesTemplate = function(body, u, range) {
  const sku = (it.sku || '').toUpperCase();
  if(!sku) return;
  if(!skuTally[sku]) skuTally[sku] = { sku, name: it.name || sku, qty: 0, revenue: 0 };
- skuTally[sku].qty += Number(it.qty || 0);
- skuTally[sku].revenue += Number(it.qty || 0) * Number(it.price || 0);
+ skuTally[sku].qty += (Number(it.qty != null ? it.qty : it.quantity) || 0);
+ skuTally[sku].revenue += (Number(it.qty != null ? it.qty : it.quantity) || 0) * Number(it.price || 0);
  });
  });
  }
@@ -1528,7 +1528,7 @@ window.__rpRenderInventoryTemplate = function(body, u, range) {
  const sku = (it.sku || '').toUpperCase();
  if(!sku) return;
  if(!skuTally[sku]) skuTally[sku] = { sku, name: it.name || sku, qty: 0 };
- skuTally[sku].qty += Number(it.qty || 0);
+ skuTally[sku].qty += (Number(it.qty != null ? it.qty : it.quantity) || 0);
  });
  }
  }
@@ -2775,8 +2775,8 @@ window.renderBrandPerf = function() {
  (Array.isArray(items) ? items : []).forEach(it => {
  const sku = (it.sku || '').toUpperCase();
  const brand = skuBrand[sku] || it.brand || 'Unknown';
- const revenue = Number(it.qty || 0) * Number(it.price || 0);
- const qty = Number(it.qty || 0);
+ const revenue = (Number(it.qty != null ? it.qty : it.quantity) || 0) * Number(it.price || 0);
+ const qty = (Number(it.qty != null ? it.qty : it.quantity) || 0);
  if(!map[brand]) map[brand] = { brand, revenue: 0, units: 0, skus: new Set() };
  map[brand].revenue += revenue;
  map[brand].units += qty;
@@ -3012,7 +3012,7 @@ window.renderChannelProfit = function() {
  (Array.isArray(items) ? items : []).forEach(it => {
  const sku = (it.sku || '').toUpperCase();
  const cost = it.cost != null ? Number(it.cost) : (costMap[sku] || 0);
- channelStats[ch].cogs += cost * Number(it.qty || 0);
+ channelStats[ch].cogs += cost * (Number(it.qty != null ? it.qty : it.quantity) || 0);
  });
  });
  }
@@ -3138,7 +3138,7 @@ window.renderReorderSuggest = function() {
  (Array.isArray(items) ? items : []).forEach(it => {
  const sku = (it.sku || '').toUpperCase();
  if(!sku) return;
- skuSold[sku] = (skuSold[sku] || 0) + Number(it.qty || 0);
+ skuSold[sku] = (skuSold[sku] || 0) + (Number(it.qty != null ? it.qty : it.quantity) || 0);
  });
  });
  }
@@ -3290,7 +3290,7 @@ window.__rpRenderSalesSimpleTemplate = function(body, u, range) {
  const sku = (it.sku || '').toUpperCase();
  if(!sku) return;
  if(!skuTally[sku]) skuTally[sku] = { sku, name: it.name || sku, qty: 0 };
- skuTally[sku].qty += Number(it.qty || 0);
+ skuTally[sku].qty += (Number(it.qty != null ? it.qty : it.quantity) || 0);
  });
  });
  }
@@ -7790,7 +7790,7 @@ function renderHistory() {
  </button>
  </div>
  </div>
- <div style="font-size:13px; color:#666; margin-bottom:5px;">Buyer: ${sale.customer_name||'Walk-in'} • Channel: <strong>${sc}</strong> • ${sale.payment_method}</div>
+ <div style="font-size:13px; color:#666; margin-bottom:5px;">Buyer: ${hesc(sale.customer_name||'Walk-in')} • Channel: <strong>${sc}</strong> • ${hesc(sale.payment_method)}</div>
  <div style="font-size:12px; color:#aaa;">${d.toLocaleDateString() + ' ' + d.toLocaleTimeString()}</div>
  </div>
  `;
@@ -7999,10 +7999,10 @@ function renderWMS() {
  const banner = document.getElementById('invActiveFilters');
  if(banner) {
  const chips = [];
- const esc = (s) => String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
- if(f.search) chips.push(`<span class="inv-chip">Cari: "${f.search}" <button onclick="document.getElementById('invSearchInput').value=''; window.invHandleSearch('')">×</button></span>`);
- if(f.brand) chips.push(`<span class="inv-chip">Brand: ${esc(f.brand)} <button onclick="window.invSetFilter('brand','')">×</button></span>`);
- if(f.cat) chips.push(`<span class="inv-chip">Kategori: ${esc(f.cat)} <button onclick="window.invSetFilter('cat','')">×</button></span>`);
+ // p1_554 — guna hesc (escape < > & " ') penuh; esc lama cuma escape ' dan " (tak halang tag injection)
+ if(f.search) chips.push(`<span class="inv-chip">Cari: "${hesc(f.search)}" <button onclick="document.getElementById('invSearchInput').value=''; window.invHandleSearch('')">×</button></span>`);
+ if(f.brand) chips.push(`<span class="inv-chip">Brand: ${hesc(f.brand)} <button onclick="window.invSetFilter('brand','')">×</button></span>`);
+ if(f.cat) chips.push(`<span class="inv-chip">Kategori: ${hesc(f.cat)} <button onclick="window.invSetFilter('cat','')">×</button></span>`);
  if(f.status) {
  const labels = { active:'Active', draft:'Draft', low:'Low Stock', oos:'Sold Out' };
  chips.push(`<span class="inv-chip">Status: ${labels[f.status]||f.status} <button onclick="window.invSetFilter('status','')">×</button></span>`);
@@ -8101,7 +8101,7 @@ function ffCardHtml(o) {
  const mpLink = mp ? '<a href="' + mp.url + '" target="_blank" rel="noopener" title="Lihat di ' + mp.label + ' Seller Centre" style="margin-left:6px; padding:2px 8px; background:' + mp.color + '; color:#fff; border-radius:4px; font-size:10px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:3px; vertical-align:middle;"><i data-lucide="external-link" style="width:10px; height:10px;"></i> ' + mp.label + '</a>' : '';
  const total = Number(o.total || o.total_amount || 0).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
  const itemsHtml = ffParseItems(o.items).map(it =>
- `<li>${it.qty || it.quantity || 1} &times; ${(it.sku||'')} — ${(it.name||'item')}</li>`).join('');
+ `<li>${it.qty || it.quantity || 1} &times; ${hesc(it.sku||'')} — ${hesc(it.name||'item')}</li>`).join('');
  const stageLabels = { to_fulfil:'Perlu Pack', packed:'Dah Pack', shipped:'Dah Hantar' };
 
  let actions = `<button class="ff-btn" onclick="ffPrintSlip('${o.id}')"><i data-lucide="printer"></i>Packing Slip</button>`;
@@ -8127,7 +8127,7 @@ function ffCardHtml(o) {
  <span class="ff-card__stage ff-stage--${stage}">${stageLabels[stage]}</span>
  </div>
  </div>
- <div class="ff-card__cust"><i data-lucide="user" style="width:13px;height:13px;vertical-align:-2px;"></i> ${o.customer_name||'-'} · ${o.customer_phone||'-'}</div>
+ <div class="ff-card__cust"><i data-lucide="user" style="width:13px;height:13px;vertical-align:-2px;"></i> ${hesc(o.customer_name||'-')} · ${hesc(o.customer_phone||'-')}</div>
  <ul class="ff-card__items">${itemsHtml || '<li>(tiada item)</li>'}</ul>
  ${trackHtml}
  <div class="ff-card__actions">${actions}</div>
@@ -11912,7 +11912,12 @@ window.removeCartItemDiscount = function(){
 
 window.addToCart = function(sku) {
  const p = masterProducts.find(x => x.sku === sku);
- if(!p) return;
+ if(!p) {
+ // p1_554 — Custom Sale (CUSTOM-*) tiada master product; butang '+' patut tetap naikkan qty baris cart sedia ada.
+ const existing = cart.find(c => c.sku === sku);
+ if(existing) { existing.quantity++; renderCart(); }
+ return;
+ }
  const totalAvail = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining> 0).reduce((s, b) => s + b.qty_remaining, 0);
  const cartItem = cart.find(c => c.sku === sku);
  // p1_229 — Allow sell even when OOS (Zaid: stok 0 sistem tapi staff masih boleh jual). Warn via toast je.
@@ -12025,7 +12030,7 @@ function renderCart() {
  return `
  <div class="cart-item" style="${belowFloor ? 'border-left:3px solid #c0392b; background:rgba(254,226,226,.15);' : ''}">
  <img src="${__img}" loading="lazy" onerror="this.onerror=null;this.src=window.__cartNoImg;" style="width:48px; height:48px; object-fit:cover; border-radius:8px; border:1px solid #E5E7EB; flex-shrink:0; margin-right:10px;" alt="">
- <div style="flex:1; min-width:0;"><strong style="font-size:13px; color:#111;">[${item.sku}] ${item.name}</strong><br><small style="color:#666;">${(item.discount_amount && item.original_price) ? `<s style="color:#9CA3AF;">RM${item.original_price.toFixed(2)}</s> ` : ''}RM${item.price.toFixed(2)} x ${item.quantity}</small> ${(item.discount_amount && item.discount_amount > 0) ? `<span style="display:inline-block; margin-left:5px; padding:1px 6px; background:#FEF3C7; color:#92400E; border-radius:50px; font-size:10px; font-weight:700;" title="${item.discount_reason || 'Diskaun manual'}">-RM ${item.discount_amount.toFixed(2)}</span>` : ''} ${floorBadge}<div style="margin-top:5px;"><button onclick="openCartItemDiscount('${item.sku}')" title="Diskaun untuk item ni" style="width:auto !important; height:auto !important; display:inline-block; white-space:nowrap; background:${(item.discount_amount > 0) ? '#FDE68A' : '#F3F4F6'}; color:#92400E; border:1px solid ${(item.discount_amount > 0) ? '#F59E0B' : '#E5E7EB'}; padding:4px 12px; border-radius:6px; font-weight:600; font-size:10.5px; line-height:1.4; cursor:pointer;">${(item.discount_amount > 0) ? 'Edit discount' : '+ Apply discount on item'}</button></div></div>
+ <div style="flex:1; min-width:0;"><strong style="font-size:13px; color:#111;">[${hesc(item.sku)}] ${hesc(item.name)}</strong><br><small style="color:#666;">${(item.discount_amount && item.original_price) ? `<s style="color:#9CA3AF;">RM${item.original_price.toFixed(2)}</s> ` : ''}RM${item.price.toFixed(2)} x ${item.quantity}</small> ${(item.discount_amount && item.discount_amount > 0) ? `<span style="display:inline-block; margin-left:5px; padding:1px 6px; background:#FEF3C7; color:#92400E; border-radius:50px; font-size:10px; font-weight:700;" title="${item.discount_reason || 'Diskaun manual'}">-RM ${item.discount_amount.toFixed(2)}</span>` : ''} ${floorBadge}<div style="margin-top:5px;"><button onclick="openCartItemDiscount('${item.sku}')" title="Diskaun untuk item ni" style="width:auto !important; height:auto !important; display:inline-block; white-space:nowrap; background:${(item.discount_amount > 0) ? '#FDE68A' : '#F3F4F6'}; color:#92400E; border:1px solid ${(item.discount_amount > 0) ? '#F59E0B' : '#E5E7EB'}; padding:4px 12px; border-radius:6px; font-weight:600; font-size:10.5px; line-height:1.4; cursor:pointer;">${(item.discount_amount > 0) ? 'Edit discount' : '+ Apply discount on item'}</button></div></div>
  <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
  <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
  <span style="font-weight:bold;">${item.quantity}</span>
@@ -13637,6 +13642,9 @@ window.isBoss = function(u) { return !!(u && u.dept === 'Managing Director'); };
 function loginAs(user, opts) {
  opts = opts || {};
  if(!user) return;
+ // p1_554 — login baru jangan warisi unlock laporan sulit dari sesi sebelum
+ try { sessionStorage.removeItem('confUnlocked_v1'); } catch(e){}
+ window.__confUnlockedMem = false;
  currentUser = user;
  window.currentUser = user; // expose for helpers (e.g. hasManagementAccess)
  currentUserRole = user.role;
@@ -13893,6 +13901,9 @@ function handleLogout() {
  document.getElementById("shopAppLayout").style.display = "block";
  document.getElementById("posAppLayout").style.display = "none";
  document.body.classList.remove('pos-app-scoped'); // p1_545 — sorok top/bottom bar native bila logout
+ // p1_554 — kunci semula laporan sulit (PIN 1999) supaya staf seterusnya tak warisi unlock
+ try { sessionStorage.removeItem('confUnlocked_v1'); } catch(e){}
+ window.__confUnlockedMem = false;
  const sessEl = document.getElementById("sessionUsername");
  if(sessEl) sessEl.textContent = "POS10C";
  document.getElementById("appSidebar")?.classList.remove('open');
@@ -15118,7 +15129,7 @@ function showReceiptModal(invId, custName, email, total, cartData) {
  const shop = (typeof window.getShopInfo === 'function') ? window.getShopInfo() : { name:'10 CAMP', footer:'THANK YOU FOR SHOPPING AT 10 CAMP' };
  let itemsHtml = "";
  cartData.forEach(c => {
- itemsHtml += `<div style="margin-bottom:5px;">${c.quantity}x ${c.name} <span style="float:right">RM ${(c.price * c.quantity).toFixed(2)}</span></div>`;
+ itemsHtml += `<div style="margin-bottom:5px;">${c.quantity}x ${hesc(c.name)} <span style="float:right">RM ${(c.price * c.quantity).toFixed(2)}</span></div>`;
  });
 
  let header = `<div style="text-align:center; font-size:16px; font-weight:900; letter-spacing:1px;">${shop.name}</div>`;
@@ -15131,7 +15142,7 @@ function showReceiptModal(invId, custName, email, total, cartData) {
  <hr style="border-top:1px dashed #ccc; margin:10px 0;">
  <div style="font-weight:bold; margin-bottom:10px;">INVOICE: ${invId}</div>
  <div style="color:var(--text-muted);">Date: ${d}</div>
- <div style="color:var(--text-muted);">Customer: ${custName}</div>
+ <div style="color:var(--text-muted);">Customer: ${hesc(custName)}</div>
  <div style="color:var(--text-muted); margin-bottom:10px;">Cashier: ${currentUser?.name || 'Staff'}</div>
  <hr style="border-top:1px dashed #ccc; margin:10px 0;">
  ${itemsHtml}
@@ -18771,7 +18782,7 @@ window.renderPersonalCommission = function() {
  const allStaff = (typeof authUsers !== 'undefined') ? authUsers : [];
  let inactive = []; try { inactive = JSON.parse(localStorage.getItem('staffInactive_v1')||'[]'); } catch(e){}
  const rows = allStaff
-.filter(u => !inactive.includes(u.staff_id))
+.filter(u => !inactive.includes(u.staff_id) && u.staff_id !== 'TST001' && u.staff_id !== 'REV001') // p1_554 — singkir akaun demo dari leaderboard komisen
 .map(u => aggregateForStaff(u.name))
 .sort((a,b) => b.earned - a.earned);
  mgrTbody.innerHTML = rows.length ? rows.map(r => {
@@ -18814,7 +18825,7 @@ window.renderPersonalCommission = function() {
  return '<tr>'
  + '<td>'+dateStr+'</td>'
  + '<td>'+ref+(isRefund?' <span style="font-size:10px; color:#dc2626; font-weight:700;">REFUND</span>':'')+'</td>'
- + '<td>'+(s.customer_name||'Walk-in')+'</td>'
+ + '<td>'+hesc(s.customer_name||'Walk-in')+'</td>'
  + '<td style="text-align:right; color:'+amtCol+'; font-weight:bold;">'+(isRefund?'−':'')+'RM '+Math.abs(amt).toFixed(2)+'</td>'
  + '<td style="text-align:right; color:'+amtCol+'; font-weight:bold;">'+(isRefund?'−':'')+'RM '+Math.abs(comm).toFixed(2)+'</td>'
  + '</tr>';
@@ -18900,7 +18911,7 @@ window.__cmReassignSeller = function(saleId) {
  const from = sale.staff_name || 'Unknown';
  const esc = (typeof hesc === 'function') ? hesc : (s)=>String(s==null?'':s);
  const inactive = JSON.parse(localStorage.getItem('staffInactive_v1') || '[]');
- const staff = (typeof authUsers !== 'undefined' ? authUsers : []).filter(u => !inactive.includes(u.staff_id) && u.name && u.name !== from);
+ const staff = (typeof authUsers !== 'undefined' ? authUsers : []).filter(u => !inactive.includes(u.staff_id) && u.name && u.name !== from && u.staff_id !== 'TST001' && u.staff_id !== 'REV001'); // p1_554 — jangan benarkan reassign komisen ke akaun demo
  const opts = staff.map(u => `<option value="${esc(u.name)}">${esc(u.name)} (${esc(u.role||'')})</option>`).join('');
  const old = document.getElementById('cmReassignModal'); if (old) old.remove();
  const ov = document.createElement('div');
@@ -21967,7 +21978,10 @@ window.bulkSaveEdits = async function() {
  if(skuEl) {
  const newSku = (skuEl.value || '').trim();
  if(newSku && newSku !== sku) {
- if((masterProducts || []).some(x => x.sku === newSku)) {
+ if(!/^[A-Za-z0-9._-]+$/.test(newSku)) {
+ // p1_554 — whitelist aksara SKU: elak petik/tanda HTML yang boleh pecahkan onclick handler (XSS backstop)
+ errs.push(sku + ': SKU "' + newSku + '" tak sah — guna huruf, nombor, - _ . sahaja');
+ } else if((masterProducts || []).some(x => x.sku === newSku)) {
  errs.push(sku + ': SKU "' + newSku + '" dah wujud');
  } else {
  try {
@@ -29063,7 +29077,7 @@ window.openB2BDetail = async function(id) {
  // Async fetch returns_log for this customer (match by company name in notes/order_ref)
  try {
  if(typeof db !== 'undefined' && db) {
- const { data } = await db.from('returns_log').select('reported_at,sku,qty,type,reason,cost_impact').or(`notes.ilike.%${(company||'').replace(/'/g, '')}%,order_ref.ilike.%${(company||'').replace(/'/g, '')}%`).order('reported_at', { ascending: false }).limit(5);
+ const { data } = await db.from('returns_log').select('reported_at,sku,qty,type,reason,cost_impact').or(`notes.ilike.%${(company||'').replace(/[,()'"\\]/g,' ')}%,order_ref.ilike.%${(company||'').replace(/[,()'"\\]/g,' ')}%`).order('reported_at', { ascending: false }).limit(5);
  const wrap = document.getElementById('b2bDetailReturns');
  if(!wrap) return;
  const rows = data || [];
