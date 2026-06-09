@@ -2562,6 +2562,15 @@ a:focus-visible {
  #main-content table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
+/* p1_550 — Fasa 3 responsif Borang/Reports/Modal di tablet/phone (<=900px). Desktop tak terjejas.
+   (1) input/select/textarea jangan lebih lebar dari skrin. (2) grid approval 2->1 kolum.
+   (3) modal muat dalam skrin (tinggi + lebar) supaya butang tak terlindung / tak terkeluar. */
+@media (max-width: 900px) {
+ #main-content input, #main-content select, #main-content textarea { max-width: 100% !important; box-sizing: border-box; }
+ .rp-approval-grid { grid-template-columns: 1fr !important; }
+ [class*="modal__inner"], [class*="modal-inner"] { max-width: 95vw !important; max-height: 90vh; overflow-y: auto; }
+}
+
 /* Card with title + body */
 .dash-card {
  background: #FFF;
