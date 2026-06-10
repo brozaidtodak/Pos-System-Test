@@ -849,6 +849,12 @@ window.__renderCartTabs = function(){
 // p1_558 — "Apa Baru" (What's New) untuk staff: senarai features terkini dlm bahasa mudah.
 // Curated (BUKAN ROADMAP_DATA teknikal). Newest first; id terbesar = terbaru.
 window.STAFF_UPDATES = [
+ { id: 11, date: '11 Jun 2026', tag: 'Baru', icon: 'package-2', title: 'Set Pakej Barang (Bundle)',
+ desc: 'Untuk staff yang urus produk: sekarang boleh cantum beberapa barang jadi satu pakej (contoh Camping Starter Pack) di menu Products > Bundles. Pilih barang, letak harga pakej, sistem kira sendiri berapa set boleh dibuat ikut stok. Jualan pakej terus di Cashier akan datang tak lama lagi.' },
+ { id: 10, date: '10 Jun 2026', tag: 'Baru', icon: 'target', title: 'Sasaran Jualan Bulan Ini',
+ desc: 'Di skrin Cashier sekarang ada papan sasaran jualan bulan ni — tunjuk dah capai berapa, lagi berapa nak sampai sasaran, dan anggaran berapa sehari. Senang nampak objektif setiap hari.' },
+ { id: 9, date: '10 Jun 2026', tag: 'Lebih Baik', icon: 'badge-percent', title: 'Kad Produk Lebih Kemas',
+ desc: 'Kad produk sekarang tunjuk petunjuk "Margin OK" (hijau) atau "Margin nipis" (merah) untuk bantu kau jual pada harga yang berbaloi. Lagi mudah baca masa layan customer.' },
  { id: 8, date: '10 Jun 2026', tag: 'Baru', icon: 'shopping-cart', title: '3 Cart Serentak',
  desc: 'Sekarang boleh buka sampai 3 cart sekaligus. Tengah layan customer, ada customer lain masuk? Tekan tab Cart 2, layan dia — cart pertama tersimpan, tak hilang. Tak payah buang barang lagi.' },
  { id: 7, date: '10 Jun 2026', tag: 'Laju', icon: 'zap', title: 'Cashier Lebih Pantas',
