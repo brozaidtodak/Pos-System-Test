@@ -353,6 +353,24 @@ body.pos-mobile-mode .pos-pager {
     margin: 10px 0 6px !important;
 }
 
+/* p1_589 — Cashier SATU scroll di mobile/tablet (Zaid: keliru sebab ada 2 zon scroll —
+   katalog scroll-dalam + page scroll). Buang scroll-dalam #productsList supaya katalog
+   MENGALIR dengan page (satu scroll je). Search bar dibuat sticky di bawah app-header
+   supaya tak hilang bila scroll. (--pos-app-header-h diset via JS = tinggi app-header.) */
+body.pos-mobile-mode #productsList {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+}
+body.pos-mobile-mode .pos-prodsearch-row {
+    position: sticky;
+    top: var(--pos-app-header-h, 64px);
+    z-index: 30;
+    background: var(--card-bg);
+    padding: 10px 0;
+    margin: 0 0 12px;
+}
+
 /* PRINT MEDIA FOR BARCODE LABELS (THERMAL PRINTER FORMAT) */
 @media print {
     body * {

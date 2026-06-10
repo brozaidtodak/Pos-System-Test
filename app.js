@@ -34203,3 +34203,16 @@ window.renderCampaigns = function(){
   </div>`;
  if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
 };
+
+/* p1_589 — Set --pos-app-header-h = tinggi .app-header supaya search bar Cashier (sticky
+ * di mobile/tablet) melekat TEPAT bawah header tanpa gap/tindih. Update on load + resize. */
+(function(){
+ function setHdrH(){
+  var h = document.querySelector('.app-header');
+  if(h && h.offsetHeight) document.documentElement.style.setProperty('--pos-app-header-h', h.offsetHeight + 'px');
+ }
+ window.addEventListener('resize', setHdrH);
+ window.addEventListener('load', setHdrH);
+ window.__setPosHeaderH = setHdrH;
+ setTimeout(setHdrH, 300); setTimeout(setHdrH, 1500);
+})();
