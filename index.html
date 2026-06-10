@@ -430,9 +430,20 @@
  </select>
  </div>
  </div>
+ <!-- p1_565 — Editor barang dalam order (ubah qty = refund/exchange, tambah barang baru pun boleh). Reconcile stok auto masa simpan. -->
+ <div style="margin-bottom:12px; border:1px solid var(--border-color); border-radius:10px; padding:10px 12px;">
+ <label class="small-lbl" style="display:block; margin-bottom:6px;">Barang dalam order — kurangkan qty (refund), buang, atau tambah barang baru</label>
+ <div id="ppEditItemsList"></div>
+ <div style="position:relative; margin-top:8px;">
+ <input type="text" id="ppEditAddItemInput" oninput="window.__ppeSearchItems()" onfocus="window.__ppeSearchItems()" onblur="setTimeout(function(){var d=document.getElementById('ppEditAddItemDD'); if(d) d.style.display='none';},180)" placeholder="+ Tambah barang (cari nama / SKU)…" class="login-input" style="margin:0;" autocomplete="off">
+ <div id="ppEditAddItemDD" style="display:none; position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--border-color); border-radius:8px; max-height:220px; overflow-y:auto; z-index:6; box-shadow:0 8px 24px rgba(0,0,0,.12);"></div>
+ </div>
+ <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:12.5px; color:#374151;"><span>Subtotal barang</span><strong id="ppEditItemsSubtotal">RM 0.00</strong></div>
+ <div id="ppEditBalanceNote" style="font-size:11.5px; color:#6B7280; margin-top:4px;"></div>
+ </div>
  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
  <div>
- <label class="small-lbl">Total Amount (RM)</label>
+ <label class="small-lbl">Total Amount (RM) — auto dari barang, boleh ubah</label>
  <input type="number" id="ppEditTotal" class="login-input" step="0.01" min="0" style="margin:0;">
  </div>
  <div>
@@ -7916,6 +7927,7 @@
  { id:'p1_519', label:'Diagnose Shopee returns API + reconcile TikTok CSV. SHOPEE: Seller Centre ada 91 Return/Refund/Cancel tapi /api/v2/returns/get_return_list pulang KOSONG (error="", response.return=[]) — sebab API tu hanya RMA (barang dipulang) manakala 91 tu majoriti Refund-only + Cancellation (kategori lain, API returns tak liputi). Tambah ?debug=shopee dlm returns-pull.js (pulang raw response 1 window utk diagnose). Pelan: Zaid export CSV dari Shopee Seller Centre → import manual. TIKTOK: Zaid hantar export TikTok (Return_Refund Orders CSV, 32 baris: 18 Completed + 14 Refund-rejected). Cross-check: semua 18 Completed DAH ADA dlm returns_log (POS via API tarik 25 = superset; rejected betul dikecualikan). TikTok lengkap. Server-only (returns-pull.js) — tiada app.js/sw bump.', d:'done' },
  { id:'p1_534', label:'App version (staff) — skop diperluas + back-office split (Zaid: "jadikan POS kepada apps version, yang sekarang ni jadi back office"). Sambung Capacitor (server.url 10camp.com/#staff + appendUserAgent TenCampPOSApp — load live, auto-update tanpa rebuild). Dulu scope cashier-ONLY; kini Zaid pilih Cashier + All Orders + My Commission + Stock Take. Ganti CSS whack-a-mole dgn nav suntik: body.pos-app-scoped sorok #sidebarRail + .menu-list + butang Landing; __injectPosAppNav suntik #posAppNav (4 butang besar → switchHub posSection/allOrdersSection/commissionSection/checkSessionsSection + tutup drawer phone); __applyPosAppScope default Cashier; Logout kekal header. Web kekal back-office PENUH. app.js (v575->v576) + sw pos-store-v140->v141.', d:'done' },
  { id:'p1_535', label:'App shell build/test (Zaid: "tolong build/test app shell"). npx cap sync ios BERJAYA (SPM, tiada CocoaPods). BLOCKER native: Android tiada Java/JDK; iOS Simulator CoreSimulator belum install (perlu sudo xcodebuild -runFirstLaunch + GUI Xcode Run). Build native penuh perlu langkah admin/GUI. SOLUSI test segera: __isPOSApp kini juga true bila ?posapp=1 dlm URL → PREVIEW skop app (4 butang) dlm browser biasa tanpa build native (selamat). Buka 10camp.com/?posapp=1#staff. app.js (v576->v577) + sw pos-store-v141->v142.', d:'done' },
+ { id:'p1_565', label:'Edit Order jadi SATU tempat semua (Zaid: order #5040 customer nak refund + tambah barang sekali; "buat button edit untuk meliputi segala hal"). Modal Edit tambah EDITOR BARANG: senarai item dgn stepper qty + buang + carian Tambah barang. Total auto-kira + nota balance (BAYAR TAMBAHAN / REFUND). Simpan reconcile: qty naik → tolak stok; qty turun/buang → pulang stok + returns_log (edit_return); set items+total+metadata.last_edit. Exchange = buang lama + tambah baru. Refresh All Orders/Returns. Refund button kekal pintasan. app.js v591->v592.', d:'done' },
  { id:'p1_564', label:'Customer CRM lengkapkan tier + loyalti (Zaid: fokus customer side). Senarai Customers: badge tier (Bronze/Silver/VIP) sebelah nama + lajur Mata tunjuk mata BOLEH-GUNA (tooltip terkumpul/tebus) + nama di-hesc. Detail customer: kad Tier + grid 3→4 kolum (Tier/Belanja/Pesanan/Mata-boleh-guna + breakdown) + seksyen "Ganjaran ditebus" (metadata.loyalty_redeem). Segmen filter tambah Tier Bronze/Silver/VIP. app.js v590->v591. (Seterusnya: Loyalty Portal customer-facing.)', d:'done' },
  { id:'p1_563', label:'Refund button tak jumpa — Zaid screenshot All Orders TABLE (renderAllOrders), tapi butang p1_562 cuma dalam modal Order Detail (ff-card Pesanan Online). FIX: tambah butang "Refund" TERUS dalam (1) lajur Action setiap baris table All Orders (sebelah Edit; jadi "Dah Refund" disabled kalau metadata.return_done), dan (2) modal view order (aoViewOverlay) sebelah Edit. Dua-dua panggil __returnRefundOpen(id). app.js v589->v590.', d:'done' },
  { id:'p1_562', label:'Butang Return / Exchange / Refund (request Farhan: customer tukar fikiran / dapat barang salah). Butang merah di action bar Order Detail → modal __returnRefundOpen: pilih barang + kuantiti nak pulang (stepper, max=qty dijual, auto-kira refund), jenis (Refund/Exchange/Return), sebab, checkbox Pulang-ke-stok (default ON, OFF utk rosak), nota. Sahkan → restock FIFO via __applyStockDelta (skip CUSTOM-*), returns_log 1 baris/item (cost_impact=0 kalau restock), update sale metadata.return_done/type/reason/amount/items + stock_restored (elak double-restock) + status Refunded kalau pulang penuh. Exchange: pulang lama, ring ganti jualan baru. Refresh All Orders + Returns. app.js v588->v589.', d:'done' },
@@ -12926,7 +12938,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=591"></script>
+ <script src="app.js?v=592"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

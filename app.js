@@ -6478,12 +6478,72 @@ window.__ppEditSale = async function(saleId) {
  set('ppEditStatus', row.status || 'Completed');
  set('ppEditBuyerTin', row.buyer_tin);
  set('ppEditNote', '');
+ // p1_565 — init editor barang (tambah/buang/ubah qty dalam Edit)
+ let __it = row.items;
+ if(typeof __it === 'string'){ try { __it = JSON.parse(__it); } catch(e){ __it = []; } }
+ if(!Array.isArray(__it)) __it = [];
+ const __mk = (it) => ({ sku: it.sku || '', name: it.name || '', price: parseFloat(it.price != null ? it.price : it.unit_price) || 0, quantity: parseInt(it.qty != null ? it.qty : (it.quantity != null ? it.quantity : 1)) || 1, isCustom: !!it.isCustom || (typeof it.sku === 'string' && it.sku.startsWith('CUSTOM-')) });
+ window.__ppeState = { saleId: row.id, meta: row.metadata, orig: __it.map(__mk), items: __it.map(__mk) };
+ if(typeof window.__ppeRenderItems === 'function') window.__ppeRenderItems();
  const modal = document.getElementById('ppEditModal');
  if(modal) modal.style.display = 'flex';
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  } catch(e) {
  if(typeof showToast === 'function') showToast('Edit gagal load: ' + e.message, 'error');
  }
+};
+
+// p1_565 — Editor barang dalam Edit Order (refund/exchange/add jadi satu)
+window.__ppeRenderItems = function(){
+ const st = window.__ppeState; if(!st) return;
+ const wrap = document.getElementById('ppEditItemsList'); if(!wrap) return;
+ if(!st.items.length){ wrap.innerHTML = '<div style="color:#9CA3AF; font-size:12px; padding:6px 0;">Tiada barang. Tambah barang di bawah.</div>'; window.__ppeRecalc(); return; }
+ wrap.innerHTML = st.items.map((it, i) =>
+ '<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #F1F5F9;">'
+ + '<div style="flex:1; min-width:0;"><strong style="font-size:12.5px;">' + hesc(it.name || it.sku || 'item') + '</strong>' + (it.sku ? ' <span style="color:#94A3B8; font-size:10.5px;">[' + hesc(it.sku) + ']</span>' : '') + '<br><span style="color:#64748B; font-size:11px;">RM ' + it.price.toFixed(2) + '</span></div>'
+ + '<div style="display:flex; align-items:center; gap:5px;">'
+ + '<button type="button" onclick="window.__ppeQty(' + i + ',-1)" style="width:24px;height:24px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">&minus;</button>'
+ + '<span style="min-width:18px; text-align:center; font-weight:700;">' + it.quantity + '</span>'
+ + '<button type="button" onclick="window.__ppeQty(' + i + ',1)" style="width:24px;height:24px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">+</button>'
+ + '<button type="button" onclick="window.__ppeRemove(' + i + ')" title="Buang" style="width:24px;height:24px;border:1px solid #FCA5A5;background:#FEE2E2;color:#991B1B;border-radius:6px;cursor:pointer;font-weight:700;margin-left:3px;">&times;</button>'
+ + '</div></div>'
+ ).join('');
+ window.__ppeRecalc();
+};
+window.__ppeQty = function(i, d){ const st = window.__ppeState; if(!st || !st.items[i]) return; st.items[i].quantity = Math.max(0, st.items[i].quantity + d); if(st.items[i].quantity === 0) st.items.splice(i, 1); window.__ppeRenderItems(); };
+window.__ppeRemove = function(i){ const st = window.__ppeState; if(!st) return; st.items.splice(i, 1); window.__ppeRenderItems(); };
+window.__ppeRecalc = function(){
+ const st = window.__ppeState; if(!st) return;
+ const sub = st.items.reduce((s, it) => s + it.price * it.quantity, 0);
+ const subEl = document.getElementById('ppEditItemsSubtotal'); if(subEl) subEl.textContent = 'RM ' + sub.toFixed(2);
+ const totEl = document.getElementById('ppEditTotal'); if(totEl) totEl.value = sub.toFixed(2);
+ const origSub = st.orig.reduce((s, it) => s + it.price * it.quantity, 0);
+ const diff = sub - origSub;
+ const note = document.getElementById('ppEditBalanceNote');
+ if(note){
+ note.textContent = diff > 0 ? ('Customer BAYAR TAMBAHAN RM ' + diff.toFixed(2)) : (diff < 0 ? ('REFUND pada customer RM ' + Math.abs(diff).toFixed(2)) : 'Tiada perubahan jumlah');
+ note.style.color = diff > 0 ? '#991B1B' : (diff < 0 ? '#166534' : '#6B7280');
+ note.style.fontWeight = diff !== 0 ? '700' : '400';
+ }
+};
+window.__ppeSearchItems = function(){
+ const inp = document.getElementById('ppEditAddItemInput'); const dd = document.getElementById('ppEditAddItemDD'); if(!inp || !dd) return;
+ const q = (inp.value || '').trim().toLowerCase();
+ const list = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
+ const res = (q ? list.filter(p => ((p.name || '') + ' ' + (p.sku || '') + ' ' + (p.brand || '')).toLowerCase().includes(q)) : list).slice(0, 12);
+ if(!res.length){ dd.style.display = 'none'; return; }
+ dd.innerHTML = res.map(p => '<div onmousedown="window.__ppeAddItem(\'' + String(p.sku).replace(/'/g, "\\'") + '\')" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid #F3F4F6; font-size:12.5px;"><strong>' + hesc(p.name || p.sku) + '</strong> <span style="color:#94A3B8;">[' + hesc(p.sku) + ']</span> &middot; RM' + (parseFloat(p.price) || 0).toFixed(2) + '</div>').join('');
+ dd.style.display = 'block';
+};
+window.__ppeAddItem = function(sku){
+ const st = window.__ppeState; if(!st) return;
+ const p = (typeof masterProducts !== 'undefined' ? masterProducts : []).find(x => x.sku === sku); if(!p) return;
+ const existing = st.items.find(it => it.sku === sku);
+ if(existing) existing.quantity++;
+ else st.items.push({ sku: p.sku, name: p.name, price: parseFloat(p.price) || 0, quantity: 1, isCustom: false });
+ const inp = document.getElementById('ppEditAddItemInput'); if(inp) inp.value = '';
+ const dd = document.getElementById('ppEditAddItemDD'); if(dd) dd.style.display = 'none';
+ window.__ppeRenderItems();
 };
 
 // p1_235 — Customer autocomplete dalam Edit Sale modal (Zaid: "masa ariff edit sales, dia tak keluar memori customer")
@@ -6569,6 +6629,38 @@ window.__ppSaveEdit = async function() {
  buyer_tin: get('ppEditBuyerTin') || null
  };
  if(!isNaN(total)) { payload.total_amount = total; payload.total = total; }
+ // p1_565 — reconcile barang: tambah → tolak stok; kurang/buang → pulang stok + returns_log. Set items + metadata.
+ try {
+ const st = window.__ppeState;
+ if(st && st.saleId === saleId){
+ const sumBySku = (arr) => { const m = {}; (arr||[]).forEach(it => { const k = it.sku || ''; m[k] = (m[k] || 0) + (it.quantity || 0); }); return m; };
+ const origMap = sumBySku(st.orig), newMap = sumBySku(st.items);
+ const skus = new Set([...Object.keys(origMap), ...Object.keys(newMap)]);
+ const added = [], returned = [];
+ for(const sku of skus){
+ const delta = (newMap[sku] || 0) - (origMap[sku] || 0);
+ if(delta === 0) continue;
+ const isCustom = (typeof sku === 'string' && sku.startsWith('CUSTOM-')) || !sku;
+ if(delta > 0){
+ added.push({ sku, qty: delta });
+ if(!isCustom && typeof window.__applyStockDelta === 'function'){ try { await window.__applyStockDelta(sku, -delta, 'Edit order #' + saleId + ': tambah ' + delta); } catch(e){ console.warn('deduct add gagal', sku, e); } }
+ } else {
+ const q = -delta;
+ returned.push({ sku, qty: q });
+ if(!isCustom && typeof window.__applyStockDelta === 'function'){ try { await window.__applyStockDelta(sku, q, 'Edit order #' + saleId + ': pulang ' + q); } catch(e){ console.warn('restock return gagal', sku, e); } }
+ }
+ }
+ if(returned.length){
+ const rows = returned.map((r, i) => ({ source: 'pos', external_id: 'pos_edit_' + saleId + '_' + (r.sku || 'item') + '_' + Date.now() + '_' + i, sku: r.sku, qty: r.qty, type: 'edit_return', reason: 'Edit order', cost_impact: 0, reported_at: new Date().toISOString(), notes: 'Edit order #' + saleId + ' oleh ' + (u.name || '?') + (editNote ? ' · ' + editNote : '') }));
+ try { await db.from('returns_log').insert(rows); } catch(e){ console.warn('returns_log edit gagal:', e); }
+ }
+ payload.items = st.items.map(it => ({ sku: it.sku, name: it.name, price: it.price, quantity: it.quantity, isCustom: it.isCustom }));
+ let md = st.meta; if(typeof md === 'string'){ try { md = JSON.parse(md); } catch(e){ md = {}; } } md = md || {};
+ md.last_edit = { added, returned, edited_by: u.name || '?', edited_at: new Date().toISOString(), note: editNote || null };
+ if(st.items.length > 0) md.stock_deducted = true;
+ payload.metadata = md;
+ }
+ } catch(e){ console.warn('reconcile items gagal:', e); }
  try {
  const { error } = await db.from('sales_history').update(payload).eq('id', saleId);
  if(error) throw error;
@@ -6581,9 +6673,16 @@ window.__ppSaveEdit = async function() {
  created_at: new Date().toISOString()
  }]);
  } catch(_){}
- if(typeof showToast === 'function') showToast(`Sale #${saleId} updated.`, 'success');
+ // p1_565 — update salesHistory in-memori supaya All Orders/Returns kemas-kini serta-merta
+ try {
+ if(Array.isArray(salesHistory)){ const s = salesHistory.find(x => x.id === saleId); if(s) Object.assign(s, payload); }
+ } catch(_){}
+ window.__ppeState = null;
+ if(typeof showToast === 'function') showToast(`Sale #${saleId} dikemaskini.`, 'success');
  document.getElementById('ppEditModal').style.display = 'none';
- if(typeof window.renderPaymentProofs === 'function') window.renderPaymentProofs();
+ if(typeof window.renderPaymentProofs === 'function') try { window.renderPaymentProofs(); } catch(_){}
+ if(typeof window.renderAllOrders === 'function') try { window.renderAllOrders(); } catch(_){}
+ if(typeof window.renderReturnsLog === 'function') try { window.renderReturnsLog(); } catch(_){}
  } catch(e) {
  if(typeof showToast === 'function') showToast('Simpan gagal: ' + e.message, 'error');
  }
