@@ -2557,8 +2557,10 @@ a:focus-visible {
 
 /* p1_549 — Fasa 2 responsif Tables: di tablet/phone (<=900px) biar table SKROL MENDATAR
    dalam kotaknya sendiri (display:block + overflow-x:auto) — elak table lebar tolak
-   seluruh page jadi boleh geser tepi / content terpotong. Desktop (>900px) tak terjejas. */
-@media (max-width: 900px) {
+   seluruh page jadi boleh geser tepi / content terpotong.
+   p1_591 — breakpoint 900->1200px supaya tablet LANDSCAPE (iPad 1024/1112/1194) pun
+   dapat scroll-mendatar; laptop/desktop (>1200px) tak terjejas. */
+@media (max-width: 1200px) {
  #main-content table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 

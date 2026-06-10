@@ -34222,7 +34222,7 @@ window.renderCampaigns = function(){
  * Skrin Kecil/Besar; di tablet "Skrin Besar" = dua-pane cramped + 2 zon scroll).
  * Di skrin <=1024px (tablet/phone): PAKSA pos-mobile-mode (layout satu-lajur simple,
  * satu scroll) + sorok butang toggle (tak relevan). Di desktop: hormati toggle staf. */
-window.__POS_MOBILE_BREAKPOINT = 1024;
+window.__POS_MOBILE_BREAKPOINT = 1200; // p1_591 — cover tablet landscape (iPad 1024/1112/1194); laptop 1280+ kekal desktop
 window.__autoPosLayout = function(){
  var narrow = window.innerWidth <= (window.__POS_MOBILE_BREAKPOINT || 1024);
  if(narrow){
