@@ -15356,7 +15356,7 @@ function renderPublicStorefront() {
             <div class="lp-product-card" id="${cardId}">
                 <div class="lp-product-card__media" onclick="window.lpOpenProductDetail('${skuEsc}')">
                     ${badge}
-                    <img class="lp-product-card__img" src="${thumb}" alt="${parsed.title.replace(/"/g,'&quot;')}" loading="lazy" onerror="this.src='https://placehold.co/300x300?text=No+Img'">
+                    <img class="lp-product-card__img" src="${window.__thumbUrl(thumb, 360)}" alt="${parsed.title.replace(/"/g,'&quot;')}" loading="lazy" onerror="window.__imgThumbErr(this, '${String(thumb).replace(/'/g, "\\'")}')">
                     <button type="button" class="zoom-hotspot" aria-label="Zoom image" title="Zoom image" onclick="event.stopPropagation(); window.__imgZoom(this.previousElementSibling.src, this.previousElementSibling.alt);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></button>
                 </div>
                 <div class="lp-product-card__body">
@@ -15466,7 +15466,7 @@ window.renderPopularSoldOut = function() {
             <div class="lp-soldout-card">
                 <div class="lp-soldout-card__media">
                     <span class="lp-soldout-card__badge">${badgeLabel}</span>
-                    <img class="lp-soldout-card__img" src="${thumb}" alt="${nameSafe}" loading="lazy" onerror="this.src='https://placehold.co/300x300?text=No+Img'">
+                    <img class="lp-soldout-card__img" src="${window.__thumbUrl(thumb, 360)}" alt="${nameSafe}" loading="lazy" onerror="window.__imgThumbErr(this, '${String(thumb).replace(/'/g, "\\'")}')">
                 </div>
                 <div class="lp-soldout-card__body">
                     ${brand ? `<span class="lp-soldout-card__brand">${brand}</span>` : ''}
@@ -21388,7 +21388,7 @@ window.renderPdpMediaGallery = function(urls) {
  // p1_158 — was innerHTML += in loop (Safari OOM trigger)
  container.innerHTML = urls.map((url, idx) => `
  <div style="position:relative; width:80px; height:80px; border-radius:8px; border:1px solid #e1e3e5; overflow:hidden; flex-shrink:0;">
- <img src="${url}" loading="lazy" decoding="async" style="width:100%; height:100%; object-fit:cover;">
+ <img src="${window.__thumbUrl(url, 160)}" loading="lazy" decoding="async" onerror="window.__imgThumbErr(this, '${String(url).replace(/'/g, "\\'")}')" style="width:100%; height:100%; object-fit:cover;">
  <button onclick="window.removePdpMedia(${idx})" style="position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.8); border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; color:red;"></button>
  </div>
  `).join('');
@@ -29461,7 +29461,7 @@ window.renderProductDatabase = function() {
  <span class="pd-card__stock-pill ${stockClass}">${stockLabel}</span>
  <div class="pd-card__image-wrap">
  ${img
- ? `<img class="pd-card__image" src="${img}" alt="${(p.name||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="this.style.display='none';this.parentNode.innerHTML+='<span class=&quot;pd-card__image-placeholder&quot;></span>'"><button type="button" class="zoom-hotspot" aria-label="Zoom image" title="Zoom image" onclick="event.stopPropagation(); window.__imgZoom(this.previousElementSibling.src, this.previousElementSibling.alt);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></button>`
+ ? `<img class="pd-card__image" src="${window.__thumbUrl(img, 320)}" data-full="${String(img).replace(/"/g,'&quot;')}" alt="${(p.name||'').replace(/"/g,'&quot;')}" loading="lazy" onerror="window.__imgThumbErr(this, '${String(img).replace(/'/g, "\\'")}')"><button type="button" class="zoom-hotspot" aria-label="Zoom image" title="Zoom image" onclick="event.stopPropagation(); window.__imgZoom(this.previousElementSibling.getAttribute('data-full')||this.previousElementSibling.src, this.previousElementSibling.alt);"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></button>`
  : `<span class="pd-card__image-placeholder"></span>`}
  </div>
  <div class="pd-card__body">
