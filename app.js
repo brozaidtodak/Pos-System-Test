@@ -6545,6 +6545,43 @@ window.__ppeAddItem = function(sku){
  const dd = document.getElementById('ppEditAddItemDD'); if(dd) dd.style.display = 'none';
  window.__ppeRenderItems();
 };
+// p1_566 — Batal SELURUH order dari Edit: status Cancelled + pulang stok (kalau pernah ditolak) + log.
+window.__ppeCancelOrder = async function(){
+ const st = window.__ppeState; if(!st || typeof db === 'undefined' || !db) return;
+ const saleId = st.saleId;
+ if(!confirm('Batalkan SELURUH order #' + saleId + '?\n\nStatus jadi Cancelled & barang dipulang ke stok (kalau sebelum ni ditolak). Tak boleh undo automatik.')) return;
+ try {
+ const u = window.currentUser || {};
+ let md = st.meta; if(typeof md === 'string'){ try { md = JSON.parse(md); } catch(e){ md = {}; } } md = md || {};
+ const sale = (Array.isArray(salesHistory) ? salesHistory : []).find(s => s.id === saleId);
+ const channel = (sale && sale.channel) || (document.getElementById('ppEditChannel') || {}).value || '';
+ const wasDeducted = !!md.stock_deducted || /POS|Cashier|Walk/i.test(channel); // elak phantom utk order marketplace yg tak deduct guna stok POS
+ const restock = wasDeducted && !md.stock_restored;
+ const restocked = [];
+ if(restock && typeof window.__applyStockDelta === 'function'){
+ for(const it of st.orig){
+ if(!it.sku || (typeof it.sku === 'string' && it.sku.startsWith('CUSTOM-')) || !(it.quantity > 0)) continue;
+ try { await window.__applyStockDelta(it.sku, it.quantity, 'Batal order #' + saleId); restocked.push(it); } catch(e){ console.warn('restock cancel gagal', it.sku, e); }
+ }
+ }
+ if(restocked.length){
+ const rows = restocked.map((r, i) => ({ source: 'pos', external_id: 'pos_cancel_' + saleId + '_' + (r.sku || 'item') + '_' + Date.now() + '_' + i, sku: r.sku, qty: r.quantity, type: 'cancel', reason: 'Order dibatalkan', cost_impact: 0, reported_at: new Date().toISOString(), notes: 'Batal order #' + saleId + ' oleh ' + (u.name || '?') }));
+ try { await db.from('returns_log').insert(rows); } catch(e){ console.warn('returns_log cancel gagal:', e); }
+ }
+ md.cancelled_by = u.name || '?'; md.cancelled_at = new Date().toISOString();
+ if(restock) md.stock_restored = true;
+ const { error } = await db.from('sales_history').update({ status: 'Cancelled', metadata: md }).eq('id', saleId);
+ if(error) throw error;
+ if(sale){ sale.status = 'Cancelled'; sale.metadata = md; }
+ try { await db.from('audit_logs').insert([{ action_type: 'sale_cancel', actor_name: u.name || 'System', details: JSON.stringify({ sale_id: saleId, restocked: restock }), created_at: new Date().toISOString() }]); } catch(_){}
+ window.__ppeState = null;
+ if(typeof showToast === 'function') showToast('Order #' + saleId + ' dibatalkan' + (restock ? ' · stok dipulangkan' : ''), 'success');
+ const m = document.getElementById('ppEditModal'); if(m) m.style.display = 'none';
+ if(typeof window.renderAllOrders === 'function') try { window.renderAllOrders(); } catch(_){}
+ if(typeof window.renderPaymentProofs === 'function') try { window.renderPaymentProofs(); } catch(_){}
+ if(typeof window.renderReturnsLog === 'function') try { window.renderReturnsLog(); } catch(_){}
+ } catch(e){ if(typeof showToast === 'function') showToast('Batal order gagal: ' + (e.message || e), 'error'); console.error('cancel order gagal:', e); }
+};
 
 // p1_235 — Customer autocomplete dalam Edit Sale modal (Zaid: "masa ariff edit sales, dia tak keluar memori customer")
 window.__ppEditAcResults = [];
