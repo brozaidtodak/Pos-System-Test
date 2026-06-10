@@ -33667,3 +33667,502 @@ window.shopeeDisconnect = async function() {
  }
 };
 
+
+/* ============================================================================
+ * p1_578 — EXPORTS (Reports > Exports). Ganti placeholder "Coming Soon".
+ * Download CSV: Sales/Orders, Customers, Products (katalog), Inventory (stok),
+ * Returns. Function-first: jadual ringkas + butang muat turun setiap set data.
+ * ==========================================================================*/
+window.__csvEsc = function(v){ v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; };
+
+// Generic CSV download. cols = [{h:'Header', get:(row)=>value}], rows = array.
+window.__csvDownload = function(filename, cols, rows){
+ if(!rows || !rows.length){ if(typeof showToast==='function') showToast('Tiada data untuk export.','info'); return; }
+ const esc = window.__csvEsc;
+ const lines = [ cols.map(c=>esc(c.h)).join(',') ];
+ rows.forEach(r => { lines.push(cols.map(c=>esc(c.get(r))).join(',')); });
+ const csv = '﻿' + lines.join('\n');
+ const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ const stamp = new Date().toISOString().slice(0,10);
+ a.href = url; a.download = `${filename}_${stamp}.csv`;
+ document.body.appendChild(a); a.click(); document.body.removeChild(a);
+ setTimeout(()=>URL.revokeObjectURL(url), 1000);
+ if(typeof showToast==='function') showToast(`${rows.length} baris di-export ke CSV.`,'success');
+};
+
+// Definisi setiap set data boleh export (kira bilangan + bina baris bila diklik).
+window.__expDatasets = function(){
+ const sales = Array.isArray(salesHistory) ? salesHistory : [];
+ const custs = Array.isArray(customersData) ? customersData : [];
+ const prods = Array.isArray(masterProducts) ? masterProducts : [];
+ const stockMap = (window.__stockBySku instanceof Map) ? window.__stockBySku : null;
+ const stockOf = (sku)=> stockMap ? (stockMap.get(sku)||0) : (prods.find(p=>p.sku===sku)?.stock || 0);
+ return [
+  { key:'sales', icon:'receipt', title:'Jualan / Pesanan', desc:'Semua transaksi — tarikh, channel, status, pelanggan, jumlah.', count:sales.length,
+    file:'jualan',
+    cols:[
+     {h:'Tarikh', get:s=> s.created_at ? new Date(s.created_at).toLocaleString('en-MY') : ''},
+     {h:'Order Ref', get:s=>{ const md=s.metadata||{}; return md.shopee_order_sn||md.tiktok_order_id||md.online_order_ref||('#'+s.id); }},
+     {h:'POS ID', get:s=>s.id},
+     {h:'Channel', get:s=>s.channel||''},
+     {h:'Status', get:s=>s.status||''},
+     {h:'Pelanggan', get:s=>s.customer_name||''},
+     {h:'Phone', get:s=>s.customer_phone||''},
+     {h:'Bil Item', get:s=> Array.isArray(s.items)? s.items.reduce((n,it)=>n+(Number(it.quantity||it.qty)||0),0):0},
+     {h:'Total (RM)', get:s=> (parseFloat(s.total_amount||s.total||0)||0).toFixed(2)},
+     {h:'Bayar', get:s=>s.payment_method||''},
+    ],
+    rows:()=>sales },
+  { key:'customers', icon:'users', title:'Pelanggan', desc:'Senarai pelanggan — belanja, pesanan, mata, consent.', count:custs.length,
+    file:'pelanggan',
+    cols:[
+     {h:'Nama', get:c=>c.name||''},
+     {h:'Phone', get:c=>c.phone||''},
+     {h:'Email', get:c=>c.email||''},
+     {h:'Jumlah Belanja (RM)', get:c=> (parseFloat(c.total_spent||0)||0).toFixed(2)},
+     {h:'Bil Pesanan', get:c=>c.total_orders||0},
+     {h:'Mata', get:c=>c.points||0},
+     {h:'Member', get:c=> c.is_member ? 'Ya':'Tidak'},
+     {h:'Email Consent', get:c=> c.email_consent ? 'Ya':'Tidak'},
+     {h:'SMS Consent', get:c=> c.sms_consent ? 'Ya':'Tidak'},
+     {h:'Tags', get:c=> Array.isArray(c.tags)? c.tags.join('|') : (c.tags||'')},
+    ],
+    rows:()=>custs },
+  { key:'products', icon:'package', title:'Produk (Katalog)', desc:'Master catalog — SKU, nama, brand, harga, kos.', count:prods.length,
+    file:'produk',
+    cols:[
+     {h:'SKU', get:p=>p.sku||''},
+     {h:'Nama', get:p=>p.name||''},
+     {h:'Brand', get:p=>p.brand||''},
+     {h:'Kategori', get:p=>p.category||''},
+     {h:'Harga Kedai (RM)', get:p=> (parseFloat(p.price||0)||0).toFixed(2)},
+     {h:'Kos (RM)', get:p=> (parseFloat(p.cost_price||0)||0).toFixed(2)},
+     {h:'Harga Shopee (RM)', get:p=> p.shopee_price? (parseFloat(p.shopee_price)||0).toFixed(2):''},
+     {h:'Harga TikTok (RM)', get:p=> p.tiktok_price? (parseFloat(p.tiktok_price)||0).toFixed(2):''},
+    ],
+    rows:()=>prods },
+  { key:'inventory', icon:'boxes', title:'Inventori (Stok)', desc:'Stok semasa setiap SKU + nilai kos.', count:prods.length,
+    file:'stok',
+    cols:[
+     {h:'SKU', get:p=>p.sku||''},
+     {h:'Nama', get:p=>p.name||''},
+     {h:'Brand', get:p=>p.brand||''},
+     {h:'Stok', get:p=> stockOf(p.sku)},
+     {h:'Kos/unit (RM)', get:p=> (parseFloat(p.cost_price||0)||0).toFixed(2)},
+     {h:'Nilai Stok (RM)', get:p=> (stockOf(p.sku) * (parseFloat(p.cost_price||0)||0)).toFixed(2)},
+    ],
+    rows:()=>prods },
+ ];
+};
+
+window.__expRun = function(key){
+ const ds = window.__expDatasets().find(d=>d.key===key);
+ if(!ds) return;
+ window.__csvDownload(ds.file, ds.cols, ds.rows());
+};
+
+window.renderExports = function(){
+ const sec = document.getElementById('exportsSection');
+ if(!sec) return;
+ const sets = window.__expDatasets();
+ const cards = sets.map(d=>`
+  <div class="admin-card" style="padding:18px; display:flex; flex-direction:column; gap:10px;">
+   <div style="display:flex; align-items:center; gap:10px;">
+    <span style="width:38px; height:38px; border-radius:10px; background:var(--primary-50,#FBF1E6); display:flex; align-items:center; justify-content:center;"><i data-lucide="${d.icon}" style="width:20px;height:20px;color:var(--primary,#CD7C32);"></i></span>
+    <div><div style="font-weight:800; font-size:15px;">${d.title}</div><div style="font-size:12px; color:var(--text-muted,#6B7280);">${d.count.toLocaleString()} baris</div></div>
+   </div>
+   <p style="font-size:12.5px; color:var(--text-muted,#6B7280); margin:0; min-height:34px;">${d.desc}</p>
+   <button onclick="window.__expRun('${d.key}')" class="btn-brand-primary" style="display:inline-flex; align-items:center; gap:6px; justify-content:center;"><i data-lucide="download" style="width:15px;height:15px;"></i> Download CSV</button>
+  </div>`).join('');
+ sec.innerHTML = `
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="download" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Exports</h2>
+  <p class="soft-note">Muat turun data POS sebagai fail CSV (boleh buka dalam Excel / Google Sheets). Klik "Download CSV" pada set data yang kau nak.</p>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; margin-top:8px;">${cards}</div>`;
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
+ * p1_579 — POINTS & MEMBERSHIP (Customers > Points & Membership).
+ * Papar model loyalti sebenar (LOYALTY_TIERS + LOYALTY_REDEEMS + kadar mata):
+ * kadar mata, 3 tier (syarat belanja, diskaun auto, bil customer), cara redeem.
+ * Read-only ringkas — nilai diurus dalam kod (window.LOYALTY_TIERS) supaya
+ * checkout + portal loyalty guna sumber yang sama.
+ * ==========================================================================*/
+window.renderPointsMembership = function(){
+ const sec = document.getElementById('pointsMembershipSection');
+ if(!sec) return;
+ const tiers = window.LOYALTY_TIERS || [];
+ const redeems = window.LOYALTY_REDEEMS || {};
+ const custs = Array.isArray(customersData) ? customersData : [];
+ const rate = window.POINTS_RM_PER_POINT || 10;
+ // Kira bil customer + mata terkumpul per tier
+ const stat = {}; tiers.forEach(t=> stat[t.key]={n:0, pts:0});
+ let totalPts = 0;
+ custs.forEach(c=>{ const t = window.__custTier(c.total_spent); if(stat[t.key]){ stat[t.key].n++; stat[t.key].pts += (Number(c.points)||0); } totalPts += (Number(c.points)||0); });
+
+ const tierCards = tiers.map(t=>{
+  const rs = (redeems[t.key]||[]);
+  const rlist = rs.map(r=>{
+   const cost = r.cost>0 ? `${r.cost} mata` : 'percuma';
+   return `<li style="margin:3px 0;">${r.label} <span style="color:var(--text-muted,#6B7280); font-size:11px;">(${cost})</span></li>`;
+  }).join('');
+  const next = tiers.filter(x=>x.min>t.min).sort((a,b)=>a.min-b.min)[0];
+  const range = next ? `RM${t.min.toLocaleString()} – RM${(next.min-1).toLocaleString()}` : `RM${t.min.toLocaleString()} ke atas`;
+  return `
+   <div class="admin-card" style="padding:0; overflow:hidden;">
+    <div style="background:${t.bg}; color:${t.color}; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;">
+     <div style="font-weight:900; font-size:17px; letter-spacing:.3px;">${t.name}</div>
+     <div style="font-size:12px; font-weight:700;">Diskaun auto ${t.autoPct}%</div>
+    </div>
+    <div style="padding:14px 16px;">
+     <div style="font-size:12px; color:var(--text-muted,#6B7280);">Syarat belanja seumur hidup</div>
+     <div style="font-weight:800; font-size:14px; margin-bottom:10px;">${range}</div>
+     <div style="display:flex; gap:14px; margin-bottom:12px;">
+      <div><div style="font-size:20px; font-weight:900;">${stat[t.key]?stat[t.key].n:0}</div><div style="font-size:11px; color:var(--text-muted,#6B7280);">pelanggan</div></div>
+      <div><div style="font-size:20px; font-weight:900;">${(stat[t.key]?stat[t.key].pts:0).toLocaleString()}</div><div style="font-size:11px; color:var(--text-muted,#6B7280);">mata terkumpul</div></div>
+     </div>
+     <div style="font-size:12px; font-weight:800; margin-bottom:4px;">Cara redeem:</div>
+     <ul style="margin:0; padding-left:18px; font-size:12.5px;">${rlist}</ul>
+    </div>
+   </div>`;
+ }).join('');
+
+ sec.innerHTML = `
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="star" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Points &amp; Membership</h2>
+  <p class="soft-note">Cara sistem ganjaran 10 CAMP berfungsi. Tier ditentukan ikut <strong>jumlah belanja seumur hidup</strong> pelanggan. Diskaun ikut tier diberi automatik; voucher &amp; hadiah guna mata.</p>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:12px; margin:6px 0 16px;">
+   <div class="stat-card"><div style="font-size:12px; color:var(--text-muted,#6B7280);">Kadar Mata</div><div style="font-size:22px; font-weight:900;">RM${rate} = 1 mata</div></div>
+   <div class="stat-card"><div style="font-size:12px; color:var(--text-muted,#6B7280);">Jumlah Ahli</div><div style="font-size:22px; font-weight:900;">${custs.length.toLocaleString()}</div></div>
+   <div class="stat-card"><div style="font-size:12px; color:var(--text-muted,#6B7280);">Mata Terkumpul (semua)</div><div style="font-size:22px; font-weight:900;">${totalPts.toLocaleString()}</div></div>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px;">${tierCards}</div>
+  <p class="soft-note" style="margin-top:14px;">Nota: nilai tier &amp; kadar mata diselaraskan dalam kod supaya konsisten merentas Cashier, portal pelanggan, dan laporan. Nak ubah syarat/diskaun/redeem? Beritahu je, aku update.</p>`;
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
+ * p1_580 — STORE CREDIT (Customers > Store Credit).
+ * Kredit kedai untuk refund/pampasan. Ledger di Supabase (store_credit_ledger):
+ * amount + = beri kredit, amount - = guna kredit. Baki customer = jumlah semua.
+ * Function-first: issue kredit + guna kredit (manual) + jadual baki + sejarah.
+ * Auto-apply di checkout boleh tambah kemudian.
+ * ==========================================================================*/
+window.__scLedger = null;
+window.__scKey = function(name, phone){ const p=(phone||'').replace(/[^0-9]/g,''); return p || ('name:'+(name||'').trim().toLowerCase()); };
+
+window.__scLoad = async function(){
+ if(typeof db==='undefined' || !db) return [];
+ try {
+  const { data } = await db.from('store_credit_ledger').select('*').order('created_at',{ascending:false});
+  window.__scLedger = data || [];
+ } catch(e){ window.__scLedger = window.__scLedger || []; }
+ return window.__scLedger;
+};
+
+// Kira baki per customer dari ledger
+window.__scBalances = function(){
+ const rows = window.__scLedger || [];
+ const map = new Map();
+ rows.forEach(r=>{
+  const k = r.customer_key;
+  if(!map.has(k)) map.set(k, { key:k, name:r.customer_name||'', bal:0, last:r.created_at });
+  const e = map.get(k);
+  e.bal += (Number(r.amount)||0);
+  if(r.customer_name && !e.name) e.name = r.customer_name;
+  if(r.created_at > e.last) e.last = r.created_at;
+ });
+ return Array.from(map.values()).sort((a,b)=> b.bal - a.bal);
+};
+
+window.__scIssue = async function(sign){
+ const nameEl=document.getElementById('scName'), phoneEl=document.getElementById('scPhone'), amtEl=document.getElementById('scAmt'), reasonEl=document.getElementById('scReason');
+ const name=(nameEl?.value||'').trim(), phone=(phoneEl?.value||'').trim();
+ let amt=parseFloat(amtEl?.value||'0')||0;
+ const reason=(reasonEl?.value||'').trim();
+ if(!name && !phone){ showToast('Isi nama atau telefon pelanggan.','warn'); return; }
+ if(amt<=0){ showToast('Masukkan jumlah RM lebih dari 0.','warn'); return; }
+ amt = sign<0 ? -Math.abs(amt) : Math.abs(amt);
+ const key=window.__scKey(name,phone);
+ if(sign<0){
+  // guna kredit — jangan benarkan lebih dari baki
+  const bal=(window.__scBalances().find(b=>b.key===key)?.bal)||0;
+  if(Math.abs(amt) > bal+0.001){ showToast(`Baki kredit cuma RM${bal.toFixed(2)} — tak boleh guna RM${Math.abs(amt).toFixed(2)}.`,'warn'); return; }
+ }
+ const staff = (window.currentUser && (window.currentUser.name||window.currentUser.staff_id)) || '';
+ try {
+  if(typeof db==='undefined'||!db){ showToast('Tiada sambungan DB.','error'); return; }
+  await db.from('store_credit_ledger').insert([{ customer_key:key, customer_name:name, amount:amt, reason:reason||(sign<0?'Guna kredit':'Beri kredit'), created_by:staff }]);
+  showToast(`${sign<0?'Guna':'Beri'} kredit RM${Math.abs(amt).toFixed(2)} — ${name||phone}.`,'success');
+  if(amtEl)amtEl.value=''; if(reasonEl)reasonEl.value='';
+  await window.__scLoad(); window.renderStoreCredit();
+ } catch(e){ showToast('Gagal simpan: '+(e.message||e),'error'); }
+};
+
+window.__scHistory = function(key){
+ const rows=(window.__scLedger||[]).filter(r=>r.customer_key===key);
+ if(!rows.length) return;
+ const name=rows[0].customer_name||key;
+ const lines=rows.map(r=>{
+  const dt=r.created_at?new Date(r.created_at).toLocaleString('en-MY'):'';
+  const amt=Number(r.amount)||0;
+  const col=amt<0?'#DC2626':'#16A34A';
+  return `<tr><td style="padding:6px 8px;">${dt}</td><td style="padding:6px 8px; color:${col}; font-weight:700;">${amt<0?'−':'+'}RM${Math.abs(amt).toFixed(2)}</td><td style="padding:6px 8px;">${(r.reason||'').replace(/</g,'&lt;')}</td><td style="padding:6px 8px; color:#6B7280;">${(r.created_by||'').replace(/</g,'&lt;')}</td></tr>`;
+ }).join('');
+ const bal=(window.__scBalances().find(b=>b.key===key)?.bal)||0;
+ const html=`<div style="max-width:560px;"><h3 style="margin:0 0 4px;">Sejarah Kredit — ${name.replace(/</g,'&lt;')}</h3><p style="margin:0 0 10px; font-weight:800;">Baki: RM${bal.toFixed(2)}</p><div style="max-height:50vh; overflow:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr style="text-align:left; border-bottom:2px solid #E5E7EB;"><th style="padding:6px 8px;">Tarikh</th><th style="padding:6px 8px;">Jumlah</th><th style="padding:6px 8px;">Sebab</th><th style="padding:6px 8px;">Staf</th></tr></thead><tbody>${lines}</tbody></table></div></div>`;
+ if(typeof window.__openSimpleModal==='function') window.__openSimpleModal(html);
+ else alert(name+' — Baki RM'+bal.toFixed(2));
+};
+
+window.renderStoreCredit = async function(){
+ const sec=document.getElementById('storeCreditSection');
+ if(!sec) return;
+ if(window.__scLedger===null) await window.__scLoad();
+ const bals=window.__scBalances().filter(b=>Math.abs(b.bal)>0.001);
+ const totalOut=bals.reduce((s,b)=>s+(b.bal>0?b.bal:0),0);
+ const custOpts=(Array.isArray(customersData)?customersData:[]).slice(0,2000).map(c=>`<option value="${(c.name||'').replace(/"/g,'&quot;')}" data-phone="${c.phone||''}">`).join('');
+ const rowsHtml=bals.length? bals.map(b=>{
+  const dt=b.last?new Date(b.last).toLocaleDateString('en-MY'):'';
+  return `<tr style="border-bottom:1px solid #E5E7EB; cursor:pointer;" onclick="window.__scHistory('${b.key.replace(/'/g,"\\'")}')"><td style="padding:8px 10px;">${(b.name||b.key).replace(/</g,'&lt;')}</td><td style="padding:8px 10px; font-weight:800; color:${b.bal<0?'#DC2626':'#16A34A'};">RM${b.bal.toFixed(2)}</td><td style="padding:8px 10px; color:#6B7280;">${dt}</td><td style="padding:8px 10px; color:var(--primary,#CD7C32); font-size:12px;">Lihat sejarah</td></tr>`;
+ }).join('') : `<tr><td colspan="4" style="padding:20px; text-align:center; color:#6B7280;">Belum ada kredit kedai. Beri kredit pertama guna borang di atas.</td></tr>`;
+ sec.innerHTML=`
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="wallet" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Store Credit</h2>
+  <p class="soft-note">Beri kredit kedai pada pelanggan (cth ganti rugi / refund tanpa pulang tunai). Customer boleh guna kredit ni untuk pembelian akan datang. <strong>+</strong> = beri, <strong>−</strong> = guna.</p>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin:6px 0 16px;">
+   <div class="stat-card"><div style="font-size:12px; color:#6B7280;">Jumlah Kredit Belum Guna</div><div style="font-size:22px; font-weight:900;">RM${totalOut.toFixed(2)}</div></div>
+   <div class="stat-card"><div style="font-size:12px; color:#6B7280;">Pelanggan Ada Kredit</div><div style="font-size:22px; font-weight:900;">${bals.filter(b=>b.bal>0.001).length}</div></div>
+  </div>
+  <div class="admin-card" style="padding:16px; margin-bottom:16px;">
+   <div style="font-weight:800; margin-bottom:10px;">Beri / Guna Kredit</div>
+   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px; align-items:end;">
+    <div><label style="font-size:12px; color:#6B7280;">Nama pelanggan</label><input id="scName" list="scCustList" placeholder="Cari/taip nama" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"><datalist id="scCustList">${custOpts}</datalist></div>
+    <div><label style="font-size:12px; color:#6B7280;">Telefon</label><input id="scPhone" placeholder="0123456789" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Jumlah (RM)</label><input id="scAmt" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Sebab</label><input id="scReason" placeholder="cth: Refund order #123" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+   </div>
+   <div style="display:flex; gap:10px; margin-top:12px;">
+    <button onclick="window.__scIssue(1)" class="btn-brand-primary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus" style="width:15px;height:15px;"></i> Beri Kredit</button>
+    <button onclick="window.__scIssue(-1)" class="btn-brand-secondary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="minus" style="width:15px;height:15px;"></i> Guna Kredit</button>
+   </div>
+  </div>
+  <div class="admin-card" style="padding:0; overflow:hidden;">
+   <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+    <thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Pelanggan</th><th style="padding:8px 10px;">Baki Kredit</th><th style="padding:8px 10px;">Aktiviti Akhir</th><th style="padding:8px 10px;"></th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+   </table>
+  </div>`;
+ // auto-isi telefon bila pilih nama dari datalist
+ const nameEl=document.getElementById('scName');
+ if(nameEl) nameEl.addEventListener('change', ()=>{ const c=(customersData||[]).find(x=>(x.name||'')===nameEl.value); if(c&&c.phone){ const pe=document.getElementById('scPhone'); if(pe&&!pe.value) pe.value=c.phone; } });
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* p1_580b — modal ringkas boleh guna semula (Store Credit history, dll). */
+window.__openSimpleModal = function(innerHtml){
+ let ov = document.getElementById('__simpleModalOverlay');
+ if(!ov){
+  ov = document.createElement('div');
+  ov.id = '__simpleModalOverlay';
+  ov.style.cssText = 'position:fixed; inset:0; background:rgba(16,16,16,.55); z-index:6000; display:flex; align-items:center; justify-content:center; padding:16px;';
+  ov.addEventListener('click', e=>{ if(e.target===ov) window.__closeSimpleModal(); });
+  document.body.appendChild(ov);
+ }
+ ov.innerHTML = `<div style="background:var(--card-bg,#fff); border-radius:14px; padding:20px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,.3); position:relative;">
+   <button onclick="window.__closeSimpleModal()" aria-label="Tutup" style="position:absolute; top:10px; right:10px; background:none; border:0; cursor:pointer; color:#6B7280;"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+   ${innerHtml}
+  </div>`;
+ ov.style.display = 'flex';
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+window.__closeSimpleModal = function(){ const ov=document.getElementById('__simpleModalOverlay'); if(ov) ov.style.display='none'; };
+
+/* ============================================================================
+ * p1_581 — STOCK TRANSFER (Inventory > Transfer).
+ * Log pergerakan stok antara lokasi fizikal (Bilik Stok / Kedai / Cyberjaya).
+ * Catatan sahaja (audit "barang ni kat mana") — tak ubah jumlah stok keseluruhan
+ * sebab POS guna satu kolam stok. Per-location accounting boleh tambah kemudian.
+ * ==========================================================================*/
+window.STOCK_LOCATIONS = ['Bilik Stok','Kedai (Floor)','Cyberjaya Outlet','Gudang Supplier','Lain-lain'];
+window.__stTransfers = null;
+
+window.__stLoad = async function(){
+ if(typeof db==='undefined'||!db) return [];
+ try { const { data } = await db.from('stock_transfers').select('*').order('created_at',{ascending:false}).limit(200); window.__stTransfers = data||[]; }
+ catch(e){ window.__stTransfers = window.__stTransfers||[]; }
+ return window.__stTransfers;
+};
+
+window.__stSubmit = async function(){
+ const skuEl=document.getElementById('stSku'), qtyEl=document.getElementById('stQty'), fromEl=document.getElementById('stFrom'), toEl=document.getElementById('stTo'), noteEl=document.getElementById('stNote');
+ const sku=(skuEl?.value||'').trim().toUpperCase();
+ const qty=parseInt(qtyEl?.value||'0',10)||0;
+ const from=fromEl?.value||'', to=toEl?.value||'', note=(noteEl?.value||'').trim();
+ if(!sku){ showToast('Masukkan SKU.','warn'); return; }
+ if(qty<=0){ showToast('Kuantiti mesti lebih 0.','warn'); return; }
+ if(from===to){ showToast('Lokasi asal dan destinasi tak boleh sama.','warn'); return; }
+ const prod=(Array.isArray(masterProducts)?masterProducts:[]).find(p=>(p.sku||'').toUpperCase()===sku);
+ if(!prod && !confirm(`SKU "${sku}" takde dalam katalog. Teruskan rekod juga?`)) return;
+ const staff=(window.currentUser&&(window.currentUser.name||window.currentUser.staff_id))||'';
+ try {
+  if(typeof db==='undefined'||!db){ showToast('Tiada sambungan DB.','error'); return; }
+  await db.from('stock_transfers').insert([{ sku, product_name:prod?prod.name:'', qty, from_loc:from, to_loc:to, note, created_by:staff }]);
+  showToast(`Rekod pindah: ${qty} × ${sku} (${from} → ${to}).`,'success');
+  if(qtyEl)qtyEl.value=''; if(noteEl)noteEl.value=''; if(skuEl)skuEl.value='';
+  await window.__stLoad(); window.renderStockTransfer();
+ } catch(e){ showToast('Gagal simpan: '+(e.message||e),'error'); }
+};
+
+window.renderStockTransfer = async function(){
+ const sec=document.getElementById('stockTransferSection');
+ if(!sec) return;
+ if(window.__stTransfers===null) await window.__stLoad();
+ const locOpts=(window.STOCK_LOCATIONS||[]).map(l=>`<option value="${l}">${l}</option>`).join('');
+ const skuOpts=(Array.isArray(masterProducts)?masterProducts:[]).slice(0,3000).map(p=>`<option value="${(p.sku||'').replace(/"/g,'')}">${(p.sku||'')} — ${(p.name||'').replace(/"/g,'&quot;').slice(0,40)}</option>`).join('');
+ const rows=window.__stTransfers||[];
+ const rowsHtml=rows.length? rows.map(r=>{
+  const dt=r.created_at?new Date(r.created_at).toLocaleString('en-MY'):'';
+  return `<tr style="border-bottom:1px solid #E5E7EB;"><td style="padding:8px 10px;">${dt}</td><td style="padding:8px 10px; font-weight:700;">${(r.sku||'').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;">${(r.product_name||'').replace(/</g,'&lt;')}</td><td style="padding:8px 10px; text-align:center; font-weight:800;">${r.qty}</td><td style="padding:8px 10px;">${(r.from_loc||'').replace(/</g,'&lt;')} <span style="color:var(--primary,#CD7C32);">→</span> ${(r.to_loc||'').replace(/</g,'&lt;')}</td><td style="padding:8px 10px; color:#6B7280; font-size:12px;">${(r.note||'').replace(/</g,'&lt;')}</td><td style="padding:8px 10px; color:#6B7280; font-size:12px;">${(r.created_by||'').replace(/</g,'&lt;')}</td></tr>`;
+ }).join('') : `<tr><td colspan="7" style="padding:20px; text-align:center; color:#6B7280;">Belum ada rekod pindah stok.</td></tr>`;
+ sec.innerHTML=`
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="arrow-left-right" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Stock Transfer</h2>
+  <p class="soft-note">Rekod pergerakan stok antara lokasi fizikal (cth dari Bilik Stok ke Kedai). Ini catatan jejak audit — jumlah stok keseluruhan tak berubah, cuma rekod "barang ni dipindah ke mana".</p>
+  <div class="admin-card" style="padding:16px; margin-bottom:16px;">
+   <div style="font-weight:800; margin-bottom:10px;">Rekod Pindah Baru</div>
+   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px; align-items:end;">
+    <div style="grid-column:span 2;"><label style="font-size:12px; color:#6B7280;">Produk (SKU)</label><input id="stSku" list="stSkuList" placeholder="Cari/taip SKU" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"><datalist id="stSkuList">${skuOpts}</datalist></div>
+    <div><label style="font-size:12px; color:#6B7280;">Kuantiti</label><input id="stQty" type="number" min="1" step="1" placeholder="0" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Dari</label><select id="stFrom" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;">${locOpts}</select></div>
+    <div><label style="font-size:12px; color:#6B7280;">Ke</label><select id="stTo" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;">${locOpts}</select></div>
+    <div style="grid-column:span 2;"><label style="font-size:12px; color:#6B7280;">Nota (pilihan)</label><input id="stNote" placeholder="cth: restock display rak A" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+   </div>
+   <button onclick="window.__stSubmit()" class="btn-brand-primary" style="margin-top:12px; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-left-right" style="width:15px;height:15px;"></i> Rekod Pindah</button>
+  </div>
+  <div class="admin-card" style="padding:0; overflow:hidden;">
+   <div style="padding:10px 14px; font-weight:800; border-bottom:1px solid #E5E7EB;">Sejarah Pindah (200 terakhir)</div>
+   <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;">
+    <thead><tr style="text-align:left; border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Tarikh</th><th style="padding:8px 10px;">SKU</th><th style="padding:8px 10px;">Produk</th><th style="padding:8px 10px;">Qty</th><th style="padding:8px 10px;">Pergerakan</th><th style="padding:8px 10px;">Nota</th><th style="padding:8px 10px;">Staf</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+   </table></div>
+  </div>`;
+ // default "Ke" ke pilihan kedua supaya tak sama dengan "Dari"
+ const toEl=document.getElementById('stTo'); if(toEl && (window.STOCK_LOCATIONS||[]).length>1) toEl.selectedIndex=1;
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
+ * p1_582 — CONNECTIONS (Messages > Connections).
+ * Status saluran mesej yang POS guna untuk hubungi pelanggan. Informational +
+ * link tindakan. Bukan tempat simpan API key mentah (kunci di Netlify env demi
+ * keselamatan) — ini ringkasan "apa tersambung & macam mana ia berfungsi".
+ * ==========================================================================*/
+window.renderConnections = function(){
+ const sec=document.getElementById('connectionsSection');
+ if(!sec) return;
+ const providers=[
+  { icon:'mail', name:'Email (Resend)', status:'on', desc:'Resit & email blast dihantar guna Resend. Pengirim: admin@10camp.com.', note:'API key disimpan selamat di Netlify (server), bukan dalam app.' },
+  { icon:'message-circle', name:'WhatsApp', status:'manual', desc:'Hantar mesej guna pautan wa.me — buka WhatsApp dengan mesej siap taip. Tiada kos API.', note:'Broadcast & Re-engage guna cara ni. Staf tekan hantar sendiri.' },
+  { icon:'smartphone', name:'SMS Gateway', status:'off', desc:'Belum disambung. Boleh tambah gateway SMS Malaysia kalau perlu hantar SMS pukal.', note:'Beritahu kalau nak aktifkan — perlu akaun provider berbayar.' },
+ ];
+ const pill=(s)=>{ const m={on:['#16A34A','#DCFCE7','Aktif'],manual:['#B45309','#FEF3C7','Manual'],off:['#6B7280','#F3F4F6','Belum disambung']}; const v=m[s]||m.off; return `<span style="display:inline-flex; align-items:center; gap:5px; background:${v[1]}; color:${v[0]}; padding:3px 9px; border-radius:50px; font-size:11px; font-weight:800;"><span style="width:7px; height:7px; border-radius:50px; background:${v[0]};"></span>${v[2]}</span>`; };
+ const cards=providers.map(p=>`
+  <div class="admin-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+   <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:9px;"><span style="width:36px; height:36px; border-radius:9px; background:var(--primary-50,#FBF1E6); display:flex; align-items:center; justify-content:center;"><i data-lucide="${p.icon}" style="width:19px;height:19px;color:var(--primary,#CD7C32);"></i></span><div style="font-weight:800;">${p.name}</div></div>
+    ${pill(p.status)}
+   </div>
+   <p style="font-size:12.5px; color:#374151; margin:0;">${p.desc}</p>
+   <p class="soft-note" style="margin:0; font-size:11.5px;">${p.note}</p>
+  </div>`).join('');
+ sec.innerHTML=`
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="plug" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Connections</h2>
+  <p class="soft-note">Saluran yang POS guna untuk hantar mesej pada pelanggan. Untuk hantar broadcast, pergi <strong>Messages &gt; Broadcast</strong>.</p>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; margin-top:8px;">${cards}</div>`;
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
+ * p1_583 — APPS (Channels > Apps). Ringkasan integrasi pihak ketiga POS.
+ * Status sambungan + link ke tempat urus (Marketplaces untuk channel jualan).
+ * ==========================================================================*/
+window.renderApps = function(){
+ const sec=document.getElementById('appsSection');
+ if(!sec) return;
+ const apps=[
+  { icon:'database', name:'Supabase', cat:'Pangkalan Data', status:'on', desc:'Simpan semua data POS — produk, jualan, pelanggan, stok.' },
+  { icon:'mail', name:'Resend', cat:'Email', status:'on', desc:'Hantar resit & email blast.' },
+  { icon:'shopping-bag', name:'Shopee', cat:'Marketplace', status:'on', desc:'Tarik order + sync stok/harga.', go:'marketplaces' },
+  { icon:'video', name:'TikTok Shop', cat:'Marketplace', status:'on', desc:'Tarik order + sync stok/harga.', go:'marketplaces' },
+  { icon:'store', name:'EasyStore', cat:'Marketplace', status:'off', desc:'Sudah dipotong keluar (cutover ke Shopee + TikTok langsung).', go:'marketplaces' },
+  { icon:'cloud', name:'Netlify', cat:'Hosting', status:'on', desc:'Hos laman web + fungsi server (cron sync, webhook).' },
+ ];
+ const pill=(s)=>{ const v = s==='on'?['#16A34A','#DCFCE7','Tersambung']:['#6B7280','#F3F4F6','Tidak aktif']; return `<span style="background:${v[1]}; color:${v[0]}; padding:3px 9px; border-radius:50px; font-size:11px; font-weight:800;">${v[2]}</span>`; };
+ const cards=apps.map(a=>`
+  <div class="admin-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
+   <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:9px;"><span style="width:36px; height:36px; border-radius:9px; background:var(--primary-50,#FBF1E6); display:flex; align-items:center; justify-content:center;"><i data-lucide="${a.icon}" style="width:19px;height:19px;color:var(--primary,#CD7C32);"></i></span><div><div style="font-weight:800;">${a.name}</div><div style="font-size:11px; color:#6B7280;">${a.cat}</div></div></div>
+    ${pill(a.status)}
+   </div>
+   <p style="font-size:12.5px; color:#374151; margin:0; min-height:34px;">${a.desc}</p>
+   ${a.go?`<button onclick="document.querySelector('[data-tab=nav_marketplaces]')?.click()" class="btn-brand-secondary" style="font-size:12px; align-self:flex-start;">Urus di Marketplaces</button>`:''}
+  </div>`).join('');
+ sec.innerHTML=`
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="grid-3x3" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Apps</h2>
+  <p class="soft-note">Integrasi pihak ketiga yang menyokong POS 10 CAMP. Marketplace (Shopee/TikTok) diurus penuh di <strong>Channels &gt; Marketplaces</strong>.</p>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px; margin-top:8px;">${cards}</div>`;
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
+ * p1_584 — CAMPAIGNS (Discounts > Campaigns). Perancang kempen ringkas:
+ * gabung voucher + audience + tarikh + saluran jadi satu kempen bernama, dengan
+ * status auto (dijadual / aktif / tamat). Simpan localStorage campaigns_v1.
+ * ==========================================================================*/
+window.__campLoad = function(){ try { return JSON.parse(localStorage.getItem('campaigns_v1')||'[]'); } catch(e){ return []; } };
+window.__campSave = function(arr){ try { localStorage.setItem('campaigns_v1', JSON.stringify(arr)); } catch(e){} };
+window.__campStatus = function(c){ const now=new Date(); const s=c.start?new Date(c.start):null, e=c.end?new Date(c.end+'T23:59:59'):null; if(s&&now<s) return 'scheduled'; if(e&&now>e) return 'ended'; return 'active'; };
+window.__campAdd = function(){
+ const g=id=>document.getElementById(id);
+ const name=(g('campName')?.value||'').trim();
+ if(!name){ showToast('Beri nama kempen.','warn'); return; }
+ const c={ id:Date.now(), name, voucher:(g('campVoucher')?.value||'').trim(), audience:g('campAudience')?.value||'', start:g('campStart')?.value||'', end:g('campEnd')?.value||'', channel:g('campChannel')?.value||'', notes:(g('campNotes')?.value||'').trim() };
+ const arr=window.__campLoad(); arr.unshift(c); window.__campSave(arr);
+ showToast('Kempen "'+name+'" disimpan.','success');
+ window.renderCampaigns();
+};
+window.__campDel = function(id){ if(!confirm('Padam kempen ni?')) return; window.__campSave(window.__campLoad().filter(c=>c.id!==id)); window.renderCampaigns(); };
+window.renderCampaigns = function(){
+ const sec=document.getElementById('campaignsSection');
+ if(!sec) return;
+ const arr=window.__campLoad();
+ const stPill=(s)=>{ const m={active:['#16A34A','#DCFCE7','Aktif'],scheduled:['#B45309','#FEF3C7','Dijadual'],ended:['#6B7280','#F3F4F6','Tamat']}; const v=m[s]; return `<span style="background:${v[1]}; color:${v[0]}; padding:2px 9px; border-radius:50px; font-size:11px; font-weight:800;">${v[2]}</span>`; };
+ const rowsHtml=arr.length? arr.map(c=>{
+  const st=window.__campStatus(c);
+  const range=(c.start||'?')+' → '+(c.end||'?');
+  return `<tr style="border-bottom:1px solid #E5E7EB;"><td style="padding:8px 10px; font-weight:700;">${(c.name||'').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;">${stPill(st)}</td><td style="padding:8px 10px;">${(c.voucher||'—').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;">${(c.audience||'—').replace(/</g,'&lt;')}</td><td style="padding:8px 10px; color:#6B7280; font-size:12px;">${range}</td><td style="padding:8px 10px;">${(c.channel||'—').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;"><button onclick="window.__campDel(${c.id})" style="background:none; border:0; color:#DC2626; cursor:pointer; font-size:12px;">Padam</button></td></tr>`;
+ }).join('') : `<tr><td colspan="7" style="padding:20px; text-align:center; color:#6B7280;">Belum ada kempen. Cipta kempen pertama di atas.</td></tr>`;
+ sec.innerHTML=`
+  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="trophy" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Campaigns</h2>
+  <p class="soft-note">Rancang kempen jualan — gabung voucher, audience, tarikh & saluran jadi satu pelan. Cipta voucher di <strong>Discounts &gt; Vouchers</strong>, hantar mesej di <strong>Messages &gt; Broadcast</strong>.</p>
+  <div class="admin-card" style="padding:16px; margin-bottom:16px;">
+   <div style="font-weight:800; margin-bottom:10px;">Kempen Baru</div>
+   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px;">
+    <div style="grid-column:span 2;"><label style="font-size:12px; color:#6B7280;">Nama kempen</label><input id="campName" placeholder="cth: Jualan Raya 2026" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Kod voucher</label><input id="campVoucher" placeholder="RAYA20" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Audience</label><input id="campAudience" placeholder="cth: VIP / Semua" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Mula</label><input id="campStart" type="date" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Tamat</label><input id="campEnd" type="date" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+    <div><label style="font-size:12px; color:#6B7280;">Saluran</label><select id="campChannel" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"><option value="WhatsApp">WhatsApp</option><option value="Email">Email</option><option value="Shopee">Shopee</option><option value="TikTok">TikTok</option><option value="Walk-in">Walk-in</option><option value="Semua">Semua</option></select></div>
+    <div style="grid-column:span 2;"><label style="font-size:12px; color:#6B7280;">Nota</label><input id="campNotes" placeholder="objektif / target jualan" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>
+   </div>
+   <button onclick="window.__campAdd()" class="btn-brand-primary" style="margin-top:12px; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus" style="width:15px;height:15px;"></i> Simpan Kempen</button>
+  </div>
+  <div class="admin-card" style="padding:0; overflow:hidden;">
+   <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+    <thead><tr style="text-align:left; border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Kempen</th><th style="padding:8px 10px;">Status</th><th style="padding:8px 10px;">Voucher</th><th style="padding:8px 10px;">Audience</th><th style="padding:8px 10px;">Tempoh</th><th style="padding:8px 10px;">Saluran</th><th style="padding:8px 10px;"></th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+   </table></div>
+  </div>`;
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
