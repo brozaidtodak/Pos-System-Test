@@ -22324,6 +22324,7 @@ const BULK_FIELD_DEFS = [
  { g:'Harga',     key:'price',    label:'Harga',        type:'num',   f:'price' },
  { g:'Harga',     key:'compare',  label:'Compare-at',   type:'num',   f:'compare_at_price' },
  { g:'Harga',     key:'cost',     label:'Kos',          type:'num',   f:'cost_price' },
+ { g:'Harga',     key:'margin',   label:'Margin',       type:'margin' },
  { g:'Harga',     key:'floor',    label:'Floor Price',  type:'num',   f:'floor_price' },
  { g:'Harga',     key:'shopee',   label:'Shopee',       type:'num',   f:'shopee_price' },
  { g:'Harga',     key:'tiktok',   label:'TikTok',       type:'num',   f:'tiktok_price' },
@@ -22345,7 +22346,37 @@ const BULK_FIELD_DEFS = [
  { g:'Marketplace', key:'tt_url',  label:'Link TikTok',      type:'text', f:'tiktok_url',         meta:true },
 ];
 const BULK_FIELD_BY_KEY = {}; BULK_FIELD_DEFS.forEach(d => BULK_FIELD_BY_KEY[d.key] = d);
-const BULK_COLS_DEFAULT = ['brand','category','price','compare','cost','stock','status'];
+const BULK_COLS_DEFAULT = ['brand','category','price','compare','cost','margin','stock','status'];
+// p1_585 — Margin: dasar minimum 35% (boleh ubah). margin% = (harga − kos) / harga.
+window.MARGIN_FLOOR_PCT = 35;
+window.__marginInfo = function(price, cost){
+ const p = Number(price)||0, c = Number(cost)||0;
+ if(p <= 0) return { hasPrice:false, hasCost:false, rm:0, pct:0, ok:false };
+ if(c <= 0) return { hasPrice:true, hasCost:false, rm:0, pct:0, ok:false };
+ const rm = p - c;
+ const pct = rm / p * 100;
+ return { hasPrice:true, hasCost:true, rm, pct, ok: pct >= (window.MARGIN_FLOOR_PCT||35) - 0.0001 };
+};
+// HTML chip margin (guna dalam Bulk Edit + boleh guna semula)
+window.__marginChipHtml = function(price, cost){
+ const m = window.__marginInfo(price, cost);
+ if(!m.hasPrice) return '<span style="color:#9CA3AF;">—</span>';
+ if(!m.hasCost) return '<span style="color:#9CA3AF;" title="Tiada kos — margin tak boleh kira">kos?</span>';
+ const col = m.ok ? '#16A34A' : '#DC2626';
+ const bg = m.ok ? '#DCFCE7' : '#FEE2E2';
+ return `<span title="Margin ${m.pct.toFixed(1)}% (dasar min ${(window.MARGIN_FLOOR_PCT||35)}%)" style="display:inline-block; background:${bg}; color:${col}; padding:2px 7px; border-radius:6px; font-weight:800; font-size:11.5px; white-space:nowrap;">RM${m.rm.toFixed(2)} · ${m.pct.toFixed(0)}%</span>`;
+};
+// Update live cell margin bila harga/kos diedit dalam Bulk Edit
+window.__bulkRecalcMargin = function(sku){
+ const cell = document.getElementById('bk_margin_' + sku);
+ if(!cell) return;
+ const pe = document.getElementById('bk_price_' + sku);
+ const ce = document.getElementById('bk_cost_' + sku);
+ const prod = (Array.isArray(masterProducts)?masterProducts:[]).find(x => x.sku === sku) || {};
+ const price = pe ? pe.value : prod.price;
+ const cost = ce ? ce.value : prod.cost_price;
+ cell.innerHTML = window.__marginChipHtml(price, cost);
+};
 window.__bulkCols = (function(){ try { const s = JSON.parse(localStorage.getItem('bulk_cols_v1')); if(Array.isArray(s) && s.length) { const v = s.filter(k => BULK_FIELD_BY_KEY[k]); if(v.length) {
  // p1_410 — one-time: surface Compare-at for users whose saved cols predate it (insert after price)
  if(!v.includes('compare')) { const pi = v.indexOf('price'); if(pi >= 0) v.splice(pi+1, 0, 'compare'); else v.push('compare'); try { localStorage.setItem('bulk_cols_v1', JSON.stringify(v)); } catch(e){} }
@@ -22364,7 +22395,7 @@ window.bulkBuildHead = function(){
  (window.__bulkCols || []).forEach(k => {
  const d = BULK_FIELD_BY_KEY[k]; if(!d) return;
  if(d.type === 'skuedit') return; // toggles core SKU cell, not a new column
- const right = (d.type === 'num' || d.type === 'int' || d.type === 'stock');
+ const right = (d.type === 'num' || d.type === 'int' || d.type === 'stock' || d.type === 'margin');
  const align = right ? 'text-align:right;' : (d.key === 'status' ? 'text-align:center;' : '');
  h += `<th style="${stick} ${align} min-width:80px;">${hesc(d.label)}</th>`;
  });
@@ -22391,6 +22422,10 @@ window.bulkCellHtml = function(p, d){
  const stock = bulkComputeStock(p.sku);
  return `<td><input id="bk_stock_${sku}" type="number" step="1" value="${stock}" style="width:64px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right; ${stock <= 0 ? 'color:#DC2626;' : ''}"></td>`;
  }
+ if(d.type === 'margin'){
+ // Margin = Harga − Kos (dikira, baca-saja). Merah kalau bawah dasar min 35%.
+ return `<td style="text-align:right;" id="bk_margin_${sku}">${window.__marginChipHtml(p.price, p.cost_price)}</td>`;
+ }
  if(d.type === 'text'){
  const v = d.meta ? ((p.metadata && typeof p.metadata === 'object') ? p.metadata[d.f] : null) : p[d.f];
  const val = (v != null ? String(v) : '');
@@ -22399,7 +22434,9 @@ window.bulkCellHtml = function(p, d){
  // num / int
  const v = p[d.f];
  const step = d.type === 'int' ? '1' : '0.01';
- return `<td><input id="bk_${d.key}_${sku}" type="number" step="${step}" value="${v != null ? v : ''}" placeholder="-" style="width:82px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>`;
+ // p1_585 — Harga/Kos: update kolum Margin live bila ditaip
+ const liveMargin = (d.key === 'price' || d.key === 'cost') ? ` oninput="window.__bulkRecalcMargin('${sku}')"` : '';
+ return `<td><input id="bk_${d.key}_${sku}" type="number" step="${step}" value="${v != null ? v : ''}"${liveMargin} placeholder="-" style="width:82px; padding:4px 6px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;"></td>`;
 };
 
 // "Pilih Field" dropdown panel
@@ -22597,7 +22634,7 @@ window.bulkSaveEdits = async function() {
  const metaPatch = {}; // p1_433 — metadata (marketplace) fields merge separately
  for(const k of (window.__bulkCols || [])) {
  const d = BULK_FIELD_BY_KEY[k];
- if(!d || d.type === 'disp' || d.type === 'stock' || d.type === 'skuedit') continue; // display/stock/sku handled separately
+ if(!d || d.type === 'disp' || d.type === 'stock' || d.type === 'skuedit' || d.type === 'margin') continue; // display/stock/sku/margin (computed) handled separately
  const el = document.getElementById('bk_' + k + '_' + sku);
  if(!el) continue;
  const raw = (el.value || '').trim();
