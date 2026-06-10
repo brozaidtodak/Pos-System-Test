@@ -204,6 +204,39 @@ exports.handler = async (event) => {
         const tok = await getValidToken();
         out.shop_id = tok.shop_id;
 
+        // p1 — mode=escrow: tarik fee/payout breakdown (get_escrow_detail) untuk bukti.
+        // READ-ONLY — tiada tulis DB. Untuk fasa Shopee->10cc (fees/komisen/net payout).
+        if (params.mode === 'escrow') {
+            const sns = []; let cur = ''; let g = 0;
+            do {
+                const q = { time_range_field: 'create_time', time_from: fromSec, time_to: nowSec, page_size: 50 };
+                if (cur) q.cursor = cur;
+                const r = await shopeeGet('/api/v2/order/get_order_list', q, tok.access_token, tok.shop_id);
+                if (r.error) { out.error = `get_order_list: ${r.message || r.error}`; return json(502, out); }
+                for (const o of ((r.response && r.response.order_list) || [])) sns.push(o.order_sn);
+                cur = (r.response && r.response.next_cursor) || '';
+                if (!(r.response && r.response.more)) break;
+            } while (cur && ++g < 10);
+            out.orders_found = sns.length;
+            const sample = [];
+            for (const sn of sns.slice(0, Number(params.limit) || 5)) {
+                const e = await shopeeGet('/api/v2/payment/get_escrow_detail', { order_sn: sn }, tok.access_token, tok.shop_id);
+                if (e.error) { sample.push({ order_sn: sn, error: e.message || e.error }); continue; }
+                const inc = (e.response && e.response.order_income) || {};
+                sample.push({
+                    order_sn: sn,
+                    buyer_total: inc.buyer_total_amount ?? inc.original_price ?? null,
+                    escrow_net: inc.escrow_amount ?? null,
+                    commission_fee: inc.commission_fee ?? null,
+                    service_fee: inc.service_fee ?? null,
+                    seller_txn_fee: inc.seller_transaction_fee ?? null,
+                    income_keys: Object.keys(inc)
+                });
+            }
+            out.escrow_sample = sample;
+            return json(200, out);
+        }
+
         // 1. Pull order_sn list (paginated via cursor)
         const orderSns = [];
         let cursor = '';
