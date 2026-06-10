@@ -8364,6 +8364,118 @@ window.closeOrderDetail = function() {
  window.__orderDetailCurrentId = null;
 };
 
+// p1_562 — Return / Exchange / Refund (request Farhan): staff proses bila customer tukar fikiran / barang salah.
+window.__returnRefundOpen = function(orderId){
+ const sale = (Array.isArray(salesHistory) ? salesHistory : []).find(s => String(s.id) === String(orderId));
+ if(!sale){ if(typeof showToast === 'function') showToast('Order tak dijumpai', 'warn'); return; }
+ let md = sale.metadata; if(typeof md === 'string'){ try { md = JSON.parse(md); } catch(e){ md = {}; } } md = md || {};
+ if(md.return_done){ if(typeof showToast === 'function') showToast('Order ni dah pernah di-return/refund.', 'warn'); return; }
+ const items = (typeof ffParseItems === 'function') ? ffParseItems(sale.items) : (Array.isArray(sale.items) ? sale.items : []);
+ if(!items.length){ if(typeof showToast === 'function') showToast('Order ni takde item.', 'warn'); return; }
+ window.__rrSale = sale;
+ const rows = items.map((it, i) => {
+ const qty = parseInt(it.qty != null ? it.qty : (it.quantity != null ? it.quantity : 1)) || 1;
+ const price = parseFloat(it.price || it.unit_price || 0) || 0;
+ const sku = it.sku || '';
+ return '<div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #F1F5F9;">'
+ + '<div style="flex:1; min-width:0;"><strong style="font-size:13px;">' + hesc(it.name || sku || 'item') + '</strong>' + (sku ? ' <span style="color:#94A3B8; font-size:11px;">[' + hesc(sku) + ']</span>' : '') + '<br><span style="color:#64748B; font-size:11px;">RM ' + price.toFixed(2) + ' &middot; dijual ' + qty + '</span></div>'
+ + '<div style="display:flex; align-items:center; gap:6px;">'
+ + '<button type="button" onclick="window.__rrQty(' + i + ',-1)" style="width:26px;height:26px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">&minus;</button>'
+ + '<input id="rrQty_' + i + '" type="number" value="0" min="0" max="' + qty + '" data-price="' + price + '" data-sku="' + hesc(sku) + '" data-max="' + qty + '" oninput="window.__rrRecalc()" style="width:46px;text-align:center;border:1px solid #E5E7EB;border-radius:6px;padding:4px;">'
+ + '<button type="button" onclick="window.__rrQty(' + i + ',1)" style="width:26px;height:26px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;cursor:pointer;font-weight:700;">+</button>'
+ + '</div></div>';
+ }).join('');
+ const ov = document.createElement('div');
+ ov.id = 'rrOverlay';
+ ov.setAttribute('style', 'position:fixed; inset:0; z-index:9750; background:rgba(16,16,16,.7); display:flex; align-items:flex-start; justify-content:center; padding:18px; overflow-y:auto;');
+ ov.onclick = function(e){ if(e.target === ov) ov.remove(); };
+ ov.innerHTML = '<div style="background:#fff; border-radius:16px; max-width:480px; width:100%; box-shadow:0 24px 70px rgba(0,0,0,.4); overflow:hidden; margin-top:6px;">'
+ + '<div style="padding:16px 20px; border-bottom:1px solid #F0EBE3; display:flex; align-items:center; gap:10px;"><i data-lucide="rotate-ccw" style="width:20px;height:20px;color:#991B1B;"></i><div style="flex:1;"><div style="font-weight:800; font-size:16px;">Return / Exchange / Refund</div><div style="font-size:11.5px; color:#6B7280;">Order #' + hesc(String(sale.id)) + ' &middot; ' + hesc(sale.customer_name || 'Walk-in') + '</div></div><button onclick="document.getElementById(\'rrOverlay\').remove()" style="background:none;border:0;font-size:22px;color:#94A3B8;cursor:pointer;line-height:1;">&times;</button></div>'
+ + '<div style="padding:14px 20px; max-height:58vh; overflow-y:auto;">'
+ + '<div style="font-size:12px; font-weight:700; color:#374151; margin-bottom:4px;">Pilih barang &amp; kuantiti nak pulang</div>'
+ + rows
+ + '<div style="margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">'
+ + '<div><label style="font-size:11px;font-weight:700;color:#6B7280;">Jenis</label><select id="rrType" style="width:100%;padding:8px;border:1px solid #E5E7EB;border-radius:8px;"><option value="refund">Refund (duit balik)</option><option value="exchange">Exchange (tukar barang)</option><option value="return">Return (pulang je)</option></select></div>'
+ + '<div><label style="font-size:11px;font-weight:700;color:#6B7280;">Sebab</label><select id="rrReason" style="width:100%;padding:8px;border:1px solid #E5E7EB;border-radius:8px;"><option>Tukar fikiran</option><option>Barang salah</option><option>Barang rosak</option><option>Saiz tak kena</option><option>Lain-lain</option></select></div>'
+ + '</div>'
+ + '<label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12.5px; cursor:pointer;"><input type="checkbox" id="rrRestock" checked> Pulang barang ke stok (buang tanda kalau barang rosak)</label>'
+ + '<div style="margin-top:12px;"><label style="font-size:11px;font-weight:700;color:#6B7280;">Jumlah refund (RM) — auto, boleh ubah</label><input id="rrAmount" type="number" step="0.01" min="0" value="0.00" style="width:100%;padding:8px;border:1px solid #E5E7EB;border-radius:8px;font-weight:700;"></div>'
+ + '<div style="margin-top:10px;"><label style="font-size:11px;font-weight:700;color:#6B7280;">Nota (optional)</label><input id="rrNote" type="text" placeholder="cth: customer tukar saiz" style="width:100%;padding:8px;border:1px solid #E5E7EB;border-radius:8px;"></div>'
+ + '<div style="margin-top:10px; font-size:11px; color:#6B7280; background:#F8FAFC; border-radius:8px; padding:8px 10px;">Untuk <b>Exchange</b>: pulangkan barang lama di sini, lepas tu ring barang ganti sebagai jualan baru di Cashier.</div>'
+ + '</div>'
+ + '<div style="padding:14px 20px; border-top:1px solid #F0EBE3; display:flex; gap:8px;"><button onclick="document.getElementById(\'rrOverlay\').remove()" style="flex:1;background:#fff;border:1px solid #E5E7EB;padding:11px;border-radius:10px;font-weight:700;cursor:pointer;">Batal</button><button onclick="window.__returnRefundConfirm()" style="flex:1;background:#991B1B;color:#fff;border:0;padding:11px;border-radius:10px;font-weight:800;cursor:pointer;">Sahkan</button></div>'
+ + '</div>';
+ document.body.appendChild(ov);
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.__rrQty = function(i, delta){
+ const el = document.getElementById('rrQty_' + i); if(!el) return;
+ const max = parseInt(el.getAttribute('data-max')) || 0;
+ let v = (parseInt(el.value) || 0) + delta;
+ v = Math.max(0, Math.min(max, v));
+ el.value = v; window.__rrRecalc();
+};
+window.__rrRecalc = function(){
+ let amt = 0;
+ document.querySelectorAll('#rrOverlay input[id^="rrQty_"]').forEach(el => {
+ const q = Math.max(0, Math.min(parseInt(el.getAttribute('data-max')) || 0, parseInt(el.value) || 0));
+ if(String(q) !== el.value) el.value = q;
+ amt += q * (parseFloat(el.getAttribute('data-price')) || 0);
+ });
+ const a = document.getElementById('rrAmount'); if(a) a.value = amt.toFixed(2);
+};
+window.__returnRefundConfirm = async function(){
+ const sale = window.__rrSale; if(!sale) return;
+ if(typeof db === 'undefined' || !db){ if(typeof showToast === 'function') showToast('Tiada sambungan DB', 'error'); return; }
+ const restock = !!(document.getElementById('rrRestock') || {}).checked;
+ const type = (document.getElementById('rrType') || {}).value || 'refund';
+ const reason = (document.getElementById('rrReason') || {}).value || '';
+ const note = (document.getElementById('rrNote') || {}).value || '';
+ const amount = parseFloat((document.getElementById('rrAmount') || {}).value) || 0;
+ const returned = [];
+ document.querySelectorAll('#rrOverlay input[id^="rrQty_"]').forEach(el => {
+ const q = parseInt(el.value) || 0;
+ if(q > 0) returned.push({ sku: el.getAttribute('data-sku') || '', qty: q, price: parseFloat(el.getAttribute('data-price')) || 0 });
+ });
+ if(!returned.length){ if(typeof showToast === 'function') showToast('Pilih sekurang-kurangnya 1 barang.', 'warn'); return; }
+ if(!confirm('Sahkan ' + type + ' ' + returned.reduce((s, r) => s + r.qty, 0) + ' barang' + (amount > 0 ? ' · refund RM' + amount.toFixed(2) : '') + (restock ? ' · pulang ke stok' : ' · TAK pulang stok') + '?')) return;
+ try {
+ const nowIso = new Date().toISOString();
+ const staff = (window.currentUser && window.currentUser.name) ? window.currentUser.name : 'Unknown';
+ // 1. Pulang stok (kalau dipilih) — guna helper FIFO sedia ada
+ if(restock && typeof window.__applyStockDelta === 'function'){
+ for(const r of returned){
+ if(!r.sku || (typeof r.sku === 'string' && r.sku.startsWith('CUSTOM-'))) continue;
+ try { await window.__applyStockDelta(r.sku, r.qty, 'Return order #' + sale.id + ' (' + reason + ')'); } catch(e){ console.warn('restock return gagal', r.sku, e); }
+ }
+ }
+ // 2. Rekod ke returns_log (1 baris/item)
+ const costMap = {}; (Array.isArray(masterProducts) ? masterProducts : []).forEach(p => { if(p.sku) costMap[String(p.sku).toUpperCase()] = parseFloat(p.cost_price || 0) || 0; });
+ const logRows = returned.map(r => ({
+ source: 'pos', external_id: 'pos_return_' + sale.id + '_' + (r.sku || 'item') + '_' + Date.now(),
+ sku: r.sku, qty: r.qty, type: type, reason: reason,
+ cost_impact: restock ? 0 : (costMap[String(r.sku || '').toUpperCase()] || 0),
+ reported_at: nowIso,
+ notes: 'Order #' + sale.id + ' · ' + type + (amount > 0 ? ' · refund RM' + amount.toFixed(2) : '') + (note ? ' · ' + note : '') + ' · oleh ' + staff
+ }));
+ try { await db.from('returns_log').insert(logRows); } catch(e){ console.warn('returns_log insert gagal:', e); }
+ // 3. Update sale: metadata + status
+ let md = sale.metadata; if(typeof md === 'string'){ try { md = JSON.parse(md); } catch(e){ md = {}; } } md = Object.assign({}, md || {});
+ md.return_done = true; md.return_type = type; md.return_reason = reason; md.return_amount = amount; md.return_items = returned; md.returned_by = staff; md.returned_at = nowIso;
+ if(restock) md.stock_restored = true; // elak double-restock kalau order ni di-void selepas ni
+ const soldQty = ((typeof ffParseItems === 'function') ? ffParseItems(sale.items) : []).reduce((s, it) => s + (parseInt(it.qty != null ? it.qty : (it.quantity != null ? it.quantity : 1)) || 0), 0);
+ const retQty = returned.reduce((s, r) => s + r.qty, 0);
+ const newStatus = (retQty >= soldQty) ? 'Refunded' : sale.status; // penuh → Refunded; separa → kekal status (rekod dalam metadata)
+ await db.from('sales_history').update({ status: newStatus, metadata: md }).eq('id', sale.id);
+ sale.status = newStatus; sale.metadata = md;
+ if(typeof showToast === 'function') showToast(type + ' selesai' + (restock ? ' · stok dipulangkan' : '') + (amount > 0 ? ' · refund RM' + amount.toFixed(2) : '') + (type === 'exchange' ? ' — ring barang ganti sebagai jualan baru' : ''), 'success');
+ const ov = document.getElementById('rrOverlay'); if(ov) ov.remove();
+ if(typeof window.closeOrderDetail === 'function') window.closeOrderDetail();
+ if(typeof window.renderAllOrders === 'function') window.renderAllOrders();
+ if(typeof window.renderReturnsLog === 'function') try { window.renderReturnsLog(); } catch(e){}
+ } catch(e){ if(typeof showToast === 'function') showToast('Ralat: ' + (e.message || e), 'error'); console.error('return/refund gagal:', e); }
+};
+
 window.odNavOrder = function(dir) {
  const list = window.__orderDetailCurrentList || [];
  const idx = list.indexOf(window.__orderDetailCurrentId);
