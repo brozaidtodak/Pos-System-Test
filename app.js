@@ -25804,6 +25804,9 @@ window.renderCustomersV2 = function() {
  case 'shopee': if(!(c.tags||'').toLowerCase().includes('shopee')) return false; break;
  case 'never_bought': if((c.total_orders||0)> 0) return false; break;
  case 'big_spender': if((c.total_spent||0) < 1000) return false; break;
+ case 'tier_bronze': if(!(typeof window.__custTier === 'function') || window.__custTier(c.total_spent).key !== 'bronze') return false; break;
+ case 'tier_silver': if(!(typeof window.__custTier === 'function') || window.__custTier(c.total_spent).key !== 'silver') return false; break;
+ case 'tier_vip': if(!(typeof window.__custTier === 'function') || window.__custTier(c.total_spent).key !== 'vip') return false; break;
  }
  return true;
  });
@@ -25889,12 +25892,12 @@ window.renderCustomersV2 = function() {
  return `
  <tr style="cursor:pointer;" title="Klik baris untuk detail / Click row for details">
  <td style="text-align:center;" onclick="event.stopPropagation();"><input type="checkbox" class="cr-row-cb" data-cid="${cid.replace(/"/g,'&quot;')}" ${isSelected ? 'checked' : ''} onchange="window.__crmToggleSelect('${cid.replace(/'/g,"\\'")}', this.checked)"></td>
- <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')"><strong>${(c.name||'').slice(0, 50)}</strong></td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')"><strong>${hesc((c.name||'').slice(0, 50))}</strong>${typeof window.__tierBadgeHtml === 'function' ? window.__tierBadgeHtml(c) : ''}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="font-family:monospace; font-size:11px;">${c.phone || '-'}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="font-size:11px;">${c.email || '-'}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; font-weight:bold; color:${(c.total_spent||0)> 1000 ? '#101010' : '#111'};">${(c.total_spent||0).toFixed(2)}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right;">${c.total_orders || 0}</td>
- <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; color:#F59E0B; font-weight:bold;">${c.points || 0}</td>
+ <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:right; color:#F59E0B; font-weight:bold;" title="Terkumpul ${c.points || 0} mata, ditebus ${c.points_redeemed || 0} — boleh guna ${typeof window.__custPointsAvail === 'function' ? window.__custPointsAvail(c) : (c.points||0)}">${typeof window.__custPointsAvail === 'function' ? window.__custPointsAvail(c) : (c.points || 0)}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:center;">${memberBadge}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')" style="text-align:center; font-size:14px;">${consent.join(' ') || '<span style="color:#999;">-</span>'}</td>
  <td onclick="window.openCustomerDetail('${cid.replace(/'/g,"\\'")}')">${tagBadges || '-'}</td>
@@ -25941,7 +25944,7 @@ window.openCustomerDetail = function(id) {
  '<div id="custDetailOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3700; display:flex; align-items:flex-start; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); padding-bottom:calc(20px + env(safe-area-inset-bottom)); overflow-y:auto;" onclick="if(event.target===this) this.remove();">'
  + '<div style="background:#fff; max-width:620px; width:100%; border-radius:12px; padding:24px; margin:auto;">'
  + '<div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:14px; gap:10px;">'
- + '<div style="flex:1; min-width:0;"><h2 style="margin:0; font-size:20px; word-break:break-word;">' + escHtml(c.name || '-') + (c.is_member ? ' <span style="background:#FEF3C7; color:#92400E; padding:3px 8px; border-radius:4px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:3px; vertical-align:middle;"><i data-lucide="star" style="width:11px;height:11px;"></i> VIP</span>' : '') + '</h2><div style="font-size:12px; color:#666; margin-top:4px;">' + escHtml(c.phone || '-') + ' · ' + escHtml(c.email || '-') + '</div></div>'
+ + '<div style="flex:1; min-width:0;"><h2 style="margin:0; font-size:20px; word-break:break-word;">' + escHtml(c.name || '-') + (typeof window.__tierBadgeHtml === 'function' ? window.__tierBadgeHtml(c) : '') + (c.is_member ? ' <span style="background:#FEF3C7; color:#92400E; padding:3px 8px; border-radius:4px; font-weight:700; font-size:11px; display:inline-flex; align-items:center; gap:3px; vertical-align:middle;"><i data-lucide="star" style="width:11px;height:11px;"></i> VIP</span>' : '') + '</h2><div style="font-size:12px; color:#666; margin-top:4px;">' + escHtml(c.phone || '-') + ' · ' + escHtml(c.email || '-') + '</div></div>'
  + '<button onclick="document.getElementById(\'custDetailOverlay\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999; padding:4px 8px; min-height:36px;">×</button>'
  + '</div>'
  // p1_243: Quick Action buttons row
@@ -25952,10 +25955,11 @@ window.openCustomerDetail = function(id) {
  + (telLink ? '<a href="' + telLink + '" style="background:#FEF3C7; border:1px solid #FCD34D; color:#92400E; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="phone" style="width:13px;height:13px;"></i> Call</a>' : '')
  + '</div>'
  // Stats grid
- + '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:14px;">'
- + '<div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Belanja / Spent</div><div style="font-size:16px; font-weight:bold;">RM ' + (parseFloat(c.total_spent||0)).toFixed(2) + '</div></div>'
- + '<div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Pesanan / Orders</div><div style="font-size:16px; font-weight:bold;">' + (c.total_orders || 0) + '</div></div>'
- + '<div style="background:#fff8f0; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#7c4a1a;">Mata / Points</div><div style="font-size:16px; font-weight:bold;">' + (c.points || 0) + '</div></div>'
+ + '<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:14px;">'
+ + (() => { const t = (typeof window.__custTier === 'function') ? window.__custTier(c.total_spent) : { name:'-', bg:'#F3F4F6', color:'#374151' }; return '<div style="background:' + t.bg + '; padding:10px; border-radius:6px;"><div style="font-size:10px; color:' + t.color + ';">Tier</div><div style="font-size:16px; font-weight:bold; color:' + t.color + ';">' + t.name + '</div></div>'; })()
+ + '<div style="background:#F0FDF4; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#166534;">Belanja</div><div style="font-size:16px; font-weight:bold;">RM ' + (parseFloat(c.total_spent||0)).toFixed(2) + '</div></div>'
+ + '<div style="background:#FEF3C7; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#92400E;">Pesanan</div><div style="font-size:16px; font-weight:bold;">' + (c.total_orders || 0) + '</div></div>'
+ + '<div style="background:#fff8f0; padding:10px; border-radius:6px;"><div style="font-size:10px; color:#7c4a1a;">Mata boleh guna</div><div style="font-size:16px; font-weight:bold;">' + ((typeof window.__custPointsAvail === 'function') ? window.__custPointsAvail(c) : (c.points||0)) + '</div><div style="font-size:9px; color:#9CA3AF;">terkumpul ' + (c.points||0) + ' &middot; tebus ' + (c.points_redeemed||0) + '</div></div>'
  + '</div>'
  // Tags display
  + (c.tags ? '<div style="margin-bottom:12px;"><div style="font-size:11px; color:#6B7280; margin-bottom:4px;">Tags:</div>' + (c.tags || '').split(',').map(t => t.trim()).filter(Boolean).map(t => '<span style="background:#E0E7FF; color:#3730A3; padding:3px 8px; border-radius:4px; font-size:11px; margin-right:4px; display:inline-block;">' + escHtml(t) + '</span>').join('') + '</div>' : '')
@@ -25964,6 +25968,13 @@ window.openCustomerDetail = function(id) {
  + (c.accepts_email_marketing ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#059669;"><i data-lucide="mail-check" style="width:13px;height:13px;"></i> Email consent</span>' : '<span style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="mail-x" style="width:13px;height:13px;color:#D1D5DB;"></i> No email consent</span>')
  + (c.accepts_sms_marketing ? '<span style="display:inline-flex; align-items:center; gap:4px; color:#059669;"><i data-lucide="message-square" style="width:13px;height:13px;"></i> SMS consent</span>' : '<span style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="message-square-off" style="width:13px;height:13px;color:#D1D5DB;"></i> No SMS consent</span>')
  + '</div>'
+ // p1_564 — sejarah ganjaran ditebus (dari metadata.loyalty_redeem jualan customer ni)
+ + (() => {
+ const reds = (sales || []).map(s => { let m = s.metadata; if(typeof m === 'string'){ try { m = JSON.parse(m); } catch(e){ m = null; } } return (m && m.loyalty_redeem) ? { date: s.created_at, r: m.loyalty_redeem } : null; }).filter(Boolean);
+ if(!reds.length) return '';
+ const rows = reds.map(x => '<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #F3F4F6; font-size:11.5px;"><span>' + escHtml(x.r.label || x.r.type || 'redeem') + '</span><span style="color:#6B7280;">' + (x.date ? new Date(x.date).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'2-digit'}) : '') + (x.r.points_cost ? ' &middot; &minus;' + x.r.points_cost + ' mata' : '') + '</span></div>').join('');
+ return '<h3 style="font-size:13px; margin:6px 0 8px; color:#111;">Ganjaran ditebus (' + reds.length + ')</h3><div style="border:1px solid #E5E7EB; border-radius:8px; padding:6px 12px; margin-bottom:14px;">' + rows + '</div>';
+ })()
  // Sales history — full, no cap. Scrollable container.
  + '<h3 style="font-size:13px; margin:6px 0 8px; color:#111; display:flex; justify-content:space-between; align-items:center;"><span>Pembelian / Purchases (<span style="color:var(--primary);">' + sales.length + '</span>)</span></h3>'
  + '<div style="border:1px solid #E5E7EB; border-radius:8px; max-height:280px; overflow-y:auto;">'
