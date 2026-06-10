@@ -87,6 +87,10 @@
  <button data-dev="tablet">Tablet</button>
  <button data-dev="phone">Phone</button>
  </span>
+ <span class="seg seg-orient" id="segLO" style="display:none;">
+ <button data-orient="portrait" class="active">Portrait</button>
+ <button data-orient="landscape">Landscape</button>
+ </span>
  </span>
  </div>
  <div class="dstage" id="dstageL">
@@ -133,6 +137,10 @@
  <button data-dev="phone" class="active">Phone</button>
  <button data-dev="tablet">Tablet</button>
  </span>
+ <span class="seg seg-orient" id="segRO">
+ <button data-orient="portrait" class="active">Portrait</button>
+ <button data-orient="landscape">Landscape</button>
+ </span>
  </span>
  </div>
  <div class="dstage" id="dstageR">
@@ -149,10 +157,18 @@
  var LEFT = { desktop:{w:1280,h:800}, tablet:{w:834,h:1112}, phone:{w:390,h:844} };
  var RIGHT = { phone:{w:390,h:844}, tablet:{w:834,h:1112} };
  var leftMode = 'desktop', rightMode = 'phone';
+ var leftOrient = 'portrait', rightOrient = 'portrait';
  var deviceL=document.getElementById('deviceL'), scalerL=document.getElementById('scalerL'), dstageL=document.getElementById('dstageL'), fOffice=document.getElementById('fOffice');
  var deviceR=document.getElementById('deviceR'), scalerR=document.getElementById('scalerR'), dstageR=document.getElementById('dstageR'), fPhone=document.getElementById('fPhone'), paneDevice=document.getElementById('paneDevice');
+ var segLO=document.getElementById('segLO'), segRO=document.getElementById('segRO');
 
- function setSize(dev, ifr, s, mode){ dev.className='device '+mode; ifr.style.width=s.w+'px'; ifr.style.height=s.h+'px'; }
+ // Landscape = tukar lebar<->tinggi. Desktop tiada orientasi (sentiasa landar).
+ function setSize(dev, ifr, s, mode, orient){
+ dev.className='device '+mode;
+ var w=s.w, h=s.h;
+ if(orient==='landscape' && mode!=='desktop'){ w=s.h; h=s.w; }
+ ifr.style.width=w+'px'; ifr.style.height=h+'px';
+ }
  function fit(dev, scaler, availW, availH){
  var ow=dev.offsetWidth, oh=dev.offsetHeight;
  var sc=Math.min((availW-12)/ow, (availH-12)/oh, 1);
@@ -161,8 +177,11 @@
  return ow*sc;
  }
  function apply(){
- setSize(deviceR, fPhone, RIGHT[rightMode], rightMode);
- setSize(deviceL, fOffice, LEFT[leftMode], leftMode);
+ // Orientasi hanya relevan utk tablet/phone — sorok toggle bila Desktop
+ segLO.style.display = (leftMode==='desktop') ? 'none' : '';
+ segRO.style.display = (rightMode==='desktop') ? 'none' : '';
+ setSize(deviceR, fPhone, RIGHT[rightMode], rightMode, rightOrient);
+ setSize(deviceL, fOffice, LEFT[leftMode], leftMode, leftOrient);
  // Kanan dahulu — had 42% lebar tetingkap, set flex-basis pane
  var rW = fit(deviceR, scalerR, window.innerWidth*0.42, dstageR.clientHeight);
  paneDevice.style.flexBasis = (rW + 24) + 'px';
@@ -177,7 +196,16 @@
  apply();
  });
  }
+ function wireOrient(segId, isLeft){
+ document.getElementById(segId).addEventListener('click', function(e){
+ var b=e.target.closest('button'); if(!b) return;
+ if(isLeft) leftOrient=b.getAttribute('data-orient'); else rightOrient=b.getAttribute('data-orient');
+ [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('active', x===b); });
+ apply();
+ });
+ }
  wire('segL', true); wire('segR', false);
+ wireOrient('segLO', true); wireOrient('segRO', false);
  window.addEventListener('resize', apply);
  setTimeout(apply, 60); apply();
 </script>
