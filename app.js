@@ -1287,10 +1287,15 @@ window.__rpRenderAdminTemplate = function(body, u, range) {
  const t = new Date(sale.timestamp || sale.created_at || 0).getTime();
  if(t < startMs || t > endMs) return;
  if(sale.is_test) return; // p1_451 — test order tak masuk komisen
+ // p1_609 — selaras My Commission (p1_608): Cancelled/Voided dibuang (takde baris refund offset); baris Refund negatif ditolak. Dulu calc ni tambah semua sbg positif.
+ const __st = (sale.status || '').toLowerCase();
+ if(__st.indexOf('cancel') !== -1 || __st.indexOf('void') !== -1) return;
  // Match by staff_id / cashier_name / staff_name (sales attribution)
  if((sale.staff_id && sale.staff_id === s.staff_id) || (sale.cashier_name && sale.cashier_name === s.name) || (sale.staff_name && sale.staff_name === s.name)) {
- revenue += window.__saleCommissionBase(sale); // p1_451 — base unit-SKU (harga×qty − diskaun), bukan total resit
- orders++;
+ const __recv = parseFloat(sale.total_amount || sale.total || 0) || 0;
+ const __base = Math.abs(window.__saleCommissionBase(sale)); // base unit-SKU (harga×qty − diskaun)
+ if(__recv < 0) { revenue -= __base; } // refund negatif tolak balik
+ else { revenue += __base; orders++; }
  }
  });
  }
