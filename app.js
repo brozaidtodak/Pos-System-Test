@@ -18554,7 +18554,7 @@ window.renderFifoListing = function() {
  <td style="padding:10px; text-align:right; color:#6B7280;">${Number(b.qty_received) || 0}</td>
  <td style="padding:10px; text-align:right;">RM ${cost.toFixed(2)}</td>
  <td style="padding:10px; text-align:center; font-weight:700; color:${ageColor};">${age}h</td>
- <td style="padding:10px; font-size:11.5px; color:#6B7280;">${esc(poSup || '-')}</td>
+ <td style="padding:10px; font-size:11.5px; color:#6B7280;">${esc(poSup || '-')}${(b.do_link_assumed && poSup) ? ' <span style="color:#92400E; cursor:help;" title="SKU ada dalam beberapa shipment — diandaikan shipment terkini (FIFO)">~</span>' : ''}</td>
  </tr>`;
  }).join('');
  document.getElementById('fifoSummaryLine').innerHTML = `${rows.length.toLocaleString()} batch aktif${rows.length > 500 ? ' (papar 500 teratas)' : ''}. Disusun lama dahulu (FIFO).`;
