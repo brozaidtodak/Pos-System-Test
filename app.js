@@ -7124,7 +7124,7 @@ window.refreshRailBadges = function() {
 // TIDAK digate sebab ia sebahagian Home; commission manager-view digate berasingan.)
 // p1_517 — Reports management-only + PIN 1999 (Zaid). Tambah Analytics + Returns/Damage + Payment Proofs
 // ke senarai gated (selain financial sedia ada). Laporan Saya (personal) kekal terbuka utk staf.
-window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection','marginReportSection'];
+window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection','marginReportSection','deliveryOrdersSection'];
 window.__CONF_PIN = '1999';
 window.__confIsUnlocked = function() {
  try { return sessionStorage.getItem('confUnlocked_v1') === '1'; } catch(e) { return window.__confUnlockedMem === true; }
@@ -34049,6 +34049,70 @@ window.__openSimpleModal = function(innerHtml){
  if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
 };
 window.__closeSimpleModal = function(){ const ov=document.getElementById('__simpleModalOverlay'); if(ov) ov.style.display='none'; };
+
+/* ============================================================================
+ * p1_602 — DELIVERY ORDERS UI (Products > Delivery Orders) — SULIT (PIN gate).
+ * Papar sejarah procurement China 2024-2026: supplier_orders (26 order bayaran),
+ * delivery_orders (22 shipment 2024), delivery_order_items (422). Data sulit
+ * (kos/supplier/RMB) jadi deliveryOrdersSection ada dlm __CONFIDENTIAL_SECTIONS.
+ * ==========================================================================*/
+window.__doData = null;
+window.__doLoad = async function(){
+ if(typeof db==='undefined'||!db){ window.__doData={orders:[],dos:[],items:[]}; return window.__doData; }
+ try {
+  const [o,d,it] = await Promise.all([
+   db.from('supplier_orders').select('*').order('order_date'),
+   db.from('delivery_orders').select('*').order('delivery_date'),
+   db.from('delivery_order_items').select('*')
+  ]);
+  window.__doData = { orders:(o&&o.data)||[], dos:(d&&d.data)||[], items:(it&&it.data)||[] };
+ } catch(e){ window.__doData = window.__doData||{orders:[],dos:[],items:[]}; }
+ return window.__doData;
+};
+window.__doE = function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];}); };
+window.__doItemsFor = function(ref){ return ((window.__doData&&window.__doData.items)||[]).filter(x=>x.do_ref===ref); };
+window.__doValueFor = function(ref){ return window.__doItemsFor(ref).reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.unit_cost_myr)||0),0); };
+
+window.__doShowItems = function(ref){
+ const E=window.__doE, items=window.__doItemsFor(ref);
+ const rows = items.length? items.map(it=>{
+  const sub=(Number(it.qty)||0)*(Number(it.unit_cost_myr)||0);
+  return '<tr style="border-bottom:1px solid #EEE;"><td style="padding:6px 8px;">'+E(it.sku||'')+(it.needs_review?' <span style="color:#DC2626;font-size:11px;">(semak)</span>':'')+'</td><td style="padding:6px 8px;">'+E((it.product_name||'').slice(0,42))+'</td><td style="padding:6px 8px; text-align:right;">'+(Number(it.qty)||0)+'</td><td style="padding:6px 8px; text-align:right;">RM'+(Number(it.unit_cost_myr)||0).toFixed(2)+'</td><td style="padding:6px 8px; text-align:right; font-weight:700;">RM'+sub.toFixed(2)+'</td></tr>';
+ }).join('') : '<tr><td colspan="5" style="padding:16px; text-align:center; color:#6B7280;">Tiada butiran.</td></tr>';
+ window.__openSimpleModal('<div style="min-width:min(640px,90vw);"><div style="font-weight:800; font-size:16px; margin-bottom:10px;">Butiran '+E(ref)+'</div><div style="max-height:62vh; overflow:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr style="text-align:left; border-bottom:2px solid #D1D5DB;"><th style="padding:6px 8px;">SKU</th><th style="padding:6px 8px;">Nama</th><th style="padding:6px 8px; text-align:right;">Qty</th><th style="padding:6px 8px; text-align:right;">Kos/unit</th><th style="padding:6px 8px; text-align:right;">Subtotal</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>');
+};
+
+window.renderDeliveryOrders = async function(){
+ const sec=document.getElementById('deliveryOrdersSection'); if(!sec) return;
+ sec.innerHTML='<div style="padding:20px; color:#6B7280;">Memuatkan...</div>';
+ if(window.__doData===null) await window.__doLoad();
+ const E=window.__doE, D=window.__doData;
+ const orders=D.orders||[], dos=D.dos||[];
+ const totalMyr=orders.reduce((s,o)=>s+(Number(o.myr_total)||0),0);
+ const totalUnits=dos.reduce((s,d)=>s+(Number(d.total_units)||0),0);
+ const fmt=(n)=>Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+ const doRows = dos.length? dos.map(d=>{
+  const val=window.__doValueFor(d.do_ref), cnt=window.__doItemsFor(d.do_ref).length;
+  return '<tr style="border-bottom:1px solid #E5E7EB;"><td style="padding:8px 10px; font-weight:700;">'+E(d.do_ref)+'</td><td style="padding:8px 10px;">'+E(d.delivery_date||'')+'</td><td style="padding:8px 10px; color:#6B7280; font-size:12px; max-width:300px;">'+E((d.description||'').slice(0,64))+'</td><td style="padding:8px 10px; text-align:right;">'+(Number(d.total_units)||0)+'</td><td style="padding:8px 10px; text-align:right;">RM'+fmt(d.freight_myr)+'</td><td style="padding:8px 10px; text-align:right; font-weight:700;">RM'+fmt(val)+'</td><td style="padding:8px 10px;"><button onclick="window.__doShowItems(\''+E(d.do_ref)+'\')" class="btn-brand-secondary" style="padding:4px 10px; font-size:12px;">'+cnt+' item</button></td></tr>';
+ }).join('') : '<tr><td colspan="7" style="padding:20px; text-align:center; color:#6B7280;">Tiada delivery order.</td></tr>';
+ const soRows = orders.length? orders.map(o=>{
+  return '<tr style="border-bottom:1px solid #E5E7EB;'+(o.needs_review?'background:#FEF2F2;':'')+'"><td style="padding:8px 10px; font-weight:700;">'+E(o.do_ref)+(o.needs_review?' <span style="color:#DC2626;font-size:11px;">(semak)</span>':'')+'</td><td style="padding:8px 10px;">'+E(o.order_date||'')+'</td><td style="padding:8px 10px;">'+E(o.supplier||'')+'</td><td style="padding:8px 10px;">'+E(o.payment_type||'')+'</td><td style="padding:8px 10px; text-align:right;">&yen;'+Number(o.rmb_total||0).toLocaleString()+'</td><td style="padding:8px 10px; text-align:right; font-weight:700;">RM'+fmt(o.myr_total)+'</td></tr>';
+ }).join('') : '<tr><td colspan="6" style="padding:20px; text-align:center; color:#6B7280;">Tiada order.</td></tr>';
+ sec.innerHTML =
+  '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="truck" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Delivery Orders</h2>'
+  +'<p class="soft-note">Sejarah penghantaran &amp; pembelian dari supplier China (2024-2026), rekonstruksi dari akaun SF International + Calculator. <strong>Sulit</strong> — kos &amp; supplier.</p>'
+  +'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin:6px 0 16px;">'
+   +'<div class="stat-card"><div style="font-size:12px;color:#6B7280;">Order Supplier</div><div style="font-size:22px;font-weight:900;">'+orders.length+'</div></div>'
+   +'<div class="stat-card"><div style="font-size:12px;color:#6B7280;">Delivery Order</div><div style="font-size:22px;font-weight:900;">'+dos.length+'</div></div>'
+   +'<div class="stat-card"><div style="font-size:12px;color:#6B7280;">Jumlah Belian (MYR)</div><div style="font-size:22px;font-weight:900;">RM'+Number(totalMyr).toLocaleString(undefined,{maximumFractionDigits:0})+'</div></div>'
+   +'<div class="stat-card"><div style="font-size:12px;color:#6B7280;">Unit Dihantar (2024)</div><div style="font-size:22px;font-weight:900;">'+Number(totalUnits).toLocaleString()+'</div></div>'
+  +'</div>'
+  +'<div style="font-weight:800; margin:18px 0 8px;">Delivery Orders (Penghantaran) — 2024</div>'
+  +'<div class="admin-card" style="padding:0; overflow:auto;"><table style="width:100%; border-collapse:collapse; font-size:13.5px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">DO</th><th style="padding:8px 10px;">Tarikh</th><th style="padding:8px 10px;">Keterangan</th><th style="padding:8px 10px; text-align:right;">Unit</th><th style="padding:8px 10px; text-align:right;">Freight</th><th style="padding:8px 10px; text-align:right;">Nilai Barang</th><th style="padding:8px 10px;">Butiran</th></tr></thead><tbody>'+doRows+'</tbody></table></div>'
+  +'<div style="font-weight:800; margin:22px 0 8px;">Order Supplier (Pembelian) — 2024-2026</div>'
+  +'<div class="admin-card" style="padding:0; overflow:auto;"><table style="width:100%; border-collapse:collapse; font-size:13.5px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Order</th><th style="padding:8px 10px;">Tarikh</th><th style="padding:8px 10px;">Supplier</th><th style="padding:8px 10px;">Bayaran</th><th style="padding:8px 10px; text-align:right;">RMB</th><th style="padding:8px 10px; text-align:right;">MYR</th></tr></thead><tbody>'+soRows+'</tbody></table></div>';
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
 
 /* ============================================================================
  * p1_599 — BUNDLE / PAKEJ BUILDER (Products > Bundles).
