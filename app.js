@@ -183,9 +183,89 @@ window.__isRealSale = function(s) {
  return true;
 };
 
-// p1_486 — kadar mata loyalti: RM10 belanja = 1 mata (Zaid). Belum ada redeem (akan update kemudian).
+// p1_486 — kadar mata loyalti: RM10 belanja = 1 mata (Zaid).
 window.POINTS_RM_PER_POINT = 10;
 window.__pointsForSpend = function(rm) { return Math.floor((Number(rm) || 0) / (window.POINTS_RM_PER_POINT || 10)); };
+
+// p1_561 — Tier customer ikut jumlah belanja seumur hidup (total_spent) + redeem HYBRID:
+// diskaun % ikut tier (auto/free), voucher & gift guna mata. Semua nilai mudah ubah di sini.
+window.LOYALTY_TIERS = [
+ { key:'vip',    name:'VIP',    min:3000, autoPct:10, color:'#7C3AED', bg:'#F3E8FF' },
+ { key:'silver', name:'Silver', min:1000, autoPct:5,  color:'#475569', bg:'#E2E8F0' },
+ { key:'bronze', name:'Bronze', min:0,    autoPct:3,  color:'#B45309', bg:'#FEF3C7' }
+];
+window.LOYALTY_REDEEMS = {
+ bronze: [ { type:'disc', label:'Diskaun 3% (Bronze)', pct:3, cost:0 }, { type:'voucher', label:'Voucher RM5', rm:5, cost:50 }, { type:'gift', label:'Free gift kecil (sticker/keychain)', cost:30 } ],
+ silver: [ { type:'disc', label:'Diskaun 5% (Silver)', pct:5, cost:0 }, { type:'voucher', label:'Voucher RM20', rm:20, cost:150 }, { type:'gift', label:'Free penghantaran / item kecil', cost:80 } ],
+ vip:    [ { type:'disc', label:'Diskaun 10% (VIP)', pct:10, cost:0 }, { type:'voucher', label:'Voucher RM50', rm:50, cost:300 }, { type:'gift', label:'Free gift premium (headlamp/botol)', cost:250 } ]
+};
+// Tier ikut total_spent (senarai disusun tinggi→rendah; ambil yang pertama layak)
+window.__custTier = function(totalSpent){
+ const s = Number(totalSpent) || 0;
+ return window.LOYALTY_TIERS.find(t => s >= t.min) || window.LOYALTY_TIERS[window.LOYALTY_TIERS.length - 1];
+};
+// Mata BOLEH-GUNA = mata terkumpul (floor(belanja/10)) tolak mata yang dah ditebus
+window.__custPointsAvail = function(c){
+ if(!c) return 0;
+ return Math.max(0, (Number(c.points) || 0) - (Number(c.points_redeemed) || 0));
+};
+window.__tierBadgeHtml = function(c){
+ const t = window.__custTier(c && c.total_spent);
+ return '<span style="background:' + t.bg + '; color:' + t.color + '; padding:1px 6px; border-radius:50px; font-size:9px; font-weight:800; letter-spacing:.3px; margin-left:4px;">' + t.name + '</span>';
+};
+// Redeem yang dipilih staf untuk transaksi semasa (mata ditolak bila bayar sahaja).
+window.__pendingRedeem = null;
+window.__cpRedeemCustomer = null;
+// Panel ganjaran dalam banner checkout: tier + mata + 3 butang redeem tier tu.
+window.__cpRedeemPanelHtml = function(match, tier, pct){
+ const tk = String(tier).toLowerCase();
+ const avail = window.__custPointsAvail(match);
+ const redeems = (window.LOYALTY_REDEEMS && window.LOYALTY_REDEEMS[tk]) || [];
+ const col = window.getTierColor(tier);
+ const pend = window.__pendingRedeem;
+ const head = '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">'
+ + '<span style="background:' + col.bg + '; color:' + col.fg + '; padding:2px 8px; border-radius:50px; font-size:10px; font-weight:800;">' + hesc(tier) + '</span>'
+ + '<strong style="font-size:12.5px;">' + hesc(match.name || '') + '</strong>'
+ + '<span style="font-size:11px; color:#6B7280;">RM' + (Number(match.total_spent) || 0).toFixed(0) + ' belanja &middot; ' + avail + ' mata boleh guna</span>'
+ + '</div>';
+ const btns = redeems.map((r, i) => {
+ const isPend = pend && pend.idx === i && pend.tier === tk;
+ const costTxt = r.cost > 0 ? (r.cost + ' mata') : 'percuma';
+ const afford = r.cost <= 0 || avail >= r.cost;
+ const bg = isPend ? '#16A34A' : (afford ? '#fff' : '#F3F4F6');
+ const fg = isPend ? '#fff' : (afford ? '#374151' : '#9CA3AF');
+ const bd = isPend ? '#16A34A' : '#E5E7EB';
+ return '<button type="button" ' + (afford ? '' : 'disabled') + ' onclick="window.__cpApplyRedeem(' + i + ')" style="text-align:left; flex:1; min-width:118px; padding:7px 9px; border:1px solid ' + bd + '; background:' + bg + '; color:' + fg + '; border-radius:9px; cursor:' + (afford ? 'pointer' : 'not-allowed') + '; font-size:11.5px; font-weight:700;">' + (isPend ? '(dipilih) ' : '') + hesc(r.label) + '<br><span style="font-weight:600; font-size:10px; opacity:.85;">' + costTxt + '</span></button>';
+ }).join('');
+ const foot = pend ? '<button type="button" onclick="window.__cpClearRedeem()" style="margin-top:6px; background:none; border:0; color:#DC2626; font-size:11px; font-weight:700; cursor:pointer;">Batal redeem</button>' : '';
+ return head + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">' + btns + '</div>' + foot;
+};
+window.__cpApplyRedeem = function(idx){
+ const match = window.__cpRedeemCustomer;
+ if(!match){ if(typeof showToast === 'function') showToast('Attach customer dulu.', 'warn'); return; }
+ const tk = String(window.getCustomerTier(match)).toLowerCase();
+ const r = ((window.LOYALTY_REDEEMS && window.LOYALTY_REDEEMS[tk]) || [])[idx];
+ if(!r) return;
+ const avail = window.__custPointsAvail(match);
+ if(r.cost > 0 && avail < r.cost){ if(typeof showToast === 'function') showToast('Mata tak cukup — perlu ' + r.cost + ', ada ' + avail + '.', 'warn'); return; }
+ if(r.type === 'disc'){
+ const dt = document.getElementById('cpDiscType'); if(dt) dt.value = 'pct';
+ const da = document.getElementById('cpDiscAmt'); if(da) da.value = r.pct;
+ } else if(r.type === 'voucher'){
+ const dt = document.getElementById('cpDiscType'); if(dt) dt.value = 'rm';
+ const da = document.getElementById('cpDiscAmt'); if(da) da.value = r.rm;
+ } // gift: tiada kesan harga
+ window.__pendingRedeem = { customer_id: match.id, tier: tk, idx: idx, type: r.type, label: r.label, cost: r.cost || 0, rm: r.rm || 0, pct: r.pct || 0 };
+ if(typeof cpRecomputeTotal === 'function') cpRecomputeTotal();
+ if(typeof window.cpVipLookup === 'function') window.cpVipLookup();
+ if(typeof showToast === 'function') showToast('Redeem: ' + r.label + (r.cost > 0 ? ' (−' + r.cost + ' mata bila bayar)' : '') + (r.type === 'gift' ? ' — ingat bagi pada customer!' : ''), 'success');
+};
+window.__cpClearRedeem = function(){
+ window.__pendingRedeem = null;
+ const da = document.getElementById('cpDiscAmt'); if(da) da.value = '';
+ if(typeof cpRecomputeTotal === 'function') cpRecomputeTotal();
+ if(typeof window.cpVipLookup === 'function') window.cpVipLookup();
+};
 
 // Loading overlay: full-screen translucent block during long ops.
 window.showLoading = function(msg) {
@@ -6434,7 +6514,7 @@ window.__ppEditCustAutocomplete = function() {
  const escHtml = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
  dd.innerHTML = results.map((c, i) => {
  const pts = parseInt(c.points || 0);
- const badge = c.is_member ? '<span style="background:#FEF3C7; color:#92400E; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:700; margin-left:4px;">VIP</span>' : '';
+ const badge = (typeof window.__tierBadgeHtml === 'function' ? window.__tierBadgeHtml(c) : '') + (c.is_member ? '<span style="background:#FEF3C7; color:#92400E; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:700; margin-left:4px;">VIP</span>' : '');
  return `<div onmousedown="window.__ppEditCustPick(${i})" style="padding:8px 12px; border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
  <div style="font-size:12.5px; font-weight:700; color:#111;">${escHtml(c.name || '(no name)')}${badge}</div>
  <div style="font-size:10.5px; color:#6B7280; margin-top:2px;">${escHtml(c.phone || '-')}${c.email ? ' · ' + escHtml(c.email.slice(0,30)) : ''} · ${c.total_orders||0} orders · RM${(c.total_spent||0).toFixed(0)}</div>
@@ -12643,7 +12723,7 @@ window.cpkFilterCustomers = function(q) {
  if(!matches.length && !past.length) { res.innerHTML = `<p style="color:#c0392b; font-size:13px; padding:12px; text-align:center; margin:0;">Tiada match untuk "${query}". Daftar baru di bawah.</p>`; return; }
  const crmHtml = matches.map(c => {
  const pts = parseInt(c.points || 0);
- const badge = c.is_member ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-left:6px;">VIP</span>' : '';
+ const badge = (typeof window.__tierBadgeHtml === 'function' ? window.__tierBadgeHtml(c) : '') + (c.is_member ? '<span style="background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-left:6px;">VIP</span>' : '');
  return `<div onclick="window.cpkPickCustomer(${c.id})" style="padding:10px 14px; border-bottom:1px solid #F3F4F6; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
  <div>
  <div style="font-size:13.5px; font-weight:700; color:#111;">${escHtml(c.name || '(no name)')}${badge}</div>
@@ -12953,8 +13033,13 @@ window.processNewCheckout = async function() {
  const upd = { points: window.__pointsForSpend(newSpent), total_spent: newSpent, total_orders: (Number(existing.total_orders) || 0) + 1 };
  if(custPhoneText && !existing.phone) upd.phone = custPhoneText;
  if(custEmailText && !existing.email) upd.email = custEmailText;
+ // p1_561 — kalau ada redeem guna mata (voucher/gift) utk customer ni, tolak mata (points_redeemed)
+ if(window.__pendingRedeem && window.__pendingRedeem.cost > 0 && window.__pendingRedeem.customer_id === existing.id) {
+ upd.points_redeemed = (Number(existing.points_redeemed) || 0) + window.__pendingRedeem.cost;
+ }
  await db.from('customers').update(upd).eq('id', existing.id);
  existing.points = upd.points; existing.total_spent = upd.total_spent; existing.total_orders = upd.total_orders;
+ if(upd.points_redeemed != null) existing.points_redeemed = upd.points_redeemed;
  if(upd.phone) existing.phone = upd.phone; if(upd.email) existing.email = upd.email;
  window.__pastCustomersCache = null;
  }
@@ -12964,6 +13049,11 @@ window.processNewCheckout = async function() {
  const saleMeta = {};
  // p1_554 (#3) — tanda sale ni betul-betul tolak stok, supaya restock-on-void boleh dipulangkan dengan selamat (idempotent)
  if(transactionsPayload.length > 0) saleMeta.stock_deducted = true;
+ // p1_561 — rekod ganjaran loyalti yang diredeem (audit)
+ if(window.__pendingRedeem) {
+ const pr = window.__pendingRedeem;
+ saleMeta.loyalty_redeem = { tier: pr.tier, type: pr.type, label: pr.label, points_cost: pr.cost || 0, rm: pr.rm || 0, pct: pr.pct || 0 };
+ }
  if(ewalletProvider) {
  saleMeta.ewallet_provider = ewalletProvider;
  saleMeta.ewallet_ref = ewalletRef;
@@ -13107,6 +13197,7 @@ window.processNewCheckout = async function() {
  }
 
  cart = [];
+ window.__pendingRedeem = null; window.__cpRedeemCustomer = null; // p1_561 — reset redeem selepas jualan
  if(typeof window.__renderSalesTarget === 'function') window.__renderSalesTarget(); // p1_559 — banner sasaran gerak selepas jualan
  document.getElementById("customerName").value = "";
  document.getElementById("customerPhone").value = "";
@@ -27143,29 +27234,25 @@ window.renderRosterRecon = async function() {
 // Tier rules: Bronze (3-9 orders), Silver (10-29), Gold (30+).
 // Discount % per tier configurable in settings (defaults: 3 / 5 / 10).
 window.getCustomerTier = function(customer) {
- const orders = customer ? (customer.total_orders || 0) : 0;
- if(orders>= 30) return 'Gold';
- if(orders>= 10) return 'Silver';
- if(orders>= 3) return 'Bronze';
- return null;
+ // p1_561 — tier ikut JUMLAH BELANJA (total_spent), bukan bilangan order. Semua customer minimum Bronze.
+ const t = window.__custTier(customer && customer.total_spent);
+ return t ? t.name : 'Bronze';
 };
 
 window.getTierDiscount = function(tier) {
  try {
  const s = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}');
  const t = s.tiers || {};
- const defaults = { Bronze: 3, Silver: 5, Gold: 10 };
- return parseFloat(t[tier]) || defaults[tier] || 0;
- } catch(e) { return 0; }
+ if(t[tier] != null && parseFloat(t[tier])) return parseFloat(t[tier]);
+ } catch(e) {}
+ const cfg = (window.LOYALTY_TIERS || []).find(x => x.name === tier);
+ return cfg ? cfg.autoPct : 0;
 };
 
 window.getTierColor = function(tier) {
- const map = {
- Bronze: { bg:'#FED7AA', fg:'#9A3412', emoji:'' },
- Silver: { bg:'#E5E7EB', fg:'#374151', emoji:'' },
- Gold: { bg:'#FEF3C7', fg:'#92400E', emoji:'' }
- };
- return map[tier] || { bg:'#E5E7EB', fg:'#6B7280', emoji:'•' };
+ const cfg = (window.LOYALTY_TIERS || []).find(x => x.name === tier);
+ if(cfg) return { bg: cfg.bg, fg: cfg.color, emoji: '' };
+ return { bg:'#E5E7EB', fg:'#6B7280', emoji:'' };
 };
 
 // Override checkoutVipLookup to use tier system
@@ -28494,7 +28581,7 @@ window.cpVipLookup = function() {
 
  window.__currentCheckoutVip = null;
  const banner = document.getElementById('cpVipBanner');
- if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; cpRecomputeTotal(); return; }
+ if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; window.__cpRedeemCustomer = null; window.__pendingRedeem = null; cpRecomputeTotal(); return; }
 
  const tier = (typeof getCustomerTier === 'function') ? getCustomerTier(match) : null;
  if(tier) {
@@ -28506,8 +28593,10 @@ window.cpVipLookup = function() {
  };
  const tierClass = tier.toLowerCase();
  banner.className = `cp-vip-banner is-shown cp-vip-banner--${tierClass}`;
- const emoji = (typeof getTierColor === 'function') ? getTierColor(tier).emoji : '⭐';
- banner.innerHTML = `${emoji} <strong>${tier} TIER</strong> · ${match.name} · ${match.total_orders} orders · RM${(match.total_spent||0).toFixed(0)} spent${window.VIP_AUTO_DISCOUNT ? ` → auto-discount <strong>${pct}% applied</strong>` : ` · cadangan diskaun <strong>${pct}%</strong> (masuk manual di Diskaun Custom)`}`;
+ // p1_561 — panel ganjaran tier (Hybrid): tier + mata + 3 redeem. Clear pending kalau tukar customer.
+ if(window.__pendingRedeem && window.__pendingRedeem.customer_id !== match.id) window.__pendingRedeem = null;
+ window.__cpRedeemCustomer = match;
+ banner.innerHTML = window.__cpRedeemPanelHtml(match, tier, pct);
  // auto-fill email if empty
  if(match.email && !document.getElementById('cpCustEmail').value) {
  document.getElementById('cpCustEmail').value = match.email;
