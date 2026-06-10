@@ -11923,6 +11923,24 @@ window.__renderSalesTarget = function(){
  + '</div>';
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
+// p1_570 — Thumbnail via proxy percuma images.weserv.nl (Supabase resize tak aktif — free plan).
+// Gambar grid kecik dari ~140KB → ~15KB (webp 300px) = load laju + scroll smooth atas phone/data.
+window.__thumbUrl = function(url, w){
+ try {
+ if(!url || typeof url !== 'string') return url;
+ if(!/^https:\/\//i.test(url)) return url;                 // placeholder / data: — biar je
+ if(url.indexOf('images.weserv.nl') !== -1) return url;     // dah proxy
+ const host = url.replace(/^https:\/\//i, '');
+ return 'https://images.weserv.nl/?url=ssl:' + host + '&w=' + (w || 300) + '&q=72&output=webp';
+ } catch(e){ return url; }
+};
+window.__imgThumbErr = function(el, orig){
+ try {
+ if(el.dataset && el.dataset.tf === '1'){ el.onerror = null; el.src = 'https://placehold.co/300x200?text=No+Img'; return; }
+ if(el.dataset) el.dataset.tf = '1';
+ el.src = orig; // proxy gagal → cuba gambar asal (full-res); kalau tu pun gagal → placeholder
+ } catch(e){ try { el.onerror = null; } catch(_){} }
+};
 function renderPOS(searchTerm = "") {
  const list = document.getElementById("productsList");
  if(!list) return;
@@ -12042,7 +12060,7 @@ function renderPOS(searchTerm = "") {
  htmlBuf += `
  <div class="product-card${isOOS ? ' is-oos' : ''}">
  ${isOOS ? `<span class="product-card__oos"><i data-lucide="x-circle" style="width:12px;height:12px;"></i> STOK HABIS</span>` : ''}
- <img src="${thumb}" class="pos-detail-trigger" loading="lazy" decoding="async" onclick="window.posOpenProductDetail('${skuEsc}')" title="Klik untuk detail" onerror="this.src='https://placehold.co/300x200?text=No+Img'">
+ <img src="${window.__thumbUrl(thumb, 300)}" class="pos-detail-trigger" loading="lazy" decoding="async" onclick="window.posOpenProductDetail('${skuEsc}')" title="Klik untuk detail" onerror="window.__imgThumbErr(this, '${String(thumb).replace(/'/g, "\\'")}')">
  <div class="product-card__badges">
  <span class="sku-badge">${p.sku}</span>
  ${p.brand ? `<span class="cat-badge">${p.brand}</span>` : (p.category ? `<span class="cat-badge">${p.category}</span>` : '')}
