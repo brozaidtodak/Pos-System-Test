@@ -108,7 +108,7 @@ exports.handler = async (event) => {
             out.statements_sample = statements.slice(0, 3);
             if (statements.length) {
                 const first = statements[0];
-                const td = await getStatementTxns(tok, cipher, first.id, { page_size: 20 });
+                const td = await getStatementTxns(tok, cipher, first.id, { page_size: 20, sort_field: 'order_create_time', sort_order: 'DESC' });
                 out.first_statement_id = first.id;
                 out.txns_sample = (td.statement_transactions || []).slice(0, 5);
                 out.txns_total_on_first = (td.statement_transactions || []).length;
@@ -122,7 +122,7 @@ exports.handler = async (event) => {
         for (const s of statements) {
             let pt = '', g2 = 0;
             do {
-                const q = { page_size: 100 };
+                const q = { page_size: 100, sort_field: 'order_create_time', sort_order: 'DESC' };
                 if (pt) q.page_token = pt;
                 const td = await getStatementTxns(tok, cipher, s.id, q);
                 for (const t of (td.statement_transactions || [])) {
