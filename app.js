@@ -19334,6 +19334,10 @@ window.renderPersonalCommission = function() {
  // Filter sales by date range
  const sales = (Array.isArray(salesHistory) ? salesHistory : []).filter(s => {
  if (s.is_test) return false; // p1_405 — test order tak masuk komisen staff
+ // p1_608 — order Cancelled/Voided TAK masuk komisen. (Refunded/Partially Refunded
+ // dikekalkan sebab ada baris Refund negatif yang offset; cancel/void takde offset.)
+ const __st = (s.status || '').toLowerCase();
+ if (__st.indexOf('cancel') !== -1 || __st.indexOf('void') !== -1) return false;
  if (!range.start || !range.end) return true;
  const t = s.created_at ? new Date(s.created_at).getTime() : 0;
  return t>= range.start.getTime() && t <= range.end.getTime();
