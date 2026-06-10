@@ -37,24 +37,16 @@ async function deductStockForItems(sb, items, opts) {
         if (!sku || qty <= 0 || sku.startsWith('CUSTOM-')) continue;
 
         try {
-            // FIFO: oldest batch first — matches the cashier counter (app.js).
-            const batches = await sb('GET',
-                `/inventory_batches?sku=eq.${encodeURIComponent(sku)}&qty_remaining=gt.0` +
-                `&order=inbound_date.asc&select=id,qty_remaining,inbound_date`);
-
-            let remaining = qty;
-            for (const b of (batches || [])) {
-                if (remaining <= 0) break;
-                const deduct = Math.min(b.qty_remaining, remaining);
-                await sb('PATCH',
-                    `/inventory_batches?id=eq.${b.id}`,
-                    { qty_remaining: b.qty_remaining - deduct },
-                    { Prefer: 'return=minimal' });
-                txnRows.push({ sku, batch_id: b.id, transaction_type: txnType, qty_change: -deduct });
-                remaining -= deduct;
-                result.total_deducted += deduct;
+            // p1_577 (#2/#15) — ATOMIK FIFO deduct via RPC (FOR UPDATE kunci baris) — elak lost-update
+            // bila webhook serentak (cth Shopee + TikTok) tolak SKU bertindih. Ganti read-modify-write.
+            const rpc = await sb('POST', '/rpc/deduct_stock_fifo', { p_sku: sku, p_qty: qty });
+            const alloc = (rpc && rpc.allocated) ? rpc.allocated : [];
+            for (const a of alloc) {
+                txnRows.push({ sku, batch_id: a.batch_id, transaction_type: txnType, qty_change: -a.qty });
+                result.total_deducted += (Number(a.qty) || 0);
             }
-            if (remaining > 0) result.shortfalls.push({ sku, short: remaining });
+            const short = (rpc && rpc.short) || 0;
+            if (short > 0) result.shortfalls.push({ sku, short });
             result.skus_processed++;
         } catch (e) {
             result.errors.push({ sku, err: (e.message || String(e)).slice(0, 120) });

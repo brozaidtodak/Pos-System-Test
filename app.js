@@ -7126,6 +7126,14 @@ window.__confSetUnlocked = function() {
  window.__confUnlockedMem = true;
 };
 window.__confidentialGate = function(onSuccess) {
+ // p1_577 (#20) — gate ROLE: laporan sulit (untung/kos/komisen) untuk PENGURUSAN/Bos sahaja.
+ // Walaupun staf tahu PIN, kalau bukan mgmt/Bos → tak boleh buka langsung.
+ const __u = window.currentUser || {};
+ const __isMgmt = (typeof window.isBoss === 'function' && window.isBoss(__u)) || __u.role === 'mgmt';
+ if(!__isMgmt) {
+ if(typeof showToast === 'function') showToast('Laporan sulit ni untuk pengurusan sahaja.', 'warn');
+ return;
+ }
  const old = document.getElementById('confGateModal'); if(old) old.remove();
  const ov = document.createElement('div');
  ov.id = 'confGateModal';
@@ -7160,11 +7168,15 @@ window.__confidentialGate = function(onSuccess) {
 };
 
 function switchHub(sectionIds, title, btnElement) {
- // p1_453 — Gate data sulit: kalau section confidential & belum unlock, minta PIN dulu.
- if (!window.__confIsUnlocked() && Array.isArray(sectionIds)
- && sectionIds.some(function(id){ return (window.__CONFIDENTIAL_SECTIONS||[]).indexOf(id) !== -1; })) {
+ // p1_453 / p1_577 (#20) — Gate data sulit: ROLE pengurusan + PIN.
+ if (Array.isArray(sectionIds) && sectionIds.some(function(id){ return (window.__CONFIDENTIAL_SECTIONS||[]).indexOf(id) !== -1; })) {
+ const __u = window.currentUser || {};
+ const __isMgmt = (typeof window.isBoss === 'function' && window.isBoss(__u)) || __u.role === 'mgmt';
+ if (!__isMgmt) { if(typeof showToast === 'function') showToast('Laporan sulit ni untuk pengurusan sahaja.', 'warn'); return; }
+ if (!window.__confIsUnlocked()) {
  window.__confidentialGate(function(){ if(btnElement && btnElement.click) btnElement.click(); else switchHub(sectionIds, title, btnElement); });
  return;
+ }
  }
  // p1_188 — Auto-exit Landing preview mode. previewLanding() hides posAppLayout
  // which contains all .tab-section. Without this, switching sections from
@@ -13226,21 +13238,20 @@ window.processNewCheckout = async function() {
  item.batch_alloc = [];
  continue;
  }
- let needed = item.quantity;
- let batches = inventoryBatches.filter(b => b.sku===item.sku && b.qty_remaining>0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
- // Track exact batch allocation per item (B7 perfect fix — refund can restock to same batches)
+ // p1_577 (#2/#15) — ATOMIK FIFO deduct via RPC (FOR UPDATE kunci baris) — elak lost-update / oversell
+ // bila 2 device checkout SKU sama serentak. batch_alloc kekal direkod (untuk refund/rollback).
  item.batch_alloc = [];
- for (let batch of batches) {
- if (needed <= 0) break;
- let deduct = Math.min(needed, batch.qty_remaining);
- needed -= deduct;
- await db.from('inventory_batches').update({qty_remaining: batch.qty_remaining - deduct}).eq('id', batch.id);
- transactionsPayload.push({sku: item.sku, batch_id: batch.id, transaction_type: 'OUTBOUND_SALE', qty_change: -deduct});
- item.batch_alloc.push({ batch_id: batch.id, qty: deduct });
- }
- // p1_236 — flag backorder kalau ada qty yang tak boleh deduct
- if(needed > 0) {
- backorderItems.push({ sku: item.sku, name: item.name, qty_short: needed, qty_total: item.quantity });
+ const { data: __alloc, error: __allocErr } = await db.rpc('deduct_stock_fifo', { p_sku: item.sku, p_qty: item.quantity });
+ if(__allocErr) {
+ console.error('deduct_stock_fifo gagal', item.sku, __allocErr);
+ backorderItems.push({ sku: item.sku, name: item.name, qty_short: item.quantity, qty_total: item.quantity });
+ } else {
+ ((__alloc && __alloc.allocated) ? __alloc.allocated : []).forEach(a => {
+ transactionsPayload.push({ sku: item.sku, batch_id: a.batch_id, transaction_type: 'OUTBOUND_SALE', qty_change: -a.qty });
+ item.batch_alloc.push({ batch_id: a.batch_id, qty: a.qty });
+ });
+ const __short = (__alloc && __alloc.short) || 0;
+ if(__short > 0) backorderItems.push({ sku: item.sku, name: item.name, qty_short: __short, qty_total: item.quantity });
  }
  }
  // p1_236 — Expose backorder list ke saleMeta for sales_history.metadata transparency
@@ -13492,17 +13503,13 @@ window.processNewCheckout = async function() {
  // p1_554 (#1) — kalau sale GAGAL disimpan tapi stok dah ditolak, pulihkan balik supaya stok tak rosak.
  if(!saleCommitted) {
  try {
- const seen = {};
+ // p1_577 — pulihkan stok secara ATOMIK (restock_batch RPC = tambah balik tepat apa yg ditolak),
+ // bukan set absolute (yg boleh tindih jualan serentak lain).
  for(const item of (cart || [])) {
  if(!Array.isArray(item.batch_alloc)) continue;
  for(const al of item.batch_alloc) {
- if(!al || al.batch_id == null || seen[al.batch_id]) continue;
- const b = inventoryBatches.find(x => x.id === al.batch_id);
- if(b && b.qty_remaining != null) {
- // qty_remaining dalam-memori = nilai SEBELUM tolak (kita tak mutate masa deduct) → set balik = undo
- await db.from('inventory_batches').update({ qty_remaining: b.qty_remaining }).eq('id', al.batch_id);
- seen[al.batch_id] = true;
- }
+ if(!al || al.batch_id == null || !(al.qty > 0)) continue;
+ await db.rpc('restock_batch', { p_batch_id: al.batch_id, p_qty: al.qty });
  }
  }
  if (typeof showToast==='function') showToast('Bayaran GAGAL disimpan — stok dipulihkan. Sila cuba lagi.', 'error');
@@ -20810,15 +20817,9 @@ window.processOutbound = async function() {
  }
 
  try {
- let remaining = qty;
- for(const batch of relevantBatches) {
- if(remaining <= 0) break;
- const deduct = Math.min(batch.qty_remaining, remaining);
- const { error } = await db.from('inventory_batches')
-.update({ qty_remaining: batch.qty_remaining - deduct }).eq('id', batch.id);
- if(error) throw error;
- remaining -= deduct;
- }
+ // p1_577 (#15) — deduct atomik via RPC (FOR UPDATE) ganti loop absolute-write (lost-update risk).
+ const { data: __dd, error: __ddErr } = await db.rpc('deduct_stock_fifo', { p_sku: sku, p_qty: qty });
+ if(__ddErr) throw __ddErr;
 
  const fullReason = approval
  ? `${reason} | Approved by: ${approval.manager.name} (${approval.reason})${approval.note ? ' — ' + approval.note : ''}${note ? ' | Staf note: ' + note : ''}`
