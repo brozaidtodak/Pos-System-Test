@@ -34045,6 +34045,216 @@ window.__openSimpleModal = function(innerHtml){
 window.__closeSimpleModal = function(){ const ov=document.getElementById('__simpleModalOverlay'); if(ov) ov.style.display='none'; };
 
 /* ============================================================================
+ * p1_599 — BUNDLE / PAKEJ BUILDER (Products > Bundles).
+ * Templat pakej: staff pilih barang sedia ada + qty, set harga pakej.
+ * Disimpan dlm table product_bundles (items jsonb [{sku,qty}]). Stok pakej
+ * dikira LIVE = min(floor(stok_anak / qty_anak)) dari inventoryBatches.
+ * Harga auto-pra-isi = jumlah harga asal barang, staff boleh ubah (turun=diskaun).
+ * NOTA: jualan pakej di Cashier (auto-tolak stok anak FIFO) = slice SETERUSNYA.
+ * Bundle simpan dlm table sendiri (BUKAN products_master) jadi TAK muncul di
+ * sell grid cashier lagi — selamat, takde risiko stok rosak sebelum disambung.
+ * ==========================================================================*/
+window.__bundles = null;
+window.__bundleDraft = [];        // [{sku,qty}] sedang dibina dlm borang
+window.__bundleEditId = null;     // id pakej sedang diedit (null = cipta baru)
+
+window.__bdlE = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); };
+
+window.__bundleLoad = async function(){
+ if(typeof db==='undefined'||!db){ window.__bundles = window.__bundles||[]; return window.__bundles; }
+ try { const { data } = await db.from('product_bundles').select('*').order('created_at',{ascending:false}); window.__bundles = data||[]; }
+ catch(e){ window.__bundles = window.__bundles||[]; }
+ return window.__bundles;
+};
+
+window.__bundleProd = function(sku){
+ sku=(sku||'').toUpperCase();
+ return (Array.isArray(masterProducts)?masterProducts:[]).find(x=>(x.sku||'').toUpperCase()===sku) || null;
+};
+
+// stok seunit SKU = jumlah qty_remaining inventory_batches, fallback products_master.stock
+window.__bundleStockFor = function(sku){
+ sku=(sku||'').toUpperCase();
+ try {
+  if(Array.isArray(inventoryBatches) && inventoryBatches.length){
+   let s=0, found=false;
+   for(const b of inventoryBatches){ if((b.sku||'').toUpperCase()===sku){ found=true; s+=Number(b.qty_remaining)||0; } }
+   if(found) return s;
+  }
+ } catch(e){}
+ const p=window.__bundleProd(sku);
+ return p? (Number(p.stock)||0) : 0;
+};
+
+// jumlah harga asal barang dlm set
+window.__bundleSum = function(items){
+ return (items||[]).reduce((s,it)=>{ const p=window.__bundleProd(it.sku); return s + (p?(Number(p.price)||0):0)*(Number(it.qty)||0); }, 0);
+};
+
+// berapa set pakej boleh dibuat = min(floor(stok/qty))
+window.__bundleAvail = function(items){
+ if(!items||!items.length) return 0;
+ let min=Infinity;
+ for(const it of items){ const q=Number(it.qty)||0; if(q<=0) continue; const a=Math.floor(window.__bundleStockFor(it.sku)/q); if(a<min) min=a; }
+ return min===Infinity?0:min;
+};
+
+window.__bundleAddItem = function(){
+ const skuEl=document.getElementById('bdlItemSku'), qtyEl=document.getElementById('bdlItemQty');
+ const sku=(skuEl?.value||'').trim().toUpperCase();
+ const qty=parseInt(qtyEl?.value||'1',10)||1;
+ if(!sku){ showToast('Pilih barang dulu.','warn'); return; }
+ if(!window.__bundleProd(sku)){ showToast('SKU "'+sku+'" takde dalam katalog.','warn'); return; }
+ if(qty<=0){ showToast('Qty mesti lebih 0.','warn'); return; }
+ const ex=window.__bundleDraft.find(it=>it.sku===sku);
+ if(ex){ ex.qty=(Number(ex.qty)||0)+qty; } else { window.__bundleDraft.push({sku:sku, qty:qty}); }
+ if(skuEl)skuEl.value=''; if(qtyEl)qtyEl.value='1';
+ window.__bundleRenderDraft();
+ if(skuEl)skuEl.focus();
+};
+window.__bundleDraftRemove = function(i){ window.__bundleDraft.splice(i,1); window.__bundleRenderDraft(); };
+window.__bundleDraftQty = function(i,v){ const q=parseInt(v,10); if(window.__bundleDraft[i]){ window.__bundleDraft[i].qty=(q>0?q:1); } window.__bundleRenderDraft(); };
+
+window.__bundleRenderDraft = function(){
+ const wrap=document.getElementById('bdlDraftWrap'); if(!wrap) return;
+ const E=window.__bdlE, d=window.__bundleDraft;
+ if(!d.length){
+  wrap.innerHTML='<div style="padding:14px; text-align:center; color:#6B7280; font-size:13px;">Belum ada barang. Pilih barang di atas, tekan Tambah.</div>';
+ } else {
+  wrap.innerHTML='<table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr style="text-align:left; border-bottom:1.5px solid #D1D5DB;"><th style="padding:6px 8px;">Barang</th><th style="padding:6px 8px; width:90px;">Qty</th><th style="padding:6px 8px;">Seunit</th><th style="padding:6px 8px;">Subtotal</th><th style="padding:6px 8px; width:90px;">Stok</th><th></th></tr></thead><tbody>'
+   + d.map((it,i)=>{ const p=window.__bundleProd(it.sku); const price=p?(Number(p.price)||0):0; const nm=p?(p.name||it.sku):it.sku; const canMake=Math.floor(window.__bundleStockFor(it.sku)/(Number(it.qty)||1));
+     return '<tr style="border-bottom:1px solid #EEE;"><td style="padding:6px 8px;">'+E(nm.slice(0,46))+'<div style="color:#9CA3AF; font-size:11px;">'+E(it.sku)+'</div></td><td style="padding:6px 8px;"><input type="number" min="1" value="'+(Number(it.qty)||1)+'" onchange="window.__bundleDraftQty('+i+',this.value)" style="width:70px; padding:5px; border:1px solid #D1D5DB; border-radius:6px;"></td><td style="padding:6px 8px;">RM'+price.toFixed(2)+'</td><td style="padding:6px 8px; font-weight:700;">RM'+(price*(Number(it.qty)||0)).toFixed(2)+'</td><td style="padding:6px 8px; color:'+(canMake>0?'#16A34A':'#DC2626')+'; font-weight:700;">'+canMake+'</td><td style="padding:6px 8px;"><button onclick="window.__bundleDraftRemove('+i+')" title="Buang" style="background:none; border:0; cursor:pointer; color:#DC2626;"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button></td></tr>';
+    }).join('')
+   + '</tbody></table>';
+ }
+ const sum=window.__bundleSum(d), avail=window.__bundleAvail(d);
+ const priceEl=document.getElementById('bdlPrice');
+ if(priceEl && !priceEl.dataset.touched){ priceEl.value=sum.toFixed(2); }
+ const price=Number(priceEl?priceEl.value:0)||0, save=sum-price;
+ const prev=document.getElementById('bdlPreview');
+ if(prev){
+  prev.innerHTML='<div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">'
+   +'<div><div style="font-size:11px; color:#6B7280;">Jumlah harga asal</div><div style="font-weight:800;">RM'+sum.toFixed(2)+'</div></div>'
+   +'<div><div style="font-size:11px; color:#6B7280;">Harga pakej</div><div style="font-weight:800;">RM'+price.toFixed(2)+'</div></div>'
+   +'<div><div style="font-size:11px; color:#6B7280;">Jimat customer</div><div style="font-weight:800; color:'+(save>0?'#16A34A':(save<0?'#DC2626':'#6B7280'))+';">RM'+save.toFixed(2)+(sum>0?' ('+Math.round(save/sum*100)+'%)':'')+'</div></div>'
+   +'<div><div style="font-size:11px; color:#6B7280;">Boleh buat sekarang</div><div style="font-weight:800;">'+avail+' set</div></div>'
+   +'</div>'+(save<0?'<div style="margin-top:6px; color:#DC2626; font-size:12px;">Harga pakej lebih mahal dari jumlah asal — pastikan betul.</div>':'');
+ }
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+window.__bundleSave = async function(){
+ const name=(document.getElementById('bdlName')?.value||'').trim();
+ let sku=(document.getElementById('bdlSku')?.value||'').trim().toUpperCase();
+ const price=Number(document.getElementById('bdlPrice')?.value||0)||0;
+ const note=(document.getElementById('bdlNote')?.value||'').trim();
+ if(!name){ showToast('Bagi nama pakej dulu.','warn'); return; }
+ if(!window.__bundleDraft.length){ showToast('Tambah sekurang-kurangnya 1 barang.','warn'); return; }
+ if(price<=0){ showToast('Set harga pakej (lebih dari 0).','warn'); return; }
+ if(!sku){ sku='BDL-'+Date.now().toString(36).toUpperCase(); }
+ const items=window.__bundleDraft.map(it=>({sku:it.sku, qty:Number(it.qty)||1}));
+ const staff=(window.currentUser&&(window.currentUser.name||window.currentUser.staff_id))||'';
+ const payload={ bundle_sku:sku, name:name, price:price, items:items, notes:(note||null), updated_at:new Date().toISOString() };
+ try {
+  if(window.__bundleEditId){
+   const { error } = await db.from('product_bundles').update(payload).eq('id', window.__bundleEditId);
+   if(error) throw error;
+   showToast('Pakej dikemaskini.','success');
+  } else {
+   payload.created_by=staff;
+   const { error } = await db.from('product_bundles').insert(payload);
+   if(error) throw error;
+   showToast('Pakej disimpan.','success');
+  }
+  window.__bundleEditId=null; window.__bundleDraft=[];
+  await window.__bundleLoad();
+  window.renderBundles();
+ } catch(e){ showToast('Gagal simpan pakej: '+(e.message||e),'warn'); }
+};
+
+window.__bundleEdit = async function(id){
+ if(window.__bundles===null) await window.__bundleLoad();
+ const b=(window.__bundles||[]).find(x=>String(x.id)===String(id)); if(!b) return;
+ window.__bundleEditId=b.id;
+ window.__bundleDraft=(Array.isArray(b.items)?b.items:[]).map(it=>({sku:(it.sku||'').toUpperCase(), qty:Number(it.qty)||1}));
+ window.renderBundles();
+ setTimeout(()=>{ const n=document.getElementById('bdlName'); if(n)n.value=b.name||''; const s=document.getElementById('bdlSku'); if(s)s.value=b.bundle_sku||''; const p=document.getElementById('bdlPrice'); if(p){ p.value=Number(b.price||0).toFixed(2); p.dataset.touched='1'; } const nt=document.getElementById('bdlNote'); if(nt)nt.value=b.notes||''; window.__bundleRenderDraft(); }, 30);
+ try { if(document.getElementById('bundlesSection')) document.getElementById('bundlesSection').scrollIntoView({behavior:'smooth',block:'start'}); } catch(e){}
+};
+
+window.__bundleDelete = async function(id){
+ if(!confirm('Padam pakej ni? (stok barang TIDAK terjejas)')) return;
+ try { const { error } = await db.from('product_bundles').delete().eq('id',id); if(error) throw error; showToast('Pakej dipadam.','success'); await window.__bundleLoad(); window.renderBundles(); }
+ catch(e){ showToast('Gagal padam: '+(e.message||e),'warn'); }
+};
+
+window.__bundleToggleActive = async function(id){
+ const b=(window.__bundles||[]).find(x=>String(x.id)===String(id)); if(!b) return;
+ try { const { error } = await db.from('product_bundles').update({active:(b.active===false), updated_at:new Date().toISOString()}).eq('id',id); if(error) throw error; await window.__bundleLoad(); window.renderBundles(); }
+ catch(e){ showToast('Gagal tukar status: '+(e.message||e),'warn'); }
+};
+
+window.__bundleResetForm = function(){ window.__bundleEditId=null; window.__bundleDraft=[]; window.renderBundles(); };
+
+window.renderBundles = async function(){
+ const sec=document.getElementById('bundlesSection'); if(!sec) return;
+ if(window.__bundles===null) await window.__bundleLoad();
+ const E=window.__bdlE;
+ const prods=(Array.isArray(masterProducts)?masterProducts:[]);
+ const dlOpts=prods.slice(0,3000).map(p=>'<option value="'+E(p.sku)+'">'+E((p.name||'').slice(0,50))+'</option>').join('');
+ const list=window.__bundles||[];
+ const activeCount=list.filter(b=>b.active!==false).length;
+ const editing=!!window.__bundleEditId;
+ const rows = list.length ? list.map(b=>{
+  const items=Array.isArray(b.items)?b.items:[];
+  const sum=window.__bundleSum(items), save=sum-(Number(b.price)||0), avail=window.__bundleAvail(items);
+  const itemsTxt=items.map(it=>{ const p=window.__bundleProd(it.sku); return (it.qty||1)+'x '+E((p?(p.name||it.sku):it.sku).slice(0,28)); }).join(', ');
+  return '<tr style="border-bottom:1px solid #E5E7EB;"><td style="padding:8px 10px;"><div style="font-weight:700;">'+E(b.name||'')+(b.active===false?' <span style="color:#9CA3AF; font-weight:500; font-size:11px;">(off)</span>':'')+'</div><div style="color:#9CA3AF; font-size:11px;">'+E(b.bundle_sku||'')+'</div></td>'
+   +'<td style="padding:8px 10px; color:#6B7280; font-size:12px; max-width:260px;">'+itemsTxt+'</td>'
+   +'<td style="padding:8px 10px; font-weight:800;">RM'+(Number(b.price)||0).toFixed(2)+'</td>'
+   +'<td style="padding:8px 10px; color:'+(save>0?'#16A34A':'#6B7280')+';">RM'+save.toFixed(2)+'</td>'
+   +'<td style="padding:8px 10px; font-weight:700; color:'+(avail>0?'#16A34A':'#DC2626')+';">'+avail+' set</td>'
+   +'<td style="padding:8px 10px; white-space:nowrap;">'
+     +'<button onclick="window.__bundleEdit('+b.id+')" title="Edit" style="background:none;border:0;cursor:pointer;color:var(--primary,#CD7C32); margin-right:6px;"><i data-lucide="pencil" style="width:15px;height:15px;"></i></button>'
+     +'<button onclick="window.__bundleToggleActive('+b.id+')" title="On/Off" style="background:none;border:0;cursor:pointer;color:#6B7280; margin-right:6px;"><i data-lucide="power" style="width:15px;height:15px;"></i></button>'
+     +'<button onclick="window.__bundleDelete('+b.id+')" title="Padam" style="background:none;border:0;cursor:pointer;color:#DC2626;"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>'
+   +'</td></tr>';
+ }).join('') : '<tr><td colspan="6" style="padding:20px; text-align:center; color:#6B7280;">Belum ada pakej. Bina pakej pertama guna borang di atas.</td></tr>';
+
+ sec.innerHTML = '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="package-2" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Bundle / Pakej</h2>'
+  +'<p class="soft-note">Cantum beberapa barang jadi satu pakej (cth Camping Starter Pack). Pilih barang, set harga pakej — stok pakej dikira automatik dari stok barang dalam. <strong>Nota:</strong> jualan pakej di Cashier (auto-tolak stok barang) akan disambung kemudian.</p>'
+  +'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin:6px 0 16px;">'
+    +'<div class="stat-card"><div style="font-size:12px; color:#6B7280;">Jumlah Pakej</div><div style="font-size:22px; font-weight:900;">'+list.length+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:12px; color:#6B7280;">Aktif</div><div style="font-size:22px; font-weight:900;">'+activeCount+'</div></div>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:16px; margin-bottom:16px;">'
+    +'<div style="font-weight:800; margin-bottom:10px;">'+(editing?'Edit Pakej':'Bina Pakej Baru')+(editing?' <button onclick="window.__bundleResetForm()" style="font-size:11px; font-weight:600; margin-left:8px; background:none; border:1px solid #D1D5DB; border-radius:6px; padding:2px 8px; cursor:pointer;">Batal edit</button>':'')+'</div>'
+    +'<div style="display:grid; grid-template-columns:2fr 1fr auto; gap:10px; align-items:end; margin-bottom:10px;">'
+      +'<div><label style="font-size:12px; color:#6B7280;">Pilih barang</label><input id="bdlItemSku" list="bdlSkuList" placeholder="Cari SKU / nama" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"><datalist id="bdlSkuList">'+dlOpts+'</datalist></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Qty</label><input id="bdlItemQty" type="number" min="1" value="1" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<button onclick="window.__bundleAddItem()" class="btn-brand-secondary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus" style="width:15px;height:15px;"></i> Tambah</button>'
+    +'</div>'
+    +'<div id="bdlDraftWrap" style="border:1px solid #E5E7EB; border-radius:8px; margin-bottom:12px;"></div>'
+    +'<div id="bdlPreview" style="background:var(--card-bg,#F9FAFB); border-radius:8px; padding:10px 12px; margin-bottom:12px;"></div>'
+    +'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px; align-items:start;">'
+      +'<div><label style="font-size:12px; color:#6B7280;">Nama pakej</label><input id="bdlName" placeholder="cth: Camping Starter Pack" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Kod pakej (optional)</label><input id="bdlSku" placeholder="auto kalau kosong" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Harga pakej (RM)</label><input id="bdlPrice" type="number" min="0" step="0.01" oninput="this.dataset.touched=\'1\'; window.__bundleRenderDraft();" placeholder="0.00" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"><div style="font-size:11px; margin-top:3px;"><a onclick="var e=document.getElementById(\'bdlPrice\'); e.dataset.touched=\'\'; window.__bundleRenderDraft();" style="color:var(--primary,#CD7C32); cursor:pointer;">Guna jumlah asal</a></div></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Nota (optional)</label><input id="bdlNote" placeholder="cth: promo Raya" style="width:100%; padding:8px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+    +'</div>'
+    +'<div style="display:flex; gap:10px; margin-top:12px;">'
+      +'<button onclick="window.__bundleSave()" class="btn-brand-primary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="save" style="width:15px;height:15px;"></i> '+(editing?'Kemaskini Pakej':'Simpan Pakej')+'</button>'
+      +'<button onclick="window.__bundleResetForm()" class="btn-brand-secondary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="rotate-ccw" style="width:15px;height:15px;"></i> Kosongkan</button>'
+    +'</div>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:0; overflow:hidden;">'
+    +'<table style="width:100%; border-collapse:collapse; font-size:13.5px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Pakej</th><th style="padding:8px 10px;">Kandungan</th><th style="padding:8px 10px;">Harga</th><th style="padding:8px 10px;">Jimat</th><th style="padding:8px 10px;">Boleh buat</th><th style="padding:8px 10px;"></th></tr></thead><tbody>'+rows+'</tbody></table>'
+  +'</div>';
+ window.__bundleRenderDraft();
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
  * p1_581 — STOCK TRANSFER (Inventory > Transfer).
  * Log pergerakan stok antara lokasi fizikal (Bilik Stok / Kedai / Cyberjaya).
  * Catatan sahaja (audit "barang ni kat mana") — tak ubah jumlah stok keseluruhan
