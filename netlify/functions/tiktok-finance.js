@@ -52,25 +52,28 @@ async function getStatementTxns(tok, cipher, statementId, query) {
 }
 
 // Map a TikTok statement_transaction → normalized settlement row.
-// Field names guarded against version drift (snake variants).
+// Invariant from real data: revenue_amount - |fee_amount| = settlement_amount.
+// gross = revenue (seller revenue after own discounts), net = settlement (payout).
+// We split |fee_amount| into commission (platform_commission) + transaction +
+// service (the remainder: shipping cost, referral, affiliate, etc.) so the three
+// buckets always sum to the total fee and reconcile exactly.
+// order_sn = transaction id (unique per settlement line, so refunds/adjustments on
+// the same order_id don't overwrite the original sale on upsert).
 function mapTxn(t) {
-    const gross = num(t.revenue_amount ?? t.gross_sales_amount ?? t.sub_total_amount);
-    const net   = num(t.settlement_amount ?? t.settlement_amount_value);
-    // Fee breakdown if present, else lump total platform fee into commission_fee.
-    const commission = num(t.commission_fee ?? t.platform_commission ?? 0);
-    const service    = num(t.service_fee ?? t.sfp_service_fee ?? t.affiliate_commission ?? 0);
-    const txnFee     = num(t.transaction_fee ?? t.payment_fee ?? 0);
-    let feeBucket = commission + service + txnFee;
-    const totalFee = num(t.fee_amount ?? t.total_fee_amount);
-    // If we couldn't break fees down, dump the whole fee_amount into commission_fee.
-    const useLump = feeBucket === 0 && totalFee > 0;
+    const gross      = num(t.revenue_amount);
+    const net        = num(t.settlement_amount);
+    const totalFee   = num(t.fee_amount);
+    const commission = num(t.platform_commission_amount);
+    const txnFee     = num(t.transaction_fee_amount);
+    let service = totalFee - commission - txnFee;
+    if (service < 0) service = 0;
     return {
-        order_sn: String(t.order_id ?? t.id ?? ''),
-        order_date: ymd(t.order_create_time ?? t.statement_time ?? t.create_time),
+        order_sn: String(t.id ?? t.order_id ?? ''),
+        order_date: ymd(t.order_create_time ?? t.statement_time),
         gross,
-        commission_fee: useLump ? totalFee : commission,
-        service_fee: useLump ? 0 : service,
-        transaction_fee: useLump ? 0 : txnFee,
+        commission_fee: commission,
+        service_fee: service,
+        transaction_fee: txnFee,
         net_payout: net,
     };
 }
