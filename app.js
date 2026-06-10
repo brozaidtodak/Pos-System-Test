@@ -14539,9 +14539,10 @@ setTimeout(() => {
  document.getElementById('dashStartDate').value = firstDay.toISOString().split('T')[0];
  document.getElementById('dashEndDate').value = dateObj.toISOString().split('T')[0];
  
- if(localStorage.getItem('posMode') === 'mobile') {
- document.body.classList.add('pos-mobile-mode');
- }
+ // p1_590 — auto layout ikut saiz skrin (paksa simple di tablet/phone ≤1024px),
+ // fallback ke check localStorage kalau fungsi belum sedia.
+ if(typeof window.__autoPosLayout === 'function') { try { window.__autoPosLayout(); } catch(e){} }
+ else if(localStorage.getItem('posMode') === 'mobile') { document.body.classList.add('pos-mobile-mode'); }
  // p1_79 fix #9: paint the layout toggle to match persisted state on boot
  try { if(typeof window.__updatePosLayoutBtn === 'function') window.__updatePosLayoutBtn(); } catch(e){}
 
@@ -34216,3 +34217,25 @@ window.renderCampaigns = function(){
  window.__setPosHeaderH = setHdrH;
  setTimeout(setHdrH, 300); setTimeout(setHdrH, 1500);
 })();
+
+/* p1_590 — AUTO layout Cashier ikut saiz skrin (Zaid: keliru sebab ada 2 mode
+ * Skrin Kecil/Besar; di tablet "Skrin Besar" = dua-pane cramped + 2 zon scroll).
+ * Di skrin <=1024px (tablet/phone): PAKSA pos-mobile-mode (layout satu-lajur simple,
+ * satu scroll) + sorok butang toggle (tak relevan). Di desktop: hormati toggle staf. */
+window.__POS_MOBILE_BREAKPOINT = 1024;
+window.__autoPosLayout = function(){
+ var narrow = window.innerWidth <= (window.__POS_MOBILE_BREAKPOINT || 1024);
+ if(narrow){
+  document.body.classList.add('pos-mobile-mode');
+ } else {
+  if(localStorage.getItem('posMode') === 'mobile') document.body.classList.add('pos-mobile-mode');
+  else document.body.classList.remove('pos-mobile-mode');
+ }
+ var btn = document.getElementById('btnPosLayoutToggle');
+ if(btn) btn.style.display = narrow ? 'none' : '';
+ try { window.__updatePosLayoutBtn && window.__updatePosLayoutBtn(); } catch(e){}
+ try { window.__setPosHeaderH && window.__setPosHeaderH(); } catch(e){}
+};
+window.addEventListener('resize', window.__autoPosLayout);
+window.addEventListener('load', window.__autoPosLayout);
+setTimeout(function(){ try{ window.__autoPosLayout(); }catch(e){} }, 400);
