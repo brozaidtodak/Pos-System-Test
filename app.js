@@ -13824,6 +13824,25 @@ window.__pinAutoSubmit = function(value) {
  }, 400);
 };
 
+// p1_647 (Langkah A) — turn a PIN login into a REAL authenticated Supabase session
+// (via staff-auth fn + verifyOtp). Graceful: failure does NOT block login (RLS not locked yet).
+window.__upgradeToAuthSession = async function(staff_id, pin){
+ try {
+  if(typeof db === 'undefined' || !db || !db.auth) return false;
+  const cur = await db.auth.getSession();
+  const u = cur && cur.data && cur.data.session && cur.data.session.user;
+  if(u && u.aud === 'authenticated' && !u.is_anonymous) return true; // already authed
+  const res = await fetch('/.netlify/functions/staff-auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ staff_id, pin }) });
+  if(!res.ok){ console.warn('[auth] staff-auth upgrade HTTP', res.status); return false; }
+  const j = await res.json();
+  if(!j || !j.token_hash) return false;
+  const v = await db.auth.verifyOtp({ token_hash: j.token_hash, type: 'magiclink' });
+  if(v && v.error){ console.warn('[auth] verifyOtp failed', v.error.message||v.error); return false; }
+  console.log('[auth] PIN session upgraded → authenticated:', staff_id);
+  return true;
+ } catch(e){ console.warn('[auth] upgrade err', e); return false; }
+};
+
 window.submitPinLogin = async function() {
  const pinInput = document.getElementById('pinLoginInput');
  const errEl = document.getElementById('pinLoginError');
@@ -13874,6 +13893,8 @@ window.submitPinLogin = async function() {
  pinInput.value = ''; window.__pinUpdateDots('');
  const overlay = document.getElementById('pinLoginOverlay');
  if(overlay) overlay.style.display = 'none';
+ // p1_647 — establish a real authenticated session BEFORE loading data (graceful if it fails)
+ try { await window.__upgradeToAuthSession(user.staff_id, pin); } catch(e){}
  loginAs(user);
 };
 
