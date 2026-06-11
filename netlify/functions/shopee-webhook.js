@@ -65,17 +65,33 @@ function signShop(path, timestamp, accessToken, shopId) {
 // Shopee docs are ambiguous on which key signs pushes, so try BOTH the Push
 // Partner Key and the OAuth Partner Key and accept if either matches (p1_292).
 // If neither env is set, skip verification (dev/initial-setup mode).
+// p1_636 — robust + self-diagnosing. Shopee's exact webhook sign base was ambiguous
+// (URL with/without scheme, push vs partner key) → try the legitimate variants and
+// report WHICH matched so we can lock it in. Safe to be lenient: handler re-fetches the
+// order from Shopee's authoritative API (a spoofed webhook can't inject data, only trigger
+// a fetch). On total failure, return diag so we can see the real auth/body.
 function verifyWebhookSign(url, body, authHeader) {
-    const got = (authHeader || '').trim();
-    const keys = [];
-    if (PUSH_KEY) keys.push(PUSH_KEY);
-    if (PARTNER_KEY) keys.push(PARTNER_KEY);
-    if (!keys.length) return { ok: true, skipped: true, reason: 'no Shopee signing key set' };
-    for (const k of keys) {
-        const computed = crypto.createHmac('sha256', k).update(`${url}|${body}`).digest('hex');
-        if (computed === got) return { ok: true, skipped: false };
+    const got = (authHeader || '').trim().toLowerCase();
+    const keyList = [['push', PUSH_KEY], ['partner', PARTNER_KEY]].filter(x => x[1]);
+    if (!keyList.length) return { ok: true, skipped: true, reason: 'no Shopee signing key set' };
+    const noScheme = url.replace(/^https?:\/\//, '');
+    const fnUrl = url.replace('/api/shopee-webhook', '/.netlify/functions/shopee-webhook');
+    const bases = [
+        ['url|body', `${url}|${body}`],
+        ['noscheme|body', `${noScheme}|${body}`],
+        ['fnurl|body', `${fnUrl}|${body}`],
+        ['body', `${body}`],
+        ['url+body', `${url}${body}`]
+    ];
+    const tried = [];
+    for (const [kn, k] of keyList) {
+        for (const [bn, b] of bases) {
+            const computed = crypto.createHmac('sha256', k).update(b).digest('hex');
+            tried.push(`${kn}/${bn}`);
+            if (computed === got) return { ok: true, skipped: false, matched: `${kn}/${bn}` };
+        }
     }
-    return { ok: false, skipped: false };
+    return { ok: false, skipped: false, diag: { tried, auth: got, auth_len: got.length, body_len: body.length, url } };
 }
 
 async function shopeeGet(path, extraQuery, accessToken, shopId) {
@@ -210,9 +226,14 @@ exports.handler = async (event) => {
             source: 'webhook', mode: 'import', environment: ENV,
             error_message: 'sign mismatch',
             duration_ms: Date.now() - startMs,
-            raw_response: { auth: (authHeader || '').slice(0, 32), body_first: rawBody.slice(0, 200) }
+            raw_response: { diag: verifyResult.diag || null, body_first: rawBody.slice(0, 200) }
         });
         return { statusCode: 401, body: 'invalid signature' };
+    }
+    // p1_636 — record which sign variant matched (once) so we can lock in the correct formula
+    if (verifyResult.matched && verifyResult.matched !== 'partner/url|body' && verifyResult.matched !== 'push/url|body') {
+        try { await logEvent({ source: 'webhook', mode: 'import', environment: ENV,
+            raw_response: { note: 'SIGN VARIANT MATCHED', variant: verifyResult.matched } }); } catch(_) {}
     }
     if (verifyResult.skipped) {
         await logEvent({
