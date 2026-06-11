@@ -19335,6 +19335,47 @@ window.__cmCanViewAll = function(u) {
  if (!u) return false;
  return u.role === 'mgmt';
 };
+// p1_622 — Export transaksi komisen tempoh semasa ke CSV. Manager+PIN unlock = semua staff; lain = sendiri.
+window.__cmExport = function() {
+ if (!currentUser) return;
+ const isMgr = (window.__cmCanViewAll && window.__cmCanViewAll(currentUser)) && (window.__confIsUnlocked && window.__confIsUnlocked());
+ const range = __cmGetDateRange();
+ const all = (Array.isArray(salesHistory) ? salesHistory : []).filter(s => {
+   if (s.is_test) return false;
+   const st = (s.status || '').toLowerCase();
+   if (st.indexOf('cancel') !== -1 || st.indexOf('void') !== -1) return false;
+   if (!range.start || !range.end) return true;
+   const t = s.created_at ? new Date(s.created_at).getTime() : 0;
+   return t >= range.start.getTime() && t <= range.end.getTime();
+ });
+ const rows = isMgr ? all : all.filter(s => s.staff_name === currentUser.name);
+ if (!rows.length) return (window.showToast || alert)('Tiada transaksi komisen untuk tempoh ni.', 'warn');
+ const esc = (v) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+ rows.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+ const lines = [['Tarikh','Order #','Staff','Customer','Channel','Jenis','Base (RM)','Rate (%)','Komisen (RM)'].join(',')];
+ let sumBase = 0, sumComm = 0;
+ rows.forEach(s => {
+   const recv = parseFloat(s.total_amount || s.total || 0) || 0;
+   const base = Math.abs(window.__saleCommissionBase(s));
+   const isRefund = recv < 0;
+   const signedBase = isRefund ? -base : base;
+   const rate = __getCommissionRate(s.staff_name || '');
+   const comm = round2(signedBase * rate / 100);
+   sumBase = round2(sumBase + signedBase); sumComm = round2(sumComm + comm);
+   const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+   lines.push([esc(dt), esc(s.order_no || s.order_number || s.id || ''), esc(s.staff_name || ''), esc(s.customer_name || ''), esc(s.channel || ''), isRefund ? 'Refund' : 'Jualan', signedBase.toFixed(2), rate, comm.toFixed(2)].join(','));
+ });
+ lines.push('');
+ lines.push([esc(''),esc(''),esc(''),esc(''),esc(''),esc('JUMLAH'),sumBase.toFixed(2),esc(''),sumComm.toFixed(2)].join(','));
+ const blob = new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ const who = isMgr ? 'SemuaStaff' : (currentUser.name || 'staff').replace(/[^A-Za-z0-9]/g, '');
+ a.href = url; a.download = 'Komisen_' + who + '_' + String(range.label || '').replace(/[^A-Za-z0-9]/g, '') + '.csv';
+ document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+ (window.showToast || function(){})('Export ' + rows.length + ' transaksi komisen siap.', 'success');
+};
+
 window.renderPersonalCommission = function() {
  if (!currentUser) return;
  const isManager = window.__cmCanViewAll(currentUser); // hanya Zaid + Aliff
