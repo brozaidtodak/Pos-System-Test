@@ -26,21 +26,25 @@ function envChecks() {
     const e = process.env;
     // [key, severity-if-missing] — fail = breaks a core integration; warn = degrades a feature
     const req = [
-        ['SUPABASE_URL', 'fail'], ['SUPABASE_SERVICE_KEY', 'fail'],
+        // SUPABASE_URL: helpers fall back to the correct hardcoded project if unset, so missing = warn (works but implicit), not fail.
+        ['SUPABASE_URL', 'warn'], ['SUPABASE_SERVICE_KEY', 'fail'],
         ['SHOPEE_PARTNER_ID', 'fail'], ['SHOPEE_PARTNER_KEY', 'fail'], ['SHOPEE_ENV', 'fail'],
         ['SHOPEE_PUSH_KEY', 'fail'], ['TIKTOK_APP_KEY', 'fail'], ['TIKTOK_APP_SECRET', 'fail'],
         ['RESEND_API_KEY', 'warn'], ['OPENAI_API_KEY', 'warn']
     ];
     return req.map(([k, sev]) => present(e[k])
         ? { check_key: `env:${k}`, category: 'env', status: 'ok', detail: 'ada' }
-        : { check_key: `env:${k}`, category: 'env', status: sev, detail: 'TIADA dalam runtime fungsi (semak env account-level + scope functions)' });
+        : { check_key: `env:${k}`, category: 'env', status: sev, detail: k === 'SUPABASE_URL'
+            ? 'tiada — guna fallback hardcoded ke projek betul (OK tapi implicit)'
+            : 'TIADA dalam runtime fungsi (semak env account-level + scope functions)' });
 }
 
 function sanityChecks() {
     const e = process.env;
     const out = [];
-    // Right Supabase project (split-brain guard)
-    const url = e.SUPABASE_URL || '';
+    // Right Supabase project (split-brain guard). Mirror the helpers' hardcoded fallback
+    // so this reflects the project the code ACTUALLY talks to, not just the raw env var.
+    const url = e.SUPABASE_URL || `https://${EXPECTED_PROJECT}.supabase.co`;
     out.push(url.includes(EXPECTED_PROJECT)
         ? { check_key: 'sanity:supabase_project', category: 'sanity', status: 'ok', detail: EXPECTED_PROJECT }
         : { check_key: 'sanity:supabase_project', category: 'sanity', status: 'fail', detail: `SUPABASE_URL bukan projek ${EXPECTED_PROJECT} (split-brain?) → ${url.slice(0, 60)}` });
