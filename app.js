@@ -35162,6 +35162,74 @@ window.__campAdd = function(){
  window.renderCampaigns();
 };
 window.__campDel = function(id){ if(!confirm('Padam kempen ni?')) return; window.__campSave(window.__campLoad().filter(c=>c.id!==id)); window.renderCampaigns(); };
+
+// p1_626 — Issues engine: flag products whose ACTIVE marketplace campaign breaches limits
+// (below cost / below min margin / over max discount) OR were recently SOLD below cost.
+// Had per-produk (floor_margin_pct, max_discount_pct), fallback ke default global.
+window.__issueCfg = function(){ try { return Object.assign({minMargin:35, maxDisc:40}, JSON.parse(localStorage.getItem('issueCfg_v1')||'{}')); } catch(e){ return {minMargin:35, maxDisc:40}; } };
+window.__issueCfgSave = function(){
+ const mm = parseFloat((document.getElementById('issMinMargin')||{}).value);
+ const md = parseFloat((document.getElementById('issMaxDisc')||{}).value);
+ const cur = window.__issueCfg();
+ try { localStorage.setItem('issueCfg_v1', JSON.stringify({minMargin: isNaN(mm)?cur.minMargin:mm, maxDisc: isNaN(md)?cur.maxDisc:md})); } catch(e){}
+ window.renderCampaigns();
+};
+window.__setProdHad = async function(sku){
+ const p = (Array.isArray(masterProducts)?masterProducts:[]).find(x=>x.sku===sku); if(!p) return;
+ const mm = prompt(`Margin MINIMUM % untuk ${sku}\n(kosong = guna default global):`, p.floor_margin_pct!=null?p.floor_margin_pct:'');
+ if(mm===null) return;
+ const md = prompt(`Diskaun MAKSIMUM % untuk ${sku}\n(kosong = guna default global):`, p.max_discount_pct!=null?p.max_discount_pct:'');
+ if(md===null) return;
+ const payload = { floor_margin_pct: (mm===''?null:parseFloat(mm)), max_discount_pct: (md===''?null:parseFloat(md)) };
+ try {
+  if(window.db){ const {error}=await window.db.from('products_master').update(payload).eq('sku',sku); if(error) throw error; }
+  p.floor_margin_pct=payload.floor_margin_pct; p.max_discount_pct=payload.max_discount_pct;
+  window.renderCampaigns();
+ } catch(e){ alert('Gagal simpan had: '+(e.message||e)); }
+};
+window.__campaignIssues = function(){
+ const cfg = window.__issueCfg();
+ const prods = Array.isArray(masterProducts)?masterProducts:[];
+ const bySku = {}, prodBySku = {};
+ prods.forEach(p => prodBySku[(p.sku||'').toUpperCase()] = p);
+ const get = (p) => { const k=(p.sku||'').toUpperCase(); return bySku[k] || (bySku[k]={ sku:p.sku, name:(p.name||'').slice(0,46), cost:parseFloat(p.cost_price)||0, minMargin:(p.floor_margin_pct!=null?Number(p.floor_margin_pct):cfg.minMargin), maxDisc:(p.max_discount_pct!=null?Number(p.max_discount_pct):cfg.maxDisc), perProduct:(p.floor_margin_pct!=null||p.max_discount_pct!=null), types:new Set(), detail:[] }); };
+ // triggers 1-3 — active campaign config
+ prods.forEach(p => {
+  const cost=parseFloat(p.cost_price)||0;
+  const minMargin=p.floor_margin_pct!=null?Number(p.floor_margin_pct):cfg.minMargin;
+  const maxDisc=p.max_discount_pct!=null?Number(p.max_discount_pct):cfg.maxDisc;
+  [['TikTok',p.tiktok_campaign],['Shopee',p.shopee_campaign]].forEach(([plat,c]) => {
+   if(!c||!c.active) return;
+   const promo=c.promo_price!=null?Number(c.promo_price):null;
+   const disc=c.discount_value!=null?Number(c.discount_value):null;
+   const t=[];
+   if(promo!=null && cost>0){ if(promo<cost) t.push('RUGI'); else if(((promo-cost)/promo*100)<minMargin) t.push('MARGIN RENDAH'); }
+   if(disc!=null && disc>maxDisc) t.push('DISKAUN TINGGI');
+   if(t.length){ const o=get(p); t.forEach(x=>o.types.add(x)); const mg=(promo&&cost)?Math.round((promo-cost)/promo*100):null; o.detail.push(`${plat} "${c.name||''}": promo RM${promo} · ${disc}% off · margin ${mg!=null?mg+'%':'-'} (kos RM${cost})`); }
+  });
+ });
+ // trigger 4 — recent marketplace sales below cost (30 hari)
+ try {
+  const since=new Date(Date.now()-30*864e5);
+  (Array.isArray(salesHistory)?salesHistory:[]).forEach(s => {
+   if(s.is_test || (s.status||'').toLowerCase()==='voided') return;
+   if(!/tiktok|shopee/.test((s.channel||'').toLowerCase())) return;
+   if(s.created_at && new Date(s.created_at) < since) return;
+   let items=s.items; if(typeof items==='string'){ try{items=JSON.parse(items);}catch(e){items=[];} }
+   (Array.isArray(items)?items:[]).forEach(it => {
+    const sku=(it.sku||'').toUpperCase(); if(!sku) return;
+    const p=prodBySku[sku]; if(!p) return;
+    const pr=parseFloat(it.price); if(isNaN(pr)||pr<=0) return;
+    const cost=parseFloat(p.cost_price)||0;
+    if(cost>0 && pr<cost){ const o=get(p); o.types.add('TERJUAL RUGI'); o.detail.push(`Terjual RM${pr} < kos RM${cost} · ${s.channel} · ${(s.created_at||'').slice(0,10)}`); }
+   });
+  });
+ } catch(e){}
+ const arr=Object.values(bySku).filter(o=>o.types.size>0);
+ const crit=o=>[...o.types].some(t=>t==='RUGI'||t==='TERJUAL RUGI')?0:1;
+ arr.sort((a,b)=> crit(a)-crit(b));
+ return arr;
+};
 window.renderCampaigns = function(){
  const sec=document.getElementById('campaignsSection');
  if(!sec) return;
@@ -35172,9 +35240,83 @@ window.renderCampaigns = function(){
   const range=(c.start||'?')+' → '+(c.end||'?');
   return `<tr style="border-bottom:1px solid #E5E7EB;"><td style="padding:8px 10px; font-weight:700;">${(c.name||'').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;">${stPill(st)}</td><td style="padding:8px 10px;">${(c.voucher||'—').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;">${(c.audience||'—').replace(/</g,'&lt;')}</td><td style="padding:8px 10px; color:#6B7280; font-size:12px;">${range}</td><td style="padding:8px 10px;">${(c.channel||'—').replace(/</g,'&lt;')}</td><td style="padding:8px 10px;"><button onclick="window.__campDel(${c.id})" style="background:none; border:0; color:#DC2626; cursor:pointer; font-size:12px;">Padam</button></td></tr>`;
  }).join('') : `<tr><td colspan="7" style="padding:20px; text-align:center; color:#6B7280;">Belum ada kempen. Cipta kempen pertama di atas.</td></tr>`;
+ // p1_625 — Kempen Marketplace (Live): auto dari column tiktok_campaign/shopee_campaign (sync 6 jam)
+ const __mpGroups = (function(){
+  const prods = Array.isArray(masterProducts) ? masterProducts : [];
+  const g = {};
+  prods.forEach(p => {
+   [['TikTok','#101010',p.tiktok_campaign],['Shopee','#ee4d2d',p.shopee_campaign]].forEach(([plat,col,c]) => {
+    if(!c || !c.active) return;
+    const k = plat + '|' + (c.name || '');
+    const o = g[k] || (g[k] = {platform:plat, color:col, name:c.name||'(tanpa nama)', discs:[], end:c.ends_at||null, count:0, rugi:0, rugiSkus:[]});
+    o.count++;
+    if(c.discount_value != null) o.discs.push(Number(c.discount_value));
+    if(c.below_cost){ o.rugi++; if(o.rugiSkus.length < 40) o.rugiSkus.push(p.sku); }
+    if(c.ends_at && (!o.end || c.ends_at < o.end)) o.end = c.ends_at;
+   });
+  });
+  return Object.values(g).sort((a,b) => (b.rugi-a.rugi) || (b.count-a.count));
+ })();
+ const __fmtEnd = (s) => { if(!s) return '—'; const d = new Date(s); return isNaN(d) ? '—' : d.toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'2-digit'}); };
+ const __discTxt = (arr) => { if(!arr.length) return '—'; const mn=Math.min(...arr), mx=Math.max(...arr); return mn===mx ? `-${mn}%` : `-${mn}~${mx}%`; };
+ const __mpRows = __mpGroups.length ? __mpGroups.map(o => `
+   <tr style="border-bottom:1px solid #E5E7EB;">
+    <td style="padding:9px 10px;"><span style="background:${o.color}; color:#fff; padding:2px 9px; border-radius:50px; font-size:11px; font-weight:800;">${o.platform}</span></td>
+    <td style="padding:9px 10px; font-weight:700;">${o.name.replace(/</g,'&lt;')}</td>
+    <td style="padding:9px 10px; font-weight:800;">${__discTxt(o.discs)}</td>
+    <td style="padding:9px 10px;">${o.count} produk</td>
+    <td style="padding:9px 10px;">${o.rugi>0 ? `<span title="${o.rugiSkus.join(', ')}" style="background:#FEE2E2; color:#DC2626; padding:2px 9px; border-radius:50px; font-size:11px; font-weight:800;">${o.rugi} RUGI</span>` : '<span style="color:#16A34A; font-size:12px;">OK</span>'}</td>
+    <td style="padding:9px 10px; color:#6B7280; font-size:12px;">${__fmtEnd(o.end)}</td>
+   </tr>`).join('') : `<tr><td colspan="6" style="padding:16px; text-align:center; color:#6B7280;">Tiada kempen marketplace aktif (atau belum sync). Sync auto tiap 6 jam.</td></tr>`;
+ const __totRugi = __mpGroups.reduce((s,o) => s + o.rugi, 0);
+ const __mpHtml = `
+  <div class="admin-card" style="padding:0; overflow:hidden; margin-bottom:16px; border:${__totRugi>0 ? '1.5px solid #FCA5A5' : '1px solid var(--border-color,#E5E7EB)'};">
+   <div style="padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; border-bottom:1px solid #E5E7EB;">
+    <i data-lucide="megaphone" style="width:18px;height:18px; color:var(--primary);"></i>
+    <strong>Kempen Marketplace (Live)</strong>
+    <span style="font-size:11.5px; color:#6B7280;">auto dari Shopee/TikTok · refresh tiap 6 jam</span>
+    ${__totRugi>0 ? `<span style="margin-left:auto; background:#DC2626; color:#fff; padding:3px 10px; border-radius:50px; font-size:11px; font-weight:800;">${__totRugi} produk jual BAWAH KOS</span>` : '<span style="margin-left:auto; color:#16A34A; font-size:12px; font-weight:700;">Tiada produk bawah kos</span>'}
+   </div>
+   <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+    <thead><tr style="text-align:left; border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Platform</th><th style="padding:8px 10px;">Kempen</th><th style="padding:8px 10px;">Diskaun</th><th style="padding:8px 10px;">Skop</th><th style="padding:8px 10px;">Amaran</th><th style="padding:8px 10px;">Tamat</th></tr></thead>
+    <tbody>${__mpRows}</tbody>
+   </table></div>
+  </div>`;
+ // p1_626 — Issues panel (langgar had: rugi / margin rendah / diskaun tinggi / terjual rugi)
+ const __issues = window.__campaignIssues();
+ const __cfg = window.__issueCfg();
+ const __tag = (t) => { const m={'RUGI':['#DC2626','#FEE2E2'],'TERJUAL RUGI':['#DC2626','#FEE2E2'],'MARGIN RENDAH':['#B45309','#FEF3C7'],'DISKAUN TINGGI':['#1D4ED8','#DBEAFE']}; const c=m[t]||['#374151','#F3F4F6']; return `<span style="background:${c[1]}; color:${c[0]}; padding:2px 8px; border-radius:50px; font-size:10px; font-weight:800; margin:1px 2px; display:inline-block;">${t}</span>`; };
+ const __issRows = __issues.length ? __issues.map(o => `
+   <tr style="border-bottom:1px solid #E5E7EB;">
+    <td style="padding:9px 10px;"><span class="sku-badge">${(o.sku||'').replace(/</g,'&lt;')}</span><br><small style="color:#6B7280;">${o.name.replace(/</g,'&lt;')}</small></td>
+    <td style="padding:9px 10px;">${[...o.types].map(__tag).join('')}</td>
+    <td style="padding:9px 10px; font-size:12px; color:#374151;">${o.detail.map(d=>d.replace(/</g,'&lt;')).join('<br>')}</td>
+    <td style="padding:9px 10px; font-size:11.5px; color:#6B7280; white-space:nowrap;">min ${o.minMargin}% / maks ${o.maxDisc}%${o.perProduct?' <span style="color:#16A34A;">&bull;set</span>':''}</td>
+    <td style="padding:9px 10px;"><button onclick="window.__setProdHad('${(o.sku||'').replace(/'/g,"\\'")}')" style="background:#F3F4F6; border:1px solid #D1D5DB; border-radius:6px; padding:4px 9px; font-size:11px; cursor:pointer;">Set had</button></td>
+   </tr>`).join('') : `<tr><td colspan="5" style="padding:16px; text-align:center; color:#16A34A; font-weight:600;">Tiada issue — semua produk dalam kempen masih atas had.</td></tr>`;
+ const __issuesHtml = `
+  <div class="admin-card" style="padding:0; overflow:hidden; margin-bottom:16px; border:${__issues.length?'1.5px solid #DC2626':'1px solid var(--border-color,#E5E7EB)'};">
+   <div style="padding:12px 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; border-bottom:1px solid #E5E7EB; background:${__issues.length?'#FEF2F2':'#fff'};">
+    <i data-lucide="alert-triangle" style="width:18px;height:18px; color:#DC2626;"></i>
+    <strong>Issues</strong>
+    <span style="font-size:11.5px; color:#6B7280;">produk kempen langgar had — betulkan di Seller Center</span>
+    <span style="background:${__issues.length?'#DC2626':'#16A34A'}; color:#fff; padding:3px 10px; border-radius:50px; font-size:11px; font-weight:800;">${__issues.length} issue</span>
+    <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; flex-wrap:wrap;">
+     Default: margin min <input id="issMinMargin" type="number" value="${__cfg.minMargin}" style="width:52px; padding:3px 6px; border:1px solid #D1D5DB; border-radius:6px;">% ·
+     diskaun maks <input id="issMaxDisc" type="number" value="${__cfg.maxDisc}" style="width:52px; padding:3px 6px; border:1px solid #D1D5DB; border-radius:6px;">%
+     <button onclick="window.__issueCfgSave()" class="btn-brand-primary" style="padding:4px 10px; font-size:11px;">Simpan</button>
+    </span>
+   </div>
+   <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+    <thead><tr style="text-align:left; border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Produk</th><th style="padding:8px 10px;">Masalah</th><th style="padding:8px 10px;">Butiran</th><th style="padding:8px 10px;">Had</th><th style="padding:8px 10px;"></th></tr></thead>
+    <tbody>${__issRows}</tbody>
+   </table></div>
+  </div>`;
  sec.innerHTML=`
   <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="trophy" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Campaigns</h2>
   <p class="soft-note">Rancang kempen jualan — gabung voucher, audience, tarikh & saluran jadi satu pelan. Cipta voucher di <strong>Discounts &gt; Vouchers</strong>, hantar mesej di <strong>Messages &gt; Broadcast</strong>.</p>
+  ${__issuesHtml}
+  ${__mpHtml}
   <div class="admin-card" style="padding:16px; margin-bottom:16px;">
    <div style="font-weight:800; margin-bottom:10px;">Kempen Baru</div>
    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px;">
