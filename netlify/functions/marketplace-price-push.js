@@ -67,7 +67,7 @@ exports.handler = async (event) => {
         out.markup = cfg;
         const applyMarkup = (base, c) => (c && c.mode === 'rm') ? round2(base + (Number(c.value) || 0)) : round2(base * (1 + (Number(c.value) || 0) / 100));
         // Load products (scoped to skus, or all that are mapped to either channel)
-        let path = '/products_master?select=sku,price,price_marketplace,shopee_price,tiktok_price,shopee_price_mode,tiktok_price_mode,metadata';
+        let path = '/products_master?select=sku,price,price_marketplace,shopee_price,tiktok_price,shopee_price_mode,tiktok_price_mode,cost_price,floor_price,floor_margin_pct,metadata';
         if (skus.length) path += `&sku=in.(${skus.map(s => `"${s}"`).join(',')})`;
         const rows = await shopee.sb('GET', path) || [];
 
@@ -78,19 +78,34 @@ exports.handler = async (event) => {
             const v = Number(val); if (!isFinite(v)) return null;
             return (modeRaw === 'pct') ? round2(base * (1 + v / 100)) : round2(v);
         };
+        // p1_631 (#1) — below-cost guard. floor = floor_price ?? margin-floor ?? cost.
+        const floorFor = (r) => {
+            const cost = Number(r.cost_price) || 0;
+            const fp = Number(r.floor_price) || 0;
+            if (fp > 0) return fp;
+            const fm = Number(r.floor_margin_pct) || 0;
+            if (cost > 0 && fm > 0) return round2(cost / (1 - Math.min(fm, 90) / 100));
+            return cost; // hard floor = cost (0 if cost unknown → no guard)
+        };
         const plan = rows.map(r => {
             const m = (r.metadata && typeof r.metadata === 'object') ? r.metadata : {};
             const __mp = Number(r.price_marketplace); // p1_556 (#32) — 0/negatif = unset, fallback ke harga POS (elak base 0 buang SKU dari push)
             const base = (isFinite(__mp) && __mp > 0) ? __mp : (Number(r.price) || 0);
             const customShopee = computeCustom(r.shopee_price, r.shopee_price_mode, base);
             const customTiktok = computeCustom(r.tiktok_price, r.tiktok_price_mode, base);
+            const sp = customShopee != null ? round2(customShopee) : applyMarkup(base, cfg.shopee);
+            const tp = customTiktok != null ? round2(customTiktok) : applyMarkup(base, cfg.tiktok);
+            const cost = Number(r.cost_price) || 0;
+            const floor = floorFor(r);
             return {
                 sku: (r.sku || '').toUpperCase(),
-                base,
-                shopee_price: customShopee != null ? round2(customShopee) : applyMarkup(base, cfg.shopee),
-                tiktok_price: customTiktok != null ? round2(customTiktok) : applyMarkup(base, cfg.tiktok),
+                base, cost, floor,
+                shopee_price: sp,
+                tiktok_price: tp,
                 shopee_custom: customShopee != null,
                 tiktok_custom: customTiktok != null,
+                shopee_blocked: floor > 0 && sp > 0 && sp < floor,
+                tiktok_blocked: floor > 0 && tp > 0 && tp < floor,
                 shopee_item_id: m.shopee_item_id || null,
                 shopee_model_id: m.shopee_model_id != null ? m.shopee_model_id : null,
                 tiktok_product_id: m.tiktok_product_id || null,
@@ -98,19 +113,30 @@ exports.handler = async (event) => {
             };
         }).filter(x => x.base > 0 || x.shopee_price > 0 || x.tiktok_price > 0);
 
+        // p1_631 (#1) — collect below-floor blocks (skipped unless ?force=1)
+        const force = (event.queryStringParameters || {}).force === '1';
+        out.blocked = [];
+        for (const x of plan) {
+            if (x.shopee_blocked) out.blocked.push({ sku: x.sku, channel: 'shopee', price: x.shopee_price, floor: x.floor, cost: x.cost });
+            if (x.tiktok_blocked) out.blocked.push({ sku: x.sku, channel: 'tiktok', price: x.tiktok_price, floor: x.floor, cost: x.cost });
+        }
+        out.blocked_count = out.blocked.length;
+        out.force = force;
+
         out.products = plan.length;
         out.shopee_targets = plan.filter(x => x.shopee_item_id).length;
         out.tiktok_targets = plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id).length;
 
         if (mode === 'dryrun') {
             out.sample = plan.slice(0, 15).map(x => ({ sku: x.sku, base: x.base, shopee: x.shopee_price + (x.shopee_custom ? ' (custom)' : ''), tiktok: x.tiktok_price + (x.tiktok_custom ? ' (custom)' : ''), shopee_mapped: !!x.shopee_item_id }));
-            out.note = 'DRYRUN — nothing written. Add ?mode=push to apply (LIVE prices).';
+            out.note = 'DRYRUN — nothing written. Add ?mode=push to apply (LIVE prices).'
+                + (out.blocked_count ? ` ${out.blocked_count} channel-price(s) BELOW floor will be SKIPPED (use ?force=1 to override).` : '');
             return json(200, out);
         }
 
         // ---- PUSH: Shopee (group by item_id) ----
         const shopeeRes = { pushed: 0, failed: 0, errors: [], skipped: !doShopee };
-        const shopeeMapped = doShopee ? plan.filter(x => x.shopee_item_id) : [];
+        const shopeeMapped = doShopee ? plan.filter(x => x.shopee_item_id && (force || !x.shopee_blocked)) : [];
         if (shopeeMapped.length) {
             const tok = await shopee.getValidToken();
             const byItem = {};
@@ -133,7 +159,7 @@ exports.handler = async (event) => {
         // multi-variant products whose TikTok variant seller_sku != POS sku (e.g. VD035/036/047/048).
         // All 621 mapped products have both ids persisted, so target them directly + reliably.
         const tiktokRes = { pushed: 0, failed: 0, errors: [], unmapped: 0, skipped: !doTiktok };
-        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id) : [];
+        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id && (force || !x.tiktok_blocked)) : [];
         if (doTiktok) tiktokRes.unmapped = plan.filter(x => !x.tiktok_product_id || !x.tiktok_sku_id).length;
         if (tiktokMapped.length) try {
             const tok = await tiktok.getValidToken();
