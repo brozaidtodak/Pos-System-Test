@@ -161,6 +161,10 @@
 [functions."shopee-promo-sync-cron"]
   schedule = "45 */6 * * *"
 
+# p1_633 — Daily price-drift / below-cost sentinel (live TikTok prices vs cost+POS)
+[functions."price-sentinel-cron"]
+  schedule = "0 1 * * *"
+
 # p1_98 Fasa 2D — Cron auto-sync every 15 min
 [functions."shopee-sync-cron"]
   schedule = "*/15 * * * *"
