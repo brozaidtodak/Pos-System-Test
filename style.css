@@ -11,8 +11,8 @@
     --text-muted: #6F6F6F; 
     --border-color: #E2E2E2;
     --success: #101010;
-    --danger: #c0392b; 
-    --warning: #F59E0B;
+    --danger: #B23A2E; 
+    --warning: #CE9420;
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --radius-md: 12px;
     --radius-pill: 50px;
@@ -167,7 +167,7 @@ h4, .h4 { font-family: 'Poppins', sans-serif; font-weight: 600; }
 .product-card { position: relative; border: 1px solid var(--border-color); padding: 14px; border-radius: 12px; text-align: left; transition: 0.18s ease; background: #FFFFFF; display: flex; flex-direction: column; }
 .product-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
 /* p1_524 — badge STOK HABIS jelas di kanan atas kad (Zaid: teks kecil "Stok habis" tersilap lihat) */
-.product-card__oos { position: absolute; top: 8px; right: 8px; z-index: 4; background: #DC2626; color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.6px; line-height: 1; box-shadow: 0 2px 8px rgba(220,38,38,0.45); display: inline-flex; align-items: center; gap: 4px; }
+.product-card__oos { position: absolute; top: 8px; right: 8px; z-index: 4; background: #B23A2E; color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.6px; line-height: 1; box-shadow: 0 2px 8px rgba(220,38,38,0.45); display: inline-flex; align-items: center; gap: 4px; }
 .product-card.is-oos img { opacity: 0.6; }
 .product-card img { width: 100%; height: 130px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; background: var(--bg-color); }
 /* p1_569 — Prestasi cashier (Irfan: load lama + scroll tak smooth atas phone): browser langkau render kad luar-skrin. */
@@ -182,7 +182,7 @@ h4, .h4 { font-family: 'Poppins', sans-serif; font-weight: 600; }
 /* p1_166 — Editorial pricing psychology: dark premium price + green savings (positive psychology) */
 .product-card .price__sale { color: #0F172A; font-size: 17px; font-weight: 800; letter-spacing: -0.3px; }
 .product-card .price__was { color: #94A3B8; font-size: 11.5px; font-weight: 400; text-decoration: line-through; text-decoration-thickness: 1px; }
-.product-card .price__off { color: #059669; font-size: 10.5px; font-weight: 700; padding: 0; background: none; letter-spacing: 0.2px; }
+.product-card .price__off { color: #3F7350; font-size: 10.5px; font-weight: 700; padding: 0; background: none; letter-spacing: 0.2px; }
 .product-card .price__off::before { content: ''; } /* p1_408 — "Save/Jimat" kini dari JS (i18n) */
 .product-card__stock { font-size: 11px; color: #6B7280; margin: 0 0 10px; font-weight: 500; }
 .product-card .stock { font-size: 12px; background: var(--bg-color); padding: 4px; margin-bottom: 10px; border-radius: 4px;}
@@ -222,7 +222,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .btn-success { background: var(--success, #101010); border-color: var(--success, #101010); } /* p1_246 — buang width:100% lama, sebab Export CSV jadi full-width */
 .btn-dark { background: var(--secondary, #101010); border-color: var(--secondary, #101010); }
 .btn-dark:hover { background: #2A2520; }
-.btn-danger { background: #DC2626; border-color: #DC2626; }
+.btn-danger { background: #B23A2E; border-color: #B23A2E; }
 
 /* p1_246 — Consolidate .admin-card (sebelum: defined dua tempat, conflict). Brand-aligned card system. */
 .admin-card {
@@ -242,7 +242,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .inventory-table th, .inventory-table td { padding: 15px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
 .inventory-table th { background: #FAFAFA; font-weight: 700; color: var(--text-muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;}
 .sku-badge { background: #F3F4F6; color: #4B5563; padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 600; border: 1px solid #E5E7EB; font-family: ui-monospace, SFMono-Regular, monospace; letter-spacing: 0.2px; }
-.cat-badge { background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.cat-badge { background: #F8EFD7; color: #7A5410; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:15px;}
 .cart-item button { width: 28px; height: 28px; border-radius: 14px; border: 1px solid var(--border-color); background: #FFF; cursor: pointer; font-weight: bold;}

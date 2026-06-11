@@ -166,47 +166,47 @@ function buildHTML(d) {
     const a = d.alerts;
     // p1_634 (#3) — CRITICAL: products selling below cost on marketplace (money loss)
     const belowCostBlock = a.belowCost > 0 ? `
-        <div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:14px 16px;margin:20px 0;border-radius:6px;">
-            <h3 style="margin:0 0 6px;font-size:14px;color:#991B1B;">AMARAN: ${a.belowCost} PRODUK JUAL BAWAH KOS (marketplace)</h3>
-            <ul style="margin:0;padding-left:18px;font-size:13px;color:#7F1D1D;">
+        <div style="background:#F4E4DF;border-left:4px solid #B23A2E;padding:14px 16px;margin:20px 0;border-radius:6px;">
+            <h3 style="margin:0 0 6px;font-size:14px;color:#7C2A20;">AMARAN: ${a.belowCost} PRODUK JUAL BAWAH KOS (marketplace)</h3>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#5E2018;">
                 ${(a.belowCostSample || []).map(x => `<li><b>${x.sku}</b> (${x.platform}) — ${x.detail}</li>`).join('')}
                 ${a.belowCost > (a.belowCostSample || []).length ? `<li>+${a.belowCost - (a.belowCostSample || []).length} lagi</li>` : ''}
             </ul>
-            <p style="margin:6px 0 0;font-size:12px;color:#991B1B;">Betulkan harga/diskaun di Shopee/TikTok Seller Center.</p>
+            <p style="margin:6px 0 0;font-size:12px;color:#7C2A20;">Betulkan harga/diskaun di Shopee/TikTok Seller Center.</p>
         </div>` : '';
     // p1_638 (#5) — CRITICAL: marketplace token dead / about to expire (sync goes dark)
     const tokenDeadBlock = (a.tokenDead && a.tokenDead.length) ? `
-        <div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:14px 16px;margin:20px 0;border-radius:6px;">
-            <h3 style="margin:0 0 6px;font-size:14px;color:#991B1B;">AMARAN: SAMBUNGAN MARKETPLACE NAK PUTUS</h3>
-            <ul style="margin:0;padding-left:18px;font-size:13px;color:#7F1D1D;">
+        <div style="background:#F4E4DF;border-left:4px solid #B23A2E;padding:14px 16px;margin:20px 0;border-radius:6px;">
+            <h3 style="margin:0 0 6px;font-size:14px;color:#7C2A20;">AMARAN: SAMBUNGAN MARKETPLACE NAK PUTUS</h3>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#5E2018;">
                 ${a.tokenDead.map(x => `<li><b>${x.platform}</b> — ${x.message}</li>`).join('')}
             </ul>
-            <p style="margin:6px 0 0;font-size:12px;color:#991B1B;">Kalau token putus, harga & stok BERHENTI sync. Authorize semula segera.</p>
+            <p style="margin:6px 0 0;font-size:12px;color:#7C2A20;">Kalau token putus, harga & stok BERHENTI sync. Authorize semula segera.</p>
         </div>` : '';
     // p1_639 (#6) — CRITICAL: price pushes that gave up after retries (price stuck wrong on marketplace)
     const pushDeadBlock = (a.pushDead && a.pushDead.length) ? `
-        <div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:14px 16px;margin:20px 0;border-radius:6px;">
-            <h3 style="margin:0 0 6px;font-size:14px;color:#991B1B;">AMARAN: ${a.pushDead.length} PUSH HARGA GAGAL (dah cuba ${5}× — tak jadi)</h3>
-            <ul style="margin:0;padding-left:18px;font-size:13px;color:#7F1D1D;">
+        <div style="background:#F4E4DF;border-left:4px solid #B23A2E;padding:14px 16px;margin:20px 0;border-radius:6px;">
+            <h3 style="margin:0 0 6px;font-size:14px;color:#7C2A20;">AMARAN: ${a.pushDead.length} PUSH HARGA GAGAL (dah cuba ${5}× — tak jadi)</h3>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#5E2018;">
                 ${a.pushDead.slice(0,8).map(x => `<li><b>${x.sku}</b> (${x.channel}) — ${(x.error_message||'').slice(0,80)}</li>`).join('')}
                 ${a.pushDead.length > 8 ? `<li>+${a.pushDead.length - 8} lagi</li>` : ''}
             </ul>
-            <p style="margin:6px 0 0;font-size:12px;color:#991B1B;">Harga di marketplace mungkin tak ikut POS. Semak listing / mapping produk.</p>
+            <p style="margin:6px 0 0;font-size:12px;color:#7C2A20;">Harga di marketplace mungkin tak ikut POS. Semak listing / mapping produk.</p>
         </div>` : '';
     // p1_640 (#7) — CRITICAL: config/creds broken (split-brain, wrong key, dead auth, missing env)
     const configFailBlock = (a.configFail && a.configFail.length) ? `
-        <div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:14px 16px;margin:20px 0;border-radius:6px;">
-            <h3 style="margin:0 0 6px;font-size:14px;color:#991B1B;">AMARAN: ${a.configFail.length} MASALAH KONFIGURASI/CREDS</h3>
-            <ul style="margin:0;padding-left:18px;font-size:13px;color:#7F1D1D;">
+        <div style="background:#F4E4DF;border-left:4px solid #B23A2E;padding:14px 16px;margin:20px 0;border-radius:6px;">
+            <h3 style="margin:0 0 6px;font-size:14px;color:#7C2A20;">AMARAN: ${a.configFail.length} MASALAH KONFIGURASI/CREDS</h3>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#5E2018;">
                 ${a.configFail.map(x => `<li><b>${x.check_key}</b> — ${(x.detail||'').slice(0,110)}</li>`).join('')}
             </ul>
-            <p style="margin:6px 0 0;font-size:12px;color:#991B1B;">Ini punca kegagalan senyap (kunci salah / env hilang / DB salah). Betulkan segera.</p>
+            <p style="margin:6px 0 0;font-size:12px;color:#7C2A20;">Ini punca kegagalan senyap (kunci salah / env hilang / DB salah). Betulkan segera.</p>
         </div>` : '';
     const hasAlerts = a.pendingStockCheck > 0 || a.shopeeErrors > 0 || a.tiktokErrors > 0 || a.drift > 0 || (a.tokenWarn && a.tokenWarn.length) || a.pushPending > 0;
     const alertBlock = hasAlerts ? `
-        <div style="background:#FEF3C7;border-left:4px solid #D97706;padding:14px 16px;margin:20px 0;border-radius:6px;">
-            <h3 style="margin:0 0 6px;font-size:14px;color:#92400E;">PERHATIAN</h3>
-            <ul style="margin:0;padding-left:18px;font-size:13px;color:#7C2D12;">
+        <div style="background:#F8EFD7;border-left:4px solid #C68A1A;padding:14px 16px;margin:20px 0;border-radius:6px;">
+            <h3 style="margin:0 0 6px;font-size:14px;color:#7A5410;">PERHATIAN</h3>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#5E3F0C;">
                 ${(a.tokenWarn || []).map(x => `<li>${x.message}</li>`).join('')}
                 ${a.pushPending > 0 ? `<li>${a.pushPending} push harga gagal — tengah auto-retry</li>` : ''}
                 ${a.drift > 0 ? `<li>${a.drift} harga DRIFT (POS tak sama dengan harga live marketplace)</li>` : ''}
