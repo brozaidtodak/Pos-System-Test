@@ -21,9 +21,10 @@
 const shopee = require('./_shopee');
 const tiktok = require('./_tiktok');
 
-const DEFAULT_SHOPEE_MARKUP = 8;   // percent — covers ~Shopee commission+processing
-const DEFAULT_TIKTOK_MARKUP = 5;   // percent — covers ~TikTok commission+processing
 const CURRENCY = 'MYR';
+// p1_632 — global markup REMOVED (Zaid: every product carries its own per-channel price).
+// No fallback: a product with no custom shopee_price/tiktok_price is simply NOT pushed to
+// that channel. Prices baked into products_master.{shopee,tiktok}_price (mode 'rm').
 
 function json(statusCode, obj) {
     return { statusCode, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(obj, null, 2) };
@@ -55,27 +56,17 @@ exports.handler = async (event) => {
     const out = { mode, channel };
     const skus = parseSkus(event);
     try {
-        // Markup config from app_settings (POS-editable). mode 'pct' or 'rm'.
-        // Optional query override for testing: ?shopee_markup=&shopee_mode=rm
-        let cfg = { shopee: { mode: 'pct', value: DEFAULT_SHOPEE_MARKUP }, tiktok: { mode: 'pct', value: DEFAULT_TIKTOK_MARKUP } };
-        try {
-            const srow = await shopee.sb('GET', '/app_settings?key=eq.marketplace_markup&select=value&limit=1');
-            if (srow && srow[0] && srow[0].value) cfg = srow[0].value;
-        } catch (_) {}
-        if (p.shopee_markup != null) cfg.shopee = { mode: p.shopee_mode === 'rm' ? 'rm' : 'pct', value: Number(p.shopee_markup) };
-        if (p.tiktok_markup != null) cfg.tiktok = { mode: p.tiktok_mode === 'rm' ? 'rm' : 'pct', value: Number(p.tiktok_markup) };
-        out.markup = cfg;
-        const applyMarkup = (base, c) => (c && c.mode === 'rm') ? round2(base + (Number(c.value) || 0)) : round2(base * (1 + (Number(c.value) || 0) / 100));
+        // p1_632 — no global markup. Each product's own shopee_price/tiktok_price is the push price.
         // Load products (scoped to skus, or all that are mapped to either channel)
         let path = '/products_master?select=sku,price,price_marketplace,shopee_price,tiktok_price,shopee_price_mode,tiktok_price_mode,cost_price,floor_price,floor_margin_pct,metadata';
         if (skus.length) path += `&sku=in.(${skus.map(s => `"${s}"`).join(',')})`;
         const rows = await shopee.sb('GET', path) || [];
 
-        // Per-product custom price wins; else POS price + global channel markup.
-        // Custom mode: 'rm' = absolute price; 'pct' = markup % over base POS price.
+        // Per-product price only. Mode 'rm' = absolute price; 'pct' = markup % over base POS price.
+        // Null/unset → product not pushed to that channel (no global fallback).
         const computeCustom = (val, modeRaw, base) => {
             if (val == null) return null;
-            const v = Number(val); if (!isFinite(v)) return null;
+            const v = Number(val); if (!isFinite(v) || v <= 0) return null;
             return (modeRaw === 'pct') ? round2(base * (1 + v / 100)) : round2(v);
         };
         // p1_631 (#1) — below-cost guard. floor = floor_price ?? margin-floor ?? cost.
@@ -93,8 +84,8 @@ exports.handler = async (event) => {
             const base = (isFinite(__mp) && __mp > 0) ? __mp : (Number(r.price) || 0);
             const customShopee = computeCustom(r.shopee_price, r.shopee_price_mode, base);
             const customTiktok = computeCustom(r.tiktok_price, r.tiktok_price_mode, base);
-            const sp = customShopee != null ? round2(customShopee) : applyMarkup(base, cfg.shopee);
-            const tp = customTiktok != null ? round2(customTiktok) : applyMarkup(base, cfg.tiktok);
+            const sp = customShopee != null ? round2(customShopee) : 0; // 0 = no price → not pushed
+            const tp = customTiktok != null ? round2(customTiktok) : 0;
             const cost = Number(r.cost_price) || 0;
             const floor = floorFor(r);
             return {
@@ -124,8 +115,9 @@ exports.handler = async (event) => {
         out.force = force;
 
         out.products = plan.length;
-        out.shopee_targets = plan.filter(x => x.shopee_item_id).length;
-        out.tiktok_targets = plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id).length;
+        out.shopee_targets = plan.filter(x => x.shopee_item_id && x.shopee_price > 0).length;
+        out.tiktok_targets = plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id && x.tiktok_price > 0).length;
+        out.no_price_skipped = plan.filter(x => (x.shopee_item_id && !(x.shopee_price > 0)) || (x.tiktok_product_id && x.tiktok_sku_id && !(x.tiktok_price > 0))).length;
 
         if (mode === 'dryrun') {
             out.sample = plan.slice(0, 15).map(x => ({ sku: x.sku, base: x.base, shopee: x.shopee_price + (x.shopee_custom ? ' (custom)' : ''), tiktok: x.tiktok_price + (x.tiktok_custom ? ' (custom)' : ''), shopee_mapped: !!x.shopee_item_id }));
@@ -136,7 +128,7 @@ exports.handler = async (event) => {
 
         // ---- PUSH: Shopee (group by item_id) ----
         const shopeeRes = { pushed: 0, failed: 0, errors: [], skipped: !doShopee };
-        const shopeeMapped = doShopee ? plan.filter(x => x.shopee_item_id && (force || !x.shopee_blocked)) : [];
+        const shopeeMapped = doShopee ? plan.filter(x => x.shopee_item_id && x.shopee_price > 0 && (force || !x.shopee_blocked)) : [];
         if (shopeeMapped.length) {
             const tok = await shopee.getValidToken();
             const byItem = {};
@@ -159,7 +151,7 @@ exports.handler = async (event) => {
         // multi-variant products whose TikTok variant seller_sku != POS sku (e.g. VD035/036/047/048).
         // All 621 mapped products have both ids persisted, so target them directly + reliably.
         const tiktokRes = { pushed: 0, failed: 0, errors: [], unmapped: 0, skipped: !doTiktok };
-        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id && (force || !x.tiktok_blocked)) : [];
+        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id && x.tiktok_price > 0 && (force || !x.tiktok_blocked)) : [];
         if (doTiktok) tiktokRes.unmapped = plan.filter(x => !x.tiktok_product_id || !x.tiktok_sku_id).length;
         if (tiktokMapped.length) try {
             const tok = await tiktok.getValidToken();
