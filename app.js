@@ -27472,11 +27472,17 @@ window.__renderIntegrationAlert = async function(){
  const box = document.getElementById('integrationAlertBox'); if(!box) return;
  if(typeof db === 'undefined' || !db){ box.innerHTML=''; return; }
  try {
-  const { data } = await db.from('price_sentinel').select('sku,platform,flag,detail').limit(500);
+  const [{ data }, thRes] = await Promise.all([
+    db.from('price_sentinel').select('sku,platform,flag,detail').limit(500),
+    db.from('token_health').select('platform,status,message').then(r=>r).catch(()=>({data:[]}))
+  ]);
   const f = data || [];
   const below = f.filter(x=>x.flag==='below_cost');
   const drift = f.filter(x=>x.flag==='drift');
-  if(!below.length && !drift.length){ box.innerHTML=''; return; }
+  // p1_638 (#5) — dead/critical marketplace tokens (sync about to go dark)
+  const tokens = (thRes && thRes.data) || [];
+  const tokBad = tokens.filter(t=>t.status==='dead'||t.status==='critical');
+  if(!below.length && !drift.length && !tokBad.length){ box.innerHTML=''; return; }
   const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chip = (bg,txt)=>`<span style="background:${bg};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px;">${txt}</span>`;
   const li = (x)=>`<div style="font-size:12px;color:#7f1d1d;padding:2px 0;"><b>${esc(x.sku)}</b> <span style="color:#9ca3af;">${esc(x.platform)}</span> — ${esc(x.detail)}</div>`;
@@ -27485,10 +27491,12 @@ window.__renderIntegrationAlert = async function(){
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
      <i data-lucide="alert-triangle" style="width:18px;height:18px;color:#DC2626;"></i>
      <strong style="color:#991B1B;">Amaran Integrasi Marketplace</strong>
+     ${tokBad.length?chip('#7F1D1D', 'SAMBUNGAN '+tokBad.map(t=>String(t.platform).toUpperCase()).join('+')+' NAK PUTUS'):''}
      ${below.length?chip('#DC2626', below.length+' BAWAH KOS'):''}
      ${drift.length?chip('#B45309', drift.length+' DRIFT harga'):''}
      <span style="margin-left:auto;font-size:11px;color:#9ca3af;">semakan harga live · auto tiap hari</span>
     </div>
+    ${tokBad.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#FEE2E2;border-radius:6px;"><div style="font-size:11px;font-weight:800;color:#7F1D1D;text-transform:uppercase;">Token marketplace</div>${tokBad.map(t=>`<div style="font-size:12px;color:#7f1d1d;padding:2px 0;"><b>${esc(t.platform)}</b> — ${esc(t.message)}</div>`).join('')}</div>`:''}
     ${below.length?`<div style="margin-bottom:6px;"><div style="font-size:11px;font-weight:800;color:#991B1B;text-transform:uppercase;">Jual bawah kos (rugi)</div>${below.slice(0,5).map(li).join('')}${below.length>5?`<div style="font-size:11px;color:#9ca3af;">+${below.length-5} lagi</div>`:''}</div>`:''}
     ${drift.length?`<div><div style="font-size:11px;font-weight:800;color:#92400E;text-transform:uppercase;">Harga POS ≠ live</div>${drift.slice(0,5).map(li).join('')}${drift.length>5?`<div style="font-size:11px;color:#9ca3af;">+${drift.length-5} lagi</div>`:''}</div>`:''}
     <div style="font-size:11.5px;color:#6B7280;margin-top:8px;">Betulkan harga di Shopee/TikTok Seller Center. POS flag je — tak boleh tukar harga marketplace.</div>
@@ -35205,25 +35213,38 @@ window.__loadIntegrationHealth = async function(){
    ${lines.map(l=>`<div style="font-size:12px; color:#4B5563;">${l}</div>`).join('')}
   </div>`;
  try {
-  const [tk, sp, sent] = await Promise.all([
+  const [tk, sp, sent, th] = await Promise.all([
    fj('/.netlify/functions/tiktok-sync-status'),
    fj('/.netlify/functions/shopee-sync-status'),
-   (typeof db!=='undefined'&&db) ? db.from('price_sentinel').select('flag,checked_at').limit(500).then(r=>r.data||[]).catch(()=>[]) : Promise.resolve([])
+   (typeof db!=='undefined'&&db) ? db.from('price_sentinel').select('flag,checked_at').limit(500).then(r=>r.data||[]).catch(()=>[]) : Promise.resolve([]),
+   (typeof db!=='undefined'&&db) ? db.from('token_health').select('platform,status,message,access_hrs_left,refresh_days_left').then(r=>r.data||[]).catch(()=>[]) : Promise.resolve([])
   ]);
-  const chan = (label, st) => {
+  // p1_638 (#5) — watchdog verdict overrides naive access-token countdown
+  const thByPlat = {}; (th||[]).forEach(t=>{ thByPlat[String(t.platform).toLowerCase()]=t; });
+  const chan = (label, st, platKey) => {
    const err = (st && st.today) ? (st.today.errors||0) : 0;
    const last = (st && st.last_run) ? st.last_run.ran_at : null;
    const lastErr = (st && st.last_run) ? st.last_run.error_message : null;
-   const exp = (st && st.connected) ? st.connected.access_token_expire_at : null;
-   const dl = daysLeft(exp);
-   const tokenWarn = dl!=null && dl < 3;
-   const bad = err>0 || lastErr || !st;
-   const color = bad ? '#DC2626' : (tokenWarn ? '#B45309' : '#16A34A');
-   const txt = !st ? 'Tak dapat status' : (bad ? 'Ada error' : (tokenWarn ? 'Token nak luput' : 'OK'));
+   const tok = thByPlat[platKey];
+   const tokDead = tok && (tok.status==='dead'||tok.status==='critical');
+   const tokWarnS = tok && tok.status==='warn';
+   const bad = err>0 || lastErr || !st || tokDead;
+   const color = bad ? '#DC2626' : (tokWarnS ? '#B45309' : '#16A34A');
+   const txt = tokDead ? 'TOKEN BAHAYA' : (!st ? 'Tak dapat status' : (err>0||lastErr ? 'Ada error' : (tokWarnS ? 'Token nak luput' : 'OK')));
+   // token line: prefer watchdog message; else access-token countdown
+   let tokenLine;
+   if(tok){
+    const rd = tok.refresh_days_left;
+    const rdTxt = (rd!=null && rd<3650) ? (' · refresh '+rd+' hari') : '';
+    tokenLine = 'Token: <b style="color:'+(tokDead?'#DC2626':(tokWarnS?'#B45309':'#16A34A'))+'">'+(tok.status==='ok'?'sihat':String(tok.status).toUpperCase())+'</b>'+rdTxt;
+   } else {
+    const dl = daysLeft((st && st.connected) ? st.connected.access_token_expire_at : null);
+    tokenLine = 'Token luput: <b style="color:#4B5563">'+(dl!=null?(dl+' hari lagi'):'—')+'</b>';
+   }
    return card(label, color, txt, [
     'Sync terakhir: <b>'+ago(last)+'</b>',
     'Error hari ni: <b style="color:'+(err>0?'#DC2626':'#16A34A')+'">'+err+'</b>',
-    'Token luput: <b style="color:'+(tokenWarn?'#B45309':'#4B5563')+'">'+(dl!=null?(dl+' hari lagi'):'—')+'</b>'
+    tokenLine
    ]);
   };
   const arr = sent||[];
@@ -35232,7 +35253,7 @@ window.__loadIntegrationHealth = async function(){
   const sLast = arr.reduce((a,x)=> (x.checked_at && (!a || x.checked_at>a)) ? x.checked_at : a, null);
   const sColor = sBelow>0 ? '#DC2626' : (sDrift>0 ? '#B45309' : '#16A34A');
   const sTxt = sBelow>0 ? (sBelow+' bawah kos') : (sDrift>0 ? (sDrift+' drift') : 'OK');
-  box.innerHTML = chan('TikTok — Order', tk) + chan('Shopee — Order', sp) +
+  box.innerHTML = chan('TikTok — Order', tk, 'tiktok') + chan('Shopee — Order', sp, 'shopee') +
    card('Harga — Sentinel Harian', sColor, sTxt, [
     'Semakan terakhir: <b>'+ago(sLast)+'</b>',
     'Jual bawah kos: <b style="color:'+(sBelow>0?'#DC2626':'#16A34A')+'">'+sBelow+'</b>',

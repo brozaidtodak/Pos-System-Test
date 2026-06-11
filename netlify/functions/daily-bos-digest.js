@@ -116,12 +116,20 @@ async function buildDigest() {
         belowCostSample = (ps || []).filter(r => r.flag === 'below_cost').slice(0, 8);
     } catch(e){}
 
+    // p1_638 (#5) — token watchdog: marketplace tokens dead / near-expiry (sync about to go dark)
+    let tokenDead = [], tokenWarn = [];
+    try {
+        const th = await sb('/token_health?select=platform,status,message,refresh_days_left');
+        tokenDead = (th || []).filter(r => r.status === 'dead' || r.status === 'critical');
+        tokenWarn = (th || []).filter(r => r.status === 'warn');
+    } catch(e){}
+
     return {
         date: dateLabel,
         totals: { revenue: totalRevenue, orders: orderCount, aov },
         channels,
         topSkus,
-        alerts: { pendingStockCheck, shopeeErrors, tiktokErrors, belowCost, drift, belowCostSample }
+        alerts: { pendingStockCheck, shopeeErrors, tiktokErrors, belowCost, drift, belowCostSample, tokenDead, tokenWarn }
     };
 }
 
@@ -151,11 +159,21 @@ function buildHTML(d) {
             </ul>
             <p style="margin:6px 0 0;font-size:12px;color:#991B1B;">Betulkan harga/diskaun di Shopee/TikTok Seller Center.</p>
         </div>` : '';
-    const hasAlerts = a.pendingStockCheck > 0 || a.shopeeErrors > 0 || a.tiktokErrors > 0 || a.drift > 0;
+    // p1_638 (#5) — CRITICAL: marketplace token dead / about to expire (sync goes dark)
+    const tokenDeadBlock = (a.tokenDead && a.tokenDead.length) ? `
+        <div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:14px 16px;margin:20px 0;border-radius:6px;">
+            <h3 style="margin:0 0 6px;font-size:14px;color:#991B1B;">AMARAN: SAMBUNGAN MARKETPLACE NAK PUTUS</h3>
+            <ul style="margin:0;padding-left:18px;font-size:13px;color:#7F1D1D;">
+                ${a.tokenDead.map(x => `<li><b>${x.platform}</b> — ${x.message}</li>`).join('')}
+            </ul>
+            <p style="margin:6px 0 0;font-size:12px;color:#991B1B;">Kalau token putus, harga & stok BERHENTI sync. Authorize semula segera.</p>
+        </div>` : '';
+    const hasAlerts = a.pendingStockCheck > 0 || a.shopeeErrors > 0 || a.tiktokErrors > 0 || a.drift > 0 || (a.tokenWarn && a.tokenWarn.length);
     const alertBlock = hasAlerts ? `
         <div style="background:#FEF3C7;border-left:4px solid #D97706;padding:14px 16px;margin:20px 0;border-radius:6px;">
             <h3 style="margin:0 0 6px;font-size:14px;color:#92400E;">PERHATIAN</h3>
             <ul style="margin:0;padding-left:18px;font-size:13px;color:#7C2D12;">
+                ${(a.tokenWarn || []).map(x => `<li>${x.message}</li>`).join('')}
                 ${a.drift > 0 ? `<li>${a.drift} harga DRIFT (POS tak sama dengan harga live marketplace)</li>` : ''}
                 ${a.pendingStockCheck > 0 ? `<li>${a.pendingStockCheck} stock check report menunggu review</li>` : ''}
                 ${a.shopeeErrors > 0 ? `<li>${a.shopeeErrors} Shopee sync errors hari ni</li>` : ''}
@@ -175,6 +193,7 @@ function buildHTML(d) {
             <div style="font-size:36px;font-weight:800;color:#CD7C32;margin-top:6px;">${fmtRM(d.totals.revenue)}</div>
             <div style="font-size:13px;color:#666;margin-top:4px;">${d.totals.orders} pesanan · ${fmtRM(d.totals.aov)} purata</div>
         </div>
+        ${tokenDeadBlock}
         ${belowCostBlock}
         ${alertBlock}
         <h2 style="font-size:14px;margin:24px 0 10px;color:#333;">Sales by Channel</h2>
