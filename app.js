@@ -18066,6 +18066,34 @@ window.memoFormatFull = function(iso) {
 };
 
 // Main render
+// p1_630 — On-the-fly content translation (memo) when UI lang = EN. Server holds the
+// OpenAI key (/api/translate); client caches each unique string in localStorage so it
+// is translated only once. Original BM data is never modified (display-only "bypass").
+window.__txCache = (function(){ try { return JSON.parse(localStorage.getItem('txCache_en_v1')||'{}'); } catch(e){ return {}; } })();
+window.__txHash = function(s){ let h=5381; const t=String(s); for(let i=0;i<t.length;i++){ h=((h<<5)+h+t.charCodeAt(i))>>>0; } return 'h'+h.toString(36); };
+window.__txGet = function(text){ if(!text) return null; const v = window.__txCache[window.__txHash(text)]; return (v===undefined) ? null : v; };
+window.__txFetching = false;
+window.__txEnsure = function(texts, onDone){
+ const uniq = [...new Set((texts||[]).filter(t => t && window.__txCache[window.__txHash(t)]===undefined))];
+ if(!uniq.length || window.__txFetching) return;
+ window.__txFetching = true;
+ const batch = uniq.slice(0,60);
+ fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ texts: batch, target:'en' }) })
+  .then(r=>r.json()).then(j=>{
+   window.__txFetching = false;
+   if(j && Array.isArray(j.translations) && j.translations.length===batch.length){
+    batch.forEach((t,i)=>{ window.__txCache[window.__txHash(t)] = j.translations[i] || t; });
+    try{ localStorage.setItem('txCache_en_v1', JSON.stringify(window.__txCache)); }catch(e){}
+    if(typeof onDone==='function') onDone();
+   }
+  }).catch(()=>{ window.__txFetching = false; });
+};
+// returns EN translation if UI=EN + cached, else original text
+window.__memoTx = function(text){
+ if(!(window.I18N && window.I18N.lang === 'en')) return text;
+ return window.__txGet(text) || text;
+};
+
 window.renderMemoBoard = function() {
  const list = document.getElementById('memoBoardList');
  if(!list) return;
@@ -18165,14 +18193,14 @@ window.renderMemoBoard = function() {
 
  return `<div class="${cardClass}">
  <div class="memo-card__head">
- <h4 class="memo-card__title">${pinIcon}${escapeHtml(m.title)}</h4>
+ <h4 class="memo-card__title">${pinIcon}${escapeHtml(window.__memoTx(m.title))}</h4>
  </div>
  <div class="memo-card__meta">
  <span class="memo-dept-badge" data-dept="${m.department}">${escapeHtml(window.memoDeptLabel(m.department))}</span>
  ${(m.category && m.category !== 'umum') ? `<span style="display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; background:#fff8f0; color:#7c4a1a;"><i data-lucide="tag" style="width:9px;height:9px;"></i> ${escapeHtml(window.__memoCatLabel(m.category))}</span>` : ''}
  <span class="memo-status-pill memo-status-pill--${m.status}">${escapeHtml(T('mb_status_'+m.status, m.status))}</span>
  </div>
- <div class="memo-card__body">${escapeHtml(m.body)}</div>
+ <div class="memo-card__body">${escapeHtml(window.__memoTx(m.body))}</div>
  ${reasonHtml}
  <div class="memo-card__foot">
  <span class="memo-card__author" title="${window.memoFormatFull(m.posted_at)}">
@@ -18185,6 +18213,11 @@ window.renderMemoBoard = function() {
  }).join('');
  window.memoRefreshSidebarBadge();
  if(window.lucide && lucide.createIcons) lucide.createIcons();
+ // p1_630 — EN mode: auto-translate memo title+body (cached), re-render when ready
+ if(window.I18N && window.I18N.lang === 'en'){
+  const txt = []; rows.forEach(m => { if(m.title) txt.push(m.title); if(m.body) txt.push(m.body); });
+  window.__txEnsure(txt, () => window.renderMemoBoard());
+ }
 };
 
 // Boot: load memo from localStorage so it survives reload (was bug — globalMemo was in-memory only)
@@ -27364,7 +27397,7 @@ window.__renderDashOverviewMemo = function() {
  const ago = (typeof window.memoTimeAgo === 'function') ? window.memoTimeAgo(m.posted_at) : '';
  const pinIcon = m.pinned ? '<i data-lucide="pin" style="width:11px; height:11px; color:#B45309;"></i> ' : '';
  const bodyPreview = m.body
- ? '<div style="font-size:12px; color:#92400E; margin-top:3px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">' + esc(m.body) + '</div>'
+ ? '<div style="font-size:12px; color:#92400E; margin-top:3px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">' + esc(window.__memoTx(m.body)) + '</div>'
  : '';
  return '<div style="display:flex; gap:10px; align-items:flex-start; padding:8px 10px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:6px;">'
  + '<div style="flex:1; min-width:0;">'
@@ -27372,13 +27405,18 @@ window.__renderDashOverviewMemo = function() {
  + '<span style="font-size:9px; font-weight:700; padding:1px 6px; border-radius:999px; background:'+dColor+'22; color:'+dColor+'; text-transform:uppercase;">'+esc(dLabel)+'</span>'
  + (m.pinned ? '<span style="font-size:10px; color:#B45309; font-weight:700;">'+pinIcon+'PIN</span>' : '')
  + '</div>'
- + '<div style="font-size:13px; font-weight:700; color:#78350F; line-height:1.3;">' + esc(m.title || '') + '</div>'
+ + '<div style="font-size:13px; font-weight:700; color:#78350F; line-height:1.3;">' + esc(window.__memoTx(m.title || '')) + '</div>'
  + bodyPreview
  + '<div style="font-size:11px; color:var(--neutral-500); margin-top:4px;">' + esc(ago) + '</div>'
  + '</div>'
  + '</div>';
  }).join('');
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ // p1_630 — EN mode: auto-translate memo title+body (cached), re-render when ready
+ if(window.I18N && window.I18N.lang === 'en'){
+  const txt = []; top.forEach(m => { if(m.title) txt.push(m.title); if(m.body) txt.push(m.body); });
+  window.__txEnsure(txt, () => window.__renderDashOverviewMemo());
+ }
 };
 
 window.__renderDashOverviewRoster = function() {
@@ -31544,6 +31582,8 @@ window.setLang = function(lang) {
  try { if(typeof window.renderPOS === 'function') window.renderPOS(); } catch(e){}
  // p1_443 — re-render All Orders (KPI / headers / status badges via i18n)
  try { if(typeof window.renderAllOrders === 'function' && document.getElementById('allOrdersSection') && document.getElementById('allOrdersSection').style.display !== 'none') window.renderAllOrders(); } catch(e){}
+ // p1_630 — re-render Memo Board (auto-translate content when EN)
+ try { if(typeof window.renderMemoBoard === 'function' && document.getElementById('memoBoardSection') && document.getElementById('memoBoardSection').style.display !== 'none') window.renderMemoBoard(); } catch(e){}
  if(typeof showToast === 'function') {
  showToast(lang === 'bm' ? 'Bahasa: Bahasa Malaysia ' : 'Language: English ', 'success');
  }
