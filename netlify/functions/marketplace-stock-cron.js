@@ -39,7 +39,14 @@ async function reconcile(name, url) {
     const startMs = Date.now();
     try {
         const res = await fetch(url);
-        const json = await res.json();
+        // p1_679 — endpoint can return an HTML 502 page when the sync fn times out; don't crash on
+        // res.json() ("Unexpected token '<'"). Read text, parse defensively, log a legible reason.
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); }
+        catch (_) {
+            return { name, ok: false, error: `non-JSON response (HTTP ${res.status}) — ${name} stock-sync mungkin timeout/ralat; akan cuba lagi run seterusnya`, http: res.status, duration_ms: Date.now() - startMs };
+        }
         return {
             name, ok: !json.error,
             pushed: json.pushed || 0,

@@ -88,10 +88,39 @@ async function shopeePost(path, extraQuery, bodyObj, accessToken, shopId) {
     return res.json();
 }
 
+function signPublic(path, timestamp) {
+    return crypto.createHmac('sha256', PARTNER_KEY).update(`${PARTNER_ID}${path}${timestamp}`).digest('hex');
+}
+
 async function getValidToken() {
     const rows = await sb('GET', `/shopee_tokens?environment=eq.${ENV}&order=created_at.desc&limit=1`);
     if (!rows || !rows.length) throw new Error(`No Shopee token for ${ENV} — run the authorize flow first.`);
-    return rows[0]; // refresh logic lives in shopee-sync.js; this assumes recent connect
+    let tok = rows[0];
+    // p1_679 — refresh if <1h left. Was MISSING here (unlike shopee-sync.js/webhook): a stale token
+    // made Shopee reject calls (error_sign) and the function dragged to a Netlify timeout → the
+    // stock-cron got an HTML 502 page → "Unexpected token '<'". Mirror the webhook's refresh.
+    try {
+        const expMs = new Date(tok.access_token_expire_at).getTime() - Date.now();
+        if (isFinite(expMs) && expMs < 60 * 60 * 1000 && tok.refresh_token) {
+            const path = '/api/v2/auth/access_token/get';
+            const ts = Math.floor(Date.now() / 1000);
+            const r = await fetch(`${HOST}${path}?partner_id=${PARTNER_ID}&timestamp=${ts}&sign=${signPublic(path, ts)}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refresh_token: tok.refresh_token, shop_id: Number(tok.shop_id), partner_id: Number(PARTNER_ID) })
+            });
+            const j = await r.json();
+            if (j && j.access_token) {
+                const patch = {
+                    access_token: j.access_token,
+                    access_token_expire_at: new Date(Date.now() + (Number(j.expire_in || 14400) * 1000)).toISOString(),
+                    refresh_token: j.refresh_token || tok.refresh_token
+                };
+                await sb('PATCH', `/shopee_tokens?shop_id=eq.${tok.shop_id}`, patch, { Prefer: 'return=minimal' });
+                tok = Object.assign(tok, patch);
+            }
+        }
+    } catch (e) { /* keep stale token; the API call will surface the real error */ }
+    return tok;
 }
 
 // Load POS stock from inventory_batches (sum qty_remaining per SKU).
