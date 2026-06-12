@@ -7519,7 +7519,16 @@ async function initApp() {
  let sales = [];
  try { sales = await window.__aoFetchAllSales(); }
  catch(e) { try { const r = await db.from('sales_history').select('*').order('created_at', {ascending: false}).limit(1000); sales = r.data || []; } catch(_){} }
- if(sales && sales.length) salesHistory = [...salesHistory,...sales];
+ // p1_673 — GANTI senarai (dedupe ikut id), JANGAN tambah. Dulu [...salesHistory,...sales]
+ // = setiap kali initApp jalan, senarai jualan berganda dalam memori → All Orders & Komisen
+ // nampak double (Ariff). __aoFetchAllSales pulang SEMUA baris dari DB, jadi DB = sumber penuh.
+ // Kekalkan mana-mana jualan in-memori yang BELUM ada dalam hasil DB (cth baru di-unshift, elak
+ // hilang sekejap akibat race) — selebihnya guna DB.
+ if(sales && sales.length){
+ const dbIds = new Set(sales.map(s => s && s.id).filter(x => x != null));
+ const localOnly = salesHistory.filter(s => s && (s.id == null || !dbIds.has(s.id)));
+ salesHistory = [...localOnly, ...sales];
+ }
  }
  // p3_10: refresh fulfillment KPIs + sidebar badge once orders are loaded
  if(typeof window.renderFulfillment === 'function') { try { window.renderFulfillment(); } catch(e){} }
