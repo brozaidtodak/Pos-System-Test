@@ -27873,8 +27873,12 @@ window.__aimSellerUrl = function(sku, platform){
   if(pid && typeof window.__TIKTOK_EDIT_URL === 'function'){ try { const u = window.__TIKTOK_EDIT_URL(pid); if(u) return u; } catch(e){} }
   return 'https://seller-my.tiktok.com/product/manage';
  }
+ // Shopee: no confirmed stable external per-product deep-link either (p1_668 — /portal/product/{id}/edit
+ // landed on the wrong page) → land on the product list, staff searches the SKU there. Override
+ // window.__SHOPEE_EDIT_URL(itemId) to deep-link once the real edit URL is confirmed.
  const iid = md.shopee_item_id;
- return iid ? ('https://seller.shopee.com.my/portal/product/'+encodeURIComponent(iid)+'/edit') : 'https://seller.shopee.com.my/portal/product/list/all';
+ if(iid && typeof window.__SHOPEE_EDIT_URL === 'function'){ try { const u = window.__SHOPEE_EDIT_URL(iid); if(u) return u; } catch(e){} }
+ return 'https://seller.shopee.com.my/portal/product/list/all';
 };
 window.__aimOpenSeller = function(sku, platform){ try { window.open(window.__aimSellerUrl(sku, platform), '_blank', 'noopener'); } catch(e){} };
 window.__aimCampUrl = function(platform){ return /tiktok/i.test(platform) ? 'https://seller-my.tiktok.com/promotion' : 'https://seller.shopee.com.my/portal/marketing'; };
