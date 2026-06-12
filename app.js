@@ -27859,6 +27859,23 @@ window.__ovTab = function(name, opts){
  }
 };
 
+// p1_666 — AIM resolve actions: per-SKU buttons to fix an issue (push from POS, or open the
+// exact product in Seller Centre). Deep-links built from masterProducts marketplace metadata.
+window.__aimSellerUrl = function(sku, platform){
+ const p = (typeof masterProducts!=='undefined' && Array.isArray(masterProducts) ? masterProducts : []).find(x=>x && (x.sku||'').toUpperCase()===String(sku||'').toUpperCase());
+ const md = (p && p.metadata && typeof p.metadata==='object') ? p.metadata : {};
+ if(/tiktok/i.test(platform)){
+  const pid = md.tiktok_product_id;
+  return pid ? ('https://seller-my.tiktok.com/product/edit?product_id='+encodeURIComponent(pid)) : 'https://seller-my.tiktok.com/product/manage';
+ }
+ const iid = md.shopee_item_id;
+ return iid ? ('https://seller.shopee.com.my/portal/product/'+encodeURIComponent(iid)+'/edit') : 'https://seller.shopee.com.my/portal/product/list/all';
+};
+window.__aimOpenSeller = function(sku, platform){ try { window.open(window.__aimSellerUrl(sku, platform), '_blank', 'noopener'); } catch(e){} };
+window.__aimCampUrl = function(platform){ return /tiktok/i.test(platform) ? 'https://seller-my.tiktok.com/promotion' : 'https://seller.shopee.com.my/portal/marketing'; };
+window.__aimOpenConnections = function(){ const el=document.querySelector('[data-tab="nav_connections"]'); if(el) el.click(); };
+window.__aimOpenApps = function(){ const el=document.querySelector('[data-tab="nav_apps"]'); if(el) el.click(); };
+
 // p1_634 (#3) — Integration alert: surface price-sentinel below-cost/drift on owner landing.
 window.__renderIntegrationAlert = async function(){
  const box = document.getElementById('integrationAlertBox'); if(!box) return;
@@ -27906,6 +27923,9 @@ window.__renderIntegrationAlert = async function(){
   // p1_643 — table helpers + clickable SKU (→ Bulk Edit)
   const moneyRm = (v)=> (v==null||v===''||isNaN(Number(v)))?'—':('RM'+Number(v).toFixed(2));
   const skuLink = (sku)=>`<a onclick="window.__gotoBulkSku('${esc(sku)}')" title="Buka ${esc(sku)} di Bulk Edit" style="color:#A05F22;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">${esc(sku)}</a>`;
+  // p1_666 — resolve buttons per SKU: fix in POS (push corrected price) or open the exact product in Seller Centre
+  const aimBtn = (label,icon,onclick,title,primary)=>`<button onclick="${onclick}" title="${esc(title)}" style="font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;border:1px solid ${primary?'#CD7C32':'#D9C3B8'};background:${primary?'#CD7C32':'#fff'};color:${primary?'#fff':'#7C4A1A'};"><i data-lucide="${icon}" style="width:10px;height:10px;"></i>${esc(label)}</button>`;
+  const aimActions = (sku,platform)=>`<div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;">${aimBtn('POS','pencil',`window.openMpPush('${esc(sku)}')`,'Tukar & push harga terus dari POS',true)}${aimBtn(platform||'Seller','external-link',`window.__aimOpenSeller('${esc(sku)}','${esc(platform||'')}')`,'Buka produk di '+(platform||'')+' Seller Centre (keluarkan dari kempen / tukar manual)',false)}</div>`;
   const plat = (p)=>`<span style="color:#9ca3af;">${esc(p)}</span>`;
   const th = (t,r)=>`<th style="padding:4px 8px;${r?'text-align:right;':'text-align:left;'}font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:#9a8a86;font-weight:800;white-space:nowrap;">${t}</th>`;
   const td = (c,r)=>`<td style="padding:4px 8px;${r?'text-align:right;':''}white-space:nowrap;">${c}</td>`;
@@ -27914,8 +27934,8 @@ window.__renderIntegrationAlert = async function(){
    <div style="margin-bottom:10px;">
     <div style="font-size:11px;font-weight:800;color:#7C2A20;text-transform:uppercase;margin-bottom:3px;">Jual bawah kos (rugi)</div>
     <table style="width:100%;border-collapse:collapse;">
-     <thead><tr style="border-bottom:1px solid #E3C9C2;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('Disk',1)}${th('Jual',1)}${th('Kos',1)}</tr></thead>
-     <tbody>${below.slice(0,12).map(x=>`<tr style="border-bottom:1px solid #F0DDD8;font-size:12px;color:#5E2018;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(x.campaign_disc!=null?('−'+x.campaign_disc+'%'):'—',1)}${td('<b style="color:#B23A2E;">'+moneyRm(x.effective_price)+'</b>',1)}${td(moneyRm(x.cost),1)}</tr>`).join('')}</tbody>
+     <thead><tr style="border-bottom:1px solid #E3C9C2;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('Disk',1)}${th('Jual',1)}${th('Kos',1)}${th('Resolve',1)}</tr></thead>
+     <tbody>${below.slice(0,12).map(x=>`<tr style="border-bottom:1px solid #F0DDD8;font-size:12px;color:#5E2018;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(x.campaign_disc!=null?('−'+x.campaign_disc+'%'):'—',1)}${td('<b style="color:#B23A2E;">'+moneyRm(x.effective_price)+'</b>',1)}${td(moneyRm(x.cost),1)}${td(aimActions(x.sku,x.platform),1)}</tr>`).join('')}</tbody>
     </table>
     ${below.length>12?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">+${below.length-12} lagi</div>`:''}
    </div>`:'';
@@ -27923,8 +27943,8 @@ window.__renderIntegrationAlert = async function(){
    <div style="margin-bottom:10px;">
     <div style="font-size:11px;font-weight:800;color:#7A5410;text-transform:uppercase;margin-bottom:3px;">Bawah floor 35% (margin nipis)</div>
     <table style="width:100%;border-collapse:collapse;">
-     <thead><tr style="border-bottom:1px solid #E6D6AE;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('Disk',1)}${th('Jual',1)}${th('Kos',1)}</tr></thead>
-     <tbody>${belowFloor.slice(0,12).map(x=>`<tr style="border-bottom:1px solid #F1E7CF;font-size:12px;color:#5E3F0C;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(x.campaign_disc!=null?('−'+x.campaign_disc+'%'):'—',1)}${td('<b style="color:#9E7016;">'+moneyRm(x.effective_price)+'</b>',1)}${td(moneyRm(x.cost),1)}</tr>`).join('')}</tbody>
+     <thead><tr style="border-bottom:1px solid #E6D6AE;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('Disk',1)}${th('Jual',1)}${th('Kos',1)}${th('Resolve',1)}</tr></thead>
+     <tbody>${belowFloor.slice(0,12).map(x=>`<tr style="border-bottom:1px solid #F1E7CF;font-size:12px;color:#5E3F0C;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(x.campaign_disc!=null?('−'+x.campaign_disc+'%'):'—',1)}${td('<b style="color:#9E7016;">'+moneyRm(x.effective_price)+'</b>',1)}${td(moneyRm(x.cost),1)}${td(aimActions(x.sku,x.platform),1)}</tr>`).join('')}</tbody>
     </table>
     ${belowFloor.length>12?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">+${belowFloor.length-12} lagi</div>`:''}
    </div>`:'';
@@ -27932,8 +27952,8 @@ window.__renderIntegrationAlert = async function(){
    <div>
     <div style="font-size:11px;font-weight:800;color:#7A5410;text-transform:uppercase;margin-bottom:3px;">Harga POS ≠ live</div>
     <table style="width:100%;border-collapse:collapse;">
-     <thead><tr style="border-bottom:1px solid #E6D6AE;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('POS',1)}${th('Beza',1)}</tr></thead>
-     <tbody>${drift.slice(0,12).map(x=>{const dp=driftPct(x);return `<tr style="border-bottom:1px solid #F1E7CF;font-size:12px;color:#5E3F0C;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(moneyRm(x.pos_price),1)}${td('<b style="color:#9E7016;">'+(dp!=null?dp+'%':'—')+'</b>',1)}</tr>`;}).join('')}</tbody>
+     <thead><tr style="border-bottom:1px solid #E6D6AE;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('POS',1)}${th('Beza',1)}${th('Resolve',1)}</tr></thead>
+     <tbody>${drift.slice(0,12).map(x=>{const dp=driftPct(x);return `<tr style="border-bottom:1px solid #F1E7CF;font-size:12px;color:#5E3F0C;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(moneyRm(x.pos_price),1)}${td('<b style="color:#9E7016;">'+(dp!=null?dp+'%':'—')+'</b>',1)}${td(aimActions(x.sku,x.platform),1)}</tr>`;}).join('')}</tbody>
     </table>
     ${drift.length>12?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">+${drift.length-12} lagi</div>`:''}
    </div>`:'';
@@ -27944,7 +27964,7 @@ window.__renderIntegrationAlert = async function(){
   const campHtml = campList.length?`
    <div style="margin-bottom:10px;padding:9px 11px;background:#FBF1E6;border:1px solid #F0C896;border-radius:8px;">
     <div style="font-size:11px;font-weight:800;color:#7C4A1A;text-transform:uppercase;margin-bottom:5px;">Kempen / promo aktif — harga sedang didiskaun</div>
-    ${campList.map(c=>`<div style="font-size:12px;color:#5E3F0C;padding:3px 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-top:1px solid #F0E0C8;">${campChip(c.platform)} <b>${esc(c.name)}</b> <span style="background:#B23A2E;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">−${c.disc}%</span> <span style="color:#9ca3af;">${c.count} produk</span>${c.belowCost?`<span style="background:#F4E4DF;color:#B23A2E;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">${c.belowCost} BAWAH KOS!</span>`:''} <span style="color:#bbb;font-size:10px;">cth: ${c.skus.slice(0,4).map(s=>esc(s)).join(', ')}</span></div>`).join('')}
+    ${campList.map(c=>`<div style="font-size:12px;color:#5E3F0C;padding:3px 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-top:1px solid #F0E0C8;">${campChip(c.platform)} <b>${esc(c.name)}</b> <span style="background:#B23A2E;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">−${c.disc}%</span> <span style="color:#9ca3af;">${c.count} produk</span>${c.belowCost?`<span style="background:#F4E4DF;color:#B23A2E;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">${c.belowCost} BAWAH KOS!</span>`:''} <span style="color:#bbb;font-size:10px;">cth: ${c.skus.slice(0,4).map(s=>esc(s)).join(', ')}</span> <a href="${window.__aimCampUrl(c.platform)}" target="_blank" rel="noopener" title="Urus / keluarkan produk dari kempen di ${esc(c.platform)} Seller Centre" style="margin-left:auto;font-size:10.5px;font-weight:700;color:#fff;background:#CD7C32;border-radius:5px;padding:2px 8px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;"><i data-lucide="external-link" style="width:10px;height:10px;"></i>Urus kempen</a></div>`).join('')}
     <div style="font-size:10.5px;color:#9a8a6a;margin-top:5px;">Harga customer = harga POS − diskaun kempen. Pastikan masih atas kos/floor.</div>
    </div>`:'';
   box.innerHTML = `
@@ -27962,14 +27982,14 @@ window.__renderIntegrationAlert = async function(){
      <span style="margin-left:auto;font-size:11px;color:#9ca3af;">auto tiap 6 jam · resolve = auto hilang</span>
      <button id="__rescanBtn" onclick="window.__rescanIntegration && window.__rescanIntegration()" title="Semak harga live sekarang — issue yang dah resolve akan hilang" style="font-size:11px;font-weight:700;color:#7C2A20;background:#fff;border:1px solid #E3C9C2;border-radius:6px;padding:4px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="refresh-cw" style="width:11px;height:11px;"></i> Semak semula</button>
     </div>
-    ${cfgFail.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#F4E4DF;border-radius:6px;"><div style="font-size:11px;font-weight:800;color:#5E2018;text-transform:uppercase;">Konfigurasi / creds rosak</div>${cfgFail.slice(0,5).map(c=>`<div style="font-size:12px;color:#5E2018;padding:2px 0;"><b>${esc(c.check_key)}</b> — ${esc((c.detail||'').slice(0,80))}</div>`).join('')}</div>`:''}
-    ${tokBad.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#F4E4DF;border-radius:6px;"><div style="font-size:11px;font-weight:800;color:#5E2018;text-transform:uppercase;">Token marketplace</div>${tokBad.map(t=>`<div style="font-size:12px;color:#5E2018;padding:2px 0;"><b>${esc(t.platform)}</b> — ${esc(t.message)}</div>`).join('')}</div>`:''}
-    ${pushDead.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#F4E4DF;border-radius:6px;"><div style="font-size:11px;font-weight:800;color:#5E2018;text-transform:uppercase;">Push harga gagal (dah cuba ${5}×)</div>${pushDead.slice(0,5).map(p=>`<div style="font-size:12px;color:#5E2018;padding:2px 0;">${skuLink(p.sku)} <span style="color:#9ca3af;">${esc(p.channel)}</span> — ${esc((p.error_message||'').slice(0,70))}</div>`).join('')}${pushDead.length>5?`<div style="font-size:11px;color:#9ca3af;">+${pushDead.length-5} lagi</div>`:''}</div>`:''}
+    ${cfgFail.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#F4E4DF;border-radius:6px;"><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;font-weight:800;color:#5E2018;text-transform:uppercase;">Konfigurasi / creds rosak</div>${aimBtn('Buka Apps','layout-grid','window.__aimOpenApps()','Buka Apps untuk semak status integrasi',true)}</div>${cfgFail.slice(0,5).map(c=>`<div style="font-size:12px;color:#5E2018;padding:2px 0;"><b>${esc(c.check_key)}</b> — ${esc((c.detail||'').slice(0,80))}</div>`).join('')}</div>`:''}
+    ${tokBad.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#F4E4DF;border-radius:6px;"><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;font-weight:800;color:#5E2018;text-transform:uppercase;">Token marketplace</div>${aimBtn('Authorize semula','plug-zap','window.__aimOpenConnections()','Buka Connections untuk authorize semula token',true)}</div>${tokBad.map(t=>`<div style="font-size:12px;color:#5E2018;padding:2px 0;"><b>${esc(t.platform)}</b> — ${esc(t.message)}</div>`).join('')}</div>`:''}
+    ${pushDead.length?`<div style="margin-bottom:8px;padding:8px 10px;background:#F4E4DF;border-radius:6px;"><div style="font-size:11px;font-weight:800;color:#5E2018;text-transform:uppercase;">Push harga gagal (dah cuba ${5}×)</div>${pushDead.slice(0,5).map(p=>`<div style="font-size:12px;color:#5E2018;padding:3px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span>${skuLink(p.sku)} <span style="color:#9ca3af;">${esc(p.channel)}</span> — ${esc((p.error_message||'').slice(0,70))}</span><span style="margin-left:auto;">${aimActions(p.sku,p.channel)}</span></div>`).join('')}${pushDead.length>5?`<div style="font-size:11px;color:#9ca3af;">+${pushDead.length-5} lagi</div>`:''}</div>`:''}
     ${belowTable}
     ${campHtml}
     ${belowFloorTable}
     ${driftTable}
-    <div style="font-size:11.5px;color:#6B7280;margin-top:8px;">Klik SKU untuk buka di Bulk Edit. Betulkan harga marketplace di Shopee/TikTok Seller Center — POS flag je, tak boleh tukar harga marketplace dari sini.</div>
+    <div style="font-size:11.5px;color:#6B7280;margin-top:8px;line-height:1.6;"><b>Cara resolve:</b> Klik <b>SKU</b> = buka Bulk Edit. Butang <b style="color:#A05F22;">POS</b> = tukar &amp; push harga terus dari sini (kalau produk dalam kempen, marketplace kunci harga — guna butang Seller). Butang <b>Shopee/TikTok</b> = buka produk tepat di Seller Centre (untuk keluarkan dari kempen atau tukar harga manual).</div>
    </div>`;
   __setAim(issueCount, true);
   if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
