@@ -31457,6 +31457,9 @@ window.I18N = {
  lp_coll_limited: { bm: 'Masa Terhad', en: 'Limited Time' },
  lp_coll_sale_title: { bm: 'Jualan Festival', en: 'Festival Sale' },
  lp_coll_sale_sub: { bm: 'Diskaun sampai 50% untuk gear pilihan', en: 'Up to 50% off selected gear' },
+ lp_hero_sub_pre: { bm: 'Gear camping & outdoor premium, terus dari', en: 'Premium camping & outdoor gear, supplied directly from' },
+ lp_hero_sub_post: { bm: 'jenama dipercayai.', en: 'trusted brands.' },
+ lp_foot_buy: { bm: 'Beli Kami Di', en: 'Buy From Us' },
 
  lp_shop_eyebrow: { bm: 'Kedai', en: 'Shop' },
  lp_shop_h2: { bm: 'Semua Produk', en: 'All Products' },
