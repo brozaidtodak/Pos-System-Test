@@ -27865,8 +27865,13 @@ window.__aimSellerUrl = function(sku, platform){
  const p = (typeof masterProducts!=='undefined' && Array.isArray(masterProducts) ? masterProducts : []).find(x=>x && (x.sku||'').toUpperCase()===String(sku||'').toUpperCase());
  const md = (p && p.metadata && typeof p.metadata==='object') ? p.metadata : {};
  if(/tiktok/i.test(platform)){
+  // TikTok Shop has no stable external per-product deep-link — land on the product
+  // management list (reliable), staff searches the SKU there. p1_667 (was a broken
+  // /product/edit?product_id= guess). Override window.__TIKTOK_EDIT_URL(pid) to deep-link
+  // if/when the exact edit URL is confirmed.
   const pid = md.tiktok_product_id;
-  return pid ? ('https://seller-my.tiktok.com/product/edit?product_id='+encodeURIComponent(pid)) : 'https://seller-my.tiktok.com/product/manage';
+  if(pid && typeof window.__TIKTOK_EDIT_URL === 'function'){ try { const u = window.__TIKTOK_EDIT_URL(pid); if(u) return u; } catch(e){} }
+  return 'https://seller-my.tiktok.com/product/manage';
  }
  const iid = md.shopee_item_id;
  return iid ? ('https://seller.shopee.com.my/portal/product/'+encodeURIComponent(iid)+'/edit') : 'https://seller.shopee.com.my/portal/product/list/all';
