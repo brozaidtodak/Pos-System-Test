@@ -131,6 +131,16 @@ exports.handler = async (event) => {
     out.summary = summary;
     out.findings_count = findings.length;
 
+    // p1_681 — always log the run summary so it's observable even when findings=0 / via background (no body).
+    try {
+        const errs = ['Shopee', 'TikTok'].filter(c => settleMeta[c] && settleMeta[c].error).map(c => `${c}: ${settleMeta[c].error}`);
+        await sb('POST', '/shopee_sync_log', {
+            source: 'settlement-recon', mode, environment: 'live',
+            error_message: errs.length ? errs.join(' | ') : null,
+            raw_response: { summary, findings_count: findings.length, days }
+        }, { Prefer: 'return=minimal' });
+    } catch (_) { /* non-blocking */ }
+
     if (mode === 'peek') {
         out.sample = findings.slice(0, 25);
         out.note = 'PEEK — no DB write. skipped_no_id = orders without a marketplace id (EasyStore-migrated; unmatchable).';
