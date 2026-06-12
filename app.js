@@ -22938,13 +22938,40 @@ window.__mpPushNow = async function(){
   const r = await fetch('/api/marketplace-price-push?mode=push&skus='+encodeURIComponent(p.sku));
   const j = await r.json().catch(()=>({}));
   const sp = j.shopee||{}, tt = j.tiktok||{}, clamped = j.clamped||[];
-  let html = '<div style="background:#E6F0E4; border:1px solid #ABC6A0; border-radius:8px; padding:10px 12px; color:#2F4A2C; line-height:1.7;"><b>Berjaya dihantar ke marketplace.</b><br>';
-  if(payload.shopee_price!=null) html += 'Shopee: '+((sp.pushed||0)>0?('<b>✓ updated</b>'):((sp.failed||0)>0?'<span style="color:#B23A2E;">gagal</span>':'tiada perubahan'))+'<br>';
-  if(payload.tiktok_price!=null) html += 'TikTok: '+((tt.pushed||0)>0?('<b>✓ updated</b>'):((tt.failed||0)>0?'<span style="color:#B23A2E;">gagal</span>':'tiada perubahan'))+'<br>';
-  if(clamped.length) html += '<span style="color:#9E7016;">Nota: harga bawah floor 35% auto-naik ke floor (tak boleh bawah base).</span>';
+  // p1_664 — bila gagal: tunjuk SEBAB + CARA SELESAI. Bila berjaya tapi produk dalam kempen: nota harga papar ikut kempen.
+  const explainErr = (channel, errs)=>{
+   const e = (errs && errs[0]) || {}; const blob = (String(e.error||e.code||'')+' '+String(e.message||'')).toLowerCase();
+   if(/update_price_fail|error_update_price/.test(blob)) return 'Sebab: '+channel+' tolak tukar harga — biasanya produk sedang dalam <b>KEMPEN/diskaun aktif</b> (harga dikunci masa kempen), atau '+channel+' hadkan kenaikan harga mendadak (anti-fake-diskaun, boleh flag ~7 hari).<br><b>Cara selesai:</b> (1) keluarkan produk dari kempen di Seller Centre dulu, ATAU (2) tukar harga terus di '+channel+' Seller Centre, ATAU (3) cuba semula selepas kempen tamat.';
+   if(/not.?found|invalid.?item|item.?id|product.?not|sku.?not/.test(blob)) return 'Sebab: produk tak jumpa / ID '+channel+' salah.<br><b>Cara selesai:</b> semak '+channel+' Item/Product ID di PDP produk (bahagian Online Channels).';
+   if(/token|auth|sign|unauthor|forbidden|\b401\b|\b403\b/.test(blob)) return 'Sebab: masalah sambungan '+channel+' (token/auth).<br><b>Cara selesai:</b> buka Apps → semak status token '+channel+', authorize semula kalau perlu.';
+   if(/model|variation|variant/.test(blob)) return 'Sebab: Variation/SKU ID '+channel+' untuk variant ni tak ada.<br><b>Cara selesai:</b> isi Variation ID di Bulk Edit (Pilih Field → Marketplace) atau PDP.';
+   const raw = (e.message||e.error||'ralat tak diketahui');
+   return 'Sebab: '+raw+'.<br><b>Cara selesai:</b> cuba semula, atau tukar harga terus di '+channel+' Seller Centre.';
+  };
+  // Bila produk dalam kempen aktif: API terima harga (success) TAPI marketplace KUNCI harga masa kempen → harga tak bertukar di Seller Centre sampai kempen tamat. Ini punca utama "harga tak update tepat".
+  const campLock = (channel, c)=>{
+   if(!(c && c.active)) return '';
+   return '<div style="color:#7C4A1A; font-size:11.5px; margin-top:3px; background:#FBF3E6; border:1px solid #E8D6B3; border-radius:6px; padding:6px 8px;">'
+    +'<b>Tapi harga belum tentu bertukar di Seller Centre.</b> Produk ni dalam kempen <b>'+(c.name||'')+'</b> (−'+(c.discount_value||0)+'%). '
+    +channel+' <b>kunci harga masa kempen</b> — harga yang kau push baru terpakai bila kempen tamat ATAU bila kau keluarkan produk dari kempen di '+channel+' Seller Centre dulu.</div>';
+  };
+  const lines = []; let anyFail = false;
+  if(payload.shopee_price!=null){
+   if((sp.pushed||0)>0) lines.push('<div style="color:#2F4A2C;"><b>Shopee:</b> ✓ dihantar (RM '+Number(payload.shopee_price).toFixed(2)+')</div>'+campLock('Shopee', p.shopee_campaign));
+   else if((sp.failed||0)>0){ anyFail=true; lines.push('<div style="color:#7C2A20;"><b>Shopee: GAGAL.</b><br><span style="font-size:12px;">'+explainErr('Shopee', sp.errors)+'</span></div>'); }
+   else lines.push('<div style="color:#9ca3af;"><b>Shopee:</b> tiada perubahan (tak mapped?)</div>');
+  }
+  if(payload.tiktok_price!=null){
+   if((tt.pushed||0)>0) lines.push('<div style="color:#2F4A2C;"><b>TikTok:</b> ✓ dihantar (RM '+Number(payload.tiktok_price).toFixed(2)+')</div>'+campLock('TikTok', p.tiktok_campaign));
+   else if((tt.failed||0)>0){ anyFail=true; lines.push('<div style="color:#7C2A20;"><b>TikTok: GAGAL.</b><br><span style="font-size:12px;">'+explainErr('TikTok', tt.errors)+'</span></div>'); }
+   else lines.push('<div style="color:#9ca3af;"><b>TikTok:</b> tiada perubahan (tak mapped?)</div>');
+  }
+  const bg = anyFail?'#F4E4DF':'#E6F0E4', bd = anyFail?'#E3B6AC':'#ABC6A0';
+  let html = '<div style="background:'+bg+'; border:1px solid '+bd+'; border-radius:8px; padding:10px 12px; line-height:1.6; font-size:12.5px;">'+lines.join('');
+  if(clamped.length) html += '<div style="color:#9E7016; margin-top:5px;">Nota: harga bawah floor 35% auto-naik ke floor.</div>';
   html += '</div>';
   res.innerHTML = html;
-  if(typeof showToast==='function') showToast(p.sku+' — harga marketplace dihantar.', 'success');
+  if(typeof showToast==='function') showToast(p.sku+(anyFail?' — ada channel gagal, baca nota.':' — harga dihantar.'), anyFail?'warning':'success');
   if(typeof renderBulkOps==='function') try { renderBulkOps(); } catch(e){}
  } catch(e){ res.innerHTML = '<span style="color:#B23A2E;">Ralat: '+(e.message||e)+'</span>'; }
  btn.disabled=false; btn.innerHTML=orig;
