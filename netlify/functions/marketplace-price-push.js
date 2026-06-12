@@ -123,25 +123,31 @@ exports.handler = async (event) => {
             if (cost > 0 && fm > 0) return round2(cost / (1 - Math.min(fm, 90) / 100));
             return cost; // hard floor = cost (0 if cost unknown → no guard)
         };
+        const force = (event.queryStringParameters || {}).force === '1'; // ?force=1 bypasses the floor clamp
         const plan = rows.map(r => {
             const m = (r.metadata && typeof r.metadata === 'object') ? r.metadata : {};
             const __mp = Number(r.price_marketplace); // p1_556 (#32) — 0/negatif = unset, fallback ke harga POS (elak base 0 buang SKU dari push)
             const base = (isFinite(__mp) && __mp > 0) ? __mp : (Number(r.price) || 0);
             const customShopee = computeCustom(r.shopee_price, r.shopee_price_mode, base);
             const customTiktok = computeCustom(r.tiktok_price, r.tiktok_price_mode, base);
-            const sp = customShopee != null ? round2(customShopee) : 0; // 0 = no price → not pushed
-            const tp = customTiktok != null ? round2(customTiktok) : 0;
+            const sp0 = customShopee != null ? round2(customShopee) : 0; // 0 = no price → not pushed
+            const tp0 = customTiktok != null ? round2(customTiktok) : 0;
             const cost = Number(r.cost_price) || 0;
             const floor = floorFor(r);
+            // p1_657 — AUTO BASE PRICE (floor = 35% margin = cost/(1−floor_margin%)). Marketplace price
+            // can NEVER be below the floor: clamp UP to floor when a channel price is below it (unless ?force=1).
+            const spClamped = !force && floor > 0 && sp0 > 0 && sp0 < floor;
+            const tpClamped = !force && floor > 0 && tp0 > 0 && tp0 < floor;
             return {
                 sku: (r.sku || '').toUpperCase(),
                 base, cost, floor,
-                shopee_price: sp,
-                tiktok_price: tp,
+                shopee_price: spClamped ? floor : sp0,
+                tiktok_price: tpClamped ? floor : tp0,
+                shopee_raw: sp0, tiktok_raw: tp0,
                 shopee_custom: customShopee != null,
                 tiktok_custom: customTiktok != null,
-                shopee_blocked: floor > 0 && sp > 0 && sp < floor,
-                tiktok_blocked: floor > 0 && tp > 0 && tp < floor,
+                shopee_clamped: spClamped,
+                tiktok_clamped: tpClamped,
                 shopee_item_id: m.shopee_item_id || null,
                 shopee_model_id: m.shopee_model_id != null ? m.shopee_model_id : null,
                 tiktok_product_id: m.tiktok_product_id || null,
@@ -149,14 +155,13 @@ exports.handler = async (event) => {
             };
         }).filter(x => x.base > 0 || x.shopee_price > 0 || x.tiktok_price > 0);
 
-        // p1_631 (#1) — collect below-floor blocks (skipped unless ?force=1)
-        const force = (event.queryStringParameters || {}).force === '1';
-        out.blocked = [];
+        // p1_657 — channel prices auto-clamped UP to the 35% floor (base price)
+        out.clamped = [];
         for (const x of plan) {
-            if (x.shopee_blocked) out.blocked.push({ sku: x.sku, channel: 'shopee', price: x.shopee_price, floor: x.floor, cost: x.cost });
-            if (x.tiktok_blocked) out.blocked.push({ sku: x.sku, channel: 'tiktok', price: x.tiktok_price, floor: x.floor, cost: x.cost });
+            if (x.shopee_clamped) out.clamped.push({ sku: x.sku, channel: 'shopee', from: x.shopee_raw, to: x.floor, cost: x.cost });
+            if (x.tiktok_clamped) out.clamped.push({ sku: x.sku, channel: 'tiktok', from: x.tiktok_raw, to: x.floor, cost: x.cost });
         }
-        out.blocked_count = out.blocked.length;
+        out.clamped_count = out.clamped.length;
         out.force = force;
 
         out.products = plan.length;
@@ -167,14 +172,14 @@ exports.handler = async (event) => {
         if (mode === 'dryrun') {
             out.sample = plan.slice(0, 15).map(x => ({ sku: x.sku, base: x.base, shopee: x.shopee_price + (x.shopee_custom ? ' (custom)' : ''), tiktok: x.tiktok_price + (x.tiktok_custom ? ' (custom)' : ''), shopee_mapped: !!x.shopee_item_id }));
             out.note = 'DRYRUN — nothing written. Add ?mode=push to apply (LIVE prices).'
-                + (out.blocked_count ? ` ${out.blocked_count} channel-price(s) BELOW floor will be SKIPPED (use ?force=1 to override).` : '');
+                + (out.clamped_count ? ` ${out.clamped_count} channel-price(s) below the 35% floor will be CLAMPED UP to floor (use ?force=1 to push literal).` : '');
             return json(200, out);
         }
 
         // ---- PUSH: Shopee (group by item_id) ----
         const shopeeRes = { pushed: 0, failed: 0, errors: [], skipped: !doShopee };
         const shopeeOk = [], shopeeFail = []; // p1_639 (#6) per-sku outcome for dead-letter
-        const shopeeMapped = doShopee ? plan.filter(x => x.shopee_item_id && x.shopee_price > 0 && (force || !x.shopee_blocked)) : [];
+        const shopeeMapped = doShopee ? plan.filter(x => x.shopee_item_id && x.shopee_price > 0) : [];
         if (shopeeMapped.length) {
             const tok = await shopee.getValidToken();
             const byItem = {};
@@ -200,7 +205,7 @@ exports.handler = async (event) => {
         // All 621 mapped products have both ids persisted, so target them directly + reliably.
         const tiktokRes = { pushed: 0, failed: 0, errors: [], unmapped: 0, skipped: !doTiktok };
         const tiktokOk = [], tiktokFail = []; // p1_639 (#6) per-sku outcome for dead-letter
-        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id && x.tiktok_price > 0 && (force || !x.tiktok_blocked)) : [];
+        const tiktokMapped = doTiktok ? plan.filter(x => x.tiktok_product_id && x.tiktok_sku_id && x.tiktok_price > 0) : [];
         if (doTiktok) tiktokRes.unmapped = plan.filter(x => !x.tiktok_product_id || !x.tiktok_sku_id).length;
         if (tiktokMapped.length) try {
             const tok = await tiktok.getValidToken();
