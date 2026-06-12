@@ -7478,8 +7478,9 @@ async function initApp() {
  else { ({ data: master } = await db.from('public_products').select('*').limit(100000)); }
  if(master) masterProducts = master;
 
- // p1_627 — shop-level marketplace promotions (coupons, BMSM) for Campaigns page
- try { const { data: mktp } = await db.from('marketplace_promotions').select('*').eq('active', true).limit(500); window.__mktPromos = mktp || []; } catch(e){ window.__mktPromos = window.__mktPromos || []; }
+ // p1_627 — shop-level marketplace promotions (coupons, BMSM) for Campaigns page (staff-only)
+ // p1_675 — guard: anon (landing) tak guna ni; elak baca jadual selepas RLS dikunci.
+ if(window.currentUser){ try { const { data: mktp } = await db.from('marketplace_promotions').select('*').eq('active', true).limit(500); window.__mktPromos = mktp || []; } catch(e){ window.__mktPromos = window.__mktPromos || []; } } else { window.__mktPromos = []; }
 
  // p1_651 (4b) — staff read full batches (cost); public read cost-free public_stock (sku+qty only)
  let batches;
@@ -7487,18 +7488,24 @@ async function initApp() {
  else { ({ data: batches } = await db.from('public_stock').select('*').limit(100000)); }
  if(batches) inventoryBatches = batches;
 
+ // p1_675 — inventory_transactions = data dalaman; staff sahaja (anon landing tak perlu).
+ if(window.currentUser){
  let { data: txns } = await db.from('inventory_transactions').select('*').order('created_at', {ascending: false}).limit(100000);
  if(txns) inventoryTransactions = txns;
+ }
 
+ // p1_675 — pemuat data dalaman (suppliers / PO / reservations / promo-engine) = staff sahaja.
+ if(window.currentUser){
  // Sprint 2.1+2.2: load real PO + suppliers tables
  try { if(typeof loadSuppliers === 'function') await loadSuppliers(); } catch(e) { console.warn('loadSuppliers:', e); }
  try { if(typeof loadPosV2 === 'function') await loadPosV2(); } catch(e) { console.warn('loadPosV2:', e); }
  // Sprint 3.4: load active reservations
  try { if(typeof loadReservations === 'function') await loadReservations(); } catch(e) { console.warn('loadReservations:', e); }
- // p4_4: low-stock notification check (deferred to next tick after render)
- setTimeout(() => { if(typeof checkLowStockNotify === 'function') checkLowStockNotify(); }, 5000);
  // p7_3: load promo engine rules
  try { if(typeof loadPromotions === 'function') await loadPromotions(); } catch(e) { console.warn('loadPromotions:', e); }
+ }
+ // p4_4: low-stock notification check (deferred to next tick after render)
+ setTimeout(() => { if(typeof checkLowStockNotify === 'function') checkLowStockNotify(); }, 5000);
 
  // RENDER FRONTEND INSTANTLY BEFORE ADMIN BACKEND FETCHES
  // p1_47: re-render activity tiles + category pills now that masterProducts is populated
@@ -7547,6 +7554,8 @@ async function initApp() {
  if(fin) financeRecords = fin;
  }
  
+ // p1_675 — roster + pending requests + realtime = staff sahaja (anon landing tak baca jadual staf).
+ if(window.currentUser){
  let { data: rSched } = await db.from('roster_schedules').select('*');
  if(rSched && rSched.length> 0) {
  staffSchedules = rSched;
@@ -7603,6 +7612,7 @@ async function initApp() {
  })
 .subscribe();
  }
+ } // p1_675 — tutup guard roster/pending/realtime (staff sahaja)
 
  renderWMS();
  if(typeof populateEditSkuList === 'function') populateEditSkuList();
@@ -13952,10 +13962,17 @@ window.submitPinLogin = async function() {
  setPinLockoutState(state);
  __pinClearGlobal();
  pinInput.value = ''; window.__pinUpdateDots('');
+ // p1_675 (Langkah B prep) — sesi `authenticated` kini WAJIB (RLS akan dikunci supaya anon
+ // tak boleh baca data customer/jualan/kewangan). Kalau upgrade gagal, JANGAN teruskan sebagai
+ // anon — kekal di skrin PIN + minta cuba semula. (Semua 10 akaun staff disahkan wujud + aktif.)
+ const __authed = await window.__upgradeToAuthSession(user.staff_id, pin).catch(()=>false);
+ if(!__authed){
+ errEl.textContent = 'Sesi selamat gagal diwujudkan. Cuba semula. Kalau berulang, hubungi Bos.';
+ errEl.style.color = '#B23A2E';
+ return; // jangan loginAs sebagai anon
+ }
  const overlay = document.getElementById('pinLoginOverlay');
  if(overlay) overlay.style.display = 'none';
- // p1_647 — establish a real authenticated session BEFORE loading data (graceful if it fails)
- try { await window.__upgradeToAuthSession(user.staff_id, pin); } catch(e){}
  loginAs(user);
 };
 
