@@ -27958,11 +27958,12 @@ window.__renderIntegrationAlert = async function(){
  };
  if(typeof db === 'undefined' || !db){ __setAim(0, false); box.innerHTML=''; return; }
  try {
-  const [{ data }, thRes, pfRes, cfgRes] = await Promise.all([
+  const [{ data }, thRes, pfRes, cfgRes, srRes] = await Promise.all([
     db.from('price_sentinel').select('sku,platform,flag,detail,live_price,effective_price,cost,pos_price,campaign_disc').limit(500),
     db.from('token_health').select('platform,status,message').then(r=>r).catch(()=>({data:[]})),
     db.from('push_failures').select('sku,channel,status,attempts,error_message').eq('status','dead').then(r=>r).catch(()=>({data:[]})),
-    db.from('config_health').select('check_key,detail,status').eq('status','fail').then(r=>r).catch(()=>({data:[]}))
+    db.from('config_health').select('check_key,detail,status').eq('status','fail').then(r=>r).catch(()=>({data:[]})),
+    db.from('settlement_recon').select('order_sn,channel,flag,pos_gross,net_payout,order_date,detail').limit(200).then(r=>r).catch(()=>({data:[]}))
   ]);
   const f = data || [];
   const below = f.filter(x=>x.flag==='below_cost');
@@ -27975,6 +27976,10 @@ window.__renderIntegrationAlert = async function(){
   const pushDead = (pfRes && pfRes.data) || [];
   // p1_640 (#7) — config/creds failures (silent-failure root causes)
   const cfgFail = (cfgRes && cfgRes.data) || [];
+  // p1_681 (#8) — settlement reconciliation: orders sold but not paid (belum_settle) / net payout ≤0 (rugi)
+  const settleRecon = (srRes && srRes.data) || [];
+  const settleUnpaid = settleRecon.filter(x=>x.flag==='belum_settle');
+  const settleRugi = settleRecon.filter(x=>x.flag==='rugi');
   // p1_663 — kempen/promo aktif (dari masterProducts in-memory): staf sedar harga didiskaun berapa & kempen mana
   const __camps = {};
   (typeof masterProducts!=='undefined' && Array.isArray(masterProducts) ? masterProducts : []).forEach(pr=>{
@@ -27988,8 +27993,8 @@ window.__renderIntegrationAlert = async function(){
     });
   });
   const campList = Object.values(__camps).sort((a,b)=>b.count-a.count);
-  const issueCount = below.length + belowFloor.length + drift.length + tokBad.length + pushDead.length + cfgFail.length;
-  if(!below.length && !belowFloor.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length){ __setAim(0, false); box.innerHTML=''; return; }
+  const issueCount = below.length + belowFloor.length + drift.length + tokBad.length + pushDead.length + cfgFail.length + settleUnpaid.length + settleRugi.length;
+  if(!below.length && !belowFloor.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length && !settleUnpaid.length && !settleRugi.length){ __setAim(0, false); box.innerHTML=''; return; }
   const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chip = (bg,txt)=>`<span style="background:${bg};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px;">${txt}</span>`;
   // p1_643 — table helpers + clickable SKU (→ Bulk Edit)
@@ -28051,6 +28056,8 @@ window.__renderIntegrationAlert = async function(){
      ${belowFloor.length?chip('#C68A1A', belowFloor.length+' BAWAH FLOOR 35%'):''}
      ${drift.length?chip('#9E7016', drift.length+' DRIFT harga'):''}
      ${campList.length?chip('#7C4A1A', campList.length+' KEMPEN AKTIF'):''}
+     ${settleUnpaid.length?chip('#7C2A20', settleUnpaid.length+' BELUM DIBAYAR'):''}
+     ${settleRugi.length?chip('#B23A2E', settleRugi.length+' PAYOUT RUGI'):''}
      <span style="margin-left:auto;font-size:11px;color:#9ca3af;">auto tiap 6 jam · resolve = auto hilang</span>
      <button id="__rescanBtn" onclick="window.__rescanIntegration && window.__rescanIntegration()" title="Semak harga live sekarang — issue yang dah resolve akan hilang" style="font-size:11px;font-weight:700;color:#7C2A20;background:#fff;border:1px solid #E3C9C2;border-radius:6px;padding:4px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="refresh-cw" style="width:11px;height:11px;"></i> Semak semula</button>
     </div>
@@ -28061,6 +28068,13 @@ window.__renderIntegrationAlert = async function(){
     ${campHtml}
     ${belowFloorTable}
     ${driftTable}
+    ${(settleUnpaid.length||settleRugi.length)?`
+     <div style="margin-bottom:10px;padding:9px 11px;background:#FBF1E6;border:1px solid #E8C9A8;border-radius:8px;">
+      <div style="font-size:11px;font-weight:800;color:#7C2A20;text-transform:uppercase;margin-bottom:5px;">Settlement marketplace — order jual tapi belum dibayar / payout rugi (#8)</div>
+      ${settleUnpaid.slice(0,8).map(s=>`<div style="font-size:12px;color:#5E2018;padding:2px 0;"><span style="background:${/tiktok/i.test(s.channel)?'#111827':'#EE4D2D'};color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;">${/tiktok/i.test(s.channel)?'TT':'SP'}</span> <b>#${esc(s.order_sn)}</b> — jual RM${Number(s.pos_gross||0).toFixed(2)} · <span style="color:#9ca3af;">${esc((s.detail||'belum settle').slice(0,70))}</span></div>`).join('')}
+      ${settleRugi.slice(0,5).map(s=>`<div style="font-size:12px;color:#7A2A20;padding:2px 0;"><span style="background:${/tiktok/i.test(s.channel)?'#111827':'#EE4D2D'};color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;">${/tiktok/i.test(s.channel)?'TT':'SP'}</span> <b>#${esc(s.order_sn)}</b> — payout RM${Number(s.net_payout||0).toFixed(2)} <span style="color:#9ca3af;">${esc((s.detail||'').slice(0,60))}</span></div>`).join('')}
+      <div style="font-size:10.5px;color:#9a8a6a;margin-top:5px;">Semak di Shopee/TikTok Seller Centre → Finance/Income. Coverage terhad — order tanpa ID marketplace (EasyStore lama) tak boleh dipadan.</div>
+     </div>`:''}
     <div style="font-size:11.5px;color:#6B7280;margin-top:8px;line-height:1.6;"><b>Cara resolve:</b> Klik <b>SKU</b> = buka Bulk Edit. Butang <b style="color:#A05F22;">POS</b> = tukar &amp; push harga terus dari sini (kalau produk dalam kempen, marketplace kunci harga — guna butang Seller). Butang <b>Shopee/TikTok</b> = buka produk tepat di Seller Centre (untuk keluarkan dari kempen atau tukar harga manual).</div>
    </div>`;
   __setAim(issueCount, true);

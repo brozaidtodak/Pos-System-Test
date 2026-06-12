@@ -85,21 +85,17 @@ exports.handler = async (event) => {
     const settle = { Shopee: {}, TikTok: {} };
     const settleMeta = { Shopee: { ok: false }, TikTok: { ok: false } };
     try {
-        // Shopee escrow caps at a 15-day window per call → chunk the requested window.
-        let cur = sinceMs, lastErr = null;
-        const STEP = 15 * 24 * 60 * 60 * 1000;
-        while (cur < Date.now()) {
-            const tMs = Math.min(cur + STEP, Date.now());
-            const j = await fetchJson(`${SITE_URL}/api/shopee-sync?mode=escrow&from=${ymd(cur)}&to=${ymd(tMs)}`);
-            if (j && j.error) lastErr = j.error;
-            for (const row of (j.rows || [])) {
-                if (!row.order_sn) continue;
-                settle.Shopee[String(row.order_sn)] = { gross: round2(row.gross), net: round2(row.net_payout), date: row.order_date };
-            }
-            cur = tMs;
+        // Shopee escrow is per-order (slow) + caps at a 15-day window. Pull ONE recent 15-day window
+        // only — bounded so the function always completes. Coverage is tiny anyway (most Shopee POS
+        // orders lack an id); TikTok (bulk finance API) is the main, reliable channel.
+        const spFrom = ymd(Math.max(sinceMs, Date.now() - 15 * 24 * 60 * 60 * 1000));
+        const j = await fetchJson(`${SITE_URL}/api/shopee-sync?mode=escrow&from=${spFrom}&to=${ymd(Date.now())}`);
+        for (const row of (j.rows || [])) {
+            if (!row.order_sn) continue;
+            settle.Shopee[String(row.order_sn)] = { gross: round2(row.gross), net: round2(row.net_payout), date: row.order_date };
         }
         const cnt = Object.keys(settle.Shopee).length;
-        settleMeta.Shopee = cnt > 0 ? { ok: true, count: cnt } : { ok: false, count: 0, error: lastErr || 'no escrow rows' };
+        settleMeta.Shopee = cnt > 0 ? { ok: true, count: cnt } : { ok: false, count: 0, error: (j && j.error) || 'no escrow rows in window' };
     } catch (e) { settleMeta.Shopee = { ok: false, error: e.message }; }
     try {
         const j = await fetchJson(`${SITE_URL}/api/tiktok-finance?mode=rows&from=${sinceYmd}&to=${ymd(Date.now())}`);
