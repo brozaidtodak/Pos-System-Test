@@ -22895,6 +22895,10 @@ window.__mpPushFloor = function(p){
 };
 window.openMpPush = function(sku){
  const m = document.getElementById('mpPushModal'); if(!m) return;
+ // p1_670 — the modal markup lives inside bulkOpsSection (display:none unless Bulk Edit is open),
+ // so opening it from elsewhere (e.g. the AIM tab) showed nothing. Move it to <body> so it always
+ // renders regardless of which section is active. appendChild moves (not clones) — handlers/IDs kept.
+ if(m.parentElement !== document.body){ try { document.body.appendChild(m); } catch(e){} }
  const dl = document.getElementById('mpPushSkuList');
  if(dl && !dl.children.length && typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)){
   dl.innerHTML = masterProducts.filter(p=>p && p.sku).slice(0,3000).map(p=>'<option value="'+(p.sku||'').toUpperCase()+'">').join('');
