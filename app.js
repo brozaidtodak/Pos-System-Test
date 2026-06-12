@@ -21390,6 +21390,26 @@ window.openPdpModal = function(sku) {
  }
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  }
+ // p1_661 — banner status TikTok (cermin Shopee) untuk simetri
+ const ttStatusEl = document.getElementById('pdpTiktokStatus');
+ if(ttStatusEl) {
+ const ttProduct = m.tiktok_product_id, ttSku = m.tiktok_sku_id;
+ const ttPrice = prod.tiktok_price != null ? Number(prod.tiktok_price) : null;
+ if(ttProduct) {
+ ttStatusEl.innerHTML = `<div style="background:#ECF3EA; border:1px solid #6EE7B7; border-radius:8px; padding:10px 12px; font-size:11.5px; color:#345E43; line-height:1.6;">
+  <div style="font-weight:800; display:flex; align-items:center; gap:5px; margin-bottom:3px;"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Tersambung ke TikTok</div>
+  <div><strong>Product ID:</strong> ${String(ttProduct)} <span style="color:#9CA3AF;">(produk)</span></div>
+  ${ttSku ? `<div><strong>SKU ID:</strong> ${String(ttSku)} <span style="color:#9CA3AF;">(variant ni)</span></div>` : '<div style="color:#7A5410;">SKU ID variant ni belum ada — stok/harga variant tak sync.</div>'}
+  <div><strong>Harga TikTok:</strong> ${ttPrice != null ? 'RM ' + ttPrice.toFixed(2) : '<span style="color:#7A5410;">belum set</span>'}</div>
+ </div>`;
+ } else {
+ ttStatusEl.innerHTML = `<div style="background:#FAF2E6; border:1px solid #FED7AA; border-radius:8px; padding:10px 12px; font-size:11.5px; color:#9A3412; line-height:1.6;">
+  <div style="font-weight:800; display:flex; align-items:center; gap:5px;"><i data-lucide="x-circle" style="width:14px;height:14px;"></i> Belum di TikTok</div>
+  <div>Produk ni tak ter-link TikTok — harga & stok TAK sync. Isi TikTok Product ID di bawah untuk sambung.</div>
+ </div>`;
+ }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ }
 
  // Metafields (key-value extension) — read from prod.metadata.metafields (new) or legacy prod.metafields
  currentPdpMetafields = {};
