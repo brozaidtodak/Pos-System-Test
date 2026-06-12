@@ -27982,19 +27982,27 @@ window.__renderIntegrationAlert = async function(){
   const settleRugi = settleRecon.filter(x=>x.flag==='rugi');
   // p1_663 — kempen/promo aktif (dari masterProducts in-memory): staf sedar harga didiskaun berapa & kempen mana
   const __camps = {};
+  const __campBySku = {}; // 'Platform|SKU' → campaign group (active campaign for that product+platform)
   (typeof masterProducts!=='undefined' && Array.isArray(masterProducts) ? masterProducts : []).forEach(pr=>{
     [['TikTok', pr.tiktok_campaign], ['Shopee', pr.shopee_campaign]].forEach(pair=>{
       const plat=pair[0], c=pair[1];
       if(c && c.active){
         const key = plat+'|'+(c.name||'?')+'|'+(Number(c.discount_value)||0);
-        const g = __camps[key] || (__camps[key] = { platform:plat, name:c.name||'?', disc:Number(c.discount_value)||0, count:0, belowCost:0, skus:[] });
+        const g = __camps[key] || (__camps[key] = { platform:plat, name:c.name||'?', disc:Number(c.discount_value)||0, count:0, belowCost:0, belowFloor:0, skus:[] });
         g.count++; if(c.below_cost) g.belowCost++; if(g.skus.length<8) g.skus.push(pr.sku);
+        __campBySku[plat+'|'+String(pr.sku||'').toUpperCase()] = g;
       }
     });
   });
+  // p1_683 — DECLUTTER: below_floor yang disebabkan kempen aktif TAK boleh dibetulkan satu-satu (kempen
+  // diskaun balik) → lipat ke ringkasan kempen; senarai "bawah floor" kekal yang BUKAN-kempen sahaja (actionable).
+  const __campG = (x)=> __campBySku[(x.platform||'')+'|'+String(x.sku||'').toUpperCase()];
+  belowFloor.forEach(x=>{ const g=__campG(x); if(g) g.belowFloor++; });
+  const belowFloorReal = belowFloor.filter(x=> !__campG(x));
+  const belowFloorCampN = belowFloor.length - belowFloorReal.length;
   const campList = Object.values(__camps).sort((a,b)=>b.count-a.count);
-  const issueCount = below.length + belowFloor.length + drift.length + tokBad.length + pushDead.length + cfgFail.length + settleUnpaid.length + settleRugi.length;
-  if(!below.length && !belowFloor.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length && !settleUnpaid.length && !settleRugi.length){ __setAim(0, false); box.innerHTML=''; return; }
+  const issueCount = below.length + belowFloorReal.length + drift.length + tokBad.length + pushDead.length + cfgFail.length + settleUnpaid.length + settleRugi.length;
+  if(!below.length && !belowFloorReal.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length && !settleUnpaid.length && !settleRugi.length){ __setAim(0, false); box.innerHTML=''; return; }
   const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chip = (bg,txt)=>`<span style="background:${bg};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px;">${txt}</span>`;
   // p1_643 — table helpers + clickable SKU (→ Bulk Edit)
@@ -28016,14 +28024,14 @@ window.__renderIntegrationAlert = async function(){
     </table>
     ${below.length>12?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">+${below.length-12} lagi</div>`:''}
    </div>`:'';
-  const belowFloorTable = belowFloor.length?`
+  const belowFloorTable = belowFloorReal.length?`
    <div style="margin-bottom:10px;">
-    <div style="font-size:11px;font-weight:800;color:#7A5410;text-transform:uppercase;margin-bottom:3px;">Bawah floor 35% (margin nipis)</div>
+    <div style="font-size:11px;font-weight:800;color:#7A5410;text-transform:uppercase;margin-bottom:3px;">Bawah floor 35% (margin nipis) — bukan kempen</div>
     <table style="width:100%;border-collapse:collapse;">
      <thead><tr style="border-bottom:1px solid #E6D6AE;">${th('SKU')}${th('Platform')}${th('Live',1)}${th('Disk',1)}${th('Jual',1)}${th('Kos',1)}${th('Resolve',1)}</tr></thead>
-     <tbody>${belowFloor.slice(0,12).map(x=>`<tr style="border-bottom:1px solid #F1E7CF;font-size:12px;color:#5E3F0C;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(x.campaign_disc!=null?('−'+x.campaign_disc+'%'):'—',1)}${td('<b style="color:#9E7016;">'+moneyRm(x.effective_price)+'</b>',1)}${td(moneyRm(x.cost),1)}${td(aimActions(x.sku,x.platform),1)}</tr>`).join('')}</tbody>
+     <tbody>${belowFloorReal.slice(0,12).map(x=>`<tr style="border-bottom:1px solid #F1E7CF;font-size:12px;color:#5E3F0C;">${td(skuLink(x.sku))}${td(plat(x.platform))}${td(moneyRm(x.live_price),1)}${td(x.campaign_disc!=null?('−'+x.campaign_disc+'%'):'—',1)}${td('<b style="color:#9E7016;">'+moneyRm(x.effective_price)+'</b>',1)}${td(moneyRm(x.cost),1)}${td(aimActions(x.sku,x.platform),1)}</tr>`).join('')}</tbody>
     </table>
-    ${belowFloor.length>12?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">+${belowFloor.length-12} lagi</div>`:''}
+    ${belowFloorReal.length>12?`<div style="font-size:11px;color:#9ca3af;margin-top:2px;">+${belowFloorReal.length-12} lagi</div>`:''}
    </div>`:'';
   const driftTable = drift.length?`
    <div>
@@ -28041,8 +28049,8 @@ window.__renderIntegrationAlert = async function(){
   const campHtml = campList.length?`
    <div style="margin-bottom:10px;padding:9px 11px;background:#FBF1E6;border:1px solid #F0C896;border-radius:8px;">
     <div style="font-size:11px;font-weight:800;color:#7C4A1A;text-transform:uppercase;margin-bottom:5px;">Kempen / promo aktif — harga sedang didiskaun</div>
-    ${campList.map(c=>`<div style="font-size:12px;color:#5E3F0C;padding:3px 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-top:1px solid #F0E0C8;">${campChip(c.platform)} <b>${esc(c.name)}</b> <span style="background:#B23A2E;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">−${c.disc}%</span> <span style="color:#9ca3af;">${c.count} produk</span>${c.belowCost?`<span style="background:#F4E4DF;color:#B23A2E;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">${c.belowCost} BAWAH KOS!</span>`:''} <span style="color:#bbb;font-size:10px;">cth: ${c.skus.slice(0,4).map(s=>esc(s)).join(', ')}</span> <a href="${window.__aimCampUrl(c.platform)}" target="_blank" rel="noopener" title="Urus / keluarkan produk dari kempen di ${esc(c.platform)} Seller Centre" style="margin-left:auto;font-size:10.5px;font-weight:700;color:#fff;background:#CD7C32;border-radius:5px;padding:2px 8px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;"><i data-lucide="external-link" style="width:10px;height:10px;"></i>Urus kempen</a></div>`).join('')}
-    <div style="font-size:10.5px;color:#9a8a6a;margin-top:5px;">Harga customer = harga POS − diskaun kempen. Pastikan masih atas kos/floor.</div>
+    ${campList.map(c=>`<div style="font-size:12px;color:#5E3F0C;padding:3px 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-top:1px solid #F0E0C8;">${campChip(c.platform)} <b>${esc(c.name)}</b> <span style="background:#B23A2E;color:#fff;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">−${c.disc}%</span> <span style="color:#9ca3af;">${c.count} produk</span>${c.belowCost?`<span style="background:#F4E4DF;color:#B23A2E;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">${c.belowCost} BAWAH KOS!</span>`:''}${c.belowFloor?`<span style="background:#FBF0DC;color:#9E7016;font-size:10px;font-weight:800;padding:1px 7px;border-radius:50px;">${c.belowFloor} bawah floor</span>`:''} <span style="color:#bbb;font-size:10px;">cth: ${c.skus.slice(0,4).map(s=>esc(s)).join(', ')}</span> <a href="${window.__aimCampUrl(c.platform)}" target="_blank" rel="noopener" title="Urus / keluarkan produk dari kempen di ${esc(c.platform)} Seller Centre" style="margin-left:auto;font-size:10.5px;font-weight:700;color:#fff;background:#CD7C32;border-radius:5px;padding:2px 8px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;"><i data-lucide="external-link" style="width:10px;height:10px;"></i>Urus kempen</a></div>`).join('')}
+    <div style="font-size:10.5px;color:#9a8a6a;margin-top:5px;">Harga customer = harga POS − diskaun kempen. Produk <b>bawah floor</b> sebab kempen ditunjuk di sini je (bukan satu-satu) — <b>auto-hilang bila kempen tamat</b> atau bila kau keluarkan produk dari kempen. Tak perlu betulkan satu-satu.</div>
    </div>`:'';
   box.innerHTML = `
    <div class="dash-card" style="border:1.5px solid #B23A2E; background:#FAF0EE; margin-bottom:var(--space-3); padding:14px 16px;">
@@ -28053,7 +28061,7 @@ window.__renderIntegrationAlert = async function(){
      ${tokBad.length?chip('#5E2018', 'SAMBUNGAN '+tokBad.map(t=>String(t.platform).toUpperCase()).join('+')+' NAK PUTUS'):''}
      ${pushDead.length?chip('#5E2018', pushDead.length+' PUSH GAGAL'):''}
      ${below.length?chip('#B23A2E', below.length+' BAWAH KOS'):''}
-     ${belowFloor.length?chip('#C68A1A', belowFloor.length+' BAWAH FLOOR 35%'):''}
+     ${belowFloorReal.length?chip('#C68A1A', belowFloorReal.length+' BAWAH FLOOR 35%'):''}
      ${drift.length?chip('#9E7016', drift.length+' DRIFT harga'):''}
      ${campList.length?chip('#7C4A1A', campList.length+' KEMPEN AKTIF'):''}
      ${settleUnpaid.length?chip('#7C2A20', settleUnpaid.length+' BELUM DIBAYAR'):''}
