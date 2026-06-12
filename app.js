@@ -13551,8 +13551,14 @@ window.processNewCheckout = async function() {
  b.style.color = isCash ? 'var(--text-main)' : 'var(--text-muted)';
  });
  document.getElementById('checkoutPaymentModal').style.display = 'none';
- await initApp(); 
  renderCart();
+ // p1_671 — JANGAN block penyelesaian checkout pada full-reload initApp. initApp muat semula
+ // banyak jadual besar (products_master/inventory_batches/inventory_transactions/semua jualan/
+ // pelanggan, limit 100k) — atas wifi kedai ia boleh lambat/hang → butang stuck "Processing…"
+ // walaupun jualan DAH disimpan (sale committed di atas). Refresh di BACKGROUND supaya cashier
+ // boleh teruskan jualan seterusnya serta-merta; data UI kemas-kini bila reload selesai.
+ try { Promise.resolve(initApp()).catch(e => console.warn('post-sale initApp refresh gagal (non-blocking):', e)); }
+ catch(e) { console.warn('post-sale initApp refresh gagal (non-blocking):', e); }
  } catch (e) {
  console.error(e);
  // p1_554 (#1) — kalau sale GAGAL disimpan tapi stok dah ditolak, pulihkan balik supaya stok tak rosak.
