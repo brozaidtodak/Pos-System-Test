@@ -27811,10 +27811,63 @@ window.__rescanIntegration = async function(){
  }, 60000);
 };
 
+// p1_665 — Overview sub-tabs (Main / AIM / Sales / Analytics). Toggle which blocks of the
+// Overview show, instead of one long scroll. AIM = Amaran Integrasi Marketplace.
+try { window.__ovActive = localStorage.getItem('ov_active_tab') || 'main'; } catch(e){ window.__ovActive = 'main'; }
+// Pure show/hide — safe to call from any render path (idempotent, no recursion, no heavy work).
+window.__ovApplyPanes = function(name){
+ const valid = ['main','aim','sales','analytics'];
+ if(valid.indexOf(name)<0) name = 'main';
+ const wrap = document.querySelector('#homeSection .dash-wrap');
+ if(wrap){
+  const aim = document.getElementById('ovAimPane');
+  const sL = document.getElementById('ovSalesLabel'), sB = document.getElementById('ovSalesBox');
+  // The combined-empty card + memo/roster row own their own display logic (bothEmpty) in
+  // __renderDashOverview — don't force-show them here, only hide when their pane is inactive.
+  const ownsDisplay = function(el){ return el && (el.id === 'dashOverviewCombinedEmpty' || (el.classList && el.classList.contains('dash-overview-row'))); };
+  Array.prototype.forEach.call(wrap.children, function(ch){
+   if(ch.hasAttribute('data-ov-tabbar')) return;       // tab bar always visible
+   let pane = 'main';
+   if(ch === aim) pane = 'aim';
+   else if(ch === sL || ch === sB) pane = 'sales';
+   if(pane === name){ if(!ownsDisplay(ch)) ch.style.display = ''; }
+   else ch.style.display = 'none';
+  });
+ }
+ // Analytics lives in a sibling section (managerDashboardSection), shown by switchHub.
+ const mgr = document.getElementById('managerDashboardSection');
+ if(mgr) mgr.style.display = (name === 'analytics') ? '' : 'none';
+ // active button state
+ document.querySelectorAll('[data-ov-tab]').forEach(function(b){
+  b.classList.toggle('ov-tab-on', b.getAttribute('data-ov-tab') === name);
+ });
+};
+window.__ovTab = function(name, opts){
+ opts = opts || {};
+ const valid = ['main','aim','sales','analytics'];
+ if(valid.indexOf(name)<0) name = 'main';
+ const changed = (name !== window.__ovActive) || opts.force;
+ window.__ovActive = name;
+ try { localStorage.setItem('ov_active_tab', name); } catch(e){}
+ window.__ovApplyPanes(name);
+ // Charts created while their canvas is display:none render 0-size — force a redraw on switch.
+ if(changed){
+  if(name === 'main' && typeof window.__renderDashOverview === 'function') try { window.__renderDashOverview(); } catch(e){} // settle memo/roster/empty-state
+  if(name === 'sales' && typeof window.renderSalesAnalytics === 'function') try { window.renderSalesAnalytics(); } catch(e){}
+  if(name === 'analytics' && typeof window.renderManagerDashboard === 'function') try { window.renderManagerDashboard(); } catch(e){}
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ }
+};
+
 // p1_634 (#3) — Integration alert: surface price-sentinel below-cost/drift on owner landing.
 window.__renderIntegrationAlert = async function(){
  const box = document.getElementById('integrationAlertBox'); if(!box) return;
- if(typeof db === 'undefined' || !db){ box.innerHTML=''; return; }
+ // p1_665 — reflect state on the AIM sub-tab: red badge = actionable issues, empty-state when all clear.
+ const __setAim = (issueCount, hasContent)=>{
+  const b = document.getElementById('ovAimBadge'); if(b){ if(issueCount>0){ b.textContent=issueCount; b.style.display=''; } else b.style.display='none'; }
+  const em = document.getElementById('ovAimEmpty'); if(em) em.style.display = hasContent ? 'none' : '';
+ };
+ if(typeof db === 'undefined' || !db){ __setAim(0, false); box.innerHTML=''; return; }
  try {
   const [{ data }, thRes, pfRes, cfgRes] = await Promise.all([
     db.from('price_sentinel').select('sku,platform,flag,detail,live_price,effective_price,cost,pos_price,campaign_disc').limit(500),
@@ -27846,7 +27899,8 @@ window.__renderIntegrationAlert = async function(){
     });
   });
   const campList = Object.values(__camps).sort((a,b)=>b.count-a.count);
-  if(!below.length && !belowFloor.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length){ box.innerHTML=''; return; }
+  const issueCount = below.length + belowFloor.length + drift.length + tokBad.length + pushDead.length + cfgFail.length;
+  if(!below.length && !belowFloor.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length){ __setAim(0, false); box.innerHTML=''; return; }
   const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chip = (bg,txt)=>`<span style="background:${bg};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px;">${txt}</span>`;
   // p1_643 — table helpers + clickable SKU (→ Bulk Edit)
@@ -27917,8 +27971,9 @@ window.__renderIntegrationAlert = async function(){
     ${driftTable}
     <div style="font-size:11.5px;color:#6B7280;margin-top:8px;">Klik SKU untuk buka di Bulk Edit. Betulkan harga marketplace di Shopee/TikTok Seller Center — POS flag je, tak boleh tukar harga marketplace dari sini.</div>
    </div>`;
+  __setAim(issueCount, true);
   if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
- } catch(e){ box.innerHTML=''; }
+ } catch(e){ __setAim(0, false); box.innerHTML=''; }
 };
 
 window.__renderDashOverview = function() {
@@ -27944,6 +27999,9 @@ window.__renderDashOverview = function() {
  if(typeof window.__renderDashOverviewMemo === 'function') window.__renderDashOverviewMemo();
  if(typeof window.__renderDashOverviewRoster === 'function') window.__renderDashOverviewRoster();
  }
+ // p1_665 — re-apply the active Overview sub-tab's visibility (this fn also fires on realtime
+ // updates, which would otherwise re-show MAIN-tab cards over whatever tab the user is on).
+ if(typeof window.__ovApplyPanes === 'function') try { window.__ovApplyPanes(window.__ovActive || 'main'); } catch(e){}
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  } catch(e){ console.warn('__renderDashOverview failed:', e); }
 };
