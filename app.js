@@ -14524,6 +14524,14 @@ window.previewLanding = function() {
  if(!shop || !pos) return;
  shop.style.display = 'block';
  pos.style.display = 'none';
+ // p1_656 — some back-office .tab-section (e.g. managerDashboardSection/analytics) sit OUTSIDE
+ // posAppLayout due to a pre-existing HTML div imbalance, so pos=none doesn't hide them and they
+ // LEAK below the landing in preview. Hide every .tab-section here; remember the active one to restore.
+ window.__previewPrevSection = null;
+ document.querySelectorAll('.tab-section').forEach(el => {
+  if(el.style.display && el.style.display !== 'none') window.__previewPrevSection = el.id;
+  el.style.display = 'none';
+ });
  // Inject floating "Back to POS" banner
  let banner = document.getElementById('previewBackBanner');
  if(!banner) {
@@ -14551,6 +14559,8 @@ window.backToPOS = function() {
  const banner = document.getElementById('previewBackBanner');
  if(shop) { shop.style.display = 'none'; shop.style.paddingTop = ''; }
  if(pos) pos.style.display = 'block';
+ // p1_656 — restore the section that was active before preview
+ if(window.__previewPrevSection){ const sec = document.getElementById(window.__previewPrevSection); if(sec) sec.style.display = 'block'; }
  if(banner) banner.style.display = 'none';
  window.scrollTo({ top: 0 });
 };
@@ -14785,7 +14795,7 @@ window.lpRenderActivityTiles = function() {
         html += `<button type="button" class="lp-activity-tile${active}" onclick="window.lpFilterByActivity('${key}')">
             <span class="lp-activity-tile__icon"><i data-lucide="${g.icon}"></i></span>
             <span class="lp-activity-tile__label">${g.label}</span>
-            <span class="lp-activity-tile__count">${count} produk</span>
+            <span class="lp-activity-tile__count">${count} ${window.t ? window.t('lp_unit_produk') : 'produk'}</span>
         </button>`;
     });
     wrap.innerHTML = html;
@@ -31495,6 +31505,9 @@ window.I18N = {
  lp_loc_h2: { bm: 'Lawati Kedai Kami', en: 'Visit Our Store' },
  lp_loc_hours: { bm: 'Isnin–Sabtu: 11 pagi – 8 malam · Rabu: 2 petang – 8 malam (half day)', en: 'Mon–Sat: 11am – 8pm · Wed: 2pm – 8pm (half day)' },
  lp_loc_directions: { bm: 'Dapatkan Arah', en: 'Get Directions' },
+ lp_unit_produk: { bm: 'produk', en: 'products' },
+ lp_hero_buy_label: { bm: 'Beli kami di', en: 'Available at' },
+ lp_foot_or_visit: { bm: 'Atau singgah kedai Cyberjaya', en: 'Or visit our Cyberjaya store' },
 
  lp_shop_eyebrow: { bm: 'Kedai', en: 'Shop' },
  lp_shop_h2: { bm: 'Semua Produk', en: 'All Products' },

@@ -30,7 +30,7 @@
  <link rel="shortcut icon" href="assets/brand/logo/10camp-logo-color.png">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
  <link rel="stylesheet" href="style.css?v=59">
- <link rel="stylesheet" href="design-tokens.css?v=95">
+ <link rel="stylesheet" href="design-tokens.css?v=96">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -947,7 +947,7 @@
  </div>
  <!-- p1_166 — Editorial hero: "Beli kami di:" text + 3 inline brand links (no pill buttons) -->
  <div class="lp-hero__channels">
- <span class="lp-hero__channels-label">Beli kami di</span>
+ <span class="lp-hero__channels-label" data-i18n="lp_hero_buy_label">Beli kami di</span>
  <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" class="lp-hero__channel-link lp-hero__channel-link--shopee"><i data-lucide="shopping-bag"></i>Shopee</a>
  <span class="lp-hero__channels-sep">·</span>
  <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" class="lp-hero__channel-link lp-hero__channel-link--tiktok"><i data-lucide="music-2"></i>TikTok Shop</a>
@@ -1242,7 +1242,7 @@
  <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#FFF; font-size:13px; font-weight:600; text-decoration:none; padding:8px 12px; background:#EE4D2D; border-radius:6px; transition:0.15s;">Shopee</a>
  <a href="https://vt.tiktok.com/ZSxoAXDhd/?page=TikTokShop" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#FFF; font-size:13px; font-weight:600; text-decoration:none; padding:8px 12px; background:#111827; border-radius:6px; transition:0.15s;">TikTok Shop</a>
  <a href="https://wa.me/601133109547" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#FFF; font-size:13px; font-weight:600; text-decoration:none; padding:8px 12px; background:#25D366; border-radius:6px; transition:0.15s;">WhatsApp</a>
- <span style="font-size:11px; color:var(--neutral-400); margin-top:4px;">Atau singgah kedai Cyberjaya</span>
+ <span style="font-size:11px; color:var(--neutral-400); margin-top:4px;" data-i18n="lp_foot_or_visit">Atau singgah kedai Cyberjaya</span>
  </div>
  </div>
  </div>
@@ -8139,6 +8139,7 @@
  { id:'p1_628', label:'Betulkan bahasa janggal (Zaid: "settlekan language yang obvious macam dekat memo tu"). Punca: kamus i18n (window.I18N.dict, default lang bm) ada 77 entri bm===en belum translate. Betulkan 16 label jelas + 2 ayat tertanam English: Memo dept (Department:→Jabatan:, Sales→Jualan, Inventory→Inventori, Finance→Kewangan, sub dept lbl), All Orders (Channel→Saluran, Completed→Selesai, Refunded→Dipulangkan, Order→Pesanan, Items→Barang, Hide Test→Sorok Ujian), Loading…→Memuatkan…, Consent→Kebenaran, Staff→Staf; mb_sub/mb_sub_info buang "approved"/"Pending Approval". KEKAL jargon Manglish (SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit) + nama feature sidebar + teks brand landing. app.js v634->v635.', d:'done' },
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
+ { id:'p1_656', label:'Landing fix (Zaid perasan dlm Preview Mode): (1) BUG ANALYTICS BOCOR — managerDashboardSection & tab-section back-office lain duduk DI LUAR posAppLayout (imbalance div sedia ada, posAppLayout "tutup" awal ~line 3690 tapi section di 7312) → previewLanding set pos=none TAK sembunyi ia → analytics muncul bawah landing. FIX: previewLanding kini sembunyi SEMUA .tab-section + simpan yg aktif; backToPOS pulihkan. (2) i18n GAP bila EN: "X produk" (activity tile)→window.t(lp_unit_produk); "Beli kami di" hero→data-i18n lp_hero_buy_label (Available at); "Atau singgah kedai Cyberjaya" footer→lp_foot_or_visit; "Jimat RM" kad/PDP (dari CSS ::before)→html[lang=en] override jadi "Save ". app.js v655->v656, design-tokens.css v95->v96.', d:'done' },
  { id:'p1_655', label:'Landing page — tambah 4 section baharu + betulkan jam kedai (Zaid: "buat semua + kedai buka 11pg-8mlm + tambah policy"). JAM: betulkan customer-facing → Isnin-Sabtu 11am-8pm, RABU 2-8pm half-day (schema openingHours array Mo,Tu,Th,Fr,Sa 11-20 + We 14-20, footer, i18n lp_foot_hours, PDP footnote). SECTION BAHARU (gaya brand, i18n BM/EN penuh, no emoji/Lucide): (1) REVIEWS social-proof JUJUR — metrik sebenar (pelanggan/jenama/2024) + butang "Baca review di Shopee/TikTok" (TIADA quote rekaan — etika). (2) FAQ — 5 soalan accordion <details> (cara beli/kedai fizikal/keaslian/pertukaran/penghantaran). (3) POLISI KEDAI — 4 kad: Pertukaran (walk-in 3hari/online 7hari, rosak/silap je), TIADA Refund, Keaslian 100%, Cara Beli. Polisi disahkan Zaid. (4) LOKASI — alamat+jam+telefon + Google Map embed (no API key) + butang Arah. ~35 entri i18n baharu. app.js v653->v654.', d:'done' },
  { id:'p1_654', label:'Audit landing page pusingan 2 (lebih dalam) — fix SEO + i18n. (1) SEO: tambah <link canonical> + og:url + twitter:title/description/image (dulu takda — favicon dah ada). (2) i18n GAP: hero sub "Premium camping...11 trusted brands" hardcoded EN tak tukar bila BM → restructure (span data-i18n pre/post + kekalkan span data-stat brands count) + footer "Beli Kami Di"→data-i18n. Dict baru lp_hero_sub_pre/post + lp_foot_buy. SEMAK & OK: pautan marketplace hidup (Shopee 200/TikTok 302 redirect/WhatsApp 200); activity tiles + category pills data-driven (LP_ACTIVITY_GROUPS, tak kosong); meta title/desc/og/jsonld lengkap. Cadang masa depan (bukan bug): reviews/testimoni, FAQ, peta kedai embedded. app.js v652->v653.', d:'done' },
  { id:'p1_653', label:'Audit landing page — fix isu yang dijumpa. (1) Kad "Festival Sale" tulis "Up to 30% off" tapi data sebenar: 658 produk published ON SALE, max diskaun 50% → understate; betulkan ke 50% (HTML + i18n BM/EN lp_coll_sale_sub). (2) Telefon schema.org JSON-LD "+60113310 9547" (jarak salah) → "+601133109547" E.164 (padan tel: link, SEO rich result bersih). SEMAK & TAKDA ISU: bilangan brand live = 11 (padan marquee 11 logo + stat); TikTok #111827 SENGAJA (warna platform konsisten merentas landing macam Shopee #EE4D2D/WhatsApp); cart awam dorman by design (p1_160). app.js v651->v652.', d:'done' },
@@ -13223,7 +13224,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=655"></script>
+ <script src="app.js?v=656"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

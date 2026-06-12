@@ -851,6 +851,8 @@
 .lp-product-card__price--was { color: #94A3B8; font-size: 13px; font-weight: 400; text-decoration: line-through; text-decoration-thickness: 1px; }
 .lp-product-card__price--off { color: #3F7350; font-size: 12px; font-weight: 700; letter-spacing: 0.2px; background: none; padding: 0; }
 .lp-product-card__price--off::before { content: 'Jimat '; font-weight: 500; opacity: 0.7; }
+/* p1_656 — i18n: EN shows "Save" (applyI18N sets html[lang=en]) */
+html[lang="en"] .lp-product-card__price--off::before { content: 'Save '; }
 /* p1_46: variant chips for grouped products; p1_51: extras hidden behind +N more toggle */
 .lp-variant-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 10px; }
 .lp-variant-chips--extra[hidden] { display: none; }
@@ -1014,6 +1016,7 @@
 .lp-pdp__price-was { font-size: 17px; color: #94A3B8; text-decoration: line-through; text-decoration-thickness: 1px; font-weight: 400; }
 .lp-pdp__discount { font-size: 13px; font-weight: 700; color: #3F7350; background: none; padding: 0; letter-spacing: 0.2px; }
 .lp-pdp__discount::before { content: 'Jimat '; font-weight: 500; opacity: 0.7; }
+html[lang="en"] .lp-pdp__discount::before { content: 'Save '; }
 .lp-pdp__stock { font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; align-self: flex-start; }
 .lp-pdp__stock--ok { background: #E4EFE2; color: #345E43; }
 .lp-pdp__stock--low { background: #F8EFD7; color: #7A5410; }
