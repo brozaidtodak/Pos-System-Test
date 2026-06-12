@@ -15211,7 +15211,7 @@ window.lpRenderPdp = function() {
                     <a href="${waBuyUrl}" target="_blank" rel="noopener" class="lp-pdp__buybtn lp-pdp__buybtn--wa"><i data-lucide="message-circle"></i><span>WhatsApp</span></a>
                 </div>
                 ${shareRow}
-                <div class="lp-pdp__buy-walk-in"><i data-lucide="map-pin"></i> Atau singgah <strong>Kedai 10 CAMP Cyberjaya</strong> &middot; Mon-Sat 11am-8pm</div>
+                <div class="lp-pdp__buy-walk-in"><i data-lucide="map-pin"></i> Atau singgah <strong>Kedai 10 CAMP Cyberjaya</strong> &middot; Mon-Sat 11am-8pm (Wed 2-8pm)</div>
             </div>`;
 
     body.innerHTML = `
@@ -31474,7 +31474,7 @@ window.I18N = {
  lp_faq_q1: { bm: 'Macam mana nak beli?', en: 'How do I buy?' },
  lp_faq_a1: { bm: 'Beli di Shopee atau TikTok Shop kami (penghantaran seluruh Malaysia), atau singgah terus kedai kami di Cyberjaya untuk tengok & cuba barang.', en: 'Buy via our Shopee or TikTok Shop (nationwide delivery), or visit our Cyberjaya store to see & try the gear.' },
  lp_faq_q2: { bm: 'Ada kedai fizikal?', en: 'Do you have a physical store?' },
- lp_faq_a2: { bm: 'Ada — di Glomac Cyberjaya. Buka Isnin–Sabtu, 11 pagi hingga 8 malam. Singgah untuk tengok stok & dapat nasihat gear.', en: 'Yes — at Glomac Cyberjaya. Open Mon–Sat, 11am to 8pm. Drop by to see stock & get gear advice.' },
+ lp_faq_a2: { bm: 'Ada — di Glomac Cyberjaya. Buka Isnin–Sabtu 11 pagi–8 malam; Rabu 2 petang–8 malam (half day). Singgah untuk tengok stok & dapat nasihat gear.', en: 'Yes — at Glomac Cyberjaya. Open Mon–Sat 11am–8pm; Wed 2pm–8pm (half day). Drop by to see stock & get gear advice.' },
  lp_faq_q3: { bm: 'Produk asli ke?', en: 'Are the products authentic?' },
  lp_faq_a3: { bm: '100% asli. Kami pembekal rasmi 11 jenama outdoor termasuk Naturehike, Mobi Garden, Blackdog & lain-lain.', en: '100% authentic. We are an official supplier of 11 outdoor brands incl. Naturehike, Mobi Garden, Blackdog & more.' },
  lp_faq_q4: { bm: 'Boleh tukar kalau barang rosak?', en: 'Can I exchange a damaged item?' },
@@ -31493,7 +31493,7 @@ window.I18N = {
  lp_pol_buy_d: { bm: 'Shopee, TikTok Shop, atau walk-in di kedai Cyberjaya. Tiada pembayaran terus di laman web ini.', en: 'Shopee, TikTok Shop, or walk-in at our Cyberjaya store. No direct checkout on this website.' },
  lp_loc_eyebrow: { bm: 'Lawati Kami', en: 'Visit Us' },
  lp_loc_h2: { bm: 'Lawati Kedai Kami', en: 'Visit Our Store' },
- lp_loc_hours: { bm: 'Isnin–Sabtu · 11 pagi – 8 malam', en: 'Mon–Sat · 11am – 8pm' },
+ lp_loc_hours: { bm: 'Isnin–Sabtu: 11 pagi – 8 malam · Rabu: 2 petang – 8 malam (half day)', en: 'Mon–Sat: 11am – 8pm · Wed: 2pm – 8pm (half day)' },
  lp_loc_directions: { bm: 'Dapatkan Arah', en: 'Get Directions' },
 
  lp_shop_eyebrow: { bm: 'Kedai', en: 'Shop' },
@@ -31516,7 +31516,7 @@ window.I18N = {
  lp_foot_brand_sub: { bm: 'Gear camping & outdoor premium oleh TODAK.', en: 'Premium camping & outdoor gear by TODAK.' },
  lp_foot_visit: { bm: 'Lawat', en: 'Visit' },
  lp_foot_contact: { bm: 'Hubungi', en: 'Contact' },
- lp_foot_hours: { bm: 'Isnin–Sabtu · 11pg–8mlm', en: 'Mon–Sat · 11am–8pm' },
+ lp_foot_hours: { bm: 'Isnin–Sabtu · 11pg–8mlm (Rabu 2–8mlm)', en: 'Mon–Sat · 11am–8pm (Wed 2–8pm)' },
  lp_foot_payments: { bm: 'Pembayaran Diterima', en: 'Payments Accepted' },
 
  // Sold-out strip
