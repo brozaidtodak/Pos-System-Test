@@ -3735,13 +3735,29 @@ window.__ihDateRange = function() {
  return { from: Date.now() - days * 86400000, to: Infinity };
 };
 
+// p1_696 — kalau query padan TEPAT satu SKU sebenar, pulangkan SKU itu (mod exact).
+// Tujuan: produk group variant kongsi NAMA sama (cth "BD005-035 ... | BD035") — cari "BD035"
+// jangan tarik SKU adik-beradik (BD005) via padanan nama. Cari nama biasa (cth "picnic") kekal substring.
+window.__ihExactSku = function(q) {
+ q = (q || '').toLowerCase().trim();
+ if(!q) return null;
+ if((window.__ihRows || []).some(r => (r.sku || '').toLowerCase() === q)) return q;
+ const mp = (typeof masterProducts !== 'undefined') ? masterProducts : [];
+ if(mp.some(p => (p.sku || '').toLowerCase() === q)) return q;
+ return null;
+};
+
 window.__ihFiltered = function() {
  const st = window.__ihState;
  const dr = window.__ihDateRange();
  const q = (st.q || '').toLowerCase().trim();
+ const exact = window.__ihExactSku(q);
  return window.__ihRows.filter(r => {
   if(st.dir !== 'all' && r.dir !== st.dir) return false;
-  if(q && !((r.sku||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q))) return false;
+  if(q) {
+   if(exact) { if((r.sku || '').toLowerCase() !== exact) return false; }
+   else if(!((r.sku||'').toLowerCase().includes(q) || (r.product||'').toLowerCase().includes(q))) return false;
+  }
   if(dr.from !== -Infinity || dr.to !== Infinity) {
    const t = r.date ? new Date(r.date).getTime() : 0;
    if(t < dr.from || t > dr.to) return false;
@@ -3870,8 +3886,13 @@ window.__ihApply = function() {
  // stok semasa tak bergantung tempoh). Tiada carian → jumlah semua produk.
  const batches = (typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches)) ? inventoryBatches : [];
  const sq = (st.q || '').toLowerCase().trim();
+ const exactSku = window.__ihExactSku ? window.__ihExactSku(sq) : null;
  let curStock = 0, scopeHint = 'semua produk';
- if(sq) {
+ if(exactSku) {
+  // p1_696 — SKU tepat: stok SKU itu sahaja (jangan campur adik-beradik group)
+  curStock = batches.reduce((s,b) => s + ((b.sku||'').toLowerCase() === exactSku ? (b.qty_remaining||0) : 0), 0);
+  scopeHint = 'SKU ' + exactSku.toUpperCase();
+ } else if(sq) {
   const mp = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
   const matchSkus = new Set(mp.filter(p => (p.sku||'').toLowerCase().includes(sq) || (p.name||'').toLowerCase().includes(sq)).map(p => p.sku));
   const inScope = (b) => matchSkus.has(b.sku) || (b.sku||'').toLowerCase().includes(sq);
