@@ -924,7 +924,9 @@ html[lang="en"] .lp-product-card__price--off::before { content: 'Save '; }
 .lp-pdp__mhead { align-items: center; gap: 8px; padding: 9px 12px; background: #fff; border-bottom: 1px solid #F3F4F6; position: sticky; top: 0; z-index: 6; }
 .lp-pdp__mhead-back { width: 34px; height: 34px; flex-shrink: 0; border: none; background: #F3F4F6; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #111827; }
 .lp-pdp__mhead-back i { width: 20px; height: 20px; }
-.lp-pdp__mhead-title { font-size: 14px; font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-pdp__mhead-title { flex: 1; font-size: 14px; font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-pdp__mhead-share { width: 34px; height: 34px; flex-shrink: 0; border: none; background: #F3F4F6; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #111827; }
+.lp-pdp__mhead-share i { width: 18px; height: 18px; }
 .lp-pdp__mbar { gap: 8px; padding: 10px 12px; background: rgba(255,255,255,0.97); border-top: 1px solid #E5E7EB; position: sticky; bottom: 0; z-index: 6; backdrop-filter: blur(6px); }
 .lp-pdp__mbar-cart { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 13px; border: none; border-radius: 10px; background: #CD7C32; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
 .lp-pdp__mbar-cart i { width: 18px; height: 18px; }

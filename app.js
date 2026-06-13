@@ -15177,6 +15177,18 @@ window.lpCopyProductLink = function(sku, btn) {
     }
 };
 
+// p1_692 — share butang PDP mobile: native share (terus ke WhatsApp/IG/dll), fallback copy link.
+window.lpPdpShare = function(sku, btn) {
+    const url = 'https://10camp.com/?p=' + encodeURIComponent(sku);
+    const titleEl = document.querySelector('.lp-pdp__mhead-title');
+    const title = (titleEl && titleEl.textContent.trim()) || '10 CAMP';
+    if (navigator.share && typeof navigator.share === 'function') {
+        navigator.share({ title: title, text: title + ' — 10 CAMP', url: url }).catch(() => {});
+        return;
+    }
+    window.lpCopyProductLink(sku, btn);
+};
+
 // p1_416 — deep link: ?p=SKU on the landing page auto-opens that product's detail.
 window.lpHandleDeepLink = function() {
     try {
@@ -15312,6 +15324,7 @@ window.lpRenderPdp = function() {
     const mheadHtml = `<div class="lp-pdp__mhead">
             <button type="button" class="lp-pdp__mhead-back" onclick="window.lpClosePdp()" aria-label="Kembali"><i data-lucide="chevron-left"></i></button>
             <span class="lp-pdp__mhead-title">${escHtml(parsed.title)}</span>
+            <button type="button" class="lp-pdp__mhead-share" onclick="window.lpPdpShare('${escJs(current.sku)}', this)" aria-label="Kongsi"><i data-lucide="share-2"></i></button>
         </div>`;
     const mobileBuyHtml = (totalStock <= 0)
         ? `<div class="lp-pdp__mbar"><button type="button" class="lp-pdp__mbar-cart" disabled>Sold Out</button></div>`
