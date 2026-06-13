@@ -3699,6 +3699,29 @@ window.__ihBuildRows = function() {
  return rows;
 };
 
+// p1_694 — Baki Unit (running balance) per SKU. Anchor pada stok HIDUP semasa (qty_remaining),
+// jalan MUNDUR ikut seq: balAfter(terbaru)=stok semasa; balAfter(k)=balAfter(k+1)−signed(k+1).
+// Kaedah backward ni kebal — tak perlu sejarah lengkap dari sifar; sentiasa padan stok sebenar.
+window.__ihComputeBalances = function() {
+ const rows = window.__ihRows || [];
+ const stockBySku = {};
+ (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(b => {
+  if(!b || !b.sku) return;
+  stockBySku[b.sku] = (stockBySku[b.sku] || 0) + (Number(b.qty_remaining) || 0);
+ });
+ const bySku = {};
+ rows.forEach(r => { (bySku[r.sku] = bySku[r.sku] || []).push(r); });
+ Object.keys(bySku).forEach(sku => {
+  const list = bySku[sku].slice().sort((a, b) => (a.seq || 0) - (b.seq || 0)); // kronologi (lama→baru)
+  let bal = stockBySku[sku] || 0; // baki selepas pergerakan terbaru = stok hidup sekarang
+  for(let i = list.length - 1; i >= 0; i--) {
+   list[i].balAfter = bal;
+   const signed = list[i].dir === 'INPUT' ? list[i].units : -list[i].units;
+   bal = bal - signed; // baki sebelum pergerakan ni = baki selepas pergerakan sebelumnya
+  }
+ });
+};
+
 window.__ihDateRange = function() {
  const st = window.__ihState;
  if(st.period === 'all') return { from: -Infinity, to: Infinity };
@@ -3733,6 +3756,7 @@ window.renderInventoryHistory = async function() {
  // Pergerakan manual (p1_479)
  try { if(typeof window.__fetchAllRows === 'function') { window.__ihTxns = await window.__fetchAllRows('inventory_transactions','created_at',false) || []; } } catch(e){ window.__ihTxns = window.__ihTxns || []; }
  window.__ihRows = window.__ihBuildRows();
+ window.__ihComputeBalances();
  window.__ihState.page = 1;
  window.__ihApply();
 };
@@ -3878,6 +3902,7 @@ window.__ihApply = function() {
    <td style="padding:7px 9px; font-size:11.5px; max-width:260px;">${esc((r.product||'').slice(0,60))}</td>
    <td style="padding:7px 9px; text-align:center;">${dirBadge}</td>
    <td style="padding:7px 9px; text-align:right; font-weight:800; font-size:13px; color:${r.dir==='INPUT'?'#345E43':'#7C2A20'};">${r.dir==='INPUT'?'+':'−'}${r.units}</td>
+   <td style="padding:7px 9px; text-align:right; font-weight:800; font-size:12.5px; color:#101010;">${r.balAfter != null ? r.balAfter.toLocaleString() : '-'}</td>
    <td style="padding:7px 9px; text-align:right; font-size:11.5px; color:#6B7280;">${r.price ? fmtRM(r.price) : '-'}</td>
    <td style="padding:7px 9px; text-align:right; font-size:11.5px; font-weight:700;">${r.total ? fmtRM(r.total) : '-'}</td>
    <td style="padding:7px 9px; font-size:11px; color:#6B7280; white-space:nowrap;">${esc(fmtDt(r.date))}</td>
@@ -3887,7 +3912,7 @@ window.__ihApply = function() {
  wrap.innerHTML = `<div style="overflow-x:auto; border:1px solid #F0F0F0; border-radius:10px;">
   <table style="width:100%; border-collapse:collapse; font-size:12px;">
    <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">
-    <th style="text-align:center; padding:8px 9px;">No.</th><th style="text-align:left; padding:8px 9px;">Ref</th><th style="text-align:left; padding:8px 9px;">Product</th><th style="text-align:center; padding:8px 9px;">Input / Output</th><th style="text-align:right; padding:8px 9px;">Units</th><th style="text-align:right; padding:8px 9px;">Cost/Price</th><th style="text-align:right; padding:8px 9px;">Total</th><th style="text-align:left; padding:8px 9px;">Date</th><th style="text-align:left; padding:8px 9px;">Nota</th>
+    <th style="text-align:center; padding:8px 9px;">No.</th><th style="text-align:left; padding:8px 9px;">Ref</th><th style="text-align:left; padding:8px 9px;">Product</th><th style="text-align:center; padding:8px 9px;">Input / Output</th><th style="text-align:right; padding:8px 9px;">Units</th><th style="text-align:right; padding:8px 9px;">Baki</th><th style="text-align:right; padding:8px 9px;">Cost/Price</th><th style="text-align:right; padding:8px 9px;">Total</th><th style="text-align:left; padding:8px 9px;">Date</th><th style="text-align:left; padding:8px 9px;">Nota</th>
    </tr></thead><tbody>${rowsHtml}</tbody>
   </table></div>`;
  if(pager) {
@@ -3901,10 +3926,10 @@ window.__ihExportCsv = function() {
  const all = window.__ihFiltered();
  if(!all.length) { if(typeof showToast === 'function') showToast('Tiada rekod untuk export.', 'warn'); return; }
  const q = (v) => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
- const lines = [['No.','Ref','Product','Input / Output','Units','Cost/Price','Total','Date','Nota'].join(',')];
+ const lines = [['No.','Ref','Product','Input / Output','Units','Baki','Cost/Price','Total','Date','Nota'].join(',')];
  all.forEach(r => {
   const dt = r.date ? new Date(r.date).toLocaleDateString('en-GB') : '';
-  lines.push([r.seq || '', q(r.sku), q(r.product), q(r.dir), r.units, (r.price||0).toFixed(2), (r.total||0).toFixed(2), q(dt), q(r.note)].join(','));
+  lines.push([r.seq || '', q(r.sku), q(r.product), q(r.dir), r.units, (r.balAfter != null ? r.balAfter : ''), (r.price||0).toFixed(2), (r.total||0).toFixed(2), q(dt), q(r.note)].join(','));
  });
  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
  const url = URL.createObjectURL(blob);
