@@ -22673,120 +22673,149 @@ window.renderPickingListUI = function(isSorted = false) {
  html += '</div>';
 };
 
+// ===== p1_698 — Barcode Generator: preset saiz (global) + customization (drag susun + font per elemen + show/hide) =====
+window.__BC_SIZES = {
+ '60x40': { w:60, h:40, pad:2.5, bcH:46, bcW:1.7, bcFont:13, fHead:13, fName:9,  fSku:12, fPrice:14, fSeq:9,  showHeader:1, showName:1, showPrice:1, showSeq:1 },
+ '50x30': { w:50, h:30, pad:1.8, bcH:34, bcW:1.3, bcFont:11, fHead:11, fName:8,  fSku:10, fPrice:12, fSeq:8,  showHeader:1, showName:1, showPrice:1, showSeq:1 },
+ '50x25': { w:50, h:25, pad:1.5, bcH:30, bcW:1.3, bcFont:10, fHead:10, fName:0,  fSku:10, fPrice:12, fSeq:0,  showHeader:1, showName:0, showPrice:1, showSeq:0 },
+ '40x30': { w:40, h:30, pad:1.5, bcH:30, bcW:1.0, bcFont:10, fHead:10, fName:0,  fSku:10, fPrice:12, fSeq:7,  showHeader:1, showName:0, showPrice:1, showSeq:1 },
+ '40x25': { w:40, h:25, pad:1.2, bcH:28, bcW:1.0, bcFont:10, fHead:0,  fName:0,  fSku:10, fPrice:11, fSeq:0,  showHeader:0, showName:0, showPrice:1, showSeq:0 },
+ '40x20': { w:40, h:20, pad:1.0, bcH:22, bcW:1.0, bcFont:9,  fHead:0,  fName:0,  fSku:9,  fPrice:10, fSeq:0,  showHeader:0, showName:0, showPrice:1, showSeq:0 },
+ '38x25': { w:38, h:25, pad:1.2, bcH:27, bcW:0.95,bcFont:10, fHead:0,  fName:0,  fSku:10, fPrice:11, fSeq:0,  showHeader:0, showName:0, showPrice:1, showSeq:0 },
+ '30x20': { w:30, h:20, pad:1.0, bcH:22, bcW:0.85,bcFont:9,  fHead:0,  fName:0,  fSku:9,  fPrice:0,  fSeq:0,  showHeader:0, showName:0, showPrice:0, showSeq:0 },
+ '100x50':{ w:100,h:50, pad:4,   bcH:58, bcW:2.2, bcFont:16, fHead:17, fName:12, fSku:15, fPrice:18, fSeq:11, showHeader:1, showName:1, showPrice:1, showSeq:1 }
+};
+window.__bcCurrentCfg = function() {
+ const k = (document.getElementById("barcodeSizeInput") || {}).value || '60x40';
+ return window.__BC_SIZES[k] || window.__BC_SIZES['60x40'];
+};
+window.__BC_ELEMS = [
+ { key:'header',  label:'10CAMP STORE',         type:'font' },
+ { key:'name',    label:'Nama produk',          type:'font' },
+ { key:'barcode', label:'Barcode + EAN',        type:'height' },
+ { key:'sku',     label:'SKU',                  type:'font' },
+ { key:'price',   label:'Harga',                type:'font' },
+ { key:'seq',     label:'Nombor FIFO (1 / N)',  type:'font' }
+];
+// Seed layout default dari preset saiz semasa — jadi output sama macam preset bila belum di-customize.
+window.__bcSeedLayout = function(cfg) {
+ const c = cfg || window.__bcCurrentCfg();
+ return {
+  order: ['header','name','barcode','sku','price','seq'],
+  visible: { header:!!c.showHeader, name:!!c.showName, barcode:true, sku:true, price:!!c.showPrice, seq:!!c.showSeq },
+  font: { header:c.fHead||13, name:c.fName||9, sku:c.fSku||12, price:c.fPrice||14, seq: Math.max(11, Math.round((c.fSeq||9)*1.5)) },
+  bcHeight: c.bcH||46
+ };
+};
+window.__bcGetLayout = function() {
+ try { const j = localStorage.getItem('bcLayout_v1'); if(j) return JSON.parse(j); } catch(e){}
+ return null;
+};
+window.__bcSaveLayout = function(l) { try { localStorage.setItem('bcLayout_v1', JSON.stringify(l)); } catch(e){} window.__bcLayout = l; };
+window.__bcResetLayout = function() {
+ try { localStorage.removeItem('bcLayout_v1'); } catch(e){}
+ window.__bcLayout = null;
+ window.__bcRenderCustomize();
+ const skuEl = document.getElementById('barcodeSkuInput');
+ if(skuEl && skuEl.value.trim()) window.generateBarcodes();
+};
+window.__bcToggleCustomize = function() {
+ const p = document.getElementById('bcCustomizePanel'); if(!p) return;
+ const show = (p.style.display === 'none' || !p.style.display);
+ p.style.display = show ? 'block' : 'none';
+ if(show) window.__bcRenderCustomize();
+};
+window.__bcRenderCustomize = function() {
+ const body = document.getElementById('bcCustomizeBody'); if(!body) return;
+ const L = window.__bcGetLayout() || window.__bcSeedLayout();
+ window.__bcLayout = L;
+ const meta = {}; window.__BC_ELEMS.forEach(e => meta[e.key] = e);
+ body.innerHTML = (L.order || []).map(key => {
+  const e = meta[key]; if(!e) return '';
+  const vis = L.visible[key] !== false;
+  const ctrl = e.type === 'height'
+   ? `<label style="font-size:11px; color:#6B7280; white-space:nowrap;">Tinggi <input type="number" min="14" max="120" value="${L.bcHeight||46}" onchange="window.__bcSetHeight(this.value)" style="width:56px; padding:3px 6px; border:1px solid #D1D5DB; border-radius:6px;"></label>`
+   : `<label style="font-size:11px; color:#6B7280; white-space:nowrap;">Font <input type="number" min="6" max="40" value="${L.font[key]||10}" onchange="window.__bcSetFont('${key}', this.value)" style="width:52px; padding:3px 6px; border:1px solid #D1D5DB; border-radius:6px;"></label>`;
+  const eye = e.key === 'barcode' ? '' : `<button type="button" onclick="window.__bcToggleVis('${key}')" style="background:none; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700; padding:4px 9px; color:${vis?'#345E43':'#9CA3AF'};">${vis?'Tunjuk':'Sorok'}</button>`;
+  return `<div class="bc-cust-row" draggable="true" data-key="${key}" ondragstart="window.__bcDragStart(event,'${key}')" ondragover="window.__bcDragOver(event)" ondrop="window.__bcDrop(event,'${key}')" ondragend="window.__bcDragEnd(event)" style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:#fff; border:1px solid #E5E7EB; border-radius:8px; margin-bottom:6px; cursor:grab; ${vis?'':'opacity:0.5;'}">
+    <span style="font-size:16px; color:#9CA3AF;">&#9776;</span>
+    <span style="flex:1; font-size:12.5px; font-weight:700; color:#111827;">${e.label}</span>
+    ${ctrl}
+    ${eye}
+   </div>`;
+ }).join('');
+};
+window.__bcSetFont = function(key, v){ const L = window.__bcGetLayout() || window.__bcSeedLayout(); L.font[key] = parseInt(v,10) || 10; window.__bcSaveLayout(L); window.generateBarcodes(); };
+window.__bcSetHeight = function(v){ const L = window.__bcGetLayout() || window.__bcSeedLayout(); L.bcHeight = parseInt(v,10) || 46; window.__bcSaveLayout(L); window.generateBarcodes(); };
+window.__bcToggleVis = function(key){ const L = window.__bcGetLayout() || window.__bcSeedLayout(); L.visible[key] = !(L.visible[key] !== false); window.__bcSaveLayout(L); window.__bcRenderCustomize(); window.generateBarcodes(); };
+window.__bcDragKey = null;
+window.__bcDragStart = function(ev, key){ window.__bcDragKey = key; try { ev.dataTransfer.effectAllowed = 'move'; } catch(e){} };
+window.__bcDragOver = function(ev){ ev.preventDefault(); try { ev.dataTransfer.dropEffect = 'move'; } catch(e){} };
+window.__bcDrop = function(ev, targetKey){ ev.preventDefault(); const from = window.__bcDragKey; if(!from || from === targetKey) return; const L = window.__bcGetLayout() || window.__bcSeedLayout(); const ord = (L.order||[]).filter(k => k !== from); const ti = ord.indexOf(targetKey); if(ti < 0) return; ord.splice(ti, 0, from); L.order = ord; window.__bcSaveLayout(L); window.__bcRenderCustomize(); window.generateBarcodes(); };
+window.__bcDragEnd = function(){ window.__bcDragKey = null; };
+
 // Start Barcode Generator Logic
 window.generateBarcodes = function() {
  const sku = document.getElementById("barcodeSkuInput").value.trim().toUpperCase();
  const qty = parseInt(document.getElementById("barcodeQtyInput").value) || 1;
  const printArea = document.getElementById("printLabelArea");
- 
+
  if(!sku) return alert("Sila masukkan SKU produk.");
  if(qty < 1) return alert("Kuantiti tidak sah.");
- 
+
  const p = masterProducts.find(x => x.sku === sku);
  const productName = p ? p.name : "Produk Am";
  const price = p && p.price ? `RM ${p.price.toFixed(2)}` : "";
- // p1_691 — encode barcode dari EAN sebenar (erp_barcode) bila ada supaya boleh scan di Cashier
- // (Cashier padan erp_barcode) + nombor EAN terpapar bawah barcode; fallback SKU bila tiada EAN.
+ // p1_691 — encode barcode dari EAN sebenar (erp_barcode) bila ada (boleh scan di Cashier); fallback SKU.
  const barcodeVal = (p && p.erp_barcode && String(p.erp_barcode).trim()) ? String(p.erp_barcode).trim() : sku;
 
- // p1_695 — preset saiz label (mm); skala barcode/teks ikut saiz, buang elemen utk label kecil.
- const sizeKey = (document.getElementById("barcodeSizeInput") || {}).value || '60x40';
- const BC_SIZES = {
-  '60x40': { w:60, h:40, pad:2.5, bcH:46, bcW:1.7, bcFont:13, fHead:13, fName:9,  fSku:12, fPrice:14, fSeq:9,  showHeader:1, showName:1, showPrice:1, showSeq:1 },
-  '50x30': { w:50, h:30, pad:1.8, bcH:34, bcW:1.3, bcFont:11, fHead:11, fName:8,  fSku:10, fPrice:12, fSeq:8,  showHeader:1, showName:1, showPrice:1, showSeq:1 },
-  '50x25': { w:50, h:25, pad:1.5, bcH:30, bcW:1.3, bcFont:10, fHead:10, fName:0,  fSku:10, fPrice:12, fSeq:0,  showHeader:1, showName:0, showPrice:1, showSeq:0 },
-  '40x30': { w:40, h:30, pad:1.5, bcH:30, bcW:1.0, bcFont:10, fHead:10, fName:0,  fSku:10, fPrice:12, fSeq:7,  showHeader:1, showName:0, showPrice:1, showSeq:1 },
-  '40x25': { w:40, h:25, pad:1.2, bcH:28, bcW:1.0, bcFont:10, fHead:0,  fName:0,  fSku:10, fPrice:11, fSeq:0,  showHeader:0, showName:0, showPrice:1, showSeq:0 },
-  '40x20': { w:40, h:20, pad:1.0, bcH:22, bcW:1.0, bcFont:9,  fHead:0,  fName:0,  fSku:9,  fPrice:10, fSeq:0,  showHeader:0, showName:0, showPrice:1, showSeq:0 },
-  '38x25': { w:38, h:25, pad:1.2, bcH:27, bcW:0.95,bcFont:10, fHead:0,  fName:0,  fSku:10, fPrice:11, fSeq:0,  showHeader:0, showName:0, showPrice:1, showSeq:0 },
-  '30x20': { w:30, h:20, pad:1.0, bcH:22, bcW:0.85,bcFont:9,  fHead:0,  fName:0,  fSku:9,  fPrice:0,  fSeq:0,  showHeader:0, showName:0, showPrice:0, showSeq:0 },
-  '100x50':{ w:100,h:50, pad:4,   bcH:58, bcW:2.2, bcFont:16, fHead:17, fName:12, fSku:15, fPrice:18, fSeq:11, showHeader:1, showName:1, showPrice:1, showSeq:1 }
- };
- const cfg = BC_SIZES[sizeKey] || BC_SIZES['60x40'];
+ const cfg = window.__bcCurrentCfg();
+ // Layout: guna customization tersimpan kalau ada; kalau tak, seed dari preset saiz (output = tingkah laku asal).
+ const L = window.__bcGetLayout() || window.__bcSeedLayout(cfg);
 
- // Print style ikut saiz: 1 label = 1 page, @page = saiz label (override width:100% style.css via specificity + !important)
+ // Print style ikut saiz: 1 label = 1 page, @page = saiz label.
  let pstyle = document.getElementById('bcPrintSize');
  if(!pstyle) { pstyle = document.createElement('style'); pstyle.id = 'bcPrintSize'; document.head.appendChild(pstyle); }
- pstyle.textContent = '@media print {'
-  + ' @page { size: ' + cfg.w + 'mm ' + cfg.h + 'mm; margin: 0; }'
+ pstyle.textContent = '@media print { @page { size: ' + cfg.w + 'mm ' + cfg.h + 'mm; margin: 0; }'
   + ' #printLabelArea { gap: 0 !important; padding: 0 !important; }'
-  + ' #printLabelArea .barcode-label-wrapper { width: ' + cfg.w + 'mm !important; height: ' + cfg.h + 'mm !important; margin: 0 !important; border: none !important; box-sizing: border-box; page-break-after: always; }'
-  + ' }';
+  + ' #printLabelArea .barcode-label-wrapper { width: ' + cfg.w + 'mm !important; height: ' + cfg.h + 'mm !important; margin: 0 !important; border: none !important; box-sizing: border-box; page-break-after: always; } }';
 
- printArea.innerHTML = ""; // Clear area
- 
+ printArea.innerHTML = "";
+
+ const mkDiv = (css, text) => { const d = document.createElement("div"); d.style.cssText = css; d.innerText = text; return d; };
+
  for(let i=0; i<qty; i++) {
- // Create wrapper for thermal roll standard (1 label per row)
- const wrapper = document.createElement("div");
- wrapper.className = "barcode-label-wrapper";
- wrapper.style.cssText = `width:${cfg.w}mm; height:${cfg.h}mm; padding:${cfg.pad}mm; box-sizing:border-box; border:1px solid #ccc; text-align:center; background:#fff; font-family:sans-serif; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;`;
+  const wrapper = document.createElement("div");
+  wrapper.className = "barcode-label-wrapper";
+  wrapper.style.cssText = `width:${cfg.w}mm; height:${cfg.h}mm; padding:${cfg.pad}mm; box-sizing:border-box; border:1px solid #ccc; text-align:center; background:#fff; font-family:sans-serif; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;`;
 
- // Header (Store Name) — sembunyi utk label kecil
- if(cfg.showHeader) {
- const header = document.createElement("div");
- header.style.cssText = `font-weight:900; font-size:${cfg.fHead}px; line-height:1.1;`;
- header.innerText = "10CAMP STORE";
- wrapper.appendChild(header);
- }
+  let svg = null;
+  const builders = {
+   header: () => mkDiv(`font-weight:900; font-size:${L.font.header||13}px; line-height:1.1;`, "10CAMP STORE"),
+   name: () => mkDiv(`font-size:${L.font.name||9}px; font-weight:bold; line-height:1.15; max-height:${Math.round((L.font.name||9)*2.4)}px; overflow:hidden;`, productName.length > 38 ? productName.substring(0,36) + '…' : productName),
+   barcode: () => { svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.style.cssText = "max-width:84%; height:auto;"; return svg; },
+   sku: () => mkDiv(`font-size:${L.font.sku||12}px; font-weight:800; letter-spacing:0.5px; line-height:1.1;`, sku),
+   price: () => (price ? mkDiv(`font-weight:bold; font-size:${L.font.price||14}px; line-height:1.1;`, price) : null),
+   seq: () => mkDiv(`font-size:${L.font.seq||14}px; font-weight:900; color:#101010; line-height:1; background:#FBEFE2; border:1px solid #E7C8A8; border-radius:5px; padding:2px 10px; margin-top:2px; letter-spacing:0.3px;`, `${i+1} / ${qty}`)
+  };
+  (L.order || ['header','name','barcode','sku','price','seq']).forEach(key => {
+   if(L.visible && L.visible[key] === false) return;
+   const fn = builders[key]; if(!fn) return;
+   const node = fn(); if(node) wrapper.appendChild(node);
+  });
 
- // Product Name (Truncated) — sembunyi utk label kecil
- if(cfg.showName) {
- const title = document.createElement("div");
- title.style.cssText = `font-size:${cfg.fName}px; font-weight:bold; line-height:1.15; max-height:${Math.round(cfg.fName*2.4)}px; overflow:hidden;`;
- title.innerText = productName.length > 38 ? productName.substring(0, 36) + '…' : productName;
- wrapper.appendChild(title);
- }
+  printArea.appendChild(wrapper);
 
- // Barcode SVG Element — p1_697: hadkan lebar ~84% (lebih kecil dari label) supaya bar tak cecah
- // tepi & print tak terpotong/cacat walaupun penjajaran printer sedikit terpesong.
- const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
- svg.style.cssText = "max-width:84%; height:auto;";
- wrapper.appendChild(svg);
-
- // p1_691 — SKU jelas (teks bawah barcode kini nombor EAN, jadi SKU diasingkan)
- const skuLine = document.createElement("div");
- skuLine.style.cssText = `font-size:${cfg.fSku}px; font-weight:800; letter-spacing:0.5px; line-height:1.1;`;
- skuLine.innerText = sku;
- wrapper.appendChild(skuLine);
-
- // Price Tag
- if(cfg.showPrice && price) {
- const priceTag = document.createElement("div");
- priceTag.style.cssText = `font-weight:bold; font-size:${cfg.fPrice}px; line-height:1.1;`;
- priceTag.innerText = price;
- wrapper.appendChild(priceTag);
- }
-
- // p1_691/p1_697 — nombor turutan label ikut Kuantiti (cth 1 / 3) — DITONJOLKAN (rujukan utama FIFO):
- // pill bold gelap supaya staf nampak susunan label sewaktu proses FIFO.
- if(cfg.showSeq) {
- const seqFs = Math.max(11, Math.round((cfg.fSeq || 9) * 1.5));
- const seq = document.createElement("div");
- seq.style.cssText = `font-size:${seqFs}px; font-weight:900; color:#101010; line-height:1; background:#FBEFE2; border:1px solid #E7C8A8; border-radius:5px; padding:2px 10px; margin-top:2px; letter-spacing:0.3px;`;
- seq.innerText = `${i+1} / ${qty}`;
- wrapper.appendChild(seq);
- }
-
- printArea.appendChild(wrapper);
-
- // Generate Barcode Graphic
- try {
- if(typeof JsBarcode === 'undefined') {
- throw new Error("JsBarcode library belum dimuatkan.");
- }
- JsBarcode(svg, barcodeVal, {
- format: "CODE128",
- width: cfg.bcW,
- height: cfg.bcH,
- displayValue: true,
- fontSize: cfg.bcFont,
- margin: 2
- });
- } catch(e) {
- console.error("Barcode generation failed:", e);
- printArea.innerHTML = `<p style="color:red; text-align:center;">Ralat: Sila pastikan ada capaian internet untuk memuat turun skrip Barcode.</p>`;
- break;
- }
+  if(svg) {
+   try {
+    if(typeof JsBarcode === 'undefined') throw new Error("JsBarcode library belum dimuatkan.");
+    JsBarcode(svg, barcodeVal, { format:"CODE128", width:cfg.bcW, height:(L.bcHeight||cfg.bcH), displayValue:true, fontSize:cfg.bcFont, margin:2 });
+   } catch(e) {
+    console.error("Barcode generation failed:", e);
+    printArea.innerHTML = `<p style="color:red; text-align:center;">Ralat: Sila pastikan ada capaian internet untuk memuat turun skrip Barcode.</p>`;
+    break;
+   }
+  }
  }
 };
 
