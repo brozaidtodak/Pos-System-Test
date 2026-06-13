@@ -1754,6 +1754,9 @@
  <i data-lucide="chevron-right" class="nav-chevron" style="width:14px; height:14px;"></i>
  </div>
  <div class="nav-children" data-nav-children="messages">
+ <div class="menu-item" data-tab="nav_chat_inbox" onclick="event.stopPropagation(); switchHub(['chatInboxSection'], 'Chat Inbox', this); if(typeof renderChatInbox==='function') renderChatInbox();" style="display:flex; align-items:center; gap:10px;">
+ <i data-lucide="messages-square" style="width:15px; height:15px;"></i> <span>Chat Inbox</span>
+ </div>
  <div class="menu-item" data-tab="nav_broadcast" onclick="event.stopPropagation(); switchHub(['waBroadcastSection'], 'Broadcast', this); if(typeof renderWABroadcast==='function') renderWABroadcast();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="send" style="width:15px; height:15px;"></i> <span>Broadcast</span>
  </div>
@@ -5178,6 +5181,17 @@
  </div>
 
  <!-- p1_276 — Broadcast placeholder -->
+ <!-- p1_701 — Chat Inbox (omnichannel): Shopee LIVE; FB/IG perlu setup Meta -->
+ <div id="chatInboxSection" class="tab-section" style="display:none;">
+ <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="messages-square" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Chat Inbox</h2>
+ <p class="rp-subtitle">Semua chat dalam satu tempat. Shopee LIVE sekarang. FB Messenger &amp; Instagram perlu setup Meta app (lihat nota).</p>
+ <div id="chatChannelTabs" style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;"></div>
+ <div style="display:grid; grid-template-columns:330px 1fr; border:1px solid #E5E7EB; border-radius:10px; overflow:hidden; height:68vh; background:#fff;">
+ <div id="chatConvList" style="border-right:1px solid #E5E7EB; overflow-y:auto;"></div>
+ <div id="chatThread" style="overflow-y:auto; padding:14px; background:#FAFAFA; display:flex; flex-direction:column;"></div>
+ </div>
+ </div>
+
  <div id="broadcastSection" class="tab-section" style="display: none;">
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="send" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Broadcast</h2>
  <div class="admin-card" style="padding:24px; text-align:center;">
@@ -8227,6 +8241,7 @@
  { id:'p1_628', label:'Betulkan bahasa janggal (Zaid: "settlekan language yang obvious macam dekat memo tu"). Punca: kamus i18n (window.I18N.dict, default lang bm) ada 77 entri bm===en belum translate. Betulkan 16 label jelas + 2 ayat tertanam English: Memo dept (Department:→Jabatan:, Sales→Jualan, Inventory→Inventori, Finance→Kewangan, sub dept lbl), All Orders (Channel→Saluran, Completed→Selesai, Refunded→Dipulangkan, Order→Pesanan, Items→Barang, Hide Test→Sorok Ujian), Loading…→Memuatkan…, Consent→Kebenaran, Staff→Staf; mb_sub/mb_sub_info buang "approved"/"Pending Approval". KEKAL jargon Manglish (SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit) + nama feature sidebar + teks brand landing. app.js v634->v635.', d:'done' },
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
+ { id:'p1_701', label:'Chat Inbox omnichannel — Fasa 1 Shopee LIVE (Zaid: nak semua chat Shopee/FB/IG/TikTok/Threads/WA visible dlm sidebar Messages; mula Shopee+FB+IG). Shopee Chat API DISAHKAN berfungsi dgn token sedia ada (probe get_conversation_list pulang perbualan sebenar). Baru: netlify fn shopee-chat.js (mode=conversations + mode=messages, sellerchat API shop-scoped). UI: nav "Chat Inbox" bawah Messages + chatInboxSection 2-pane (senarai perbualan kiri + thread mesej kanan) + tab saluran (Shopee LIVE hijau; FB/IG kelabu "setup"). renderChatInbox/__chatOpen tarik live dari fn, bubble buyer(kiri)/seller(kanan bronze). Read-only Fasa 1 (balas = Fasa 2). FB/IG: perlu Meta app + app review + Page/IG Business token (Zaid setup, aku bina webhook+send lepas creds). Threads tiada DM API (skip). app.js v690->691.', d:'done' },
  { id:'p1_700', label:'Price History AUTO-TRACE marketplace (Zaid: "buatkan price history auto trace dekat tiktok dan shopee"). Fakta API: Shopee/TikTok TAKDA endpoint sejarah harga — cuma harga semasa, jadi sejarah LAMA tak boleh recover. Tapi auto-trace KE DEPAN boleh: sambung ke price-sentinel-background.js (yg dah tarik harga LIVE Shopee+TikTok tiap 6j via price-sentinel-cron 0 */6). Baru: traceHistory() — banding harga live (TikTok base / Shopee original-listing) dgn trace terakhir direkod; kalau berubah → append ke product_price_history (price_type shopee/tiktok, change_source marketplace-trace, changed_by "Shopee/TikTok (auto)"). Run pertama seed baseline (marketplace-trace-baseline). KELEBIHAN: tangkap perubahan harga yg dibuat TERUS di Seller Centre (luar POS) yg trigger DB terlepas. Asingkan baseline guna change_source supaya tak silap-kira dgn baris trigger POS. Tiada cron baru (guna sedia ada). netlify fn sahaja — tiada perubahan app.js.', d:'done' },
  { id:'p1_699', label:'Price History — tambah history harga Shopee & TikTok (Zack: "hanya tunjuk 1 price history, perlukan history price untuk TikTok/Shopee"). PUNCA: trigger log_product_price_change cuma fire AFTER UPDATE OF price, cost_price + log selling/cost sahaja. FIX DB: (a) tambah column product_price_history.price_type (default kedai, backfill baris lama=kedai); (b) trigger ditulis semula log baris berasingan per platform — kedai (price/cost), shopee (shopee_price), tiktok (tiktok_price) bila masing2 berubah; (c) recreate trigger AFTER UPDATE OF price, cost_price, shopee_price, tiktok_price (dulu shopee/tiktok tak trigger langsung). FIX UI: filter baru "JENIS HARGA" (Semua/Kedai/Shopee/TikTok) + lajur badge Jenis (Kedai grey / Shopee #EE4D2D / TikTok hitam) dlm jadual. Baris lama tanpa price_type dianggap Kedai. Note: harga marketplace yg auto-push kini auto-terlog sbg history. app.js v689->690.', d:'done' },
  { id:'p1_698', label:'Barcode Generator — CUSTOMIZATION (Zack pilih: drag susun semula + font per elemen). Panel "Sesuaikan Label": senarai elemen (Header/Nama/Barcode+EAN/SKU/Harga/Nombor FIFO) — drag ☰ tukar SUSUNAN, butang Tunjuk/Sorok per elemen, input saiz font per elemen + tinggi barcode. Disimpan localStorage bcLayout_v1 (kekal merentas sesi). generateBarcodes ditulis semula: render elemen ikut L.order/visible/font/bcHeight; BC_SIZES jadi global window.__BC_SIZES + __bcCurrentCfg (dropdown saiz kawal mm/bcW/EAN-font). Default (belum customize) = seed dari preset saiz → output sama macam dulu; butang Reset buang custom. Saiz dropdown onchange re-render panel. app.js v688->689.', d:'done' },
@@ -13355,7 +13370,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=690"></script>
+ <script src="app.js?v=691"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -4053,6 +4053,79 @@ window.__phApplyFilter = function() {
  if(typeof lucide !== 'undefined') lucide.createIcons();
 };
 
+// ===== p1_701 — Chat Inbox (omnichannel). Shopee LIVE via shopee-chat fn; FB/IG perlu setup Meta. =====
+window.__chatChannel = window.__chatChannel || 'shopee';
+window.__CHAT_CHANNELS = [
+ { key:'shopee', label:'Shopee', color:'#EE4D2D', live:true },
+ { key:'fb',     label:'FB Messenger', color:'#1877F2', live:false },
+ { key:'ig',     label:'Instagram', color:'#C13584', live:false }
+];
+window.__chatSetChannel = function(ch){ window.__chatChannel = ch; window.renderChatInbox(); };
+window.renderChatInbox = function() {
+ const tabs = document.getElementById('chatChannelTabs');
+ const list = document.getElementById('chatConvList');
+ const thread = document.getElementById('chatThread');
+ if(!list || !thread) return;
+ const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
+ if(tabs) {
+  tabs.innerHTML = window.__CHAT_CHANNELS.map(c => {
+   const active = c.key === window.__chatChannel;
+   return `<button onclick="window.__chatSetChannel('${c.key}')" style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; border:1px solid ${active?c.color:'#E5E7EB'}; background:${active?c.color:'#fff'}; color:${active?'#fff':'#374151'};"><span style="width:8px; height:8px; border-radius:50%; background:${c.live?'#22C55E':'#D1D5DB'};"></span>${c.label}${c.live?'':' <span style="font-size:10px; opacity:0.7;">(setup)</span>'}</button>`;
+  }).join('') + `<button onclick="window.renderChatInbox()" style="margin-left:auto; padding:7px 12px; border-radius:8px; border:1px solid #E5E7EB; background:#fff; font-size:12px; font-weight:700; cursor:pointer; color:#374151;">Refresh</button>`;
+ }
+ thread.innerHTML = '<p style="color:#9CA3AF; margin:auto;">Pilih perbualan di kiri.</p>';
+ const ch = window.__CHAT_CHANNELS.find(c => c.key === window.__chatChannel);
+ if(!ch || !ch.live) {
+  list.innerHTML = `<div style="padding:20px; color:#6B7280; font-size:13px; line-height:1.6;"><strong>${esc(ch?ch.label:'Saluran')}</strong> belum disambung.<br><br>Perlu setup Meta app + app review (permission messaging) + sambung Page/IG Business. Bagi creds pada admin, nanti disambung.</div>`;
+  return;
+ }
+ list.innerHTML = '<p style="color:#9CA3AF; padding:18px;">Memuatkan perbualan…</p>';
+ fetch('/.netlify/functions/shopee-chat?mode=conversations&page_size=50').then(r=>r.json()).then(r => {
+  if(r.error) { list.innerHTML = '<p style="color:#B23A2E; padding:18px;">Shopee: '+esc(r.error)+'</p>'; return; }
+  const convs = (r.response && r.response.conversations) || [];
+  if(!convs.length) { list.innerHTML = '<p style="color:#9CA3AF; padding:18px;">Tiada perbualan.</p>'; return; }
+  list.innerHTML = convs.map(c => {
+   const snippet = (c.latest_message_content && c.latest_message_content.text) || ('['+(c.latest_message_type||'mesej')+']');
+   const ts = Number(c.last_message_timestamp || 0);
+   const t = ts ? new Date(ts*1000).toLocaleString('en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+   const unread = (c.unread_count>0) ? `<span style="background:#EE4D2D; color:#fff; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px;">${c.unread_count}</span>` : '';
+   return `<div onclick="window.__chatOpen('${c.conversation_id}', ${c.to_id||0}, '${esc(c.to_name||'').replace(/'/g,"\\'")}')" style="padding:12px 14px; border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background='#fff'">
+     <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;"><strong style="font-size:13px;">${esc(c.to_name||'Pembeli')}</strong>${unread}</div>
+     <div style="font-size:12px; color:#6B7280; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;">${esc(snippet)}</div>
+     <div style="font-size:10px; color:#9CA3AF; margin-top:3px;"><span style="color:#EE4D2D; font-weight:700;">Shopee</span> · ${t}</div>
+    </div>`;
+  }).join('');
+ }).catch(e => { list.innerHTML = '<p style="color:#B23A2E; padding:18px;">Error: '+esc(e.message)+'</p>'; });
+};
+window.__chatOpen = function(cid, buyerId, name) {
+ const thread = document.getElementById('chatThread'); if(!thread) return;
+ const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
+ thread.innerHTML = '<p style="color:#9CA3AF; margin:auto;">Memuatkan mesej…</p>';
+ fetch('/.netlify/functions/shopee-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=50').then(r=>r.json()).then(r => {
+  if(r.error) { thread.innerHTML = '<p style="color:#B23A2E;">Shopee: '+esc(r.error)+'</p>'; return; }
+  let msgs = (r.response && r.response.messages) || [];
+  msgs = msgs.slice().reverse(); // papar lama→baru
+  const head = `<div style="font-weight:800; padding-bottom:10px; border-bottom:1px solid #E5E7EB; margin-bottom:12px; position:sticky; top:0; background:#FAFAFA;">${esc(name||'Pembeli')} <span style="font-size:11px; color:#9CA3AF; font-weight:600;">· Shopee</span></div>`;
+  if(!msgs.length) { thread.innerHTML = head + '<p style="color:#9CA3AF; margin:auto;">Tiada mesej.</p>'; return; }
+  thread.innerHTML = head + msgs.map(m => {
+   const fromBuyer = String(m.from_id) === String(buyerId);
+   const txt = (m.content && (m.content.text != null ? m.content.text : null));
+   const body = txt != null ? esc(txt) : ('<em style="opacity:0.7;">['+esc(m.message_type||'mesej')+']</em>');
+   const ts = Number(m.created_timestamp || m.create_time || 0);
+   const t = ts ? new Date(ts*1000).toLocaleString('en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+   const align = fromBuyer ? 'flex-start' : 'flex-end';
+   const bg = fromBuyer ? '#fff' : '#CD7C32';
+   const col = fromBuyer ? '#111827' : '#fff';
+   const brd = fromBuyer ? 'border:1px solid #E5E7EB;' : '';
+   return `<div style="align-self:${align}; max-width:75%; margin-bottom:8px;">
+     <div style="background:${bg}; color:${col}; ${brd} padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.4; word-break:break-word;">${body}</div>
+     <div style="font-size:10px; color:#9CA3AF; margin-top:2px; text-align:${fromBuyer?'left':'right'};">${t}</div>
+    </div>`;
+  }).join('');
+  thread.scrollTop = thread.scrollHeight;
+ }).catch(e => { thread.innerHTML = '<p style="color:#B23A2E;">Error: '+esc(e.message)+'</p>'; });
+};
+
 // p1_110 — Stock Check Reports workflow (Kael→Zack→Bos)
 window.__scFilter = 'all';
 window.__scReports = [];
