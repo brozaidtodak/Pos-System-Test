@@ -3842,6 +3842,23 @@ window.__ihApply = function() {
  const net = inUnits - outUnits;
  const netEl = document.getElementById('ihKpiNet');
  if(netEl) { netEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString(); netEl.style.color = net >= 0 ? '#345E43' : '#7C2A20'; }
+ // p1_693 — Stok Semasa (live): jumlah qty_remaining sekarang. Ikut skop carian SKU (BUKAN period —
+ // stok semasa tak bergantung tempoh). Tiada carian → jumlah semua produk.
+ const batches = (typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches)) ? inventoryBatches : [];
+ const sq = (st.q || '').toLowerCase().trim();
+ let curStock = 0, scopeHint = 'semua produk';
+ if(sq) {
+  const mp = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
+  const matchSkus = new Set(mp.filter(p => (p.sku||'').toLowerCase().includes(sq) || (p.name||'').toLowerCase().includes(sq)).map(p => p.sku));
+  const inScope = (b) => matchSkus.has(b.sku) || (b.sku||'').toLowerCase().includes(sq);
+  curStock = batches.reduce((s,b) => s + (inScope(b) ? (b.qty_remaining||0) : 0), 0);
+  const nSkus = new Set(batches.filter(inScope).map(b => b.sku)).size;
+  scopeHint = nSkus <= 1 ? 'padan carian' : (nSkus + ' produk padan');
+ } else {
+  curStock = batches.reduce((s,b) => s + (b.qty_remaining||0), 0);
+ }
+ setK('ihKpiStock', curStock.toLocaleString());
+ const stockHintEl = document.getElementById('ihKpiStockHint'); if(stockHintEl) stockHintEl.textContent = scopeHint;
  const perPage = st.perPage;
  const totalPages = Math.max(1, Math.ceil(all.length / perPage));
  if(st.page > totalPages) st.page = totalPages;
