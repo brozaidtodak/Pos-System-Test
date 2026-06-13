@@ -2374,7 +2374,7 @@ window.renderSocialMedia = async function(){
  const fPrev = window.__smLatestFollowers(rows, rg.prevFrom, rg.prevTo);
  const trend = window.__smWeekViews(rows, 8);
  let posted = [];
- try { const r = await db.from('marketing_content').select('*').eq('status','posted').order('posted_at',{ascending:false}).limit(8); posted = r.data||[]; } catch(e){}
+ try { const r = await db.from('marketing_content').select('*').eq('status','posted').order('posted_at',{ascending:false}).limit(60); posted = r.data||[]; } catch(e){}
  const acc = window.__mktGetAccounts();
  const E = window.__mktEsc;
  const cards = ['tiktok','instagram','facebook'].map(function(pl){
@@ -2416,20 +2416,27 @@ window.renderSocialMedia = async function(){
    + (acc[pl]?('<a href="'+E(acc[pl].indexOf('http')===0?acc[pl]:'https://'+acc[pl])+'" target="_blank" style="padding:6px 9px;background:#F3F4F6;border-radius:6px;font-size:11px;color:#374151;text-decoration:none;font-weight:700;">Buka</a>'):'')
    + '</div>';
  }).join('');
- const postedList = posted.length ? posted.map(function(c){
+ // p1_706 — Top Posts: kandungan disiarkan dlm tempoh, susun ikut Views, papar metrik prestasi
+ const inRange = (posted||[]).filter(function(c){ if(!c.posted_at) return false; const t=new Date(c.posted_at).getTime(); return t>=rg.from && t<=rg.to; });
+ const topPosts = inRange.sort(function(a,b){ return (Number(b.views)||0)-(Number(a.views)||0); }).slice(0,10);
+ const metric = function(lbl,val,col){ return '<div style="text-align:center;min-width:48px;"><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">'+lbl+'</div><div style="font-size:13px;font-weight:800;'+(col?'color:'+col+';':'')+'">'+val+'</div></div>'; };
+ const postedList = topPosts.length ? topPosts.map(function(c){
   const plats = (c.platforms||'').split(',').filter(Boolean).map(function(pl){ const m=window.__mktPlat[pl]; return m?('<span style="font-size:9px;font-weight:700;color:'+m.color+';border:1px solid '+m.color+';padding:1px 5px;border-radius:4px;">'+m.label+'</span>'):''; }).join(' ');
   const dt = c.posted_at ? new Date(c.posted_at).toLocaleDateString('en-MY',{day:'numeric',month:'short'}) : '';
-  return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #F3F4F6;">'+window.__mktThumb(c.product_sku,40)
-   + '<div style="flex:1;min-width:0;"><div style="font-size:12.5px;font-weight:700;">'+E((c.title||'').slice(0,60))+'</div><div style="font-size:10.5px;color:#9CA3AF;margin-top:2px;">'+plats+' · '+dt+'</div></div>'
-   + (c.link?('<a href="'+E(c.link)+'" target="_blank" style="font-size:11px;color:var(--primary);font-weight:700;text-decoration:none;">Tengok</a>'):'')+'</div>';
- }).join('') : '<p style="color:#9CA3AF;font-size:12px;padding:14px 0;text-align:center;">Belum ada kandungan disiarkan. Tambah di Content Schedule.</p>';
+  const vw=Number(c.views)||0, lk=Number(c.likes)||0, ld=Number(c.leads)||0;
+  const eng = vw>0 ? ((lk/vw)*100).toFixed(1)+'%' : '—';
+  return '<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #F3F4F6;flex-wrap:wrap;">'+window.__mktThumb(c.product_sku,42)
+   + '<div style="flex:1;min-width:140px;"><div style="font-size:12.5px;font-weight:700;">'+E((c.title||'').slice(0,55))+'</div><div style="font-size:10.5px;color:#9CA3AF;margin-top:2px;">'+plats+(c.product_sku?(' · <span style="color:#374151;font-weight:700;">'+E(c.product_sku)+'</span>'):'')+' · '+dt+'</div></div>'
+   + metric('Views',vw.toLocaleString()) + metric('Likes',lk.toLocaleString()) + metric('Engage',eng) + metric('Leads',ld,'var(--primary)')
+   + (c.link?('<a href="'+E(c.link)+'" target="_blank" style="font-size:11px;color:var(--primary);font-weight:700;text-decoration:none;margin-left:4px;">Tengok</a>'):'')+'</div>';
+ }).join('') : '<p style="color:#9CA3AF;font-size:12px;padding:14px 0;text-align:center;">Tiada kandungan disiarkan dalam tempoh ni. Tandakan "posted" + isi Views/Likes/Leads di Content Schedule.</p>';
  body.innerHTML = '<div class="rp-wrap">'
   + '<div class="rp-header" style="margin-bottom:6px;"><div><h2 class="rp-title"><i data-lucide="share-2" style="width:22px;height:22px;color:var(--primary);"></i> Social Media</h2><p class="rp-subtitle">Followers, views, engagement + trend mingguan TikTok/IG/FB. Isi nombor terus di bawah (Input Mingguan Pantas).</p></div></div>'
   + window.__mktPills(window.__mktRangeSocial, 'window.__mktSetSocialRange')
   + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:18px;">'+cards+'</div>'
   + quickInput
   + '<div class="admin-card" style="padding:16px;margin-bottom:18px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><strong style="font-size:13px;"><i data-lucide="link" style="width:14px;height:14px;vertical-align:-2px;"></i> Direktori Akaun</strong><button onclick="window.__mktSaveAccounts()" style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">Simpan</button></div>'+accRow+'</div>'
-  + '<div class="admin-card" style="padding:16px;"><strong style="font-size:13px;"><i data-lucide="check-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Kandungan Terkini Disiarkan</strong><div style="margin-top:10px;">'+postedList+'</div></div>'
+  + '<div class="admin-card" style="padding:16px;"><strong style="font-size:13px;"><i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:-2px;"></i> Top Posts — Prestasi Kandungan</strong><div style="margin-top:10px;">'+postedList+'</div></div>'
   + '</div>';
  const __wk = document.getElementById('smWeek');
  if(__wk){ if(!__wk.value){ try{ __wk.value = window.__mwGetWeekStart(new Date()).toISOString().slice(0,10); }catch(e){} } __wk.onchange = window.__smLoadWeekInputs; window.__smLoadWeekInputs(); }
@@ -2500,7 +2507,8 @@ window.__mktContentModal = function(id){
   + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;"><div><label style="font-size:11.5px;font-weight:700;color:#374151;">Status</label><select id="mktCStatus" style="width:100%;box-sizing:border-box;margin-top:5px;padding:9px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;">'+statusOpts+'</select></div><div><label style="font-size:11.5px;font-weight:700;color:#374151;">Assign Staf</label><select id="mktCStaff" style="width:100%;box-sizing:border-box;margin-top:5px;padding:9px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;">'+staffOpts+'</select></div></div>'
   + '<label style="font-size:11.5px;font-weight:700;color:#374151;">SKU Produk (optional)</label><input id="mktCSku" list="mktSkuList" value="'+E(c.product_sku||'')+'" placeholder="cth: BD063" style="width:100%;box-sizing:border-box;margin:5px 0 13px;padding:9px 11px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;"><datalist id="mktSkuList">'+((typeof masterProducts!=='undefined'?masterProducts:[]).slice(0,1500).map(function(p){ return '<option value="'+E(p.sku)+'">'+E((p.name||'').slice(0,40))+'</option>'; }).join(''))+'</datalist>'
   + '<label style="font-size:11.5px;font-weight:700;color:#374151;">Caption / Nota</label><textarea id="mktCCaption" rows="2" placeholder="idea caption / hook" style="width:100%;box-sizing:border-box;margin:5px 0 13px;padding:9px 11px;border:1.5px solid var(--border-color);border-radius:8px;font-size:12.5px;font-family:\'Poppins\',sans-serif;resize:vertical;">'+E(c.caption||'')+'</textarea>'
-  + '<label style="font-size:11.5px;font-weight:700;color:#374151;">Link (jika dah siar)</label><input id="mktCLink" value="'+E(c.link||'')+'" placeholder="https://..." style="width:100%;box-sizing:border-box;margin:5px 0 16px;padding:9px 11px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;">'
+  + '<label style="font-size:11.5px;font-weight:700;color:#374151;">Link (jika dah siar)</label><input id="mktCLink" value="'+E(c.link||'')+'" placeholder="https://..." style="width:100%;box-sizing:border-box;margin:5px 0 13px;padding:9px 11px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;">'
+  + '<label style="font-size:11.5px;font-weight:700;color:#374151;">Prestasi (isi bila dah siar)</label><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:5px 0 16px;"><div><div style="font-size:10px;color:#9CA3AF;">Views</div><input id="mktCViews" type="number" min="0" value="'+(c.views||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;"></div><div><div style="font-size:10px;color:#9CA3AF;">Likes</div><input id="mktCLikes" type="number" min="0" value="'+(c.likes||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;"></div><div><div style="font-size:10px;color:#9CA3AF;">Leads</div><input id="mktCLeads" type="number" min="0" value="'+(c.leads||'')+'" placeholder="0" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid var(--border-color);border-radius:8px;font-size:13px;"></div></div>'
   + '<button onclick="window.__mktSaveContent('+(id||'null')+')" style="width:100%;background:var(--primary);color:#fff;border:none;padding:12px;border-radius:9px;font-size:13.5px;font-weight:700;cursor:pointer;">Simpan</button>'
   + '<button onclick="document.getElementById(\'mktContentModal\').remove()" style="width:100%;margin-top:8px;background:none;border:none;color:#9CA3AF;padding:6px;cursor:pointer;font-size:12px;font-weight:600;">Tutup</button>'
   + '</div></div>';
@@ -2514,7 +2522,8 @@ window.__mktSaveContent = async function(id){
  const plats = Array.prototype.slice.call(document.querySelectorAll('.mktCPlat:checked')).map(function(c){return c.value;}).join(',');
  const u = window.currentUser||{};
  const status = g('mktCStatus');
- const rec = { title:title, platforms:plats, content_type:g('mktCType'), scheduled_date:g('mktCDate')||null, status:status, product_sku:g('mktCSku')||null, caption:g('mktCCaption')||null, assigned_to_name:g('mktCStaff')||null, link:g('mktCLink')||null, updated_at:new Date().toISOString() };
+ const gn = function(x){ const el=document.getElementById(x); return el?(Number(el.value)||0):0; };
+ const rec = { title:title, platforms:plats, content_type:g('mktCType'), scheduled_date:g('mktCDate')||null, status:status, product_sku:g('mktCSku')||null, caption:g('mktCCaption')||null, assigned_to_name:g('mktCStaff')||null, link:g('mktCLink')||null, views:gn('mktCViews'), likes:gn('mktCLikes'), leads:gn('mktCLeads'), updated_at:new Date().toISOString() };
  if(status==='posted' && !id) rec.posted_at = new Date().toISOString();
  try {
   if(id){ const r = await db.from('marketing_content').update(rec).eq('id', id); if(r.error) throw r.error; }
