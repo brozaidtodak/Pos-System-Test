@@ -3992,10 +3992,13 @@ window.renderPriceHistory = async function() {
 window.__phApplyFilter = function() {
  const search = (document.getElementById('phSearchSku').value || '').toUpperCase().trim();
  const typeFilter = document.getElementById('phChangeType').value || 'all';
+ const priceTypeFilter = (document.getElementById('phPriceType') || {}).value || 'all';
  let rows = window.__phRows.slice();
  if(search) rows = rows.filter(r => (r.sku || '').toUpperCase().includes(search) || (r.product_name || '').toUpperCase().includes(search));
  if(typeFilter === 'increase') rows = rows.filter(r => Number(r.delta || 0) > 0);
  if(typeFilter === 'decrease') rows = rows.filter(r => Number(r.delta || 0) < 0);
+ // p1_699 — tapis ikut jenis harga (kedai/shopee/tiktok); baris lama tanpa price_type = kedai
+ if(priceTypeFilter !== 'all') rows = rows.filter(r => (r.price_type || 'kedai') === priceTypeFilter);
 
  // KPI
  const total = rows.length;
@@ -4019,6 +4022,7 @@ window.__phApplyFilter = function() {
  <th>Tarikh</th>
  <th>SKU</th>
  <th>Nama</th>
+ <th>Jenis</th>
  <th style="text-align:right;">Harga Lama</th>
  <th style="text-align:right;">Harga Baru</th>
  <th style="text-align:right;">Δ RM</th>
@@ -4035,6 +4039,7 @@ window.__phApplyFilter = function() {
  <td style="font-size:11px; color:#6B7280;">${new Date(r.changed_at).toLocaleString('en-MY', { dateStyle: 'short', timeStyle: 'short' })}</td>
  <td><strong>${escAttr(r.sku)}</strong></td>
  <td style="font-size:12px;">${escAttr(r.product_name || '')}</td>
+ <td>${(function(){ const pt=(r.price_type||'kedai'); const m={kedai:['Kedai','#374151','#F3F4F6'], shopee:['Shopee','#fff','#EE4D2D'], tiktok:['TikTok','#fff','#111827']}; const c=m[pt]||m.kedai; return `<span style="font-size:10px; font-weight:800; padding:2px 7px; border-radius:5px; color:${c[1]}; background:${c[2]};">${c[0]}</span>`; })()}</td>
  <td style="text-align:right;">${fmtRM(r.old_price)}</td>
  <td style="text-align:right;"><strong>${fmtRM(r.new_price)}</strong></td>
  <td style="text-align:right; color:${deltaColor}; font-weight:700;">${deltaSign}${fmtRM(delta).replace('RM ','')}</td>

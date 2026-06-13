@@ -4042,6 +4042,15 @@
  <option value="decrease">Penurunan</option>
  </select>
  </div>
+ <div>
+ <label style="display:block; font-size:11px; font-weight:700; color:#4B5563; margin-bottom:4px;">JENIS HARGA</label>
+ <select id="phPriceType" class="rp-comm-input" style="width:100%; text-align:left;" onchange="window.__phApplyFilter()">
+ <option value="all">Semua</option>
+ <option value="kedai">Harga Kedai</option>
+ <option value="shopee">Shopee</option>
+ <option value="tiktok">TikTok</option>
+ </select>
+ </div>
  </div>
  </div>
 
@@ -8218,6 +8227,7 @@
  { id:'p1_628', label:'Betulkan bahasa janggal (Zaid: "settlekan language yang obvious macam dekat memo tu"). Punca: kamus i18n (window.I18N.dict, default lang bm) ada 77 entri bm===en belum translate. Betulkan 16 label jelas + 2 ayat tertanam English: Memo dept (Department:→Jabatan:, Sales→Jualan, Inventory→Inventori, Finance→Kewangan, sub dept lbl), All Orders (Channel→Saluran, Completed→Selesai, Refunded→Dipulangkan, Order→Pesanan, Items→Barang, Hide Test→Sorok Ujian), Loading…→Memuatkan…, Consent→Kebenaran, Staff→Staf; mb_sub/mb_sub_info buang "approved"/"Pending Approval". KEKAL jargon Manglish (SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit) + nama feature sidebar + teks brand landing. app.js v634->v635.', d:'done' },
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
+ { id:'p1_699', label:'Price History — tambah history harga Shopee & TikTok (Zack: "hanya tunjuk 1 price history, perlukan history price untuk TikTok/Shopee"). PUNCA: trigger log_product_price_change cuma fire AFTER UPDATE OF price, cost_price + log selling/cost sahaja. FIX DB: (a) tambah column product_price_history.price_type (default kedai, backfill baris lama=kedai); (b) trigger ditulis semula log baris berasingan per platform — kedai (price/cost), shopee (shopee_price), tiktok (tiktok_price) bila masing2 berubah; (c) recreate trigger AFTER UPDATE OF price, cost_price, shopee_price, tiktok_price (dulu shopee/tiktok tak trigger langsung). FIX UI: filter baru "JENIS HARGA" (Semua/Kedai/Shopee/TikTok) + lajur badge Jenis (Kedai grey / Shopee #EE4D2D / TikTok hitam) dlm jadual. Baris lama tanpa price_type dianggap Kedai. Note: harga marketplace yg auto-push kini auto-terlog sbg history. app.js v689->690.', d:'done' },
  { id:'p1_698', label:'Barcode Generator — CUSTOMIZATION (Zack pilih: drag susun semula + font per elemen). Panel "Sesuaikan Label": senarai elemen (Header/Nama/Barcode+EAN/SKU/Harga/Nombor FIFO) — drag ☰ tukar SUSUNAN, butang Tunjuk/Sorok per elemen, input saiz font per elemen + tinggi barcode. Disimpan localStorage bcLayout_v1 (kekal merentas sesi). generateBarcodes ditulis semula: render elemen ikut L.order/visible/font/bcHeight; BC_SIZES jadi global window.__BC_SIZES + __bcCurrentCfg (dropdown saiz kawal mm/bcW/EAN-font). Default (belum customize) = seed dari preset saiz → output sama macam dulu; butang Reset buang custom. Saiz dropdown onchange re-render panel. app.js v688->689.', d:'done' },
  { id:'p1_697', label:'Barcode label — tonjolkan nombor turutan (FIFO) + barcode lebih kecil dari saiz (Zack: "emphasize detail kuantiti label sebab itu reference utama FIFO" + "barcode kecil sikit dari saiznya, kalau terlalu tepat ikut saiz print tak sempurna/cacat"). (1) Nombor "i / qty" kini pill bold gelap (bg bronze muda, font ~1.5× + min 11px) — bukan teks kelabu kecil. (2) svg barcode max-width 100%→84% supaya bar tak cecah tepi label; bagi ruang margin elak print terpotong bila penjajaran printer terpesong. app.js v687->688.', d:'done' },
  { id:'p1_696', label:'Inventory History — carian SKU jadi EXACT (Zaid: "buat specific berdasarkan SKU yg difill in, jangan padankan dgn mana SKU"). Masalah: produk group variant kongsi NAMA sama (cth "BD005-035 ... | BD035") → cari "bd035" padan NAMA → tarik baris adik-beradik BD005 sekali. Fix: window.__ihExactSku(q) — kalau q padan TEPAT satu SKU sebenar (dlm rows atau masterProducts), __ihFiltered tapis r.sku===q sahaja (abai padanan nama); box Stok Semasa pun ikut SKU itu sahaja (hint "SKU BD035"). Carian nama biasa (cth "picnic") kekal substring nama+SKU. app.js v686->687.', d:'done' },
@@ -13344,7 +13354,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=689"></script>
+ <script src="app.js?v=690"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
