@@ -2313,29 +2313,102 @@ window.__mktSaveAccounts = function(){
  try { localStorage.setItem('mktSocialAccounts_v1', JSON.stringify(acc)); } catch(e){}
  if(typeof showToast==='function') showToast('Akaun sosial disimpan.', 'success');
 };
+// p1_705 — Social Media dashboard helpers: followers (latest dlm tempoh), input mingguan inline, sparkline trend.
+window.__smLatestFollowers = function(rows, fromMs, toMs){
+ const out = { tiktok:0, instagram:0, facebook:0 }, lt = { tiktok:-1, instagram:-1, facebook:-1 };
+ (rows||[]).forEach(function(r){
+  const t = new Date(r.period_key||0).getTime(); if(isNaN(t)||t<fromMs||t>toMs) return;
+  const p = r.payload||{};
+  ['tiktok','instagram','facebook'].forEach(function(pl){ const f=Number(p[pl]&&p[pl].followers)||0; if(f>0 && t>lt[pl]){ lt[pl]=t; out[pl]=f; } });
+ });
+ return out;
+};
+window.__smWeekViews = function(rows, n){
+ const byWeek = {};
+ (rows||[]).forEach(function(r){ const k=r.period_key; if(!k) return; const p=r.payload||{}; byWeek[k]=byWeek[k]||{tiktok:0,instagram:0,facebook:0}; ['tiktok','instagram','facebook'].forEach(function(pl){ byWeek[k][pl]+=Number(p[pl]&&p[pl].views)||0; }); });
+ const weeks = Object.keys(byWeek).sort().slice(-n);
+ return weeks.map(function(w){ return byWeek[w]; });
+};
+window.__smSpark = function(vals, color){
+ const max = Math.max.apply(null, vals.concat([1]));
+ if(!vals.length) return '<div style="font-size:10px;color:#D1D5DB;">tiada data</div>';
+ const bars = vals.map(function(v){ const h = Math.round((v/max)*26)+2; return '<div title="'+(Number(v)||0).toLocaleString()+'" style="flex:1;min-width:7px;max-width:16px;height:'+h+'px;background:'+color+';border-radius:2px;opacity:'+(v>0?1:0.2)+';"></div>'; }).join('');
+ return '<div style="display:flex;align-items:flex-end;gap:3px;height:30px;">'+bars+'</div>';
+};
+window.__smLoadWeekInputs = async function(){
+ const ws = document.getElementById('smWeek'); if(!ws||!ws.value) return;
+ const u = window.currentUser||{};
+ const set = function(id,v){ const el=document.getElementById(id); if(el) el.value = (v!=null&&v!==0)?v:''; };
+ try {
+  const { data } = await db.from('staff_report_submissions').select('payload').eq('submission_type','marketing_weekly').eq('period_key',ws.value).eq('staff_id', u.staff_id||'unknown').maybeSingle();
+  const p = (data&&data.payload)||{};
+  [['tiktok','Tt'],['instagram','Ig'],['facebook','Fb']].forEach(function(x){ const d=p[x[0]]||{}, k=x[1]; set('sm'+k+'Posts',d.posts); set('sm'+k+'Views',d.views); set('sm'+k+'Likes',d.likes); set('sm'+k+'Leads',d.leads); set('sm'+k+'Foll',d.followers); });
+ } catch(e){}
+};
+window.__smSaveWeek = async function(){
+ const ws = document.getElementById('smWeek'); if(!ws||!ws.value){ if(window.showToast) showToast('Pilih minggu dulu.','warn'); return; }
+ const weekStart = ws.value; const g = function(id){ const v=document.getElementById(id); return v?(Number(v.value)||0):0; };
+ const u = window.currentUser||{};
+ const mk = function(k){ return { posts:g('sm'+k+'Posts'), views:g('sm'+k+'Views'), likes:g('sm'+k+'Likes'), leads:g('sm'+k+'Leads'), followers:g('sm'+k+'Foll') }; };
+ let existing = {};
+ try { const { data } = await db.from('staff_report_submissions').select('payload').eq('submission_type','marketing_weekly').eq('period_key',weekStart).eq('staff_id', u.staff_id||'unknown').maybeSingle(); existing = (data&&data.payload)||{}; } catch(e){}
+ const payload = Object.assign({}, existing, { tiktok:mk('Tt'), instagram:mk('Ig'), facebook:mk('Fb'), __updated_at:new Date().toISOString() });
+ try {
+  const { error } = await db.from('staff_report_submissions').upsert({ staff_id:u.staff_id||'unknown', staff_name:u.name||'Unknown', submission_type:'marketing_weekly', period_key:weekStart, payload, submitted_at:new Date().toISOString(), bos_read_at:null }, { onConflict:'staff_id,submission_type,period_key' });
+  if(error) throw error;
+  window.__mktWeeklyCache = null;
+  if(window.showToast) showToast('Data sosial minggu '+weekStart+' disimpan.','success');
+  window.renderSocialMedia();
+ } catch(e){ if(window.showToast) showToast('Gagal simpan: '+e.message,'error'); }
+};
+
 window.renderSocialMedia = async function(){
  const body = document.getElementById('socialMediaBody');
  if(!body) return;
  body.innerHTML = '<p style="color:#9CA3AF;padding:30px;text-align:center;">Memuatkan…</p>';
- const rows = await window.__mktLoadWeekly();
+ const rows = await window.__mktLoadWeekly(true);
  const rg = window.__mktRangeMs(window.__mktRangeSocial);
  const cur = window.__mktAggWeekly(rows, rg.from, rg.to);
  const prev = window.__mktAggWeekly(rows, rg.prevFrom, rg.prevTo);
+ const fCur = window.__smLatestFollowers(rows, rg.from, rg.to);
+ const fPrev = window.__smLatestFollowers(rows, rg.prevFrom, rg.prevTo);
+ const trend = window.__smWeekViews(rows, 8);
  let posted = [];
  try { const r = await db.from('marketing_content').select('*').eq('status','posted').order('posted_at',{ascending:false}).limit(8); posted = r.data||[]; } catch(e){}
  const acc = window.__mktGetAccounts();
  const E = window.__mktEsc;
  const cards = ['tiktok','instagram','facebook'].map(function(pl){
   const m = window.__mktPlat[pl]; const c = cur[pl]; const p = prev[pl];
+  const eng = c.views>0 ? ((c.likes/c.views)*100).toFixed(1)+'%' : '—';
+  const sv = trend.map(function(d){ return d[pl]; });
   return '<div class="admin-card" style="padding:16px;border-top:3px solid '+m.color+';">'
-   + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><strong style="font-size:14px;">'+m.label+'</strong>'+window.__mktDelta(c.views,p.views)+'</div>'
-   + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-   + '<div><div style="font-size:10px;color:#9CA3AF;text-transform:uppercase;">Posts</div><div style="font-size:18px;font-weight:800;">'+c.posts+'</div></div>'
-   + '<div><div style="font-size:10px;color:#9CA3AF;text-transform:uppercase;">Views</div><div style="font-size:18px;font-weight:800;">'+c.views.toLocaleString()+'</div></div>'
-   + '<div><div style="font-size:10px;color:#9CA3AF;text-transform:uppercase;">Likes</div><div style="font-size:18px;font-weight:800;">'+c.likes.toLocaleString()+'</div></div>'
-   + '<div><div style="font-size:10px;color:#9CA3AF;text-transform:uppercase;">Leads</div><div style="font-size:18px;font-weight:800;color:var(--primary);">'+c.leads+'</div></div>'
-   + '</div></div>';
+   + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><strong style="font-size:14px;">'+m.label+'</strong>'+window.__mktDelta(c.views,p.views)+'</div>'
+   + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;"><div><div style="font-size:10px;color:#9CA3AF;text-transform:uppercase;">Followers</div><div style="font-size:22px;font-weight:800;">'+(fCur[pl]||0).toLocaleString()+'</div></div>'+window.__mktDelta(fCur[pl],fPrev[pl])+'</div>'
+   + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'
+   + '<div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Posts</div><div style="font-size:15px;font-weight:800;">'+c.posts+'</div></div>'
+   + '<div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Views</div><div style="font-size:15px;font-weight:800;">'+c.views.toLocaleString()+'</div></div>'
+   + '<div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Likes</div><div style="font-size:15px;font-weight:800;">'+c.likes.toLocaleString()+'</div></div>'
+   + '<div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Engage</div><div style="font-size:15px;font-weight:800;">'+eng+'</div></div>'
+   + '<div><div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;">Leads</div><div style="font-size:15px;font-weight:800;color:var(--primary);">'+c.leads+'</div></div>'
+   + '</div>'
+   + '<div style="margin-top:10px;"><div style="font-size:8.5px;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Views 8 minggu</div>'+window.__smSpark(sv, m.color)+'</div>'
+   + '</div>';
  }).join('');
+ const inp = function(id,ph){ return '<input id="'+id+'" type="number" min="0" placeholder="'+ph+'" style="width:100%;padding:6px 7px;border:1px solid var(--border-color);border-radius:6px;font-size:12px;">'; };
+ const inRow = function(label, k, color){
+  return '<div style="display:grid;grid-template-columns:80px repeat(5,1fr);gap:6px;align-items:center;margin-bottom:6px;">'
+   + '<span style="font-size:12px;font-weight:700;color:'+color+';">'+label+'</span>'
+   + inp('sm'+k+'Posts','Posts') + inp('sm'+k+'Views','Views') + inp('sm'+k+'Likes','Likes') + inp('sm'+k+'Leads','Leads') + inp('sm'+k+'Foll','Foll')
+   + '</div>';
+ };
+ const hdr = function(t){ return '<span style="font-size:9px;color:#9CA3AF;text-transform:uppercase;text-align:center;">'+t+'</span>'; };
+ const quickInput = '<div class="admin-card" style="padding:16px;margin-bottom:18px;">'
+  + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;"><strong style="font-size:13px;"><i data-lucide="edit-3" style="width:14px;height:14px;vertical-align:-2px;"></i> Input Mingguan Pantas</strong>'
+  + '<div style="display:flex;align-items:center;gap:8px;"><label style="font-size:11px;color:#6B7280;">Minggu mula</label><input type="date" id="smWeek" style="padding:5px 8px;border:1px solid var(--border-color);border-radius:6px;font-size:12px;"><button onclick="window.__smSaveWeek()" style="padding:7px 18px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">Simpan</button></div></div>'
+  + '<div style="display:grid;grid-template-columns:80px repeat(5,1fr);gap:6px;margin-bottom:4px;"><span></span>'+hdr('Posts')+hdr('Views')+hdr('Likes')+hdr('Leads')+hdr('Followers')+'</div>'
+  + inRow('TikTok','Tt','#111') + inRow('Instagram','Ig','#C13584') + inRow('Facebook','Fb','#1877F2')
+  + '<p style="font-size:10.5px;color:#9CA3AF;margin-top:8px;">Isi nombor dari analytics app sosial → pilih minggu → Simpan. Kad &amp; graf atas auto-update.</p>'
+  + '</div>';
  const accRow = ['tiktok','instagram','facebook','shopee'].map(function(pl){
   const m = window.__mktPlat[pl];
   return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:78px;font-size:12px;font-weight:700;color:'+m.color+';">'+m.label+'</span>'
@@ -2351,12 +2424,15 @@ window.renderSocialMedia = async function(){
    + (c.link?('<a href="'+E(c.link)+'" target="_blank" style="font-size:11px;color:var(--primary);font-weight:700;text-decoration:none;">Tengok</a>'):'')+'</div>';
  }).join('') : '<p style="color:#9CA3AF;font-size:12px;padding:14px 0;text-align:center;">Belum ada kandungan disiarkan. Tambah di Content Schedule.</p>';
  body.innerHTML = '<div class="rp-wrap">'
-  + '<div class="rp-header" style="margin-bottom:6px;"><div><h2 class="rp-title"><i data-lucide="share-2" style="width:22px;height:22px;color:var(--primary);"></i> Social Media</h2><p class="rp-subtitle">Prestasi sosial (TikTok/IG/FB) dari data mingguan + direktori akaun. Input nombor di "Marketing Data (Weekly)".</p></div></div>'
+  + '<div class="rp-header" style="margin-bottom:6px;"><div><h2 class="rp-title"><i data-lucide="share-2" style="width:22px;height:22px;color:var(--primary);"></i> Social Media</h2><p class="rp-subtitle">Followers, views, engagement + trend mingguan TikTok/IG/FB. Isi nombor terus di bawah (Input Mingguan Pantas).</p></div></div>'
   + window.__mktPills(window.__mktRangeSocial, 'window.__mktSetSocialRange')
-  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:18px;">'+cards+'</div>'
+  + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:18px;">'+cards+'</div>'
+  + quickInput
   + '<div class="admin-card" style="padding:16px;margin-bottom:18px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><strong style="font-size:13px;"><i data-lucide="link" style="width:14px;height:14px;vertical-align:-2px;"></i> Direktori Akaun</strong><button onclick="window.__mktSaveAccounts()" style="padding:6px 14px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">Simpan</button></div>'+accRow+'</div>'
   + '<div class="admin-card" style="padding:16px;"><strong style="font-size:13px;"><i data-lucide="check-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Kandungan Terkini Disiarkan</strong><div style="margin-top:10px;">'+postedList+'</div></div>'
   + '</div>';
+ const __wk = document.getElementById('smWeek');
+ if(__wk){ if(!__wk.value){ try{ __wk.value = window.__mwGetWeekStart(new Date()).toISOString().slice(0,10); }catch(e){} } __wk.onchange = window.__smLoadWeekInputs; window.__smLoadWeekInputs(); }
  if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
 };
 
