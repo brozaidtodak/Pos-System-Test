@@ -15301,7 +15301,30 @@ window.lpRenderPdp = function() {
                 <div class="lp-pdp__buy-walk-in"><i data-lucide="map-pin"></i> Atau singgah <strong>Kedai 10 CAMP Cyberjaya</strong> &middot; Mon-Sat 11am-8pm (Wed 2-8pm)</div>
             </div>`;
 
+    // p1_690 — phone: full-screen + swipe image carousel + sticky top/bottom bars.
+    // Elemen mobile-only ni display:none di desktop (desktop kekal guna .lp-pdp__gallery 2-lajur).
+    const carouselHtml = `<div class="lp-pdp__carousel-wrap">
+            <div class="lp-pdp__carousel" id="lpPdpCarousel" onscroll="window.lpPdpCarouselScroll && window.lpPdpCarouselScroll(this)">
+                ${images.map(url => `<img src="${escAttr(url)}" class="lp-pdp__cimg" alt="" loading="lazy" onerror="this.src='https://placehold.co/600x600?text=No+Img'">`).join('')}
+            </div>
+            ${images.length > 1 ? `<div class="lp-pdp__carousel-count"><span id="lpPdpCImgN">1</span> / ${images.length}</div>` : ''}
+        </div>`;
+    const mheadHtml = `<div class="lp-pdp__mhead">
+            <button type="button" class="lp-pdp__mhead-back" onclick="window.lpClosePdp()" aria-label="Kembali"><i data-lucide="chevron-left"></i></button>
+            <span class="lp-pdp__mhead-title">${escHtml(parsed.title)}</span>
+        </div>`;
+    const mobileBuyHtml = (totalStock <= 0)
+        ? `<div class="lp-pdp__mbar"><button type="button" class="lp-pdp__mbar-cart" disabled>Sold Out</button></div>`
+        : `<div class="lp-pdp__mbar">
+                <button type="button" class="lp-pdp__mbar-cart" onclick="window.lpPdpAddToCart()"><i data-lucide="shopping-cart"></i><span>Add to Cart</span></button>
+                <a href="${shopeeUrl}" target="_blank" rel="noopener" class="lp-pdp__mbar-btn lp-pdp__mbar-btn--sp" aria-label="Beli di Shopee"><i data-lucide="shopping-bag"></i></a>
+                <a href="${tiktokUrl}" target="_blank" rel="noopener" class="lp-pdp__mbar-btn lp-pdp__mbar-btn--tt" aria-label="Beli di TikTok"><i data-lucide="music-2"></i></a>
+                <a href="${waBuyUrl}" target="_blank" rel="noopener" class="lp-pdp__mbar-btn lp-pdp__mbar-btn--wa" aria-label="WhatsApp"><i data-lucide="message-circle"></i></a>
+            </div>`;
+
     body.innerHTML = `
+        ${mheadHtml}
+        ${carouselHtml}
         <div class="lp-pdp__gallery">
             <img src="${escAttr(mainImg)}" class="lp-pdp__main-img" alt="${escAttr(parsed.title)}" onerror="this.src='https://placehold.co/600x600?text=No+Img'">
             ${thumbsHtml ? `<div class="lp-pdp__thumbs">${thumbsHtml}</div>` : ''}
@@ -15323,9 +15346,21 @@ window.lpRenderPdp = function() {
             ${descHtml}
             ${specsHtml}
         </div>
+        ${mobileBuyHtml}
     `;
     // p1_418 — render the Lucide icons inside the freshly-built PDP (buy buttons + share)
     try { window.lucide && lucide.createIcons && lucide.createIcons(); } catch(e){}
+};
+
+// p1_690 — kemaskini counter "N / total" bila customer swipe carousel gambar (phone).
+window.lpPdpCarouselScroll = function(el) {
+    try {
+        const n = el.querySelectorAll('.lp-pdp__cimg').length;
+        if (!n) return;
+        const idx = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)) + 1;
+        const lbl = document.getElementById('lpPdpCImgN');
+        if (lbl) lbl.textContent = Math.min(Math.max(1, idx), n);
+    } catch (e) {}
 };
 
 window.lpPdpPickImage = function(idx) {

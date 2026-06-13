@@ -914,15 +914,39 @@ html[lang="en"] .lp-product-card__price--off::before { content: 'Save '; }
 .lp-pdp__thumb.is-active { border-color: var(--primary-600); }
 .lp-pdp__thumb:hover { border-color: var(--primary-300); }
 .lp-pdp__info { padding: 28px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+/* p1_690 — elemen mobile-only PDP (full-screen + swipe carousel + sticky bars). Desktop: tersembunyi. */
+.lp-pdp__mhead, .lp-pdp__carousel-wrap, .lp-pdp__mbar { display: none; }
+.lp-pdp__carousel-wrap { position: relative; }
+.lp-pdp__carousel { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.lp-pdp__carousel::-webkit-scrollbar { display: none; }
+.lp-pdp__cimg { flex: 0 0 100%; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; scroll-snap-align: center; background: #F3F4F6; }
+.lp-pdp__carousel-count { position: absolute; right: 12px; bottom: 12px; background: rgba(17,24,39,0.72); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.lp-pdp__mhead { align-items: center; gap: 8px; padding: 9px 12px; background: #fff; border-bottom: 1px solid #F3F4F6; position: sticky; top: 0; z-index: 6; }
+.lp-pdp__mhead-back { width: 34px; height: 34px; flex-shrink: 0; border: none; background: #F3F4F6; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #111827; }
+.lp-pdp__mhead-back i { width: 20px; height: 20px; }
+.lp-pdp__mhead-title { font-size: 14px; font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-pdp__mbar { gap: 8px; padding: 10px 12px; background: rgba(255,255,255,0.97); border-top: 1px solid #E5E7EB; position: sticky; bottom: 0; z-index: 6; backdrop-filter: blur(6px); }
+.lp-pdp__mbar-cart { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 13px; border: none; border-radius: 10px; background: #CD7C32; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+.lp-pdp__mbar-cart i { width: 18px; height: 18px; }
+.lp-pdp__mbar-cart:disabled { background: #D1D5DB; color: #6B7280; }
+.lp-pdp__mbar-btn { width: 46px; flex: 0 0 46px; height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; color: #fff; text-decoration: none; }
+.lp-pdp__mbar-btn i { width: 19px; height: 19px; }
+.lp-pdp__mbar-btn--sp { background: #EE4D2D; }
+.lp-pdp__mbar-btn--tt { background: #111827; }
+.lp-pdp__mbar-btn--wa { background: #1DA851; }
 /* p1_687/p1_688/p1_690 — phone overrides. MESTI selepas semua rule asas .lp-pdp* di atas,
    sebab media query tak tambah specificity → rule asas yg datang kemudian akan menimpa. */
 @media (max-width: 768px) {
-  .lp-pdp__body { grid-template-columns: 1fr; max-height: calc(100vh - 20px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .lp-pdp { max-height: calc(100vh - 20px); }
-  .lp-pdp__info { overflow-y: visible; padding: 18px; }
-  .lp-pdp__gallery { padding: 14px; }
-  .lp-pdp__main-img { aspect-ratio: 4 / 3; }
-  .lp-pdp__thumb { width: 56px; height: 56px; }
+  .lp-pdp-modal { padding: 0; align-items: stretch; }
+  .lp-pdp { max-width: none; width: 100%; height: 100%; max-height: none; border-radius: 0; }
+  .lp-pdp__body { display: block; max-height: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .lp-pdp__close { display: none; }
+  .lp-pdp__gallery { display: none; }
+  .lp-pdp__buy { display: none; }
+  .lp-pdp__mhead { display: flex; }
+  .lp-pdp__carousel-wrap { display: block; }
+  .lp-pdp__mbar { display: flex; }
+  .lp-pdp__info { overflow-y: visible; padding: 18px 16px 10px; }
 }
 .lp-pdp__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .lp-pdp__brand { font-size: 11px; font-weight: 800; color: #FFF; background: #111827; padding: 4px 9px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.7px; }
