@@ -20607,6 +20607,9 @@ window.__cmShowStaffSales = function(staffName) {
  const own = (Array.isArray(salesHistory) ? salesHistory : []).filter(s => {
  if (s.is_test) return false;
  if (s.staff_name !== staffName) return false;
+ // p1_738 — selaras peraturan komisen: Cancelled/Void TAK dikira (dulu modal tak tapis → over-count)
+ const __st = (s.status || '').toLowerCase();
+ if (__st.indexOf('cancel') !== -1 || __st.indexOf('void') !== -1) return false;
  if (range.start && range.end) { const t = s.created_at ? new Date(s.created_at).getTime() : 0; if (!(t >= range.start.getTime() && t <= range.end.getTime())) return false; }
  return true;
  }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
