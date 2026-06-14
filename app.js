@@ -12264,14 +12264,19 @@ window.__thumbUrl = function(url, w){
  if(!/^https:\/\//i.test(url)) return url;                 // placeholder / data: — biar je
  if(url.indexOf('images.weserv.nl') !== -1) return url;     // dah proxy
  const host = url.replace(/^https:\/\//i, '');
- return 'https://images.weserv.nl/?url=ssl:' + host + '&w=' + (w || 300) + '&q=72&output=webp';
+ return 'https://images.weserv.nl/?url=ssl:' + host + '&w=' + (w || 300) + '&q=62&output=webp&we';
  } catch(e){ return url; }
 };
+// p1_713 — fallback gambar berperingkat utk elak iPad/wifi lemah lag:
+// proxy gagal → CUBA proxy sekali lagi (throttle/timeout selalu transient) → baru gambar asal
+// (last resort, mungkin besar) → placeholder ringan (data-uri, tiada network).
+window.__IMG_PLACEHOLDER = window.__IMG_PLACEHOLDER || 'data:image/svg+xml;charset=utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="100%" height="100%" fill="#F3F4F6"/><text x="50%" y="50%" font-family="sans-serif" font-size="14" fill="#C4C9D0" text-anchor="middle" dominant-baseline="middle">No Img</text></svg>');
 window.__imgThumbErr = function(el, orig){
  try {
- if(el.dataset && el.dataset.tf === '1'){ el.onerror = null; el.src = 'https://placehold.co/300x200?text=No+Img'; return; }
- if(el.dataset) el.dataset.tf = '1';
- el.src = orig; // proxy gagal → cuba gambar asal (full-res); kalau tu pun gagal → placeholder
+ const step = (el.dataset && el.dataset.tf) || '0';
+ if(step === '0'){ if(el.dataset) el.dataset.tf = '1'; el.src = window.__thumbUrl(orig, 280) + '&retry=1'; return; } // cuba proxy sekali lagi
+ if(step === '1'){ if(el.dataset) el.dataset.tf = '2'; el.src = orig; return; } // last resort: gambar asal supaya tetap nampak
+ el.onerror = null; el.src = window.__IMG_PLACEHOLDER; // semua gagal → placeholder ringan (tiada network)
  } catch(e){ try { el.onerror = null; } catch(_){} }
 };
 function renderPOS(searchTerm = "") {
