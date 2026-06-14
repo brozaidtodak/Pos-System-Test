@@ -21033,6 +21033,63 @@ window.saveMasterProduct = async function() {
  if(idx >= 0) masterProducts[idx] = savedProd; else masterProducts.push(savedProd);
  }
 
+ // p1_720 — Variant table → cipta/kemaskini satu products_master row per variant.
+ // SKU asas (atas) = parent grouping; tiap baris jadual = child row (parent_sku = SKU asas).
+ try {
+ const vrows = (window.__mpCollectVariantRows ? window.__mpCollectVariantRows() : [])
+ .filter(r => r.sku && r.sku !== sku); // perlu SKU sendiri, jangan langgar SKU asas
+ if(metadata.has_variants && vrows.length) {
+ const colorRe = /warna|colou?r/i, sizeRe = /saiz|size/i;
+ const childRows = vrows.map(r => {
+ let vColor = null, vSize = null;
+ Object.entries(r.options || {}).forEach(([k, v]) => {
+ if(colorRe.test(k)) vColor = v; else if(sizeRe.test(k)) vSize = v;
+ });
+ const child = {
+ sku: r.sku,
+ name: name + ' - ' + r.label,
+ unit: cleaned.unit || 'pcs',
+ price: (r.price != null && !isNaN(r.price)) ? r.price : price,
+ parent_sku: sku,
+ is_published: cleaned.is_published === true,
+ category: cleaned.category || null,
+ brand: cleaned.brand || null,
+ variant_color: vColor,
+ variant_size: vSize,
+ erp_barcode: r.barcode,
+ metadata: { ...metadata, variant_options: r.options, is_variant_child: true, default_variant_sku: null }
+ };
+ if(r.compare != null && !isNaN(r.compare)) child.compare_at_price = r.compare;
+ if(r.cost != null && !isNaN(r.cost)) child.cost_price = r.cost;
+ // buang null supaya default PG bersih
+ Object.keys(child).forEach(k => { if(k !== 'metadata' && (child[k] === null || child[k] === '')) delete child[k]; });
+ return child;
+ });
+ const { data: vdata, error: verr } = await db.from('products_master').upsert(childRows, { onConflict: 'sku' }).select();
+ if(verr) { console.error('Variant rows save error:', verr); showToast('Variant gagal: ' + verr.message, 'warn'); }
+ else {
+ (vdata || []).forEach(vp => {
+ const i = masterProducts.findIndex(p => p.sku === vp.sku);
+ if(i >= 0) masterProducts[i] = vp; else masterProducts.push(vp);
+ });
+ // initial qty per variant baru (qty>0 & SKU belum wujud sebelum ni)
+ for(const r of vrows) {
+ if(r.qty != null && r.qty > 0) {
+ try {
+ await db.from('inventory_batches').insert([{
+ sku: r.sku, qty_received: r.qty, qty_remaining: r.qty,
+ cost_price: (r.cost != null && !isNaN(r.cost)) ? r.cost : (cleaned.cost_price || 0),
+ inbound_date: new Date().toISOString(),
+ notes: 'Initial stock (variant) dari Master Product · ' + ((currentUser && currentUser.name) || 'System')
+ }]);
+ } catch(e) { console.warn('Variant batch insert failed:', e); }
+ }
+ }
+ showToast(childRows.length + ' variant disimpan (parent ' + sku + ').', 'success');
+ }
+ }
+ } catch(e) { console.warn('Variant processing skipped:', e); }
+
  // p1_297 — push this product's price to Shopee + TikTok (custom price or markup
  // fallback). Single SKU = fast, fire-and-forget, never blocks the save.
  try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(sku)).catch(()=>{}); } catch(e){}
@@ -21258,84 +21315,201 @@ window.mpCleanDescriptionHtml = function() {
  }
 };
 
-// p1_719 — Variant builder (option rows) untuk form "+ Baru". Rows = UI je;
-// sebenar data masih masuk ke #mpVariantOptions (hidden textarea) + #mpHasVariants
-// supaya saveMasterProduct/loadMasterProductForEdit tak perlu berubah.
-window.mpAddOptionRow = function(name, vals) {
- const wrap = document.getElementById('mpOptionRows');
+// p1_720 — Variants builder ala Shopify: Option type / Option value (chips) →
+// jadual variant auto-jana (cartesian product) dgn SKU/Price/Compare/Cost/Barcode/Qty.
+// Hidden #mpVariantOptions ("Nama: v1, v2") + #mpHasVariants kekal utk metadata (back-compat);
+// jadual dibaca masa save → cipta satu products_master row per variant (parent_sku = SKU asas).
+const __MP_ESC = (s) => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+// Tambah satu blok Option type (name + chip box)
+window.mpAddOptionType = function(name, values) {
+ const wrap = document.getElementById('mpOptionTypes');
  if(!wrap) return;
- const row = document.createElement('div');
- row.className = 'mp-optrow';
- const esc = (s) => String(s == null ? '' : s).replace(/"/g, '&quot;');
- row.innerHTML = '<input type="text" class="login-input mp-opt-name" placeholder="Nama — cth: Warna" value="' + esc(name) + '" oninput="window.mpSyncOptions()">' +
- '<input type="text" class="login-input mp-opt-vals" placeholder="Nilai (pisah koma) — cth: Merah, Biru, Hijau" value="' + esc(vals) + '" oninput="window.mpSyncOptions()">' +
- '<button type="button" class="mp-opt-del" title="Buang pilihan" onclick="window.mpRemoveOptionRow(this)"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>';
- wrap.appendChild(row);
+ const block = document.createElement('div');
+ block.className = 'mp-opttype';
+ block.innerHTML =
+ '<div class="mp-ot-grid">' +
+ '<div><label class="small-lbl">Option type</label><input type="text" class="login-input mp-ot-name" placeholder="cth Size" value="' + __MP_ESC(name) + '" oninput="window.mpRebuildVariantTable()"></div>' +
+ '<div><label class="small-lbl">Option value</label>' +
+ '<div class="mp-chipbox" onclick="this.querySelector(\'.mp-chip-input\').focus()"><span class="mp-chips"></span>' +
+ '<input type="text" class="mp-chip-input" placeholder="taip nilai, tekan Enter" onkeydown="window.mpChipKey(event,this)" onblur="window.mpChipCommit(this)"></div></div>' +
+ '<button type="button" class="mp-ot-del" title="Buang option type" onclick="window.mpRemoveOptionType(this)"><i data-lucide="x" style="width:15px;height:15px;"></i></button>' +
+ '</div>';
+ wrap.appendChild(block);
+ if(Array.isArray(values) && values.length) {
+ const chipsEl = block.querySelector('.mp-chips');
+ values.forEach(v => window.__mpAddChip(chipsEl, v));
+ }
  if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
- window.mpSyncOptions();
+ window.mpRebuildVariantTable();
 };
-window.mpRemoveOptionRow = function(btn) {
- const row = btn && btn.closest('.mp-optrow');
- if(row) row.remove();
- window.mpSyncOptions();
+window.mpRemoveOptionType = function(btn) {
+ const block = btn && btn.closest('.mp-opttype');
+ if(block) block.remove();
+ window.mpRebuildVariantTable();
 };
-// Baca semua row → tulis ke hidden textarea ("Nama: v1, v2" per line) + set has_variants
-window.mpSyncOptions = function() {
- const wrap = document.getElementById('mpOptionRows');
+// --- Chip helpers ---
+window.__mpAddChip = function(chipsEl, val) {
+ val = String(val || '').trim();
+ if(!val || !chipsEl) return;
+ // elak duplikat dlm option type yg sama
+ const exists = [...chipsEl.querySelectorAll('.mp-chip')].some(c => (c.dataset.v || '') === val);
+ if(exists) return;
+ const chip = document.createElement('span');
+ chip.className = 'mp-chip';
+ chip.dataset.v = val;
+ chip.innerHTML = __MP_ESC(val) + ' <i data-lucide="x" onclick="window.mpChipRemove(this)"></i>';
+ chipsEl.appendChild(chip);
+};
+window.mpChipKey = function(e, input) {
+ if(e.key === 'Enter' || e.key === ',') {
+ e.preventDefault();
+ window.mpChipCommit(input);
+ } else if(e.key === 'Backspace' && input.value === '') {
+ const chips = input.parentElement.querySelector('.mp-chips');
+ const last = chips && chips.lastElementChild;
+ if(last) { last.remove(); window.mpRebuildVariantTable(); }
+ }
+};
+window.mpChipCommit = function(input) {
+ const chips = input.parentElement.querySelector('.mp-chips');
+ const parts = (input.value || '').split(',').map(s => s.trim()).filter(Boolean);
+ parts.forEach(p => window.__mpAddChip(chips, p));
+ input.value = '';
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+ if(parts.length) window.mpRebuildVariantTable();
+};
+window.mpChipRemove = function(i) {
+ const chip = i && i.closest('.mp-chip');
+ if(chip) chip.remove();
+ window.mpRebuildVariantTable();
+};
+// Baca option types dari DOM → [{name, values[]}]
+window.__mpGetOptionTypes = function() {
+ const out = [];
+ document.querySelectorAll('#mpOptionTypes .mp-opttype').forEach(b => {
+ const name = (b.querySelector('.mp-ot-name')?.value || '').trim();
+ const values = [...b.querySelectorAll('.mp-chips .mp-chip')].map(c => c.dataset.v).filter(Boolean);
+ out.push({ name, values });
+ });
+ return out;
+};
+// Cartesian product
+function __mpCartesian(arrays) {
+ return arrays.reduce((acc, arr) => acc.flatMap(a => arr.map(v => [...a, v])), [[]]);
+}
+// Jana semula jadual variant dari option types
+window.mpRebuildVariantTable = function() {
+ const wrap = document.getElementById('mpVariantTableWrap');
  const ta = document.getElementById('mpVariantOptions');
  const hv = document.getElementById('mpHasVariants');
- if(!wrap || !ta) return;
- const lines = [];
- wrap.querySelectorAll('.mp-optrow').forEach(r => {
- const name = (r.querySelector('.mp-opt-name')?.value || '').trim();
- const vals = (r.querySelector('.mp-opt-vals')?.value || '').trim();
- if(name && vals) lines.push(name + ': ' + vals);
+ if(!wrap) return;
+ const types = window.__mpGetOptionTypes().filter(t => t.name && t.values.length);
+ // sync hidden sinks (metadata.variants + has_variants)
+ if(ta) ta.value = types.map(t => t.name + ': ' + t.values.join(', ')).join('\n');
+ if(hv) hv.value = types.length ? 'true' : 'false';
+ if(!types.length) { wrap.innerHTML = ''; return; }
+
+ // snapshot nilai sedia ada (kekalkan bila rebuild)
+ const prev = {};
+ wrap.querySelectorAll('tbody tr').forEach(tr => {
+ const key = tr.dataset.combo;
+ if(key) prev[key] = {
+ sku: tr.querySelector('.mpv-sku')?.value || '',
+ price: tr.querySelector('.mpv-price')?.value || '',
+ compare: tr.querySelector('.mpv-compare')?.value || '',
+ cost: tr.querySelector('.mpv-cost')?.value || '',
+ barcode: tr.querySelector('.mpv-barcode')?.value || '',
+ qty: tr.querySelector('.mpv-qty')?.value || ''
+ };
  });
- ta.value = lines.join('\n');
- if(hv) hv.value = lines.length ? 'true' : 'false';
+
+ const combos = __mpCartesian(types.map(t => t.values)); // array of value-arrays
+ const head = '<thead><tr>' +
+ '<th>Variants</th><th>SKU</th><th>Price (MYR)</th><th>Compare at (MYR)</th><th>Cost (MYR)</th><th>Barcode</th><th>Qty</th>' +
+ '</tr></thead>';
+ const rows = combos.map(combo => {
+ const label = combo.join(' / ');
+ const p = prev[label] || {};
+ return '<tr data-combo="' + __MP_ESC(label) + '">' +
+ '<td class="mpv-label"><span class="mp-vlabel">' + __MP_ESC(label) + '</span></td>' +
+ '<td><input class="mpv-sku" type="text" placeholder="SKU" value="' + __MP_ESC(p.sku) + '"></td>' +
+ '<td><input class="mpv-price" type="number" step="0.01" placeholder="0.00" value="' + __MP_ESC(p.price) + '"></td>' +
+ '<td><input class="mpv-compare" type="number" step="0.01" placeholder="0.00" value="' + __MP_ESC(p.compare) + '"></td>' +
+ '<td><input class="mpv-cost" type="number" step="0.01" placeholder="0.00" value="' + __MP_ESC(p.cost) + '"></td>' +
+ '<td><input class="mpv-barcode" type="text" placeholder="EAN/UPC" value="' + __MP_ESC(p.barcode) + '"></td>' +
+ '<td><input class="mpv-qty" type="number" min="0" placeholder="0" value="' + __MP_ESC(p.qty) + '"></td>' +
+ '</tr>';
+ }).join('');
+ wrap.innerHTML = '<table class="mp-vtable">' + head + '<tbody>' + rows + '</tbody></table>';
 };
-// Buka builder (butang Add variants)
+// Kumpul baris variant utk save → [{label, options{}, sku, price, compare, cost, barcode, qty}]
+window.__mpCollectVariantRows = function() {
+ const wrap = document.getElementById('mpVariantTableWrap');
+ const types = window.__mpGetOptionTypes().filter(t => t.name && t.values.length);
+ if(!wrap || !types.length) return [];
+ const num = (v) => { v = (v || '').trim(); return v === '' ? null : parseFloat(v); };
+ return [...wrap.querySelectorAll('tbody tr')].map(tr => {
+ const label = tr.dataset.combo || '';
+ const parts = label.split(' / ');
+ const options = {};
+ types.forEach((t, i) => { options[t.name] = parts[i]; });
+ return {
+ label, options,
+ sku: (tr.querySelector('.mpv-sku')?.value || '').trim().toUpperCase(),
+ price: num(tr.querySelector('.mpv-price')?.value),
+ compare: num(tr.querySelector('.mpv-compare')?.value),
+ cost: num(tr.querySelector('.mpv-cost')?.value),
+ barcode: (tr.querySelector('.mpv-barcode')?.value || '').trim() || null,
+ qty: num(tr.querySelector('.mpv-qty')?.value)
+ };
+ });
+};
+// Buka builder (link Add variants)
 window.mpVariantsOpen = function() {
- const addWrap = document.getElementById('mpVariantAddWrap');
  const builder = document.getElementById('mpVariantBuilder');
- const wrap = document.getElementById('mpOptionRows');
- if(addWrap) addWrap.style.display = 'none';
+ const types = document.getElementById('mpOptionTypes');
+ document.getElementById('mpVariantAddLink')?.style.setProperty('display', 'none');
+ document.getElementById('mpVariantDelLink')?.style.setProperty('display', 'block');
  if(builder) builder.style.display = 'block';
- if(wrap && !wrap.querySelector('.mp-optrow')) window.mpAddOptionRow(); // mula dengan 1 row kosong
- window.mpSyncOptions();
+ if(types && !types.querySelector('.mp-opttype')) window.mpAddOptionType(); // mula 1 blok kosong
+ window.mpRebuildVariantTable();
 };
 // Tutup + buang semua variant
 window.mpVariantsClose = function() {
- const addWrap = document.getElementById('mpVariantAddWrap');
  const builder = document.getElementById('mpVariantBuilder');
- const wrap = document.getElementById('mpOptionRows');
- if(wrap) wrap.innerHTML = '';
+ const types = document.getElementById('mpOptionTypes');
+ const tbl = document.getElementById('mpVariantTableWrap');
+ if(types) types.innerHTML = '';
+ if(tbl) tbl.innerHTML = '';
  if(builder) builder.style.display = 'none';
- if(addWrap) addWrap.style.display = 'block';
+ document.getElementById('mpVariantAddLink')?.style.setProperty('display', 'block');
+ document.getElementById('mpVariantDelLink')?.style.setProperty('display', 'none');
+ const ta = document.getElementById('mpVariantOptions'); if(ta) ta.value = '';
+ const hv = document.getElementById('mpHasVariants'); if(hv) hv.value = 'false';
  const dsku = document.getElementById('mpDefaultVariantSku'); if(dsku) dsku.value = '';
- window.mpSyncOptions();
 };
-// Reset (dipanggil clearMpForm) — balik ke keadaan tutup
+// Reset (dipanggil clearMpForm)
 window.mpVariantsReset = function() { window.mpVariantsClose(); };
-// Render dari data (dipanggil selepas load) — baca hidden textarea → bina rows
+// Render dari data (selepas load) — bina option types dari metadata.variants
 window.mpVariantRenderFromData = function() {
  const ta = document.getElementById('mpVariantOptions');
- const wrap = document.getElementById('mpOptionRows');
- if(!ta || !wrap) return;
- wrap.innerHTML = '';
+ const types = document.getElementById('mpOptionTypes');
+ if(!ta || !types) return;
+ types.innerHTML = '';
  const opts = (window.__mpParseVariantOptions || (() => []))(ta.value);
  const hasVar = (document.getElementById('mpHasVariants')?.value === 'true') || opts.length > 0;
  if(hasVar && opts.length) {
- opts.forEach(o => window.mpAddOptionRow(o.name, (o.values || []).join(', ')));
- document.getElementById('mpVariantAddWrap').style.display = 'none';
+ document.getElementById('mpVariantAddLink')?.style.setProperty('display', 'none');
+ document.getElementById('mpVariantDelLink')?.style.setProperty('display', 'block');
  document.getElementById('mpVariantBuilder').style.display = 'block';
+ opts.forEach(o => window.mpAddOptionType(o.name, o.values || []));
  } else {
  window.mpVariantsClose();
  }
- window.mpSyncOptions();
 };
-// Backward-compat: kekalkan nama lama (kalau ada caller lain)
-window.mpAddVariantOption = function() { window.mpVariantsOpen(); window.mpAddOptionRow(); };
+// Backward-compat
+window.mpAddVariantOption = function() { window.mpVariantsOpen(); };
 
 // Auto-populate brand & category & vendor & collection & SKU datalists from existing products
 window.refreshMpDatalists = function() {
