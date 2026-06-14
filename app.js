@@ -13747,13 +13747,17 @@ window.processNewCheckout = async function() {
  let proofUrl = null, proofUploadedAt = null, proofUploadedBy = null;
  const hasFile = !!(window.__proofState && window.__proofState.file);
  if(hasFile && typeof window.__proofUploadToStorage === 'function') {
- const url = await window.__proofUploadToStorage(null);
+ // p1_716 — bungkus dgn timeout: upload resit yg hang (wifi kedai) JANGAN freeze butang "Processing…" selamanya.
+ // Gagal/timeout = NON-fatal: sale tetap simpan tanpa resit, staff upload semula dari Reports.
+ let url = null;
+ try { url = await withTimeout(window.__proofUploadToStorage(null), 20000, 'upload resit'); }
+ catch(upErr) { url = null; console.warn('proof upload timeout/gagal (non-fatal):', upErr && upErr.message); }
  if(url) {
  proofUrl = url;
  proofUploadedAt = new Date().toISOString();
  proofUploadedBy = (currentUser && currentUser.name) ? currentUser.name : 'Unknown';
  } else {
- if(typeof showToast === 'function') showToast('Resit pembayaran gagal upload — sale tetap simpan. Upload manual dari Reports → Payment Proofs.', 'warn');
+ if(typeof showToast === 'function') showToast('Resit pembayaran gagal/lambat upload — sale tetap simpan. Upload manual dari Reports → Payment Proofs.', 'warn');
  }
  }
 
@@ -30312,6 +30316,20 @@ let __cpLastSale = null; // last successful sale info — for receipt/WA/email
 let __cpAcCursor = 0;
 let __cpAcResults = [];
 
+// p1_716 — kekalkan draf maklumat customer yg ditaip supaya TAK hilang bila tutup checkout / refresh
+// (Ariff: customer isi nama, tutup tengok produk / refresh sebab stuck → hilang, kena taip semula).
+window.__CP_CUST_KEY = 'pos_checkout_cust_v1';
+window.__cpSaveCust = function(){
+ try {
+  const g = id => ((document.getElementById(id) || {}).value || '').trim();
+  const d = { name: g('cpCustName'), phone: g('cpCustPhone'), email: g('cpCustEmail'), tin: g('cpBuyerTin') };
+  if(d.name || d.phone || d.email || d.tin) localStorage.setItem(window.__CP_CUST_KEY, JSON.stringify(d));
+  else localStorage.removeItem(window.__CP_CUST_KEY);
+ } catch(e){}
+};
+window.__cpGetCustDraft = function(){ try { return JSON.parse(localStorage.getItem(window.__CP_CUST_KEY) || 'null'); } catch(e){ return null; } };
+window.__cpClearCustDraft = function(){ try { localStorage.removeItem(window.__CP_CUST_KEY); } catch(e){} };
+
 window.openCheckoutPanel = function() {
  console.log('[checkout] openCheckoutPanel called, cart len=', (typeof cart !== 'undefined' ? cart.length : 'undef'));
  if(typeof cart === 'undefined' || cart.length === 0) {
@@ -30348,9 +30366,12 @@ window.openCheckoutPanel = function() {
  setIf('cpCustPhone', pc.phone);
  setIf('cpCustEmail', pc.email);
  } else {
- setIf('cpCustName', '');
- setIf('cpCustPhone', '');
- setIf('cpCustEmail', '');
+ // p1_716 — tiada customer di-attach: restore draf yg ditaip (jangan kosongkan → hilang bila buka semula)
+ const d = (window.__cpGetCustDraft && window.__cpGetCustDraft()) || null;
+ setIf('cpCustName', d ? d.name : '');
+ setIf('cpCustPhone', d ? d.phone : '');
+ setIf('cpCustEmail', d ? d.email : '');
+ if(d && d.tin) { const t = document.getElementById('cpBuyerTin'); if(t) t.value = d.tin; }
  }
  const chEl = document.getElementById('cpChannel'); if(chEl) chEl.value = 'POS Cashier';
  const stEl = document.getElementById('cpStatus'); if(stEl) stEl.value = 'Completed';
@@ -30754,6 +30775,8 @@ window.cpConfirmSale = async function() {
  timestamp: new Date().toISOString()
  };
 
+ // p1_716 — jualan berjaya → buang draf customer (jualan seterusnya mula bersih)
+ try { window.__cpClearCustDraft && window.__cpClearCustDraft(); } catch(e){}
  // Show success state
  document.getElementById('cpFormView').classList.add('is-hidden');
  document.getElementById('cpSuccessView').classList.remove('is-hidden');
