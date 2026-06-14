@@ -21187,34 +21187,56 @@ window.saveMasterProduct = async function() {
  const sku = get('mpSku').toUpperCase();
  const price = getNum('mpPrice');
 
- // p1_724 #4 — highlight field wajib yang kosong + skrol ke yang pertama (ganti toast je)
- const __req = [
- { id: 'mpName', ok: !!name },
- { id: 'mpSku', ok: !!sku },
- { id: 'mpPrice', ok: !(price == null || isNaN(price)) }
- ];
+ // p1_731 — mandatory bergantung mod. ADA variant (Option Type terisi) → wajib = SKU + Price
+ // SETIAP baris jadual; base SKU/Harga TIDAK wajib (jadi parent grouping je). SINGLE item →
+ // base SKU + Harga Jualan wajib.
+ const __vrows = (window.__mpCollectVariantRows ? window.__mpCollectVariantRows() : []);
+ const hasVariants = (get('mpHasVariants') === 'true') && __vrows.length > 0;
+
  document.querySelectorAll('#masterProductFormCard .mp-invalid').forEach(el => el.classList.remove('mp-invalid'));
- const __missing = __req.filter(r => !r.ok);
- if(__missing.length) {
- __missing.forEach(r => {
- const el = document.getElementById(r.id);
- if(el) {
+ const __mark = (el, scrollTo) => {
+ if(!el) return;
  el.classList.add('mp-invalid');
- el.addEventListener('input', function __clr(){ el.classList.remove('mp-invalid'); el.removeEventListener('input', __clr); });
- }
+ el.addEventListener('input', function __c(){ el.classList.remove('mp-invalid'); el.removeEventListener('input', __c); });
+ if(scrollTo) { el.scrollIntoView({ behavior:'smooth', block:'center' }); try { el.focus({ preventScroll:true }); } catch(e){} }
+ };
+
+ // Nama sentiasa wajib
+ if(!name) { __mark(document.getElementById('mpName'), true); return showToast('Nama Produk wajib diisi.', 'warn'); }
+
+ if(hasVariants) {
+ // Wajib: tiap baris variant ada SKU + Price
+ const wrap = document.getElementById('mpVariantTableWrap');
+ const trs = wrap ? [...wrap.querySelectorAll('tbody tr')] : [];
+ let firstBad = null;
+ trs.forEach(tr => {
+ const skuEl = tr.querySelector('.mpv-sku'), prEl = tr.querySelector('.mpv-price');
+ if(!(skuEl && skuEl.value.trim())) { if(skuEl) skuEl.classList.add('mp-invalid'); if(!firstBad) firstBad = skuEl; }
+ if(!prEl || isNaN(parseFloat(prEl.value))) { if(prEl) prEl.classList.add('mp-invalid'); if(!firstBad) firstBad = prEl; }
  });
- const first = document.getElementById(__missing[0].id);
- if(first) { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { first.focus({ preventScroll: true }); } catch(e){} }
- return showToast('Sila isi field wajib (*): ' + __missing.map(r => ({ mpName:'Nama', mpSku:'SKU', mpPrice:'Harga Jualan' }[r.id])).join(', '), 'warn');
+ if(firstBad) { firstBad.scrollIntoView({ behavior:'smooth', block:'center' }); try { firstBad.focus({ preventScroll:true }); } catch(e){} return showToast('Setiap variant wajib ada SKU + Price (MYR).', 'warn'); }
+ } else {
+ // Single item: base SKU + Harga Jualan wajib
+ const miss = [];
+ if(!sku) { __mark(document.getElementById('mpSku')); miss.push('SKU'); }
+ if(price == null || isNaN(price)) { __mark(document.getElementById('mpPrice')); miss.push('Harga Jualan'); }
+ if(miss.length) {
+ const f = document.getElementById(!sku ? 'mpSku' : 'mpPrice');
+ if(f) { f.scrollIntoView({ behavior:'smooth', block:'center' }); try { f.focus({ preventScroll:true }); } catch(e){} }
+ return showToast('Sila isi field wajib (*): Nama, ' + miss.join(', '), 'warn');
+ }
  }
 
- const existingProd = masterProducts.find(p => p.sku === sku);
- const isEdit = !!existingProd;
+ // Parent grouping key — bila ada variant & base SKU kosong, derive dari nama (slug)
+ const __slug = (s) => String(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);
+ const parentKey = hasVariants ? (sku || __slug(name)) : sku;
 
- // p1_724 #1 — guard SKU pendua: kalau SKU dah wujud TAPI borang bukan dlm mode edit
- // (user taip SKU sedia ada dlm mode Baru), minta confirm sebelum tindih.
+ const existingProd = sku ? masterProducts.find(p => p.sku === sku) : null;
+ const isEdit = !!existingProd && !hasVariants;
+
+ // p1_724 #1 — guard SKU pendua (hanya single item + base SKU diisi + bukan mode edit)
  const __skuLocked = document.getElementById('mpSku')?.readOnly === true;
- if(existingProd && !__skuLocked) {
+ if(existingProd && !__skuLocked && !hasVariants) {
  const ok = confirm('SKU "' + sku + '" DAH WUJUD' + (existingProd.name ? ' (' + existingProd.name + ')' : '') +
  '.\n\nSave akan TINDIH / UPDATE produk sedia ada ini, BUKAN cipta baru.\n\nTeruskan?');
  if(!ok) return;
@@ -21280,8 +21302,11 @@ window.saveMasterProduct = async function() {
  if(v !== null && v !== '' && !(typeof v === 'number' && isNaN(v))) cleaned[k] = v;
  }
 
- let saveError = null;
  let savedProd = null;
+ // p1_731 — base/parent row hanya disimpan untuk SINGLE item. Bila ada variant, parent_sku
+ // cuma grouping (tiada base row dijual) — tiap variant = row sendiri (lihat blok bawah).
+ if(!hasVariants) {
+ let saveError = null;
  if(isEdit) {
  const { data, error } = await db.from('products_master').update(cleaned).eq('sku', sku).select();
  saveError = error; savedProd = data && data[0];
@@ -21293,18 +21318,17 @@ window.saveMasterProduct = async function() {
  console.error('Master Product save error:', saveError);
  return showToast('Ralat: ' + saveError.message, 'error');
  }
- // Sync in-memory cache
  if(savedProd) {
  const idx = masterProducts.findIndex(p => p.sku === sku);
  if(idx >= 0) masterProducts[idx] = savedProd; else masterProducts.push(savedProd);
+ }
  }
 
  // p1_720 — Variant table → cipta/kemaskini satu products_master row per variant.
  // SKU asas (atas) = parent grouping; tiap baris jadual = child row (parent_sku = SKU asas).
  try {
- const vrows = (window.__mpCollectVariantRows ? window.__mpCollectVariantRows() : [])
- .filter(r => r.sku && r.sku !== sku); // perlu SKU sendiri, jangan langgar SKU asas
- if(metadata.has_variants && vrows.length) {
+ const vrows = __vrows.filter(r => r.sku && r.sku !== parentKey); // perlu SKU sendiri, jangan langgar parent
+ if(hasVariants && vrows.length) {
  const colorRe = /warna|colou?r/i, sizeRe = /saiz|size/i;
  const childRows = vrows.map(r => {
  let vColor = null, vSize = null;
@@ -21316,7 +21340,7 @@ window.saveMasterProduct = async function() {
  name: name + ' - ' + r.label,
  unit: cleaned.unit || 'pcs',
  price: (r.price != null && !isNaN(r.price)) ? r.price : price,
- parent_sku: sku,
+ parent_sku: parentKey,
  is_published: cleaned.is_published === true,
  category: cleaned.category || null,
  brand: cleaned.brand || null,
@@ -21358,20 +21382,20 @@ window.saveMasterProduct = async function() {
  } catch(e) { console.warn('Variant batch insert failed:', e); }
  }
  }
- showToast(childRows.length + ' variant disimpan (parent ' + sku + ').', 'success');
+ showToast(childRows.length + ' variant disimpan (parent ' + parentKey + ').', 'success');
  }
  }
  } catch(e) { console.warn('Variant processing skipped:', e); }
 
  // p1_297 — push this product's price to Shopee + TikTok (custom price or markup
  // fallback). Single SKU = fast, fire-and-forget, never blocks the save.
- try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(sku)).catch(()=>{}); } catch(e){}
+ const __pushSkus = hasVariants ? __vrows.map(r => r.sku).filter(Boolean).join(',') : sku;
+ if(__pushSkus) { try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(__pushSkus)).catch(()=>{}); } catch(e){} }
  if(typeof window.__shopeePriceReminder === 'function') window.__shopeePriceReminder();
 
- // p1_226 — Initial Quantity → inventory_batches insert (only for NEW products + qty > 0)
- // p1_236 — fix schema columns: was unit_cost_rm/received_at/received_by/note → actual: cost_price/inbound_date/notes
+ // p1_226 — Initial Quantity → inventory_batches insert (single item baru sahaja; variant ada batch sendiri)
  const initQty = getNum('mpInitQty');
- if(!isEdit && initQty != null && initQty > 0) {
+ if(!isEdit && !hasVariants && initQty != null && initQty > 0) {
  try {
  await db.from('inventory_batches').insert([{
  sku, qty_received: initQty, qty_remaining: initQty,
@@ -21386,12 +21410,12 @@ window.saveMasterProduct = async function() {
  await db.from('audit_logs').insert([{
  action_type: isEdit ? 'master_product_update' : 'master_product_create',
  actor_name: currentUser ? currentUser.name : 'System',
- details: JSON.stringify({ sku, name, brand: cleaned.brand, price, published: cleaned.is_published }),
+ details: JSON.stringify({ sku: parentKey, name, brand: cleaned.brand, price, published: cleaned.is_published, variants: hasVariants ? __vrows.length : 0 }),
  created_at: new Date().toISOString()
  }]);
  } catch(_){}
 
- showToast(`${isEdit ? 'Update' : 'Daftar'} "${name}" (${sku}) berjaya!`, 'success');
+ showToast(`${isEdit ? 'Update' : 'Daftar'} "${name}" (${parentKey})${hasVariants ? ' · ' + __vrows.length + ' variant' : ''} berjaya!`, 'success');
  window.clearMpForm();
  if(typeof window.refreshMpDatalists === 'function') window.refreshMpDatalists();
  // p1_409 — if opened from Products "+ Baru" modal, close it & refresh the product grid
