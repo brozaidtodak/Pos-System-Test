@@ -4161,6 +4161,7 @@ window.__phApplyFilter = function() {
 window.__chatChannel = window.__chatChannel || 'shopee';
 window.__CHAT_CHANNELS = [
  { key:'shopee', label:'Shopee', color:'#EE4D2D', live:true },
+ { key:'tiktok', label:'TikTok', color:'#111827', live:false },
  { key:'fb',     label:'FB Messenger', color:'#1877F2', live:false },
  { key:'ig',     label:'Instagram', color:'#C13584', live:false }
 ];
