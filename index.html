@@ -6771,7 +6771,12 @@
  #masterProductFormCard details.mp-adv > summary::-webkit-details-marker{display:none;}
  #masterProductFormCard details.mp-adv[open] > summary{border-bottom:1px solid #F3F4F6; margin-bottom:16px;}
  #masterProductFormCard details.mp-adv > div.mp-adv-body{padding-bottom:18px;}
- @media(max-width:900px){#masterProductFormCard .mp-grid{grid-template-columns:1fr;}}
+ #masterProductFormCard .mp-addvariant-btn{width:100%; background:#fff; color:#CD7C32; border:1px dashed #CD7C32; padding:11px; border-radius:10px; cursor:pointer; font-size:12.5px; font-weight:800; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .12s;}
+ #masterProductFormCard .mp-addvariant-btn:hover{background:#FBF3E7;}
+ #masterProductFormCard .mp-optrow{display:grid; grid-template-columns:1fr 1.8fr auto; gap:8px; margin-bottom:8px; align-items:center;}
+ #masterProductFormCard .mp-optrow .mp-opt-del{background:none; border:1px solid #EEEEEE; border-radius:8px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#B23A2E;}
+ #masterProductFormCard .mp-optrow .mp-opt-del:hover{background:#FEF2F2; border-color:#FCA5A5;}
+ @media(max-width:900px){#masterProductFormCard .mp-grid{grid-template-columns:1fr;} #masterProductFormCard .mp-optrow{grid-template-columns:1fr auto;}}
  </style>
 
  <!-- Top bar: tajuk + Save (kanan) -->
@@ -6855,26 +6860,34 @@
 
  <div class="mp-card">
  <h4>Variant</h4>
+ <p class="mp-hint" style="margin:-6px 0 14px;">Tambah variant jika produk ini ada beberapa versi — contohnya saiz atau warna berbeza.</p>
  <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr;">
  <div><label class="small-lbl">Warna</label><input type="text" id="mpVariantColor" class="login-input" placeholder="Khaki"></div>
  <div><label class="small-lbl">Saiz</label><input type="text" id="mpVariantSize" class="login-input" placeholder="L / XL / 2P / 4P"></div>
  <div><label class="small-lbl">Barcode (EAN/UPC)</label><input type="text" id="mpErpBarcode" class="login-input" placeholder="6975641887294"></div>
  </div>
- <div style="margin-top:14px; padding:12px; background:#FAFAF9; border:1px solid #EEEEEE; border-radius:8px;">
- <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
- <label class="small-lbl" style="margin:0;">Custom Options — satu per line: <code style="background:#F8EFD7; padding:1px 4px; border-radius:3px;">Nama: nilai1, nilai2</code></label>
- <button type="button" onclick="window.mpAddVariantOption()" style="background:#CD7C32; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Option</button>
- </div>
- <textarea id="mpVariantOptions" class="login-input" rows="3" placeholder="Material: Cotton, Polyester, Blend&#10;Length: Short, Long&#10;Style: V-neck, Round"></textarea>
- </div>
- <div class="mp-row" style="grid-template-columns:1fr 1fr; margin-top:14px;">
- <div><label class="small-lbl">Ada variant?</label>
- <select id="mpHasVariants" class="login-input">
+
+ <!-- Data sinks tersembunyi — dipacu oleh builder di bawah (backend tak berubah) -->
+ <textarea id="mpVariantOptions" style="display:none;"></textarea>
+ <select id="mpHasVariants" style="display:none;">
  <option value="false" selected>Tiada (standalone)</option>
  <option value="true">Ada (multi-variant)</option>
  </select>
+
+ <!-- Keadaan tutup: butang Add variants -->
+ <div id="mpVariantAddWrap" style="margin-top:16px;">
+ <button type="button" onclick="window.mpVariantsOpen()" class="mp-addvariant-btn"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:-2px;"></i> Add variants</button>
  </div>
- <div><label class="small-lbl">Default Variant SKU</label><input type="text" id="mpDefaultVariantSku" class="login-input" placeholder="kosongkan kalau standalone"></div>
+
+ <!-- Keadaan buka: builder pilihan variant -->
+ <div id="mpVariantBuilder" style="display:none; margin-top:16px; padding:14px; background:#FAFAF9; border:1px solid #EEEEEE; border-radius:10px;">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+ <label class="small-lbl" style="margin:0;">Pilihan variant <span style="font-weight:400; color:#9CA3AF;">— cth Warna → Merah, Biru, Hijau</span></label>
+ <button type="button" onclick="window.mpVariantsClose()" style="background:none; border:none; color:#B23A2E; font-size:11px; font-weight:700; cursor:pointer;">Buang semua</button>
+ </div>
+ <div id="mpOptionRows"></div>
+ <button type="button" onclick="window.mpAddOptionRow()" style="background:#fff; color:#CD7C32; border:1px dashed #CD7C32; padding:7px 12px; border-radius:8px; cursor:pointer; font-size:11px; font-weight:700; margin-top:2px;"><i data-lucide="plus" style="width:12px;height:12px;vertical-align:-2px;"></i> Tambah pilihan lagi</button>
+ <div style="margin-top:14px;"><label class="small-lbl">Default Variant SKU</label><input type="text" id="mpDefaultVariantSku" class="login-input" placeholder="cth SKU asas, kosongkan kalau tiada"></div>
  </div>
  </div>
 
@@ -8309,6 +8322,7 @@
  { id:'p1_628', label:'Betulkan bahasa janggal (Zaid: "settlekan language yang obvious macam dekat memo tu"). Punca: kamus i18n (window.I18N.dict, default lang bm) ada 77 entri bm===en belum translate. Betulkan 16 label jelas + 2 ayat tertanam English: Memo dept (Department:→Jabatan:, Sales→Jualan, Inventory→Inventori, Finance→Kewangan, sub dept lbl), All Orders (Channel→Saluran, Completed→Selesai, Refunded→Dipulangkan, Order→Pesanan, Items→Barang, Hide Test→Sorok Ujian), Loading…→Memuatkan…, Consent→Kebenaran, Staff→Staf; mb_sub/mb_sub_info buang "approved"/"Pending Approval". KEKAL jargon Manglish (SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit) + nama feature sidebar + teks brand landing. app.js v634->v635.', d:'done' },
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
+ { id:'p1_719', label:'Borang "+ Baru" — naik taraf UI/UX seksyen "Variant" (Zaid). Tambah nota "Tambah variant jika produk ini ada beberapa versi — contohnya saiz atau warna berbeza" + butang "Add variants". Default minimalist: hanya butang Add variants (dashed) nampak; klik buka builder option-row berstruktur (Nama + Nilai pisah-koma, tiap baris ada butang buang + "Tambah pilihan lagi") + Default Variant SKU + link "Buang semua". Ganti textarea Custom Options mentah & dropdown "Ada variant?". Builder sync ke field tersembunyi sedia ada (#mpVariantOptions "Nama: v1, v2" + #mpHasVariants) jadi saveMasterProduct/load/clear backend TAK berubah. Fungsi baru: mpAddOptionRow/mpRemoveOptionRow/mpSyncOptions/mpVariantsOpen/mpVariantsClose/mpVariantsReset/mpVariantRenderFromData; mpAddVariantOption kekal (back-compat). loadMasterProductForEdit panggil render (bina rows dari data); clearMpForm panggil reset. app.js v704->705.', d:'done' },
  { id:'p1_718', label:'Borang "+ Baru" — naik taraf "Image URL" jadi seksyen Images penuh (Zaid). Ganti satu field URL dgn: "Add images" (upload fail) + "Add from URL" + zon "Upload files / Drag & Drop" + galeri thumbnail (cover label pertama, butang buang). Upload terus ke Supabase storage bucket product-images (reuse corak p1_424). Fungsi: mpUploadImages/mpDropImages/mpAddImageUrl/mpRemoveImage/mpRenderGallery/mpPushImageUrls; hidden mpImageUrls (CSV semua) + mpImageUrl (first, back-compat). saveMasterProduct kini simpan SEMUA gambar (imagesArr); loadMasterProductForEdit isi galeri; clearMpForm kosongkan. app.js v703->704.', d:'done' },
  { id:'p1_717', label:'Fix gambar zoom/herot selepas tukar Supabase render (Ariff+Zack: gambar zoom dekat2). PUNCA: Supabase render/image dgn ?width=300 SAHAJA pulang 300×(tinggi asal, cth 2400) — bukan skala proporsional → gambar jadi jalur herot/zoom. FIX __thumbUrl: tambah &height=W&resize=contain → skala proporsional muat dlm kotak WxW (gambar PENUH, tak crop/distort; cth 2400×2400 → 300×300). Disahkan via sips. app.js v702->703.', d:'done' },
  { id:'p1_716', label:'Fix detail customer hilang + checkout stuck Processing (Ariff iPad). (1) PUNCA hilang: openCheckoutPanel kosongkan field customer bila tiada posCustomer attached → nama yg DITAIP terus hilang bila tutup checkout / refresh. Fix: draf customer (name/phone/email/tin) auto-simpan localStorage (pos_checkout_cust_v1) tiap oninput; openCheckoutPanel restore draf bila tiada posCustomer; dibuang bila jualan berjaya. Customer taip sekali, tutup tengok produk / refresh → kekal. (2) Lubang hang sebenar: upload resit (__proofUploadToStorage) tak berpagar timeout → boleh freeze butang "Processing…" selamanya di wifi kedai. Bungkus withTimeout 20s, NON-fatal (sale tetap simpan tanpa resit). app.js v701->702. NOTA: pastikan iPad refresh ke versi terkini (fix timeout DB p1_671/672 + ni).', d:'done' },
@@ -13455,7 +13469,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=704"></script>
+ <script src="app.js?v=705"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

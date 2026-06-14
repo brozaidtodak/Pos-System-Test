@@ -21161,6 +21161,7 @@ window.loadMasterProductForEdit = async function() {
  set('mpVariantOptions', window.__mpStringifyVariantOptions(m.variants));
  set('mpHasVariants', m.has_variants ? 'true' : 'false');
  set('mpDefaultVariantSku', m.default_variant_sku);
+ if(window.mpVariantRenderFromData) window.mpVariantRenderFromData(); // p1_719 — bina rows dari data
  // Show edit badge
  const badge = document.getElementById('mpEditModeBadge');
  if(badge) badge.style.display = 'inline-block';
@@ -21184,6 +21185,7 @@ window.clearMpForm = function() {
  const skuField = document.getElementById('mpSku');
  if(skuField) { skuField.readOnly = false; skuField.style.background = ''; }
  if(window.mpRenderGallery) window.mpRenderGallery(); // p1_718 — kosongkan thumbnail galeri
+ if(window.mpVariantsReset) window.mpVariantsReset(); // p1_719 — reset variant builder
 };
 
 // p1_226 — Delete master product (with safety checks)
@@ -21256,17 +21258,84 @@ window.mpCleanDescriptionHtml = function() {
  }
 };
 
-// p1_226 — Add blank option line to variant textarea
-window.mpAddVariantOption = function() {
- const ta = document.getElementById('mpVariantOptions');
- if(!ta) return;
- const placeholder = 'Option Name: nilai1, nilai2';
- ta.value = (ta.value && !ta.value.endsWith('\n')) ? ta.value + '\n' + placeholder : ta.value + placeholder;
- ta.focus();
- // Select the placeholder so staff terus type ganti
- const start = ta.value.length - placeholder.length;
- ta.setSelectionRange(start, ta.value.length);
+// p1_719 — Variant builder (option rows) untuk form "+ Baru". Rows = UI je;
+// sebenar data masih masuk ke #mpVariantOptions (hidden textarea) + #mpHasVariants
+// supaya saveMasterProduct/loadMasterProductForEdit tak perlu berubah.
+window.mpAddOptionRow = function(name, vals) {
+ const wrap = document.getElementById('mpOptionRows');
+ if(!wrap) return;
+ const row = document.createElement('div');
+ row.className = 'mp-optrow';
+ const esc = (s) => String(s == null ? '' : s).replace(/"/g, '&quot;');
+ row.innerHTML = '<input type="text" class="login-input mp-opt-name" placeholder="Nama — cth: Warna" value="' + esc(name) + '" oninput="window.mpSyncOptions()">' +
+ '<input type="text" class="login-input mp-opt-vals" placeholder="Nilai (pisah koma) — cth: Merah, Biru, Hijau" value="' + esc(vals) + '" oninput="window.mpSyncOptions()">' +
+ '<button type="button" class="mp-opt-del" title="Buang pilihan" onclick="window.mpRemoveOptionRow(this)"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>';
+ wrap.appendChild(row);
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+ window.mpSyncOptions();
 };
+window.mpRemoveOptionRow = function(btn) {
+ const row = btn && btn.closest('.mp-optrow');
+ if(row) row.remove();
+ window.mpSyncOptions();
+};
+// Baca semua row → tulis ke hidden textarea ("Nama: v1, v2" per line) + set has_variants
+window.mpSyncOptions = function() {
+ const wrap = document.getElementById('mpOptionRows');
+ const ta = document.getElementById('mpVariantOptions');
+ const hv = document.getElementById('mpHasVariants');
+ if(!wrap || !ta) return;
+ const lines = [];
+ wrap.querySelectorAll('.mp-optrow').forEach(r => {
+ const name = (r.querySelector('.mp-opt-name')?.value || '').trim();
+ const vals = (r.querySelector('.mp-opt-vals')?.value || '').trim();
+ if(name && vals) lines.push(name + ': ' + vals);
+ });
+ ta.value = lines.join('\n');
+ if(hv) hv.value = lines.length ? 'true' : 'false';
+};
+// Buka builder (butang Add variants)
+window.mpVariantsOpen = function() {
+ const addWrap = document.getElementById('mpVariantAddWrap');
+ const builder = document.getElementById('mpVariantBuilder');
+ const wrap = document.getElementById('mpOptionRows');
+ if(addWrap) addWrap.style.display = 'none';
+ if(builder) builder.style.display = 'block';
+ if(wrap && !wrap.querySelector('.mp-optrow')) window.mpAddOptionRow(); // mula dengan 1 row kosong
+ window.mpSyncOptions();
+};
+// Tutup + buang semua variant
+window.mpVariantsClose = function() {
+ const addWrap = document.getElementById('mpVariantAddWrap');
+ const builder = document.getElementById('mpVariantBuilder');
+ const wrap = document.getElementById('mpOptionRows');
+ if(wrap) wrap.innerHTML = '';
+ if(builder) builder.style.display = 'none';
+ if(addWrap) addWrap.style.display = 'block';
+ const dsku = document.getElementById('mpDefaultVariantSku'); if(dsku) dsku.value = '';
+ window.mpSyncOptions();
+};
+// Reset (dipanggil clearMpForm) — balik ke keadaan tutup
+window.mpVariantsReset = function() { window.mpVariantsClose(); };
+// Render dari data (dipanggil selepas load) — baca hidden textarea → bina rows
+window.mpVariantRenderFromData = function() {
+ const ta = document.getElementById('mpVariantOptions');
+ const wrap = document.getElementById('mpOptionRows');
+ if(!ta || !wrap) return;
+ wrap.innerHTML = '';
+ const opts = (window.__mpParseVariantOptions || (() => []))(ta.value);
+ const hasVar = (document.getElementById('mpHasVariants')?.value === 'true') || opts.length > 0;
+ if(hasVar && opts.length) {
+ opts.forEach(o => window.mpAddOptionRow(o.name, (o.values || []).join(', ')));
+ document.getElementById('mpVariantAddWrap').style.display = 'none';
+ document.getElementById('mpVariantBuilder').style.display = 'block';
+ } else {
+ window.mpVariantsClose();
+ }
+ window.mpSyncOptions();
+};
+// Backward-compat: kekalkan nama lama (kalau ada caller lain)
+window.mpAddVariantOption = function() { window.mpVariantsOpen(); window.mpAddOptionRow(); };
 
 // Auto-populate brand & category & vendor & collection & SKU datalists from existing products
 window.refreshMpDatalists = function() {
