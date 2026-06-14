@@ -6754,33 +6754,52 @@
  </div>
 
  <!-- Master Product Registration (Sprint 1.5: full form) — p1_409 relocated into Products "+ Baru" modal -->
- <div id="masterProductFormCard" class="admin-card" style="border-top:4px solid var(--primary); padding:20px; margin-top:20px; margin-bottom:20px;">
- <h3 style="margin-bottom:6px;" data-i18n="wh_register_title">Daftar / Edit Master Product</h3>
- <p style="font-size:12px; color:#888; margin-bottom:18px;" data-i18n="wh_register_sub">Daftar produk baru, atau load SKU sedia ada untuk edit. Field bertanda * wajib.</p>
+ <div id="masterProductFormCard">
+ <!-- p1_715 — UI/UX minimalist gaya rujukan (brand colors): top bar Save + kad lembut + advanced dilipat -->
+ <style>
+ #masterProductFormCard{padding:0; border:none; background:transparent; box-shadow:none; margin:0;}
+ #masterProductFormCard .mp-grid{display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;}
+ #masterProductFormCard .mp-card{background:#fff; border:1px solid #EEEEEE; border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:0 1px 3px rgba(16,16,16,0.04);}
+ #masterProductFormCard .mp-card > h4{font-size:13px; font-weight:800; margin:0 0 14px; color:#101010; letter-spacing:0;}
+ #masterProductFormCard .mp-row{display:grid; gap:14px; margin-bottom:14px;}
+ #masterProductFormCard .mp-row:last-child{margin-bottom:0;}
+ #masterProductFormCard .small-lbl{display:block; font-size:11.5px; font-weight:600; color:#6B7280; margin-bottom:5px;}
+ #masterProductFormCard .login-input{margin:0;}
+ #masterProductFormCard .mp-hint{font-size:11px; color:#9CA3AF; margin:8px 0 0;}
+ #masterProductFormCard details.mp-adv{background:#fff; border:1px solid #EEEEEE; border-radius:12px; padding:0 20px; margin-bottom:18px; box-shadow:0 1px 3px rgba(16,16,16,0.04);}
+ #masterProductFormCard details.mp-adv > summary{cursor:pointer; font-size:13px; font-weight:800; color:#101010; padding:18px 0; list-style:none; display:flex; align-items:center; gap:8px;}
+ #masterProductFormCard details.mp-adv > summary::-webkit-details-marker{display:none;}
+ #masterProductFormCard details.mp-adv[open] > summary{border-bottom:1px solid #F3F4F6; margin-bottom:16px;}
+ #masterProductFormCard details.mp-adv > div.mp-adv-body{padding-bottom:18px;}
+ @media(max-width:900px){#masterProductFormCard .mp-grid{grid-template-columns:1fr;}}
+ </style>
 
- <!-- p1_226 — Edit/Delete toolbar (Zaid: pilih produk, edit, delete) -->
- <div style="background:#FAFAF9; border:1px solid #ECE6DE; padding:12px; border-radius:6px; margin-bottom:18px; display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+ <!-- Top bar: tajuk + Save (kanan) -->
+ <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+ <div>
+ <h3 style="margin:0; font-size:18px; color:#101010;" data-i18n="wh_register_title">Daftar Produk Baru</h3>
+ <p style="font-size:12px; color:#9CA3AF; margin:3px 0 0;">Isi maklumat produk. Field bertanda * wajib.</p>
+ </div>
+ <div style="display:flex; gap:8px; align-items:center;">
+ <span id="mpEditModeBadge" style="display:none; padding:7px 12px; background:#101010; color:#fff; border-radius:8px; font-size:11px; font-weight:700;"><i data-lucide="edit-3" style="width:11px;height:11px;vertical-align:-1px;"></i> EDIT MODE</span>
+ <button onclick="window.saveMasterProduct()" style="background:#CD7C32; color:#fff; border:none; padding:10px 24px; border-radius:8px; cursor:pointer; font-weight:800; font-size:14px;">Save</button>
+ </div>
+ </div>
+
+ <!-- Edit SKU sedia ada (collapsible, subtle) -->
+ <details style="margin-bottom:18px; background:#FAFAF9; border:1px solid #EEEEEE; border-radius:10px; padding:12px 16px;">
+ <summary style="cursor:pointer; font-size:12.5px; font-weight:700; color:#6B7280; list-style:none;"><i data-lucide="search" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit / Padam SKU sedia ada</summary>
+ <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-top:12px;">
  <div style="flex:1; min-width:200px;">
- <label class="small-lbl" style="margin-bottom:4px;">Cari SKU sedia ada (untuk Edit / Delete)</label>
+ <label class="small-lbl">Cari SKU</label>
  <input type="text" id="mpSearchSku" class="login-input" placeholder="Taip SKU... e.g. BD005" style="margin:0;" list="mpAllSkusList" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.loadMasterProductForEdit();}">
  <datalist id="mpAllSkusList"></datalist>
  </div>
- <button onclick="window.loadMasterProductForEdit()" class="btn-primary" style="margin:0; padding:10px 16px;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Load</button>
- <button onclick="window.clearMpForm()" style="margin:0; padding:10px 16px; background:#6B7280; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700;"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px;"></i> Reset</button>
- <button onclick="window.deleteMasterProduct()" style="margin:0; padding:10px 16px; background:#B23A2E; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:700;"><i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:-2px;"></i> Delete Product</button>
- <span id="mpEditModeBadge" style="display:none; padding:8px 12px; background:#101010; color:#fff; border-radius:6px; font-size:11px; font-weight:700;"><i data-lucide="edit-3" style="width:11px;height:11px;vertical-align:-1px;"></i> EDIT MODE</span>
+ <button onclick="window.loadMasterProductForEdit()" style="margin:0; padding:10px 16px; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Load</button>
+ <button onclick="window.clearMpForm()" style="margin:0; padding:10px 16px; background:#fff; color:#374151; border:1px solid #E5E7EB; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px;"></i> Reset</button>
+ <button onclick="window.deleteMasterProduct()" style="margin:0; padding:10px 16px; background:#fff; color:#B23A2E; border:1px solid #F0C6BF; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:-2px;"></i> Padam</button>
  </div>
-
- <!-- p1_621 — layout 2-kolum gaya EasyStore (kiri: kandungan produk · kanan: organisasi/status) -->
- <style>
- #masterProductFormCard .mp-grid{display:grid; grid-template-columns:1fr 320px; gap:18px; align-items:start;}
- #masterProductFormCard .mp-card{background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:16px; margin-bottom:16px;}
- #masterProductFormCard .mp-card > h4{font-size:13.5px; font-weight:800; margin:0 0 12px; color:#202223; text-transform:none; letter-spacing:0;}
- #masterProductFormCard .mp-row{display:grid; gap:12px; margin-bottom:12px;}
- #masterProductFormCard .mp-row:last-child{margin-bottom:0;}
- #masterProductFormCard .mp-hint{font-size:11px; color:#888; margin:6px 0 0;}
- @media(max-width:900px){#masterProductFormCard .mp-grid{grid-template-columns:1fr;}}
- </style>
+ </details>
 
  <div class="mp-grid">
  <!-- ============ KIRI: KANDUNGAN PRODUK ============ -->
@@ -6792,6 +6811,59 @@
  <div><label class="small-lbl">Nama Produk <span style="color:#B23A2E;">*</span></label><input type="text" id="mpName" class="login-input" placeholder="e.g. Naturehike Cloud Up 2 Tent"></div>
  <div><label class="small-lbl">SKU <span style="color:#B23A2E;">*</span></label><input type="text" id="mpSku" class="login-input" placeholder="e.g. NH-CU2"></div>
  </div>
+ <div style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 8px;">
+ <span class="small-lbl" style="margin:0;">Description</span>
+ <button type="button" onclick="window.mpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#fff; color:#CD7C32; border:1px solid #E7C8A8; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
+ </div>
+ <textarea id="mpDescription" class="login-input" rows="4" placeholder="Tent ringan untuk hiking 2 orang, double-wall, 3-season..."></textarea>
+ <div style="margin-top:14px;"><label class="small-lbl">Image URL (utama, pilihan)</label><input type="text" id="mpImageUrl" class="login-input" placeholder="https://..."></div>
+ </div>
+
+ <div class="mp-card">
+ <h4>Harga &amp; Stok</h4>
+ <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+ <div><label class="small-lbl">Harga Jualan (RM) <span style="color:#B23A2E;">*</span></label><input type="number" id="mpPrice" class="login-input" step="0.01" placeholder="0.00"></div>
+ <div><label class="small-lbl">Compare-at (RM)</label><input type="number" id="mpCompareAt" class="login-input" step="0.01" placeholder="0.00"></div>
+ <div><label class="small-lbl">Kos Modal / Unit (RM)</label><input type="number" id="mpCostPrice" class="login-input" step="0.01" placeholder="0.00"></div>
+ <div><label class="small-lbl">Initial Qty (stok awal)</label><input type="number" id="mpInitQty" class="login-input" min="0" placeholder="0"></div>
+ </div>
+ <p class="mp-hint">Margin = (Harga − Kos) ÷ Harga. Compare-at lebih tinggi = papar badge diskaun + harga coret. Initial Qty auto-cipta inventory batch awal.</p>
+ <div class="mp-row" style="grid-template-columns:1fr 1fr; margin-top:14px;">
+ <div><label class="small-lbl">Harga Shopee (RM)</label><input type="number" id="mpShopeePrice" class="login-input" step="0.01" placeholder="auto (markup)"></div>
+ <div><label class="small-lbl">Harga TikTok (RM)</label><input type="number" id="mpTiktokPrice" class="login-input" step="0.01" placeholder="auto (markup)"></div>
+ </div>
+ <p class="mp-hint">Harga sendiri per channel. Kosong = produk TAK dipush ke channel itu.</p>
+ </div>
+
+ <div class="mp-card">
+ <h4>Variant</h4>
+ <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr;">
+ <div><label class="small-lbl">Warna</label><input type="text" id="mpVariantColor" class="login-input" placeholder="Khaki"></div>
+ <div><label class="small-lbl">Saiz</label><input type="text" id="mpVariantSize" class="login-input" placeholder="L / XL / 2P / 4P"></div>
+ <div><label class="small-lbl">Barcode (EAN/UPC)</label><input type="text" id="mpErpBarcode" class="login-input" placeholder="6975641887294"></div>
+ </div>
+ <div style="margin-top:14px; padding:12px; background:#FAFAF9; border:1px solid #EEEEEE; border-radius:8px;">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+ <label class="small-lbl" style="margin:0;">Custom Options — satu per line: <code style="background:#F8EFD7; padding:1px 4px; border-radius:3px;">Nama: nilai1, nilai2</code></label>
+ <button type="button" onclick="window.mpAddVariantOption()" style="background:#CD7C32; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Option</button>
+ </div>
+ <textarea id="mpVariantOptions" class="login-input" rows="3" placeholder="Material: Cotton, Polyester, Blend&#10;Length: Short, Long&#10;Style: V-neck, Round"></textarea>
+ </div>
+ <div class="mp-row" style="grid-template-columns:1fr 1fr; margin-top:14px;">
+ <div><label class="small-lbl">Ada variant?</label>
+ <select id="mpHasVariants" class="login-input">
+ <option value="false" selected>Tiada (standalone)</option>
+ <option value="true">Ada (multi-variant)</option>
+ </select>
+ </div>
+ <div><label class="small-lbl">Default Variant SKU</label><input type="text" id="mpDefaultVariantSku" class="login-input" placeholder="kosongkan kalau standalone"></div>
+ </div>
+ </div>
+
+ <!-- Tetapan lanjutan — dilipat supaya borang nampak kemas (rujukan minimalist) -->
+ <details class="mp-adv">
+ <summary><i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i> Tetapan Lanjutan (pilihan)</summary>
+ <div class="mp-adv-body">
  <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr;">
  <div><label class="small-lbl">Model No.</label><input type="text" id="mpModelNo" class="login-input" placeholder="CNH22DZ006"></div>
  <div><label class="small-lbl">Parent SKU (variant grouping)</label><input type="text" id="mpParentSku" class="login-input" placeholder="kosongkan kalau standalone"></div>
@@ -6806,60 +6878,7 @@
  </select>
  </div>
  </div>
- </div>
-
- <div class="mp-card">
- <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
- <h4 style="margin:0;">Description</h4>
- <button type="button" onclick="window.mpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#CE9420; color:#fff; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
- </div>
- <textarea id="mpDescription" class="login-input" rows="4" placeholder="Tent ringan untuk hiking 2 orang, double-wall, 3-season..."></textarea>
- <div style="margin-top:12px;"><label class="small-lbl">Image URL (utama, pilihan)</label><input type="text" id="mpImageUrl" class="login-input" placeholder="https://..."></div>
- </div>
-
- <div class="mp-card">
- <h4>Harga &amp; Stok</h4>
- <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr 1fr;">
- <div><label class="small-lbl">Harga Jualan (RM) <span style="color:#B23A2E;">*</span></label><input type="number" id="mpPrice" class="login-input" step="0.01" placeholder="0.00"></div>
- <div><label class="small-lbl">Compare-at (RM)</label><input type="number" id="mpCompareAt" class="login-input" step="0.01" placeholder="0.00"></div>
- <div><label class="small-lbl">Kos Modal / Unit (RM)</label><input type="number" id="mpCostPrice" class="login-input" step="0.01" placeholder="0.00"></div>
- <div><label class="small-lbl">Initial Qty (stok awal)</label><input type="number" id="mpInitQty" class="login-input" min="0" placeholder="0"></div>
- </div>
- <p class="mp-hint">Margin = (Harga − Kos) ÷ Harga. Compare-at lebih tinggi = papar badge diskaun + harga coret. Initial Qty auto-cipta inventory batch awal.</p>
- <div class="mp-row" style="grid-template-columns:1fr 1fr; margin-top:12px;">
- <div><label class="small-lbl">Harga Shopee (RM)</label><input type="number" id="mpShopeePrice" class="login-input" step="0.01" placeholder="auto (markup)"></div>
- <div><label class="small-lbl">Harga TikTok (RM)</label><input type="number" id="mpTiktokPrice" class="login-input" step="0.01" placeholder="auto (markup)"></div>
- </div>
- <p class="mp-hint">Harga sendiri per channel. Kosong = produk TAK dipush ke channel itu (set harga sendiri).</p>
- </div>
-
- <div class="mp-card">
- <h4>Variant</h4>
- <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr;">
- <div><label class="small-lbl">Warna</label><input type="text" id="mpVariantColor" class="login-input" placeholder="Khaki"></div>
- <div><label class="small-lbl">Saiz</label><input type="text" id="mpVariantSize" class="login-input" placeholder="L / XL / 2P / 4P"></div>
- <div><label class="small-lbl">Barcode (EAN/UPC)</label><input type="text" id="mpErpBarcode" class="login-input" placeholder="6975641887294"></div>
- </div>
- <div style="margin-top:12px; padding:12px; background:#F9FAFB; border:1px dashed #D1D5DB; border-radius:6px;">
- <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
- <label class="small-lbl" style="margin:0;">Custom Options — satu per line: <code style="background:#F8EFD7; padding:1px 4px; border-radius:3px;">Nama: nilai1, nilai2</code></label>
- <button type="button" onclick="window.mpAddVariantOption()" style="background:var(--primary); color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Option</button>
- </div>
- <textarea id="mpVariantOptions" class="login-input" rows="3" placeholder="Material: Cotton, Polyester, Blend&#10;Length: Short, Long&#10;Style: V-neck, Round"></textarea>
- </div>
- <div class="mp-row" style="grid-template-columns:1fr 1fr; margin-top:12px;">
- <div><label class="small-lbl">Ada variant?</label>
- <select id="mpHasVariants" class="login-input">
- <option value="false" selected>Tiada (standalone)</option>
- <option value="true">Ada (multi-variant)</option>
- </select>
- </div>
- <div><label class="small-lbl">Default Variant SKU</label><input type="text" id="mpDefaultVariantSku" class="login-input" placeholder="kosongkan kalau standalone"></div>
- </div>
- </div>
-
- <div class="mp-card">
- <h4>Logistik &amp; Saiz Fizikal</h4>
+ <div style="font-size:11.5px; font-weight:700; color:#6B7280; margin:18px 0 8px;">Logistik &amp; Saiz Fizikal</div>
  <div class="mp-row" style="grid-template-columns:repeat(4,1fr);">
  <div><label class="small-lbl">Berat (kg)</label><input type="number" id="mpWeightKg" class="login-input" step="0.001" placeholder="2.5"></div>
  <div><label class="small-lbl">Panjang (cm)</label><input type="number" id="mpLengthCm" class="login-input" step="0.1" placeholder="50"></div>
@@ -6867,24 +6886,18 @@
  <div><label class="small-lbl">Tinggi (cm)</label><input type="number" id="mpHeightCm" class="login-input" step="0.1" placeholder="20"></div>
  </div>
  <div class="mp-row"><div><label class="small-lbl">Lokasi Bin</label><input type="text" id="mpLocationBin" class="login-input" placeholder="A01-R02-S03-B01"></div></div>
- </div>
-
- <div class="mp-card">
- <h4>Polisi Tempahan Semula (Reorder)</h4>
- <p class="mp-hint" style="margin:0 0 10px;">Sistem amaran bila stok bawah reorder point. Lead time bantu kira "kena order bila".</p>
+ <div style="font-size:11.5px; font-weight:700; color:#6B7280; margin:18px 0 8px;">Tempahan Semula (Reorder)</div>
  <div class="mp-row" style="grid-template-columns:1fr 1fr 1fr;">
  <div><label class="small-lbl">Reorder Point (unit)</label><input type="number" id="mpReorderPoint" class="login-input" min="0" placeholder="10"></div>
  <div><label class="small-lbl">Reorder Qty</label><input type="number" id="mpReorderQty" class="login-input" min="0" placeholder="50"></div>
  <div><label class="small-lbl">Lead Time (hari)</label><input type="number" id="mpLeadTimeDays" class="login-input" min="0" placeholder="14"></div>
  </div>
- </div>
-
- <div class="mp-card">
- <h4>Search Engine Optimization (SEO)</h4>
+ <div style="font-size:11.5px; font-weight:700; color:#6B7280; margin:18px 0 8px;">SEO</div>
  <div class="mp-row"><div><label class="small-lbl">Meta Title</label><input type="text" id="mpSeoTitle" class="login-input" placeholder="Naturehike Cloud Up 2 Tent — Lightweight 2-Person"></div></div>
- <div class="mp-row"><div><label class="small-lbl">Meta Description (max 160)</label><textarea id="mpSeoDescription" class="login-input" rows="2" maxlength="160" placeholder="Tent 2 orang ringan, sesuai hiking. Double-wall, 3-season, 2.5kg."></textarea></div></div>
+ <div class="mp-row"><div><label class="small-lbl">Meta Description (max 160)</label><textarea id="mpSeoDescription" class="login-input" rows="2" maxlength="160" placeholder="Tent 2 orang ringan, sesuai hiking."></textarea></div></div>
  <div class="mp-row"><div><label class="small-lbl">URL Slug</label><input type="text" id="mpSeoSlug" class="login-input" placeholder="naturehike-cloud-up-2-tent-khaki"></div></div>
  </div>
+ </details>
 
  </div>
 
@@ -6926,8 +6939,8 @@
  </div>
  </div>
 
- <button class="btn-primary" style="margin-top:6px; width:100%; background:#101010; font-size:15px; padding:12px;" onclick="window.saveMasterProduct()"> Daftar Master Product</button>
- <p style="font-size:11px; color:#999; margin-top:8px; text-align:center;">Lepas daftar, Initial Qty (kalau diisi) auto-rekod stok awal.</p>
+ <button onclick="window.saveMasterProduct()" style="margin-top:4px; width:100%; background:#101010; color:#fff; border:none; font-size:14px; font-weight:800; padding:13px; border-radius:10px; cursor:pointer;">Save Produk</button>
+ <p style="font-size:11px; color:#9CA3AF; margin:8px 0 0; text-align:center;">Lepas save, Initial Qty (kalau diisi) auto-rekod stok awal.</p>
  </div>
 
  <!-- Product Registration Mode (Moved to Gudang Pusat) -->
@@ -8278,6 +8291,7 @@
  { id:'p1_628', label:'Betulkan bahasa janggal (Zaid: "settlekan language yang obvious macam dekat memo tu"). Punca: kamus i18n (window.I18N.dict, default lang bm) ada 77 entri bm===en belum translate. Betulkan 16 label jelas + 2 ayat tertanam English: Memo dept (Department:→Jabatan:, Sales→Jualan, Inventory→Inventori, Finance→Kewangan, sub dept lbl), All Orders (Channel→Saluran, Completed→Selesai, Refunded→Dipulangkan, Order→Pesanan, Items→Barang, Hide Test→Sorok Ujian), Loading…→Memuatkan…, Consent→Kebenaran, Staff→Staf; mb_sub/mb_sub_info buang "approved"/"Pending Approval". KEKAL jargon Manglish (SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit) + nama feature sidebar + teks brand landing. app.js v634->v635.', d:'done' },
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
+ { id:'p1_715', label:'Redesign UI/UX borang "+ Baru" Daftar Produk (masterProductFormCard) jadi minimalist & kemas gaya rujukan EasyStore/Shopify (Zaid/Zack: "sakit mata, tak minimalist, tak tersusun"). Brand-lock dipatuhi: warna brand (#CD7C32 bronze + #101010 + cream), BUKAN biru Shopify. Perubahan: (1) Top bar tajuk + butang Save bronze kanan-atas (ganti header lama). (2) Toolbar Edit/Load/Padam yg besar+beige → collapsible <details> "Edit/Padam SKU sedia ada" yg subtle. (3) Kad lembut (border #EEE + soft shadow + padding 20px + ruang lega + label kelabu 11.5px) ganti sempadan keras. (4) Tetapan Lanjutan (Model/Parent/Unit, Logistik, Reorder, SEO) dilipat dlm <details> mp-adv supaya view utama lean. (5) Butang hitam besar bawah dikekal (Save Produk). SEMUA 45 field ID + datalist + handler (saveMasterProduct/loadMasterProductForEdit/clearMpForm/deleteMasterProduct/mpCleanDescriptionHtml/mpAddVariantOption) DIKEKAL — fungsi & sync tak berubah, disahkan ID check 45/45. HTML sahaja, tiada app.js.', d:'done' },
  { id:'p1_714', label:'Gambar produk — tukar ke Supabase Image Transform (Zaid enable di dashboard; org brozaidtodak = Pro, jadi tiada kos). __thumbUrl kini: gambar Supabase → /storage/v1/render/image/public/{path}?width=W&quality=60 (resize SAMA domain Supabase — reliable di wifi kedai, ganti proxy luar weserv yg throttle/blok). Bukan-Supabase kekal weserv. __imgThumbErr ringkas: render gagal → gambar asal (Supabase) → placeholder data-uri. webp ~87KB/keping (browser auto-webp) vs asal 1MB — fix kekal blank/lag. app.js v700->701.', d:'done' },
  { id:'p1_713', label:'Fix gambar produk tak keluar + lag (Ariff iPad back office, wifi kedai). Siasat: gambar asal Supabase ~1MB/keping; grid Cashier 21/page; proxy weserv kecilkan ke ~16KB tapi bila throttle/timeout (banyak request serentak wifi lemah) kod LAMA fallback terus ke gambar ASAL 1MB → 21MB/page → iPad lag + blank. Supabase render/image transform = 403 (tak aktif). FIX: __imgThumbErr berperingkat — proxy gagal → CUBA proxy sekali lagi (transient) → baru gambar asal (last resort) → placeholder ringan data-uri (tiada network); elak muat banyak 1MB serentak. __thumbUrl q72->62 + &we (lagi kecil). Preconnect+dns-prefetch images.weserv.nl. NOTA: kalau masih teruk = weserv di-throttle/blok di wifi kedai → fix kekal perlu enable Supabase image transform atau pre-generate thumbnail. app.js v699->700; design-tokens guna sedia ada.', d:'done' },
  { id:'p1_712', label:'Barcode Generator — custom edit Nombor FIFO (Zaid: untuk cetak semula label ganti bila item tersilap nombor / tak ikut turutan FIFO). Panel Sesuaikan Label, baris "Nombor FIFO" tambah input "No." — taip nombor sendiri (cth "2 / 5") → SEMUA label guna nilai tu (override auto i/qty). Kosong = auto macam biasa. State transient window.__bcFifoCustom + __bcFifoSet (regenerate preview), seq builder guna custom kalau ada. Guna: set Kuantiti 1 + No. custom + Cetak utk satu label ganti. app.js v698->699.', d:'done' },
