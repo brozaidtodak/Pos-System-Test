@@ -20175,7 +20175,9 @@ window.__crMethodTabsHtml = function() {
  const tab = (k, lbl, sub) => '<button onclick="window.__crSetMethod(\'' + k + '\')" style="flex:1; min-width:150px; text-align:left; background:' + (m===k?'#101010':'#fff') + '; color:' + (m===k?'#fff':'#374151') + '; border:1px solid ' + (m===k?'#101010':'#E5E7EB') + '; border-radius:10px; padding:10px 13px; cursor:pointer;"><div style="font-size:12.5px; font-weight:800;">' + lbl + '</div><div style="font-size:10.5px; opacity:.75; margin-top:2px;">' + sub + '</div></button>';
  return '<div style="display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 14px;">' +
  tab('A','Kaedah A — Rasmi','Manual Aliff · bayaran sebenar · Jan 2025+') +
- tab('B','Kaedah B — Eksperimen','Kiraan POS · Jun 2026 sahaja') +
+ tab('AI','AI Calculation','Kiraan sistem dari data (sales+live × 5%)') +
+ tab('CMP','Banding A vs AI','Cari beza / human error') +
+ tab('B','Kaedah B — POS live','Kiraan POS semasa + live') +
  tab('C','Kaedah C — Margin','5% margin · mula 1 Julai 2026') +
  '</div>';
 };
@@ -20213,6 +20215,61 @@ window.__crRenderKaedahA = function() {
 };
 window.__crRenderKaedahC = function() {
  return '<div class="admin-card" style="padding:28px; text-align:center;"><i data-lucide="clock" style="width:30px;height:30px;color:#CD7C32;"></i><h3 style="margin:12px 0 6px;">Kaedah C — Komisen Margin</h3><p style="color:#6B7280; font-size:13px; margin:0;">Kaedah baru (5% atas margin) bermula <strong>1 Julai 2026</strong>. Belum aktif — akan dibina bila tiba masa.</p></div>';
+};
+// p1_742 — AI Calculation: kiraan sistem (sales+live × 5%) per staf × bulan, dari commission_history method='AI'
+window.__crRenderAI = function() {
+ const esc = (typeof hesc === 'function') ? hesc : (s)=> String(s==null?'':s);
+ const yr = window.__crHistYear || 2026;
+ const rows = (window.__commHist || []).filter(r => r.method === 'AI' && r.period_year === yr);
+ const yrBtn = (y) => '<button onclick="window.__crSetHistYear(' + y + ')" style="background:' + (yr===y?'#CD7C32':'#fff') + '; color:' + (yr===y?'#fff':'#374151') + '; border:1px solid ' + (yr===y?'#CD7C32':'#E5E7EB') + '; padding:5px 14px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px;">' + y + '</button>';
+ const head = '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;"><div style="font-weight:800; font-size:14px;">AI Calculation — kiraan sistem</div><div>' + yrBtn(2025) + yrBtn(2026) + '</div></div>' +
+ '<p style="font-size:11.5px; color:#9CA3AF; margin:0 0 14px;">Kiraan automatik dari data sebenar: (jualan staff-attribute + live TikTok) × 5%. Bebas dari kiraan manual Aliff — guna untuk semak silang. 2025 attribution mungkin tak lengkap (sebahagian Shopify).</p>';
+ if(!rows.length) return head + '<div class="admin-card" style="padding:24px; text-align:center; color:#9CA3AF;">Tiada AI calc untuk ' + yr + '.</div>';
+ const MON = ['','Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+ const staff = [...new Set(rows.map(r => r.staff_name))].sort();
+ const months = [...new Set(rows.map(r => r.period_month))].sort((a,b)=>a-b);
+ const get = (s,m) => { const r = rows.find(x => x.staff_name===s && x.period_month===m); return r ? Number(r.amount_rm) : null; };
+ const cell = (v, bold) => '<td style="padding:7px 9px; text-align:right; white-space:nowrap;' + (bold?' font-weight:800;':'') + '">' + (v==null?'–':v.toFixed(2)) + '</td>';
+ let body = '', grand = 0;
+ staff.forEach(s => {
+ let tot = 0, tds = '';
+ months.forEach(m => { const v = get(s,m); if(v!=null) tot += v; tds += cell(v); });
+ grand += tot;
+ body += '<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:7px 9px; font-weight:700; white-space:nowrap; position:sticky; left:0; background:#fff;">' + esc(s) + '</td>' + tds + cell(round2(tot), true) + '</tr>';
+ });
+ const hcells = months.map(m => '<th style="padding:7px 9px; text-align:right; font-size:10px; color:#6B7280;">' + MON[m] + '</th>').join('');
+ return head + '<div class="admin-card" style="padding:0; overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#FAFAF9; border-bottom:1px solid #EEEEEE;"><th style="padding:7px 9px; text-align:left; font-size:10px; color:#6B7280; position:sticky; left:0; background:#FAFAFA;">Staf</th>' + hcells + '<th style="padding:7px 9px; text-align:right; font-size:10px; color:#6B7280;">Total</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+ '<p style="font-size:12px; margin:12px 2px 0;"><strong>Jumlah AI ' + yr + ': RM ' + grand.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</strong></p>';
+};
+// p1_742 — Banding A vs AI (cari human error)
+window.__crRenderCompare = function() {
+ const esc = (typeof hesc === 'function') ? hesc : (s)=> String(s==null?'':s);
+ const yr = window.__crHistYear || 2026;
+ const hist = (window.__commHist || []).filter(r => r.period_year === yr && !/house/i.test(r.staff_name||''));
+ const yrBtn = (y) => '<button onclick="window.__crSetHistYear(' + y + ')" style="background:' + (yr===y?'#CD7C32':'#fff') + '; color:' + (yr===y?'#fff':'#374151') + '; border:1px solid ' + (yr===y?'#CD7C32':'#E5E7EB') + '; padding:5px 14px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px;">' + y + '</button>';
+ const A = {}, AI = {};
+ hist.forEach(r => { const m = r.method==='A'?A:(r.method==='AI'?AI:null); if(m) m[r.staff_name] = round2((m[r.staff_name]||0) + Number(r.amount_rm||0)); });
+ const staff = [...new Set([...Object.keys(A), ...Object.keys(AI)])].sort();
+ const fmt = (n) => 'RM ' + Number(n).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const head = '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;"><div style="font-weight:800; font-size:14px;">Banding — Aliff (Kaedah A) vs AI Calculation</div><div>' + yrBtn(2025) + yrBtn(2026) + '</div></div>' +
+ '<p style="font-size:11.5px; color:#9CA3AF; margin:0 0 14px;">Selisih besar (merah) = mungkin human error dalam kiraan manual, ATAU data attribution tak lengkap (cth 2025 separa Shopify). Semak baris merah dengan Aliff.</p>';
+ if(!staff.length) return head + '<div class="admin-card" style="padding:24px; text-align:center; color:#9CA3AF;">Tiada data untuk ' + yr + '.</div>';
+ let body = '', tA=0, tAI=0;
+ staff.forEach(s => {
+ const a = round2(A[s]||0), ai = round2(AI[s]||0), d = round2(a - ai);
+ tA += a; tAI += ai;
+ const big = Math.abs(d) > 50 && (Math.abs(d) > 0.1*Math.max(Math.abs(a),Math.abs(ai)));
+ const dcol = big ? '#B23A2E' : '#15803D';
+ body += '<tr style="border-bottom:1px solid #F3F4F6;' + (big?' background:#FEF2F2;':'') + '">' +
+ '<td style="padding:9px 11px; font-weight:700;">' + esc(s) + '</td>' +
+ '<td style="padding:9px 11px; text-align:right;">' + fmt(a) + '</td>' +
+ '<td style="padding:9px 11px; text-align:right;">' + fmt(ai) + '</td>' +
+ '<td style="padding:9px 11px; text-align:right; font-weight:800; color:' + dcol + ';">' + (d>=0?'+':'') + fmt(d) + (big?' <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:-2px;"></i>':'') + '</td>' +
+ '</tr>';
+ });
+ return head + '<div class="admin-card" style="padding:0; overflow:hidden;"><table style="width:100%; border-collapse:collapse; font-size:13px;"><thead><tr style="background:#FAFAF9; border-bottom:1px solid #EEEEEE;"><th style="padding:9px 11px; text-align:left; font-size:10px; color:#6B7280;">Staf</th><th style="padding:9px 11px; text-align:right; font-size:10px; color:#6B7280;">Aliff (A)</th><th style="padding:9px 11px; text-align:right; font-size:10px; color:#6B7280;">AI Calc</th><th style="padding:9px 11px; text-align:right; font-size:10px; color:#6B7280;">Selisih (A−AI)</th></tr></thead><tbody>' + body + '</tbody>' +
+ '<tfoot><tr style="border-top:2px solid #EEEEEE; background:#FAFAF9; font-weight:800;"><td style="padding:10px 11px;">JUMLAH</td><td style="padding:10px 11px; text-align:right;">' + fmt(round2(tA)) + '</td><td style="padding:10px 11px; text-align:right;">' + fmt(round2(tAI)) + '</td><td style="padding:10px 11px; text-align:right; color:' + (Math.abs(tA-tAI)>50?'#B23A2E':'#15803D') + ';">' + ((tA-tAI)>=0?'+':'') + fmt(round2(tA-tAI)) + '</td></tr></tfoot>' +
+ '</table></div>';
 };
 
 // p1_733 — Sesi Live TikTok: log tetingkap masa Ariff live → jualan TikTok dlm tempoh = komisen dia (Kaedah B)
@@ -20287,6 +20344,8 @@ window.renderCommissionReport = function() {
  const __methodTabs = '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="coins" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Commission Report</h2>' + window.__crMethodTabsHtml();
  const __m = window.__crMethod || 'A';
  if(__m === 'A') { host.innerHTML = __methodTabs + window.__crRenderKaedahA(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
+ if(__m === 'AI') { host.innerHTML = __methodTabs + window.__crRenderAI(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
+ if(__m === 'CMP') { host.innerHTML = __methodTabs + window.__crRenderCompare(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
  if(__m === 'C') { host.innerHTML = __methodTabs + window.__crRenderKaedahC(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
  // __m === 'B' → kiraan POS (eksperimen) di bawah
  const range = __crGetRange();
