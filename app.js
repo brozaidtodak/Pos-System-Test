@@ -20323,16 +20323,31 @@ window.renderCommissionReport = function() {
  });
  const usersByName = {};
  if(typeof authUsers !== 'undefined' && Array.isArray(authUsers)) authUsers.forEach(u => { usersByName[u.name] = u; });
- const rows = Object.values(byStaff).map(r => {
- const net = round2(r.gross - r.refunds);
- const rate = __getCommissionRate(r.name);
- const comm = round2(net * rate / 100);
- const u = usersByName[r.name];
- return { ...r, net, rate, comm, staffId: u ? u.staff_id : null, live: round2(liveBase[r.name] || 0) };
+ // p1_740 — komisen Kaedah A (rekod rasmi) utk bulan-bulan dlm tempoh → bulan lepas pun ada staf
+ const kaA = {};
+ (window.__commHist || []).forEach(r => {
+ if(r.method !== 'A' || /house/i.test(r.staff_name || '')) return;
+ if(range.start && range.end) {
+ const t = new Date(r.period_year, (r.period_month || 1) - 1, 15).getTime();
+ if(!(t >= range.start.getTime() && t <= range.end.getTime())) return;
+ }
+ kaA[r.staff_name] = round2((kaA[r.staff_name] || 0) + Number(r.amount_rm || 0));
+ });
+ // union staf POS (buang '—' tak ber-attribution) + staf Kaedah A
+ const names = new Set([...Object.keys(byStaff).filter(n => n !== '—'), ...Object.keys(kaA)]);
+ const rows = [...names].map(name => {
+ const b = byStaff[name] || { gross:0, refunds:0, orders:0, refundCount:0 };
+ const net = round2(b.gross - b.refunds);
+ const rate = __getCommissionRate(name);
+ const posComm = round2(net * rate / 100);
+ const aComm = round2(kaA[name] || 0);
+ const comm = round2(posComm + aComm);
+ const u = usersByName[name];
+ return { name, gross:b.gross, refunds:b.refunds, orders:b.orders||0, refundCount:b.refundCount||0, net, rate, posComm, aComm, comm, staffId: u ? u.staff_id : null, live: round2(liveBase[name] || 0) };
  }).sort((a,b) => b.comm - a.comm);
 
- let totNet = 0, totComm = 0, totOrders = 0;
- rows.forEach(r => { totNet = round2(totNet + r.net); totComm = round2(totComm + r.comm); totOrders += r.orders; });
+ let totNet = 0, totComm = 0, totOrders = 0, totA = 0;
+ rows.forEach(r => { totNet = round2(totNet + r.net); totComm = round2(totComm + r.comm); totOrders += r.orders; totA = round2(totA + r.aComm); });
 
  const fmt = (n) => 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
  const pill = (r, lbl) => '<button class="cm-pill' + (window.__crRange === r ? ' active' : '') + '" onclick="window.__crSetRange(\'' + r + '\', this)" style="background:' + (window.__crRange===r?'#CD7C32':'#fff') + '; color:' + (window.__crRange===r?'#fff':'#374151') + '; border:1px solid ' + (window.__crRange===r?'#CD7C32':'#E5E7EB') + '; padding:6px 13px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; margin-right:6px;">' + lbl + '</button>';
@@ -20346,14 +20361,14 @@ window.renderCommissionReport = function() {
  return '<tr onclick="window.__cmShowStaffSales && window.__cmShowStaffSales(\'' + esc(String(r.name).replace(/'/g,"\\'")) + '\')" style="cursor:pointer; border-bottom:1px solid #F3F4F6;">' +
  '<td style="padding:10px 12px; font-weight:700;">' + esc(r.name) + '</td>' +
  '<td style="padding:10px 12px; text-align:center;">' + r.orders + (r.refundCount ? ' <span style="color:#B23A2E; font-size:10px;">(' + r.refundCount + ' refund)</span>' : '') + '</td>' +
- '<td style="padding:10px 12px; text-align:right; font-weight:700;">' + fmt(r.net) + (r.live ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">incl. live TikTok ' + fmt(r.live) + '</div>' : '') + '</td>' +
- '<td style="padding:10px 12px; text-align:right; white-space:nowrap;">' + rateCell + '</td>' +
- '<td style="padding:10px 12px; text-align:right; font-weight:800; color:#CD7C32;">' + fmt(r.comm) + '</td>' +
+ '<td style="padding:10px 12px; text-align:right; font-weight:700;">' + (r.net ? fmt(r.net) : '<span style="color:#9CA3AF;">—</span>') + (r.live ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">incl. live TikTok ' + fmt(r.live) + '</div>' : '') + '</td>' +
+ '<td style="padding:10px 12px; text-align:right; white-space:nowrap;">' + (r.net ? rateCell : '<span style="color:#9CA3AF;">—</span>') + '</td>' +
+ '<td style="padding:10px 12px; text-align:right; font-weight:800; color:#CD7C32;">' + fmt(r.comm) + (r.aComm ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">Kaedah A ' + fmt(r.aComm) + '</div>' : '') + '</td>' +
  '</tr>';
- }).join('') : '<tr><td colspan="5" style="text-align:center; padding:28px; color:#9CA3AF;">Tiada transaksi komisen untuk tempoh ni.</td></tr>';
+ }).join('') : '<tr><td colspan="5" style="text-align:center; padding:28px; color:#9CA3AF;">Tiada data staf untuk tempoh ni. (Bulan lama tanpa rekod Kaedah A & tanpa attribution POS.)</td></tr>';
 
  host.innerHTML = __methodTabs +
- '<div style="background:#FEF3E2; border:1px solid #E7C8A8; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; color:#7c4a1a;"><strong>Kaedah B (eksperimen):</strong> kiraan automatik POS dari sales — untuk uji Jun 2026, BUKAN bayaran rasmi. Bayaran sebenar guna Kaedah A.</div>' +
+ '<div style="background:#FEF3E2; border:1px solid #E7C8A8; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; color:#7c4a1a;"><strong>Kaedah B (eksperimen):</strong> bulan semasa = kiraan POS live (+ live TikTok). Bulan lama = komisen diambil dari <strong>Kaedah A</strong> (rekod rasmi Aliff). Baris tak ber-attribution disorok.</div>' +
  window.__crLiveSessionsHtml() +
  '<h3 style="margin:4px 0 14px; font-size:14px; font-weight:800;">Kiraan POS <span style="font-size:13px; font-weight:600; color:#9CA3AF;">· ' + esc(range.label) + '</span></h3>' +
  '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">' +
