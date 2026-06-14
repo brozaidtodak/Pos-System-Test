@@ -20226,19 +20226,21 @@ window.__loadLiveSessions = async function() {
 };
 window.__crSaveLiveSession = async function() {
  const d = document.getElementById('lsDate')?.value;
- const s = document.getElementById('lsStart')?.value;
- const e = document.getElementById('lsEnd')?.value;
  const host = (document.getElementById('lsHost')?.value || 'Ariff').trim() || 'Ariff';
- if(!d || !s || !e) { if(window.showToast) showToast('Isi tarikh + jam mula + jam tamat.', 'warn'); return; }
- const startISO = new Date(d + 'T' + s).toISOString();
- let endD = new Date(d + 'T' + e);
- const startD = new Date(d + 'T' + s);
- if(endD <= startD) endD = new Date(endD.getTime() + 86400000); // tamat < mula → lepas tengah malam
+ const salesV = document.getElementById('lsSales')?.value;
+ const ordersV = document.getElementById('lsOrders')?.value;
+ const sales = salesV === '' || salesV == null ? null : parseFloat(salesV);
+ if(!d) { if(window.showToast) showToast('Isi tarikh sesi.', 'warn'); return; }
+ if(sales == null || isNaN(sales)) { if(window.showToast) showToast('Isi jualan live (RM) dari rekod TikTok.', 'warn'); return; }
  try {
- const { error } = await db.from('live_sessions').insert([{ session_date: d, start_at: startISO, end_at: endD.toISOString(), host_name: host, channel: 'TikTok', created_by: (currentUser && currentUser.name) || '?' }]);
+ const { error } = await db.from('live_sessions').insert([{
+ session_date: d, host_name: host, channel: 'TikTok',
+ live_sales_rm: sales, orders_count: (ordersV ? parseInt(ordersV) : null),
+ created_by: (currentUser && currentUser.name) || '?'
+ }]);
  if(error) throw error;
  await window.__loadLiveSessions(); window.renderCommissionReport();
- if(window.showToast) showToast('Sesi live disimpan — komisen TikTok dikira semula.', 'success');
+ if(window.showToast) showToast('Sesi live disimpan — komisen dikira semula.', 'success');
  } catch(err) { if(window.showToast) showToast('Gagal simpan: ' + err.message, 'error'); }
 };
 window.__crDeleteLiveSession = async function(id) {
@@ -20249,19 +20251,20 @@ window.__crDeleteLiveSession = async function(id) {
 window.__crLiveSessionsHtml = function() {
  const esc = (typeof hesc === 'function') ? hesc : (s)=> String(s==null?'':s);
  const list = (window.__liveSessions || []);
- const fmtT = (iso) => { try { return new Date(iso).toLocaleString('en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
- const rows = list.slice(0,15).map(ls => '<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:6px 8px; font-weight:700;">' + esc(ls.host_name) + '</td><td style="padding:6px 8px; font-size:11.5px; color:#374151;">' + fmtT(ls.start_at) + ' &rarr; ' + fmtT(ls.end_at) + '</td><td style="padding:6px 8px; text-align:right;"><button onclick="window.__crDeleteLiveSession(' + ls.id + ')" style="background:none; border:none; color:#B23A2E; cursor:pointer; font-size:11px; font-weight:700;">padam</button></td></tr>').join('') || '<tr><td colspan="3" style="padding:12px; color:#9CA3AF; text-align:center;">Belum ada sesi live direkod.</td></tr>';
+ const fmtD = (d) => { try { return new Date(d + 'T00:00').toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}); } catch(e){ return d; } };
+ const money = (n) => 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const rows = list.slice(0,20).map(ls => '<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:6px 8px; font-weight:700;">' + esc(ls.host_name) + '</td><td style="padding:6px 8px; font-size:11.5px; color:#374151;">' + fmtD(ls.session_date) + (ls.orders_count ? ' · ' + ls.orders_count + ' order' : '') + '</td><td style="padding:6px 8px; text-align:right; font-weight:700;">' + money(ls.live_sales_rm) + '</td><td style="padding:6px 8px; text-align:right;"><button onclick="window.__crDeleteLiveSession(' + ls.id + ')" style="background:none; border:none; color:#B23A2E; cursor:pointer; font-size:11px; font-weight:700;">padam</button></td></tr>').join('') || '<tr><td colspan="4" style="padding:12px; color:#9CA3AF; text-align:center;">Belum ada sesi live direkod.</td></tr>';
  return '<div class="admin-card" style="padding:14px 16px; margin-bottom:14px;">' +
  '<div style="font-weight:800; font-size:13px; margin-bottom:2px;"><i data-lucide="radio" style="width:14px;height:14px;vertical-align:-2px;"></i> Sesi Live TikTok</div>' +
- '<div style="font-size:11px; color:#9CA3AF; margin-bottom:10px;">Log jam host live → jualan TikTok dalam tetingkap ni auto-masuk komisen host (Kaedah B). Aliff tanya Ariff jam live, key-in sini.</div>' +
+ '<div style="font-size:11px; color:#9CA3AF; margin-bottom:10px;">Aliff ambil <strong>jualan live dari rekod TikTok</strong> → key-in di sini. Jumlah ni masuk komisen host (Ariff) untuk Kaedah B.</div>' +
  '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">' +
  '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Tarikh</label><br><input type="date" id="lsDate" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
- '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Mula</label><br><input type="time" id="lsStart" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
- '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Tamat</label><br><input type="time" id="lsEnd" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
- '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Host</label><br><input type="text" id="lsHost" value="Ariff" list="mpAllStaffNames" style="width:100px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Host</label><br><input type="text" id="lsHost" value="Ariff" style="width:100px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Jualan Live (RM) — dari rekod TikTok</label><br><input type="number" step="0.01" id="lsSales" placeholder="0.00" style="width:170px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Order (pilihan)</label><br><input type="number" id="lsOrders" placeholder="0" style="width:90px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
  '<button onclick="window.__crSaveLiveSession()" style="background:#CD7C32; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">+ Log sesi</button>' +
  '</div>' +
- '<table style="width:100%; border-collapse:collapse; font-size:12px;"><tbody>' + rows + '</tbody></table>' +
+ '<table style="width:100%; border-collapse:collapse; font-size:12px;"><thead><tr style="background:#FAFAF9;"><th style="padding:5px 8px; text-align:left; font-size:10px; color:#6B7280;">HOST</th><th style="padding:5px 8px; text-align:left; font-size:10px; color:#6B7280;">SESI</th><th style="padding:5px 8px; text-align:right; font-size:10px; color:#6B7280;">JUALAN LIVE</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' +
  '</div>';
 };
 
@@ -20294,24 +20297,28 @@ window.renderCommissionReport = function() {
  const t = s.created_at ? new Date(s.created_at).getTime() : 0;
  return t >= range.start.getTime() && t <= range.end.getTime();
  });
- // Agregat ikut staff_name; p1_733 — jualan TikTok dlm tetingkap sesi live → attribute ke host
- const liveSess = (window.__liveSessions || []);
+ // Agregat ikut staff_name (walk-in / POS)
  const byStaff = {};
- const liveBase = {}; // host → base dari jualan live TikTok
  sales.forEach(s => {
+ const nm = (s.staff_name || s.cashier_name || '—').trim() || '—';
+ if(!byStaff[nm]) byStaff[nm] = { name: nm, gross: 0, refunds: 0, orders: 0, refundCount: 0 };
  const recv = parseFloat(s.total_amount || s.total || 0) || 0;
  const base = Math.abs(window.__saleCommissionBase(s));
- let nm = (s.staff_name || s.cashier_name || '—').trim() || '—';
- let viaLive = false;
- if(/tiktok/i.test(s.channel || '')) {
- const t = s.created_at ? new Date(s.created_at).getTime() : 0;
- const sess = liveSess.find(ls => { const a = new Date(ls.start_at).getTime(), b = new Date(ls.end_at).getTime(); return t >= a && t <= b; });
- if(sess) { nm = sess.host_name; viaLive = true; }
- }
- if(!byStaff[nm]) byStaff[nm] = { name: nm, gross: 0, refunds: 0, orders: 0, refundCount: 0 };
  if(recv < 0) { byStaff[nm].refunds = round2(byStaff[nm].refunds + base); byStaff[nm].refundCount++; }
  else { byStaff[nm].gross = round2(byStaff[nm].gross + base); byStaff[nm].orders++; }
- if(viaLive) liveBase[nm] = round2((liveBase[nm] || 0) + (recv < 0 ? -base : base));
+ });
+ // p1_733b — jualan LIVE dari rekod TikTok (Aliff key-in) → tambah ke base host (cth Ariff)
+ const liveBase = {};
+ (window.__liveSessions || []).forEach(ls => {
+ if(!ls.session_date) return;
+ const t = new Date(ls.session_date + 'T12:00').getTime();
+ if(range.start && range.end && !(t >= range.start.getTime() && t <= range.end.getTime())) return;
+ const nm = ls.host_name || 'Ariff';
+ const amt = Number(ls.live_sales_rm) || 0;
+ if(!byStaff[nm]) byStaff[nm] = { name: nm, gross: 0, refunds: 0, orders: 0, refundCount: 0 };
+ byStaff[nm].gross = round2(byStaff[nm].gross + amt);
+ byStaff[nm].orders += (ls.orders_count || 0);
+ liveBase[nm] = round2((liveBase[nm] || 0) + amt);
  });
  const usersByName = {};
  if(typeof authUsers !== 'undefined' && Array.isArray(authUsers)) authUsers.forEach(u => { usersByName[u.name] = u; });
