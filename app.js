@@ -21835,14 +21835,38 @@ window.pdpCleanDescriptionHtml = function() {
 };
 
 // p1_228 — Add variant option placeholder line
-window.pdpAddVariantOption = function() {
- const ta = document.getElementById('pdpVariantOptions');
- if(!ta) return;
- const placeholder = 'Option Name: nilai1, nilai2';
- ta.value = (ta.value && !ta.value.endsWith('\n')) ? ta.value + '\n' + placeholder : ta.value + placeholder;
- ta.focus();
- const start = ta.value.length - placeholder.length;
- ta.setSelectionRange(start, ta.value.length);
+// p1_709 — "Add Option" kini TAMBAH VARIANT SEBENAR ke group (dulu cuma append teks ke textarea lama).
+// Insert products_master row baru dgn parent_sku sama; kalau produk asal single, jadikan ia group.
+window.pdpAddVariantOption = async function() {
+ const curSku = (document.getElementById('pdpOriginalSku') || {}).value;
+ const prod = (typeof masterProducts !== 'undefined' ? masterProducts : []).find(p => p.sku === curSku);
+ if(!prod) { if(window.showToast) showToast('Produk semasa tak jumpa.', 'warn'); return; }
+ const newSku = (prompt('SKU variant baru (cth CD099):', '') || '').trim().toUpperCase();
+ if(!newSku) return;
+ if(!/^[A-Z0-9][A-Z0-9_-]*$/.test(newSku)) { if(window.showToast) showToast('SKU tak sah — guna huruf/nombor/-/_ sahaja.', 'warn'); return; }
+ if((masterProducts || []).some(p => (p.sku || '').toUpperCase() === newSku)) { if(window.showToast) showToast('SKU ' + newSku + ' dah wujud.', 'warn'); return; }
+ const label = (prompt('Nama variant ni (cth: Red / Size L) — pilihan:', '') || '').trim();
+ const groupKey = (prod.parent_sku && String(prod.parent_sku).trim()) ? prod.parent_sku : prod.sku;
+ const cleanName = (prod.name ? String(prod.name).split('—')[0].trim() : prod.sku) || prod.sku;
+ const row = {
+  sku: newSku, parent_sku: groupKey, variant_color: label || null,
+  name: cleanName + ' — ' + (label || newSku),
+  price: Number(prod.price) || 0, cost_price: 0,
+  is_published: false, // draft dulu — staff set harga/stok + Aktif di jadual sebelum live
+  brand: prod.brand || null, category: prod.category || null, unit: prod.unit || null
+ };
+ try {
+  const ins = await db.from('products_master').insert([row]);
+  if(ins.error) throw ins.error;
+  // kalau produk asal SINGLE (belum ada parent_sku), jadikan ia group supaya kedua-dua jadi variant
+  if(!(prod.parent_sku && String(prod.parent_sku).trim())) {
+   const up = await db.from('products_master').update({ parent_sku: groupKey }).eq('sku', prod.sku);
+   if(up.error) throw up.error;
+  }
+  if(window.showToast) showToast('Variant ' + newSku + ' ditambah (draft). Set stok/harga + Aktif di jadual.', 'success');
+  if(typeof initApp === 'function') await initApp();
+  setTimeout(() => window.openPdpModal(curSku), 250);
+ } catch(e) { if(window.showToast) showToast('Gagal tambah variant: ' + e.message, 'error'); }
 };
 
 // p1_228 — Adjust stock (append-only inventory batch)
