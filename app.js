@@ -20613,9 +20613,30 @@ window.__cmShowStaffSales = function(staffName) {
  const rate = (typeof __getCommissionRate === 'function') ? __getCommissionRate(staffName) : 0;
  let gross = 0, refunds = 0;
  own.forEach(s => { const recv = parseFloat(s.total_amount || s.total || 0) || 0; const base = Math.abs(window.__saleCommissionBase(s)); if (recv < 0) refunds = round2(refunds + base); else gross = round2(gross + base); });
+ // p1_737 — selit jualan LIVE TikTok (live_sessions) host ni dlm tempoh
+ const liveRows = (window.__liveSessions || []).filter(ls => {
+ if((ls.host_name || '') !== staffName) return false;
+ if(range.start && range.end && ls.session_date) { const t = new Date(ls.session_date + 'T12:00').getTime(); if(!(t >= range.start.getTime() && t <= range.end.getTime())) return false; }
+ return true;
+ }).sort((a,b) => String(b.session_date).localeCompare(String(a.session_date)));
+ let liveGross = 0; liveRows.forEach(ls => { liveGross = round2(liveGross + (Number(ls.live_sales_rm) || 0)); });
+ gross = round2(gross + liveGross);
  const net = round2(gross - refunds);
  const earned = round2(net * rate / 100);
  const fmt = (n) => 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
+ const liveBody = liveRows.map(ls => {
+ const amt = Number(ls.live_sales_rm) || 0; const comm = round2(amt * rate / 100);
+ const dt = ls.session_date ? new Date(ls.session_date + 'T12:00').toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'}) : '-';
+ return `<tr style="background:#FBF7EC;">
+ <td style="padding:9px 10px; white-space:nowrap;">${esc(dt)}</td>
+ <td style="padding:9px 10px; font-family:monospace; font-size:11.5px; color:var(--primary); font-weight:700;">LIVE</td>
+ <td style="padding:9px 10px;">${ls.items_sold ? esc(ls.items_sold) + ' items' : '—'}</td>
+ <td style="padding:9px 10px; font-size:11.5px;"><i data-lucide="radio" style="width:11px;height:11px;vertical-align:-1px;"></i> TikTok Live</td>
+ <td style="padding:9px 10px; text-align:right; font-weight:700;">RM ${amt.toFixed(2)}</td>
+ <td style="padding:9px 10px; text-align:right; font-weight:700; color:var(--primary);">RM ${comm.toFixed(2)}</td>
+ <td style="padding:9px 10px;"></td>
+ </tr>`;
+ }).join('');
  const body = own.length ? own.map(s => {
  const recv = parseFloat(s.total_amount || s.total || 0) || 0; const isRefund = recv < 0;
  const amt = window.__saleCommissionBase(s);
@@ -20631,7 +20652,8 @@ window.__cmShowStaffSales = function(staffName) {
  <td style="padding:9px 10px; text-align:right; color:${col}; font-weight:700;">${isRefund?'−':''}RM ${Math.abs(comm).toFixed(2)}</td>
  <td style="padding:9px 10px; text-align:center;"><button onclick="window.__cmReassignSeller(${s.id})" title="Tukar penjual sale ni (perlu kelulusan Bos)" style="display:inline-flex; align-items:center; gap:4px; width:auto; white-space:nowrap; background:#fff; border:1px solid #E5E7EB; color:#6B7280; padding:4px 10px; border-radius:6px; font-size:10.5px; font-weight:700; cursor:pointer;"><i data-lucide="repeat" style="width:11px;height:11px;"></i> Tukar penjual</button></td>
  </tr>`;
- }).join('') : '<tr><td colspan="7" style="text-align:center; padding:28px; color:#9CA3AF;">Tiada sales direkod dalam tempoh ni.</td></tr>';
+ }).join('') : '';
+ const emptyRow = (!own.length && !liveRows.length) ? '<tr><td colspan="7" style="text-align:center; padding:28px; color:#9CA3AF;">Tiada sales direkod dalam tempoh ni.</td></tr>' : '';
  const chip = (lbl, val, color) => `<div style="background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:8px 14px;"><div style="font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#9CA3AF; font-weight:700;">${lbl}</div><div style="font-size:15px; font-weight:800; color:${color||'#101010'};">${val}</div></div>`;
  const old = document.getElementById('cmStaffSalesModal'); if (old) old.remove();
  const ov = document.createElement('div');
@@ -20640,7 +20662,7 @@ window.__cmShowStaffSales = function(staffName) {
  ov.onclick = function(e){ if(e.target === ov) ov.remove(); };
  ov.innerHTML = `<div style="background:#fff; border-radius:16px; max-width:820px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,.25); overflow:hidden;">
  <div style="background:linear-gradient(135deg, var(--primary), #A05F22); color:#fff; padding:18px 22px; display:flex; justify-content:space-between; align-items:center;">
- <div><div style="font-size:18px; font-weight:800;">${esc(staffName)} — Sales Recorded</div><div style="font-size:12px; opacity:.85;">${esc(range.label||'')} · ${own.length} transaksi</div></div>
+ <div><div style="font-size:18px; font-weight:800;">${esc(staffName)} — Sales Recorded</div><div style="font-size:12px; opacity:.85;">${esc(range.label||'')} · ${own.length} transaksi${liveRows.length ? ' + ' + liveRows.length + ' sesi live' : ''}</div></div>
  <button onclick="document.getElementById('cmStaffSalesModal').remove()" style="background:rgba(255,255,255,.2); border:none; color:#fff; width:34px; height:34px; border-radius:50%; font-size:20px; cursor:pointer;">×</button>
  </div>
  <div style="display:flex; gap:10px; flex-wrap:wrap; padding:16px 22px; background:#FAF6EF; border-bottom:1px solid #EFE6D8;">
@@ -20656,7 +20678,7 @@ window.__cmShowStaffSales = function(staffName) {
  <th style="padding:10px; font-size:10px; text-transform:uppercase; color:#5A3413; font-weight:700; text-align:right;">Amount</th>
  <th style="padding:10px; font-size:10px; text-transform:uppercase; color:#5A3413; font-weight:700; text-align:right;">Komisen</th>
  <th style="padding:10px;"></th>
- </tr></thead><tbody>${body}</tbody></table>
+ </tr></thead><tbody>${liveBody}${body}${emptyRow}</tbody></table>
  </div>
  </div>`;
  document.body.appendChild(ov);
