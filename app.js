@@ -20214,12 +20214,64 @@ window.__crRenderKaedahC = function() {
  return '<div class="admin-card" style="padding:28px; text-align:center;"><i data-lucide="clock" style="width:30px;height:30px;color:#CD7C32;"></i><h3 style="margin:12px 0 6px;">Kaedah C — Komisen Margin</h3><p style="color:#6B7280; font-size:13px; margin:0;">Kaedah baru (5% atas margin) bermula <strong>1 Julai 2026</strong>. Belum aktif — akan dibina bila tiba masa.</p></div>';
 };
 
+// p1_733 — Sesi Live TikTok: log tetingkap masa Ariff live → jualan TikTok dlm tempoh = komisen dia (Kaedah B)
+window.__liveSessions = window.__liveSessions || [];
+window.__loadLiveSessions = async function() {
+ try {
+ if(typeof db === 'undefined' || !db) { window.__liveLoaded = true; return; }
+ const { data } = await db.from('live_sessions').select('*').order('start_at', { ascending: false }).limit(300);
+ window.__liveSessions = data || [];
+ } catch(e) { console.warn('load live_sessions:', e.message); }
+ window.__liveLoaded = true;
+};
+window.__crSaveLiveSession = async function() {
+ const d = document.getElementById('lsDate')?.value;
+ const s = document.getElementById('lsStart')?.value;
+ const e = document.getElementById('lsEnd')?.value;
+ const host = (document.getElementById('lsHost')?.value || 'Ariff').trim() || 'Ariff';
+ if(!d || !s || !e) { if(window.showToast) showToast('Isi tarikh + jam mula + jam tamat.', 'warn'); return; }
+ const startISO = new Date(d + 'T' + s).toISOString();
+ let endD = new Date(d + 'T' + e);
+ const startD = new Date(d + 'T' + s);
+ if(endD <= startD) endD = new Date(endD.getTime() + 86400000); // tamat < mula → lepas tengah malam
+ try {
+ const { error } = await db.from('live_sessions').insert([{ session_date: d, start_at: startISO, end_at: endD.toISOString(), host_name: host, channel: 'TikTok', created_by: (currentUser && currentUser.name) || '?' }]);
+ if(error) throw error;
+ await window.__loadLiveSessions(); window.renderCommissionReport();
+ if(window.showToast) showToast('Sesi live disimpan — komisen TikTok dikira semula.', 'success');
+ } catch(err) { if(window.showToast) showToast('Gagal simpan: ' + err.message, 'error'); }
+};
+window.__crDeleteLiveSession = async function(id) {
+ if(!confirm('Padam sesi live ni?')) return;
+ try { await db.from('live_sessions').delete().eq('id', id); await window.__loadLiveSessions(); window.renderCommissionReport(); if(window.showToast) showToast('Sesi dipadam.', 'success'); }
+ catch(e) { if(window.showToast) showToast('Gagal padam: ' + e.message, 'error'); }
+};
+window.__crLiveSessionsHtml = function() {
+ const esc = (typeof hesc === 'function') ? hesc : (s)=> String(s==null?'':s);
+ const list = (window.__liveSessions || []);
+ const fmtT = (iso) => { try { return new Date(iso).toLocaleString('en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
+ const rows = list.slice(0,15).map(ls => '<tr style="border-bottom:1px solid #F3F4F6;"><td style="padding:6px 8px; font-weight:700;">' + esc(ls.host_name) + '</td><td style="padding:6px 8px; font-size:11.5px; color:#374151;">' + fmtT(ls.start_at) + ' &rarr; ' + fmtT(ls.end_at) + '</td><td style="padding:6px 8px; text-align:right;"><button onclick="window.__crDeleteLiveSession(' + ls.id + ')" style="background:none; border:none; color:#B23A2E; cursor:pointer; font-size:11px; font-weight:700;">padam</button></td></tr>').join('') || '<tr><td colspan="3" style="padding:12px; color:#9CA3AF; text-align:center;">Belum ada sesi live direkod.</td></tr>';
+ return '<div class="admin-card" style="padding:14px 16px; margin-bottom:14px;">' +
+ '<div style="font-weight:800; font-size:13px; margin-bottom:2px;"><i data-lucide="radio" style="width:14px;height:14px;vertical-align:-2px;"></i> Sesi Live TikTok</div>' +
+ '<div style="font-size:11px; color:#9CA3AF; margin-bottom:10px;">Log jam host live → jualan TikTok dalam tetingkap ni auto-masuk komisen host (Kaedah B). Aliff tanya Ariff jam live, key-in sini.</div>' +
+ '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Tarikh</label><br><input type="date" id="lsDate" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Mula</label><br><input type="time" id="lsStart" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Tamat</label><br><input type="time" id="lsEnd" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Host</label><br><input type="text" id="lsHost" value="Ariff" list="mpAllStaffNames" style="width:100px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<button onclick="window.__crSaveLiveSession()" style="background:#CD7C32; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">+ Log sesi</button>' +
+ '</div>' +
+ '<table style="width:100%; border-collapse:collapse; font-size:12px;"><tbody>' + rows + '</tbody></table>' +
+ '</div>';
+};
+
 window.renderCommissionReport = function() {
  const host = document.getElementById('crBody');
  if(!host) return;
  // p1_729 — pastikan kadar server dimuat dulu (single source), lepas tu render semula
  if(!window.__commissionRatesLoaded && window.__loadCommissionRates) { window.__loadCommissionRates().then(() => window.renderCommissionReport()); }
  if(!window.__commHistLoaded && window.__loadCommHistory) { window.__loadCommHistory().then(() => window.renderCommissionReport()); }
+ if(!window.__liveLoaded && window.__loadLiveSessions) { window.__loadLiveSessions().then(() => window.renderCommissionReport()); }
  const esc = (typeof hesc === 'function') ? hesc : (s)=> String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  // Gate: pengurusan sahaja (selaras __cmCanViewAll)
  if(!currentUser || currentUser.role !== 'mgmt') {
@@ -20242,15 +20294,24 @@ window.renderCommissionReport = function() {
  const t = s.created_at ? new Date(s.created_at).getTime() : 0;
  return t >= range.start.getTime() && t <= range.end.getTime();
  });
- // Agregat ikut staff_name (attribution sebenar dalam sales)
+ // Agregat ikut staff_name; p1_733 — jualan TikTok dlm tetingkap sesi live → attribute ke host
+ const liveSess = (window.__liveSessions || []);
  const byStaff = {};
+ const liveBase = {}; // host → base dari jualan live TikTok
  sales.forEach(s => {
- const nm = (s.staff_name || s.cashier_name || '—').trim() || '—';
- if(!byStaff[nm]) byStaff[nm] = { name: nm, gross: 0, refunds: 0, orders: 0, refundCount: 0 };
  const recv = parseFloat(s.total_amount || s.total || 0) || 0;
  const base = Math.abs(window.__saleCommissionBase(s));
+ let nm = (s.staff_name || s.cashier_name || '—').trim() || '—';
+ let viaLive = false;
+ if(/tiktok/i.test(s.channel || '')) {
+ const t = s.created_at ? new Date(s.created_at).getTime() : 0;
+ const sess = liveSess.find(ls => { const a = new Date(ls.start_at).getTime(), b = new Date(ls.end_at).getTime(); return t >= a && t <= b; });
+ if(sess) { nm = sess.host_name; viaLive = true; }
+ }
+ if(!byStaff[nm]) byStaff[nm] = { name: nm, gross: 0, refunds: 0, orders: 0, refundCount: 0 };
  if(recv < 0) { byStaff[nm].refunds = round2(byStaff[nm].refunds + base); byStaff[nm].refundCount++; }
  else { byStaff[nm].gross = round2(byStaff[nm].gross + base); byStaff[nm].orders++; }
+ if(viaLive) liveBase[nm] = round2((liveBase[nm] || 0) + (recv < 0 ? -base : base));
  });
  const usersByName = {};
  if(typeof authUsers !== 'undefined' && Array.isArray(authUsers)) authUsers.forEach(u => { usersByName[u.name] = u; });
@@ -20259,7 +20320,7 @@ window.renderCommissionReport = function() {
  const rate = __getCommissionRate(r.name);
  const comm = round2(net * rate / 100);
  const u = usersByName[r.name];
- return { ...r, net, rate, comm, staffId: u ? u.staff_id : null };
+ return { ...r, net, rate, comm, staffId: u ? u.staff_id : null, live: round2(liveBase[r.name] || 0) };
  }).sort((a,b) => b.comm - a.comm);
 
  let totNet = 0, totComm = 0, totOrders = 0;
@@ -20277,7 +20338,7 @@ window.renderCommissionReport = function() {
  return '<tr onclick="window.__cmShowStaffSales && window.__cmShowStaffSales(\'' + esc(String(r.name).replace(/'/g,"\\'")) + '\')" style="cursor:pointer; border-bottom:1px solid #F3F4F6;">' +
  '<td style="padding:10px 12px; font-weight:700;">' + esc(r.name) + '</td>' +
  '<td style="padding:10px 12px; text-align:center;">' + r.orders + (r.refundCount ? ' <span style="color:#B23A2E; font-size:10px;">(' + r.refundCount + ' refund)</span>' : '') + '</td>' +
- '<td style="padding:10px 12px; text-align:right; font-weight:700;">' + fmt(r.net) + '</td>' +
+ '<td style="padding:10px 12px; text-align:right; font-weight:700;">' + fmt(r.net) + (r.live ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">incl. live TikTok ' + fmt(r.live) + '</div>' : '') + '</td>' +
  '<td style="padding:10px 12px; text-align:right; white-space:nowrap;">' + rateCell + '</td>' +
  '<td style="padding:10px 12px; text-align:right; font-weight:800; color:#CD7C32;">' + fmt(r.comm) + '</td>' +
  '</tr>';
@@ -20285,6 +20346,7 @@ window.renderCommissionReport = function() {
 
  host.innerHTML = __methodTabs +
  '<div style="background:#FEF3E2; border:1px solid #E7C8A8; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; color:#7c4a1a;"><strong>Kaedah B (eksperimen):</strong> kiraan automatik POS dari sales — untuk uji Jun 2026, BUKAN bayaran rasmi. Bayaran sebenar guna Kaedah A.</div>' +
+ window.__crLiveSessionsHtml() +
  '<h3 style="margin:4px 0 14px; font-size:14px; font-weight:800;">Kiraan POS <span style="font-size:13px; font-weight:600; color:#9CA3AF;">· ' + esc(range.label) + '</span></h3>' +
  '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">' +
  '<div>' + pill('week','Minggu Ini') + pill('month','Bulan Ini') + pill('lastmonth','Bulan Lepas') + pill('ytd','YTD') + pill('all','Semua') + '</div>' +
