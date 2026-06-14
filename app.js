@@ -19899,15 +19899,46 @@ window.loadAdminAttendance = async function() {
 
 // p4_1: per-staff commission rate lookup with fallback chain
 function __getCommissionRate(staffName) {
- let rates = {}; try { rates = JSON.parse(localStorage.getItem('staffCommissionRates_v1')||'{}'); } catch(e){}
  const u = (typeof authUsers !== 'undefined' && Array.isArray(authUsers))
  ? authUsers.find(a => a.name === staffName) : null;
- if (u && rates[u.staff_id] !== undefined) return parseFloat(rates[u.staff_id])||0;
+ const sid = u ? u.staff_id : null;
+ // p1_729 — Commission Report = TUNJANG: kadar dari server (cache merentas peranti) jadi
+ // sumber utama. Cashier "My Commission" baca kadar sama ni (view sahaja).
+ const server = window.__commissionRatesServer || {};
+ if (sid && server[sid] !== undefined && server[sid] !== null && server[sid] !== '') return parseFloat(server[sid])||0;
+ // fallback: localStorage (offline / belum sync), lepas tu kadar statik user, lepas tu global
+ let rates = {}; try { rates = JSON.parse(localStorage.getItem('staffCommissionRates_v1')||'{}'); } catch(e){}
+ if (sid && rates[sid] !== undefined) return parseFloat(rates[sid])||0;
  if (u && u.commission_rate !== undefined) return parseFloat(u.commission_rate)||0;
- // Legacy fallback to moyySettings if defined
  if (typeof moyySettings !== 'undefined' && moyySettings.commRate !== undefined) return parseFloat(moyySettings.commRate)||0;
  return 5; // sensible default
 }
+// p1_729 — Muat peta kadar komisen dari server (staff_report_submissions, satu baris config).
+// Report yang tulis; semua view (termasuk cashier My Commission) baca dari sini = single source.
+window.__commissionRatesServer = window.__commissionRatesServer || {};
+window.__loadCommissionRates = async function() {
+ try {
+ if(typeof db === 'undefined' || !db) { window.__commissionRatesLoaded = true; return; }
+ const { data } = await db.from('staff_report_submissions')
+ .select('payload').eq('submission_type','commission_rates').eq('period_key','global').maybeSingle();
+ if(data && data.payload && data.payload.rates) {
+ window.__commissionRatesServer = data.payload.rates;
+ try { localStorage.setItem('staffCommissionRates_v1', JSON.stringify(data.payload.rates)); } catch(e){}
+ } else {
+ // Belum ada config server — migrate kadar localStorage sedia ada (one-time) supaya tak hilang
+ let local = {}; try { local = JSON.parse(localStorage.getItem('staffCommissionRates_v1')||'{}'); } catch(e){}
+ window.__commissionRatesServer = local;
+ if(Object.keys(local).length) {
+ try { await db.from('staff_report_submissions').upsert({
+ staff_id:'__commission_rates', staff_name:'Commission Rates Config',
+ submission_type:'commission_rates', period_key:'global',
+ payload:{ rates: local, migrated:true }, submitted_at:new Date().toISOString(), bos_read_at:null
+ }, { onConflict:'staff_id,submission_type,period_key' }); } catch(e){}
+ }
+ }
+ } catch(e) { console.warn('load commission rates failed:', e.message); }
+ window.__commissionRatesLoaded = true;
+};
 
 // p1_451 — Base komisen = UNIT SKU berjaya terjual (harga sebenar dibayar), Zaid:
 // "komisen 5% pada setiap 1 unit sku berjaya terjual, BUKAN 5% pada total resit".
@@ -20029,17 +20060,32 @@ function __crGetRange() {
  if(r === 'ytd') { const s = new Date(now.getFullYear(), 0, 1); return { start:startOf(s), end:endOf(now), label: now.getFullYear() + ' YTD' }; }
  return { start:null, end:null, label: 'Semua masa' };
 }
-window.__crSaveRate = function(staffId, val) {
- let rates = {}; try { rates = JSON.parse(localStorage.getItem('staffCommissionRates_v1') || '{}'); } catch(e){}
+window.__crSaveRate = async function(staffId, val) {
  const v = parseFloat(val);
- if(val === '' || isNaN(v)) delete rates[staffId]; else rates[staffId] = v;
- localStorage.setItem('staffCommissionRates_v1', JSON.stringify(rates));
+ const server = window.__commissionRatesServer = window.__commissionRatesServer || {};
+ if(val === '' || isNaN(v)) delete server[staffId]; else server[staffId] = v;
+ try { localStorage.setItem('staffCommissionRates_v1', JSON.stringify(server)); } catch(e){}
+ // Persist ke server supaya SEMUA peranti (termasuk cashier My Commission) baca kadar sama
+ let synced = false;
+ try {
+ if(typeof db !== 'undefined' && db) {
+ const { error } = await db.from('staff_report_submissions').upsert({
+ staff_id:'__commission_rates', staff_name:'Commission Rates Config',
+ submission_type:'commission_rates', period_key:'global',
+ payload:{ rates: server, updated_by:(window.currentUser&&window.currentUser.name)||'?' },
+ submitted_at:new Date().toISOString(), bos_read_at:null
+ }, { onConflict:'staff_id,submission_type,period_key' });
+ if(!error) synced = true; else console.warn('rate save error:', error.message);
+ }
+ } catch(e) { console.warn('rate save failed:', e.message); }
  window.renderCommissionReport();
- if(window.showToast) showToast('Kadar komisen dikemaskini.', 'success');
+ if(window.showToast) showToast(synced ? 'Kadar dikemaskini (semua peranti).' : 'Kadar disimpan setempat — sync server gagal.', synced ? 'success' : 'warn');
 };
 window.renderCommissionReport = function() {
  const host = document.getElementById('crBody');
  if(!host) return;
+ // p1_729 — pastikan kadar server dimuat dulu (single source), lepas tu render semula
+ if(!window.__commissionRatesLoaded && window.__loadCommissionRates) { window.__loadCommissionRates().then(() => window.renderCommissionReport()); }
  const esc = (typeof hesc === 'function') ? hesc : (s)=> String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  // Gate: pengurusan sahaja (selaras __cmCanViewAll)
  if(!currentUser || currentUser.role !== 'mgmt') {
@@ -20126,6 +20172,8 @@ window.renderCommissionReport = function() {
 
 window.renderPersonalCommission = function() {
  if (!currentUser) return;
+ // p1_729 — cashier VIEW SAHAJA: muat kadar dari server (tunjang = Commission Report) dulu
+ if(!window.__commissionRatesLoaded && window.__loadCommissionRates) { window.__loadCommissionRates().then(() => window.renderPersonalCommission()); }
  const isManager = window.__cmCanViewAll(currentUser); // hanya Zaid + Aliff
  const range = __cmGetDateRange();
 
