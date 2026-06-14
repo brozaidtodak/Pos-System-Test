@@ -12267,7 +12267,10 @@ window.__thumbUrl = function(url, w){
  const marker = '/storage/v1/object/public/';
  const idx = url.indexOf(marker);
  if(idx !== -1) {
-  return url.slice(0, idx) + '/storage/v1/render/image/public/' + url.slice(idx + marker.length) + '?width=' + (w || 300) + '&quality=60';
+  // p1_717 — MESTI bagi height + resize=contain. Width sahaja → Supabase pulang 300×(tinggi asal)
+  // = gambar herot/zoom. contain = skala proporsional muat dlm kotak (gambar penuh, tak crop/distort).
+  const sz = w || 300;
+  return url.slice(0, idx) + '/storage/v1/render/image/public/' + url.slice(idx + marker.length) + '?width=' + sz + '&height=' + sz + '&resize=contain&quality=60';
  }
  if(url.indexOf('images.weserv.nl') !== -1) return url;     // dah proxy
  const host = url.replace(/^https:\/\//i, '');             // bukan Supabase → proxy weserv
