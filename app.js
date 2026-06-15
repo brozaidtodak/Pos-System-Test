@@ -28175,16 +28175,16 @@ window.__aoViewOrder = function(saleId) {
    ? `<s style="color:#9CA3AF;">RM ${origPrice.toFixed(2)}</s><br>RM ${price.toFixed(2)}`
    : `RM ${price.toFixed(2)}`;
  const diskaunCell = (discUnit > 0)
-   ? `<span style="display:inline-block; padding:1px 7px; background:#F8EFD7; color:#7A5410; border-radius:50px; font-size:10.5px; font-weight:700;" title="${esc(it.discount_reason || 'Diskaun manual')}">−RM ${lineDisc.toFixed(2)}</span>${it.discount_reason ? `<br><span style="font-size:9.5px; color:#9CA3AF;">${esc(it.discount_reason)}</span>` : ''}`
+   ? `<span style="display:inline-block; padding:1px 7px; background:#F8EFD7; color:#7A5410; border-radius:50px; font-size:10.5px; font-weight:700; white-space:nowrap;" title="${esc(it.discount_reason || 'Diskaun manual')}">−RM ${lineDisc.toFixed(2)}</span>${it.discount_reason ? `<br><span style="font-size:9.5px; color:#9CA3AF;">${esc(it.discount_reason)}</span>` : ''}`
    : '<span style="color:#D1D5DB;">—</span>';
  return `<tr style="border-bottom:1px solid #F3F4F6;">
- <td style="padding:8px 10px;">${imgCell}</td>
- <td style="padding:8px 10px; font-family:'SF Mono',Menlo,monospace; font-size:11.5px; color:#374151;">${esc(it.sku || '-')}</td>
- <td style="padding:8px 10px; font-size:12px;">${esc(it.name || '-')}</td>
- <td style="padding:8px 10px; text-align:center; font-weight:800; font-size:13px; color:var(--primary);">${qty}</td>
- <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#6B7280;">${hargaCell}</td>
- <td style="padding:8px 10px; text-align:right; font-size:11.5px;">${diskaunCell}</td>
- <td style="padding:8px 10px; text-align:right; font-size:12px; font-weight:700;">RM ${line.toFixed(2)}</td>
+ <td style="padding:7px 6px;">${imgCell}</td>
+ <td style="padding:7px 6px; font-family:'SF Mono',Menlo,monospace; font-size:11px; color:#374151; white-space:nowrap;">${esc(it.sku || '-')}</td>
+ <td style="padding:7px 6px; font-size:11.5px;">${esc(it.name || '-')}</td>
+ <td style="padding:7px 5px; text-align:center; font-weight:800; font-size:12.5px; color:var(--primary);">${qty}</td>
+ <td style="padding:7px 6px; text-align:right; font-size:11px; color:#6B7280; white-space:nowrap;">${hargaCell}</td>
+ <td style="padding:7px 6px; text-align:right; font-size:11px;">${diskaunCell}</td>
+ <td style="padding:7px 6px; text-align:right; font-size:11.5px; font-weight:700; white-space:nowrap;">RM ${line.toFixed(2)}</td>
  </tr>`;
  }).join('') : '<tr><td colspan="7" style="text-align:center; color:#9CA3AF; padding:18px; font-size:12px;">Tiada senarai barang direkod untuk order ni.</td></tr>';
  const totalItems = items.reduce((n, it) => n + window.__aoItemQty(it), 0);
@@ -28281,18 +28281,31 @@ window.__aoViewOrder = function(saleId) {
  </div>
  </div>
  <div style="font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:#9CA3AF; text-transform:uppercase; margin-bottom:6px;"><i data-lucide="package" style="width:12px;height:12px;vertical-align:-2px;"></i> Barang untuk Pack (${totalItems})</div>
- <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:14px;">
+ <div style="border:1px solid #F0F0F0; border-radius:10px; overflow-x:auto; margin-bottom:14px;">
  <table style="width:100%; border-collapse:collapse;">
  <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">
- <th style="text-align:left; padding:7px 10px;">Gambar</th><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:center; padding:7px 10px;">Qty</th><th style="text-align:right; padding:7px 10px;">Harga</th><th style="text-align:right; padding:7px 10px;">Diskaun</th><th style="text-align:right; padding:7px 10px;">Jumlah</th>
+ <th style="text-align:left; padding:6px 6px;">Gambar</th><th style="text-align:left; padding:6px 6px;">SKU</th><th style="text-align:left; padding:6px 6px;">Nama</th><th style="text-align:center; padding:6px 5px; white-space:nowrap;">Qty</th><th style="text-align:right; padding:6px 6px; white-space:nowrap;">Harga</th><th style="text-align:right; padding:6px 6px; white-space:nowrap;">Diskaun</th><th style="text-align:right; padding:6px 6px; white-space:nowrap;">Jumlah</th>
  </tr></thead>
  <tbody>${itemRows}</tbody>
  </table>
  </div>
- <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#FAF6EF; border-radius:10px; margin-bottom:14px;">
- <span style="font-size:12px; color:#6B7280;">${items.length} jenis barang · ${totalItems} unit${itemsSub && Math.abs(itemsSub - grandTotal) > 0.01 ? ' · subtotal barang RM ' + itemsSub.toFixed(2) : ''}</span>
+ ${(() => {
+ // p1_758 — ringkasan total + baris DISKAUN peringkat-order (Aliff: amaun diskaun tak muncul).
+ // Diskaun order = custom + VIP dari metadata (per-item discount dah tunjuk di lajur Diskaun).
+ const custDisc = parseFloat(md.custom_discount_amount || 0) || 0;
+ const vipDisc = parseFloat(md.vip_discount_amount || 0) || 0;
+ const orderDisc = custDisc + vipDisc;
+ const discLabel = (custDisc && vipDisc) ? 'Diskaun (custom + VIP)' : (vipDisc ? 'Diskaun VIP' : 'Diskaun');
+ const row = (l, v, c) => `<div style="display:flex; justify-content:space-between; font-size:12px; color:${c||'#6B7280'}; padding:2px 0;"><span>${l}</span><span>${v}</span></div>`;
+ return `<div style="padding:11px 14px; background:#FAF6EF; border-radius:10px; margin-bottom:14px;">
+ ${row(items.length + ' jenis · ' + totalItems + ' unit', 'Subtotal RM ' + itemsSub.toFixed(2))}
+ ${orderDisc > 0.001 ? row(discLabel, '− RM ' + orderDisc.toFixed(2), '#059669') : ''}
+ <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #E0CDA8; padding-top:8px; margin-top:6px;">
+ <span style="font-size:12px; font-weight:700; color:#6B7280;">TOTAL</span>
  <span style="font-size:18px; font-weight:800; color:#101010;">RM ${grandTotal.toFixed(2)}</span>
  </div>
+ </div>`;
+ })()}
  ${fulfilHtml}
  ${((() => {
  // p1_525 — Bukti bayar / Resit SEHINGGA 3 gambar (staff boleh tambah/buang via Urus Resit)
