@@ -22667,6 +22667,8 @@ window.openPdpModal = function(sku) {
  document.getElementById('pdpHeaderTitle').innerText = `${prod.sku} | ${prod.name}`;
  set('pdpStatus', isPublished(prod) ? 'true' : 'false');
  set('pdpName', prod.name);
+ // p1_746 — Product Name = nama produk tunggal dikongsi semua variant (metadata.product_name)
+ set('pdpProductName', (prod.metadata && prod.metadata.product_name) || '');
  set('pdpSku', prod.sku);
  set('pdpCategory', prod.category);
  set('pdpBrand', prod.brand);
@@ -23395,7 +23397,9 @@ window.savePdpData = async function() {
  tiktok_product_id: get('pdpTiktokProductId') || null,
  // p1_417 — direct buy links (editable; used by customer landing buy buttons)
  shopee_url: get('pdpShopeeUrl') || null,
- tiktok_url: get('pdpTiktokUrl') || null
+ tiktok_url: get('pdpTiktokUrl') || null,
+ // p1_746 — Product Name peringkat-produk (dikongsi semua variant, padan istilah Shopee/TikTok)
+ product_name: get('pdpProductName') || null
  };
  // p1_533 — disconnect BERSIH: bila staff padam Item/Product ID, buang sekali leftover
  // sync (model_id/sku_id/synced_at) supaya betul-betul terputus + tag grid jadi grey.
@@ -23440,7 +23444,8 @@ window.savePdpData = async function() {
  shopee_item_id: metadata.shopee_item_id,
  tiktok_product_id: metadata.tiktok_product_id,
  shopee_url: metadata.shopee_url,
- tiktok_url: metadata.tiktok_url
+ tiktok_url: metadata.tiktok_url,
+ product_name: metadata.product_name // p1_746 — Product Name dikongsi semua variant
  };
  // p1_745 — MEDIA juga peringkat-produk: satu media dikongsi semua variant (Zack).
  // Kalau ada gambar di "Media" atas, sebar ke semua sibling. Kosong = jangan padam.
