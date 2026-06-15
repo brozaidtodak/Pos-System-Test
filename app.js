@@ -28166,15 +28166,27 @@ window.__aoViewOrder = function(saleId) {
  const imgCell = img
    ? `<img src="${esc(img)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:42px; height:42px; object-fit:cover; border-radius:7px; border:1px solid #E5E7EB; display:block;"><span style="display:none; width:42px; height:42px; border:1px dashed #D1D5DB; border-radius:7px; align-items:center; justify-content:center; font-size:8px; color:#9CA3AF; text-align:center;">No Img</span>`
    : `<span style="display:flex; width:42px; height:42px; border:1px dashed #D1D5DB; border-radius:7px; align-items:center; justify-content:center; font-size:8px; color:#9CA3AF; text-align:center;">No Img</span>`;
+ // p1_756 — diskaun per-item (Aliff: tunjuk detail diskaun tiap barang jika diberi).
+ // discount_amount = diskaun SEUNIT; total diskaun baris = discount_amount × qty.
+ const discUnit = parseFloat(it.discount_amount || 0) || 0;
+ const origPrice = parseFloat(it.original_price || 0) || 0;
+ const lineDisc = discUnit * qty;
+ const hargaCell = (discUnit > 0 && origPrice > 0)
+   ? `<s style="color:#9CA3AF;">RM ${origPrice.toFixed(2)}</s><br>RM ${price.toFixed(2)}`
+   : `RM ${price.toFixed(2)}`;
+ const diskaunCell = (discUnit > 0)
+   ? `<span style="display:inline-block; padding:1px 7px; background:#F8EFD7; color:#7A5410; border-radius:50px; font-size:10.5px; font-weight:700;" title="${esc(it.discount_reason || 'Diskaun manual')}">−RM ${lineDisc.toFixed(2)}</span>${it.discount_reason ? `<br><span style="font-size:9.5px; color:#9CA3AF;">${esc(it.discount_reason)}</span>` : ''}`
+   : '<span style="color:#D1D5DB;">—</span>';
  return `<tr style="border-bottom:1px solid #F3F4F6;">
  <td style="padding:8px 10px;">${imgCell}</td>
  <td style="padding:8px 10px; font-family:'SF Mono',Menlo,monospace; font-size:11.5px; color:#374151;">${esc(it.sku || '-')}</td>
  <td style="padding:8px 10px; font-size:12px;">${esc(it.name || '-')}</td>
  <td style="padding:8px 10px; text-align:center; font-weight:800; font-size:13px; color:var(--primary);">${qty}</td>
- <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#6B7280;">RM ${price.toFixed(2)}</td>
+ <td style="padding:8px 10px; text-align:right; font-size:11.5px; color:#6B7280;">${hargaCell}</td>
+ <td style="padding:8px 10px; text-align:right; font-size:11.5px;">${diskaunCell}</td>
  <td style="padding:8px 10px; text-align:right; font-size:12px; font-weight:700;">RM ${line.toFixed(2)}</td>
  </tr>`;
- }).join('') : '<tr><td colspan="6" style="text-align:center; color:#9CA3AF; padding:18px; font-size:12px;">Tiada senarai barang direkod untuk order ni.</td></tr>';
+ }).join('') : '<tr><td colspan="7" style="text-align:center; color:#9CA3AF; padding:18px; font-size:12px;">Tiada senarai barang direkod untuk order ni.</td></tr>';
  const totalItems = items.reduce((n, it) => n + window.__aoItemQty(it), 0);
  const grandTotal = parseFloat(s.total_amount || s.total || 0) || 0;
  const proof = s.payment_proof_url || '';
@@ -28272,7 +28284,7 @@ window.__aoViewOrder = function(saleId) {
  <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:14px;">
  <table style="width:100%; border-collapse:collapse;">
  <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;">
- <th style="text-align:left; padding:7px 10px;">Gambar</th><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:center; padding:7px 10px;">Qty</th><th style="text-align:right; padding:7px 10px;">Harga</th><th style="text-align:right; padding:7px 10px;">Jumlah</th>
+ <th style="text-align:left; padding:7px 10px;">Gambar</th><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:center; padding:7px 10px;">Qty</th><th style="text-align:right; padding:7px 10px;">Harga</th><th style="text-align:right; padding:7px 10px;">Diskaun</th><th style="text-align:right; padding:7px 10px;">Jumlah</th>
  </tr></thead>
  <tbody>${itemRows}</tbody>
  </table>
