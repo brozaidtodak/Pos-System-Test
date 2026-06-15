@@ -23466,7 +23466,7 @@ window.renderPdpMediaGallery = function(urls) {
  // Boleh pilih mana-mana gambar jadi cover (butang "Set cover" → alih ke depan).
  container.innerHTML = urls.map((url, idx) => `
  <div style="position:relative; width:80px; height:80px; border-radius:8px; border:2px solid ${idx === 0 ? '#CD7C32' : '#e1e3e5'}; overflow:hidden; flex-shrink:0;">
- <img src="${window.__thumbUrl(url, 160)}" loading="lazy" decoding="async" onerror="window.__imgThumbErr(this, '${String(url).replace(/'/g, "\\'")}')" style="width:100%; height:100%; object-fit:cover;">
+ <img src="${window.__thumbUrl(url, 160)}" loading="lazy" decoding="async" onclick="window.__ppOpenImg && window.__ppOpenImg('${String(url).replace(/'/g, "\\'")}')" title="Klik untuk zoom" onerror="window.__imgThumbErr(this, '${String(url).replace(/'/g, "\\'")}')" style="width:100%; height:100%; object-fit:cover; cursor:zoom-in;">
  <button onclick="window.removePdpMedia(${idx})" title="Buang gambar" style="position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.85); border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; color:red; line-height:1;">&times;</button>
  ${idx === 0
    ? `<div style="position:absolute; bottom:0; left:0; right:0; background:#CD7C32; color:#fff; font-size:9px; font-weight:800; letter-spacing:0.3px; text-align:center; padding:2px 0; display:flex; align-items:center; justify-content:center; gap:2px;"><i data-lucide="star" style="width:9px;height:9px;"></i> COVER</div>`
