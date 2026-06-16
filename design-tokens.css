@@ -693,7 +693,7 @@
 /* ============================================================
    p1_23 — Public Landing Page (lp-* prefix)
    ============================================================ */
-.lp-root { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #1F2937; background: #FFF; }
+.lp-root { font-family: 'Poppins', system-ui, -apple-system, sans-serif; color: #1F2937; background: #FFF; }
 .lp-root h1, .lp-root h2, .lp-root h3, .lp-root h4 { font-family: inherit; }
 
 .lp-promo-banner { background: linear-gradient(90deg, var(--primary-700), var(--primary-500), var(--primary-600)); color: #FFF; text-align: center; padding: 8px 40px; font-size: 13px; font-weight: 600; position: relative; }

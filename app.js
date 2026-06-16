@@ -17346,18 +17346,8 @@ window.__rsApplyMyRowFilter = function() {
  });
 };
 
-// p1_128 — Wrap renderStaffSchedule supaya my-row filter auto-apply selepas re-render
-(function(){
- const orig = window.renderStaffSchedule;
- if(typeof orig === 'function' && !orig.__rsWrapped) {
- window.renderStaffSchedule = function() {
- const r = orig.apply(this, arguments);
- setTimeout(() => window.__rsApplyMyRowFilter && window.__rsApplyMyRowFilter(), 80);
- return r;
- };
- window.renderStaffSchedule.__rsWrapped = true;
- }
-})();
+// p1_770 — wrapper p1_128 dibuang (mati: orig undefined masa IIFE jalan, sebelum def sebenar).
+// my-row filter kini dipanggil terus dalam def akhir renderStaffSchedule (lihat bawah).
 
 // p1_128 — Print weekly schedule (current calendar view)
 window.__rsPrintSchedule = function() {
@@ -18070,7 +18060,7 @@ window.renderPendingSchedules = function() {
  <td><small>${attachStr}</small></td>
  <td>
  <button onclick="approveRequest(${req.id})" style="background:#101010; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:5px;">Terima</button>
- <button onclick="rejectRequest(${req.id})" style="background:#B23A2E; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Tolak</button>
+ <button onclick="rejectLeaveRequest(${req.id})" style="background:#B23A2E; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Tolak</button>
  </td>
  </tr>
  `;
@@ -18148,7 +18138,9 @@ window.approveRequest = async function(id) {
  alert(`Permohonan ${req.staff_name} DILULUSKAN!`);
 };
 
-window.rejectRequest = async function(id) {
+// p1_770 — rename dari rejectRequest (dulu ditindih senyap oleh versi generic di bawah →
+// role-gate Bos untuk tolak CUTI hilang). Kini nama berasingan; butang queue cuti repoint sini.
+window.rejectLeaveRequest = async function(id) {
  // p1_68: only Bos rejects leave requests
  const u = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
  if (!u || u.role !== 'superior') {
@@ -18217,6 +18209,9 @@ const oldRenderStaffSchedule = renderStaffSchedule;
 renderStaffSchedule = function() {
  oldRenderStaffSchedule();
  renderPendingSchedules();
+ // p1_770 — my-row filter auto-apply (dulu wrapper p1_128 tak jalan sebab dipasang sebelum
+ // fungsi sebenar ditakrif). Dipindah sini supaya betul-betul aktif selepas re-render.
+ setTimeout(() => { try { window.__rsApplyMyRowFilter && window.__rsApplyMyRowFilter(); } catch(e){} }, 80);
 };
 
 function renderWarehouseLowStock() {
@@ -27464,7 +27459,7 @@ window.renderInventoryAnalytics = async function() {
  const SUP = { ST:'Shine Trip', MH:'Mountainhiker', CD:'Chanodug', VD:'Vidalido', NH:'Naturehike', BD:'Blackdog', MG:'Mobigarden', LF:'LFO', MX:'Mix Brand' };
  const supOf = (sku) => { const m = String(sku||'').match(/^[A-Za-z]+/); const pre = m ? m[0].toUpperCase() : ''; return SUP[pre] || (pre || 'Lain'); };
  const suggestOf = (t) => { const target = Math.max(Math.ceil((t.vel||0)*(LEAD+30)), t.lastQty||0, t.ro||0); return Math.max(target - t.stock, 0) || (t.ro||1); };
- const timeline = (t) => { const evs=t.events||[]; if(!evs.length) return '<span style="color:#9CA3AF; font-size:11.5px;">Belum ada rekod DO untuk SKU ni.</span>'; return '<div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">'+evs.map((e,i)=>{ const lbl=i===0?'1st':('R'+i); const last=i===evs.length-1; return `<span style="font-size:11px; padding:3px 8px; border-radius:6px; background:${last?'#EFF6FF':'#F3F4F6'}; ${last?'font-weight:700; color:var(--primary);':'color:#6B7280;'}"><span style="color:#9CA3AF; font-size:9.5px;">${lbl}</span> ${fmtD(e.date)}${e.qty?` · ${e.qty}u`:''}</span>`+(last?'':'<span style="color:#D1D5DB;">→</span>'); }).join('')+'</div>'; };
+ const timeline = (t) => { const evs=t.events||[]; if(!evs.length) return '<span style="color:#9CA3AF; font-size:11.5px;">Belum ada rekod DO untuk SKU ni.</span>'; return '<div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">'+evs.map((e,i)=>{ const lbl=i===0?'1st':('R'+i); const last=i===evs.length-1; return `<span style="font-size:11px; padding:3px 8px; border-radius:6px; background:${last?'#FAF6EF':'#F3F4F6'}; ${last?'font-weight:700; color:var(--primary);':'color:#6B7280;'}"><span style="color:#9CA3AF; font-size:9.5px;">${lbl}</span> ${fmtD(e.date)}${e.qty?` · ${e.qty}u`:''}</span>`+(last?'':'<span style="color:#D1D5DB;">→</span>'); }).join('')+'</div>'; };
  const Z = window.__invZone || 'tindakan';
  const F = window.__invRkFilter || 'all';
 
@@ -32492,39 +32487,8 @@ window.cpConfirmSale = async function() {
  if(typeof lucide !== 'undefined') lucide.createIcons();
 };
 
-window.cpReceiptPrint = function() {
- if(!__cpLastSale) return;
- if(typeof window.showReceiptModal === 'function') {
- showReceiptModal(__cpLastSale.invId, __cpLastSale.customer_name, __cpLastSale.customer_email, __cpLastSale.total, __cpLastSale.items);
- } else {
- showToast('Resit handler missing', 'warn');
- }
-};
-
-window.cpReceiptWhatsApp = function() {
- if(!__cpLastSale) return;
- const phone = __cpLastSale.customer_phone || '';
- if(!phone) return showToast('Tiada phone number untuk WhatsApp.', 'warn');
- const phoneNorm = phone.replace(/\D/g, '').replace(/^0/, '60');
- const settings = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop || {};
- const shopName = settings.name || '10 CAMP';
- const itemList = __cpLastSale.items.map(it => `• ${it.name||it.sku} x${it.quantity||1} = RM${((it.quantity||1)*(it.price||0)).toFixed(2)}`).join('\n');
- const msg = `Salam dari *${shopName}*!\n\nResit: ${__cpLastSale.invId}\n${itemList}\n\n*Total: RM ${__cpLastSale.total.toFixed(2)}*\n\nTerima kasih atas pembelian!`;
- const url = `https://wa.me/${phoneNorm}?text=${encodeURIComponent(msg)}`;
- window.open(url, '_blank');
-};
-
-window.cpReceiptEmail = function() {
- if(!__cpLastSale) return;
- const email = __cpLastSale.customer_email || '';
- if(!email) return showToast('Tiada email untuk hantar.', 'warn');
- const settings = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}').shop || {};
- const shopName = settings.name || '10 CAMP';
- const itemList = __cpLastSale.items.map(it => `${it.name||it.sku} x${it.quantity||1} - RM${((it.quantity||1)*(it.price||0)).toFixed(2)}`).join('%0D%0A');
- const subject = encodeURIComponent(`E-Resit ${__cpLastSale.invId} dari ${shopName}`);
- const body = encodeURIComponent(`Salam,\n\nResit: ${__cpLastSale.invId}\n\n`) + itemList + encodeURIComponent(`\n\nTotal: RM ${__cpLastSale.total.toFixed(2)}\n\nTerima kasih!`);
- window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-};
+// p1_770 — cpReceiptPrint/WhatsApp/Email DIBUANG (yatim sejak p1_757 buang 3 butang dari skrin
+// success; e-receipt auto-hantar masa checkout, resend manual di All Orders/Reports). 0 pemanggil.
 
 // Hijack openPaymentModal → openCheckoutPanel (the new flow becomes default)
 window.__originalOpenPaymentModal = window.openPaymentModal;
@@ -38287,7 +38251,7 @@ window.renderCampaigns = function(){
  // p1_626 — Issues panel (langgar had: rugi / margin rendah / diskaun tinggi / terjual rugi)
  const __issues = window.__campaignIssues();
  const __cfg = window.__issueCfg();
- const __tag = (t) => { const m={'RUGI':['#B23A2E','#F4E4DF'],'TERJUAL RUGI':['#B23A2E','#F4E4DF'],'MARGIN RENDAH':['#9E7016','#F8EFD7'],'DISKAUN TINGGI':['#1D4ED8','#DBEAFE']}; const c=m[t]||['#374151','#F3F4F6']; return `<span style="background:${c[1]}; color:${c[0]}; padding:2px 8px; border-radius:50px; font-size:10px; font-weight:800; margin:1px 2px; display:inline-block;">${t}</span>`; };
+ const __tag = (t) => { const m={'RUGI':['#B23A2E','#F4E4DF'],'TERJUAL RUGI':['#B23A2E','#F4E4DF'],'MARGIN RENDAH':['#9E7016','#F8EFD7'],'DISKAUN TINGGI':['#7A5410','#FAF6EF']}; const c=m[t]||['#374151','#F3F4F6']; return `<span style="background:${c[1]}; color:${c[0]}; padding:2px 8px; border-radius:50px; font-size:10px; font-weight:800; margin:1px 2px; display:inline-block;">${t}</span>`; };
  const __issRows = __issues.length ? __issues.map(o => `
    <tr style="border-bottom:1px solid #E5E7EB;">
     <td style="padding:9px 10px;"><span class="sku-badge">${(o.sku||'').replace(/</g,'&lt;')}</span><br><small style="color:#6B7280;">${o.name.replace(/</g,'&lt;')}</small></td>
