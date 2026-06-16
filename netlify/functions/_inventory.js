@@ -27,7 +27,17 @@
 async function deductStockForItems(sb, items, opts) {
     opts = opts || {};
     const txnType = opts.txnType || 'OUTBOUND_SALE';
+    const orderRef = opts.orderRef || null; // p1_789 (M3) — per-order idempotency key (e.g. 'shopee:<sn>')
     const result = { skus_processed: 0, total_deducted: 0, shortfalls: [], errors: [] };
+    // p1_789 (M3) — if ledger rows already exist for this orderRef, the deduction already ran on a
+    // prior sync; do NOT repeat it (prevents double-deduct on re-sync / catch-up). Callers that pass
+    // no orderRef (webhooks) behave exactly as before.
+    if (orderRef) {
+        try {
+            const prior = await sb('GET', `/inventory_transactions?select=id&note=eq.${encodeURIComponent(orderRef)}&transaction_type=eq.${encodeURIComponent(txnType)}&limit=1`);
+            if (Array.isArray(prior) && prior.length) { result.already = true; return result; }
+        } catch (_) { /* check failed → fall through and deduct (a missed deduct is worse than a check error) */ }
+    }
     const txnRows = [];
 
     for (const item of (items || [])) {
@@ -42,7 +52,7 @@ async function deductStockForItems(sb, items, opts) {
             const rpc = await sb('POST', '/rpc/deduct_stock_fifo', { p_sku: sku, p_qty: qty });
             const alloc = (rpc && rpc.allocated) ? rpc.allocated : [];
             for (const a of alloc) {
-                txnRows.push({ sku, batch_id: a.batch_id, transaction_type: txnType, qty_change: -a.qty });
+                txnRows.push({ sku, batch_id: a.batch_id, transaction_type: txnType, qty_change: -a.qty, note: orderRef || undefined });
                 result.total_deducted += (Number(a.qty) || 0);
             }
             const short = (rpc && rpc.short) || 0;
@@ -53,12 +63,20 @@ async function deductStockForItems(sb, items, opts) {
         }
     }
 
-    // Audit ledger — best-effort: a logging failure must NOT undo the deduction.
+    // Audit ledger — write the OUTBOUND rows. If this fails AFTER the stock was already
+    // decremented, that's a SILENT LEDGER DRIFT (stock moved with no transaction row). p1_789 (M2):
+    // retry once (most failures are transient) and, if it still fails, flag it LOUDLY
+    // (result.ledger_drift + a clearly-labelled error the caller logs) instead of swallowing it.
     if (txnRows.length) {
-        try {
-            await sb('POST', '/inventory_transactions', txnRows, { Prefer: 'return=minimal' });
-        } catch (e) {
-            result.errors.push({ sku: '(txn_log)', err: (e.message || String(e)).slice(0, 120) });
+        let logged = false;
+        for (let attempt = 0; attempt < 2 && !logged; attempt++) {
+            try { await sb('POST', '/inventory_transactions', txnRows, { Prefer: 'return=minimal' }); logged = true; }
+            catch (e) {
+                if (attempt === 1) {
+                    result.ledger_drift = true;
+                    result.errors.push({ sku: '(ledger_drift)', err: 'stock deducted but ledger write FAILED: ' + (e.message || String(e)).slice(0, 100) });
+                }
+            }
         }
     }
 
@@ -100,8 +118,17 @@ async function restockForItems(sb, items, opts) {
         }
     }
     if (txnRows.length) {
-        try { await sb('POST', '/inventory_transactions', txnRows, { Prefer: 'return=minimal' }); }
-        catch (e) { result.errors.push({ sku: '(txn_log)', err: (e.message || String(e)).slice(0, 120) }); }
+        // p1_789 (M2) — retry once + flag ledger drift loudly (restock moved stock with no ledger row).
+        let logged = false;
+        for (let attempt = 0; attempt < 2 && !logged; attempt++) {
+            try { await sb('POST', '/inventory_transactions', txnRows, { Prefer: 'return=minimal' }); logged = true; }
+            catch (e) {
+                if (attempt === 1) {
+                    result.ledger_drift = true;
+                    result.errors.push({ sku: '(ledger_drift)', err: 'stock restocked but ledger write FAILED: ' + (e.message || String(e)).slice(0, 100) });
+                }
+            }
+        }
     }
     return result;
 }

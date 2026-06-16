@@ -89,7 +89,7 @@ exports.handler = async () => {
             } catch (e) { newImgs.push(url); failed++; console.log('[rehost] img fail', safeKey, idx, String(e).slice(0, 120)); }
         }
         try {
-            const skuList = g.skus.map(s => `"${s}"`).join(',');
+            const skuList = g.skus.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5)
             await sb('PATCH', `/products_master?sku=in.(${skuList})`, { images: newImgs }, { Prefer: 'return=minimal' });
             groupsDone++;
         } catch (e) { console.log('[rehost] patch fail', safeKey, String(e).slice(0, 120)); }

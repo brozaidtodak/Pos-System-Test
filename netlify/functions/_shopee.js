@@ -81,7 +81,8 @@ async function getValidToken() {
 async function loadPosStock(skus) {
     let path = '/inventory_batches?select=sku,qty_remaining';
     if (Array.isArray(skus) && skus.length) {
-        const list = skus.map(s => `"${(s || '').toUpperCase()}"`).join(',');
+        // p1_789 (M5) — escape + URL-encode each value so a SKU with special chars can't break in.()
+        const list = skus.map(s => encodeURIComponent('"' + String(s || '').toUpperCase().replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(',');
         path += `&sku=in.(${list})`;
     } else {
         path += '&limit=10000';

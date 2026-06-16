@@ -37,7 +37,8 @@ const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 // function for pending rows. After MAX_ATTEMPTS the row goes status=dead (surfaced in alerts).
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MIN = [10, 30, 120, 360]; // minutes after attempt 1,2,3,4; attempt 5 fail → dead
-const inList = (arr) => arr.map(s => `"${s}"`).join(',');
+// p1_789 (M5) — escape \ and " then URL-encode each value so a SKU with special chars can't break the PostgREST in.() filter.
+const inList = (arr) => arr.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(',');
 function nextRetryISO(attempts) {
     const mins = BACKOFF_MIN[Math.min(attempts - 1, BACKOFF_MIN.length - 1)];
     return new Date(Date.now() + mins * 60000).toISOString();
@@ -106,7 +107,7 @@ exports.handler = async (event) => {
         // p1_632 — no global markup. Each product's own shopee_price/tiktok_price is the push price.
         // Load products (scoped to skus, or all that are mapped to either channel)
         let path = '/products_master?select=sku,price,price_marketplace,shopee_price,tiktok_price,shopee_price_mode,tiktok_price_mode,cost_price,floor_price,floor_margin_pct,metadata';
-        if (skus.length) path += `&sku=in.(${skus.map(s => `"${s}"`).join(',')})`;
+        if (skus.length) path += `&sku=in.(${inList(skus)})`; // p1_789 (M5) — escaped+encoded via inList
         const rows = await shopee.sb('GET', path) || [];
 
         // Per-product price only. Mode 'rm' = absolute price; 'pct' = markup % over base POS price.

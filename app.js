@@ -23435,18 +23435,15 @@ window.__applyStockDelta = async function(sku, delta, reason) {
  if(error) throw error;
  return { applied: delta };
  }
- // delta < 0 → reduce FIFO from positive batches (oldest first)
- let need = -delta;
- const { data: batches, error: selErr } = await db.from('inventory_batches').select('id,qty_remaining,inbound_date').eq('sku', sku).gt('qty_remaining', 0).order('inbound_date', { ascending: true });
- if(selErr) throw selErr;
- for(const b of (batches || [])) {
- if(need <= 0) break;
- const take = Math.min(b.qty_remaining, need);
- const { error } = await db.from('inventory_batches').update({ qty_remaining: b.qty_remaining - take }).eq('id', b.id);
- if(error) throw error;
- need -= take;
- }
- return { applied: delta + need, short: need };
+ // delta < 0 → atomic FIFO deduct via RPC (FOR UPDATE + qty_remaining = qty_remaining - take).
+ // p1_789 (H1) — was a client-side SELECT-then-UPDATE loop writing the read value back = lost-update
+ // race (two concurrent refund/void/edit on the same SKU could clobber each other). The RPC does the
+ // read+write atomically server-side, same FIFO (oldest first), partial-deduct, returns leftover short.
+ const need = -delta;
+ const { data: res, error: rpcErr } = await db.rpc('deduct_stock_fifo', { p_sku: sku, p_qty: need });
+ if(rpcErr) throw rpcErr;
+ const short = (res && typeof res.short === 'number') ? res.short : 0;
+ return { applied: -(need - short), short };
 };
 
 window.pdpAdjustStock = async function() {

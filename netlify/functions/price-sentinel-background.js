@@ -149,7 +149,7 @@ async function traceHistory(platform, prices, now) {
     // Nama produk (batch)
     const nameBy = {};
     for (let i = 0; i < skus.length; i += 200) {
-        const batch = skus.slice(i, i + 200).map(s => `"${s}"`).join(',');
+        const batch = skus.slice(i, i + 200).map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5)
         try { const nr = await tt.sb('GET', `/products_master?select=sku,name&sku=in.(${batch})`); for (const r of (nr || [])) nameBy[(r.sku || '').toUpperCase()] = r.name; } catch (e) {}
     }
     const inserts = [];

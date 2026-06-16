@@ -290,8 +290,10 @@ exports.handler = async (event) => {
         const existMap = {};
         if (snList.length) {
             const existing = await sb('GET',
-                `/sales_history?select=id,status,sn:metadata->>shopee_order_sn&metadata->>shopee_order_sn=in.(${snList.map(s => `"${s}"`).join(',')})`);
-            (existing || []).forEach(r => { if (r.sn) existMap[r.sn] = { id: r.id, status: r.status }; });
+                `/sales_history?select=id,status,sn:metadata->>shopee_order_sn,sd:metadata->>stock_deducted&metadata->>shopee_order_sn=in.(${snList.map(s => `"${encodeURIComponent(s)}"`).join(',')})`);
+            // p1_789 (M3) — track stock_deducted so a re-run can catch up orders that were inserted
+            // but never deducted (function died/timed out between insert and deduct = oversell risk).
+            (existing || []).forEach(r => { if (r.sn) existMap[r.sn] = { id: r.id, status: r.status, deducted: r.sd === 'true' }; });
             seen = new Set(Object.keys(existMap));
         }
         const fresh = rows.filter(r => !seen.has(r.metadata.shopee_order_sn));
@@ -313,8 +315,10 @@ exports.handler = async (event) => {
         let inserted = 0, dupes = 0;
         const stock = { orders: 0, total_deducted: 0, shortfalls: [], errors: [] };
         for (const order of fresh) {
+            let newId = null;
             try {
-                await sb('POST', '/sales_history', order, { Prefer: 'return=minimal' });
+                const ins = await sb('POST', '/sales_history', order, { Prefer: 'return=representation' });
+                newId = (Array.isArray(ins) && ins[0]) ? ins[0].id : null;
                 inserted++;
             } catch (e) {
                 const msg = String(e.message || e);
@@ -323,26 +327,50 @@ exports.handler = async (event) => {
                 continue;
             }
             if (isVoidStatus(order.status)) continue;
-            const r = await deductStockForItems(sb, order.items, { txnType: 'OUTBOUND_SALE' });
+            const sn = order.metadata.shopee_order_sn;
+            const r = await deductStockForItems(sb, order.items, { txnType: 'OUTBOUND_SALE', orderRef: 'shopee:' + sn });
             stock.orders++;
             stock.total_deducted += r.total_deducted;
-            for (const s of r.shortfalls) stock.shortfalls.push({ order_sn: order.metadata.shopee_order_sn, ...s });
-            for (const e of r.errors) stock.errors.push({ order_sn: order.metadata.shopee_order_sn, ...e });
+            for (const s of r.shortfalls) stock.shortfalls.push({ order_sn: sn, ...s });
+            for (const e of r.errors) stock.errors.push({ order_sn: sn, ...e });
+            // p1_789 (M3) — mark deducted AFTER the deduction so a crash before this leaves the order
+            // un-flagged → the catch-up below (next run) re-deducts it (idempotent via the ledger note).
+            if (newId != null) { try { await sb('PATCH', `/sales_history?id=eq.${newId}`, { metadata: Object.assign({}, order.metadata, { stock_deducted: true, stock_deducted_at: new Date().toISOString() }) }, { Prefer: 'return=minimal' }); } catch (_) {} }
         }
         // 5b. Re-sync STATUS untuk order yang DAH WUJUD — status di Shopee mungkin dah berubah
         //     (UNPAID→CANCELLED, READY_TO_SHIP→SHIPPED→COMPLETED, dll). Elak order lapuk tersangkut
         //     (cth Pending yang sebenarnya dah dibatalkan masih papar "Belum Bayar"). Status sahaja, tak sentuh stok.
-        let statusUpdated = 0;
+        // p1_789 (M3) — only catch up orders created AFTER this fix deployed; orders before it were
+        // deducted in the pre-flag era (their ledger rows carry no order note), so re-deducting them
+        // would double-count. The ledger-note idempotency inside deductStockForItems is the 2nd guard.
+        const M3_CUTOFF = '2026-06-17T00:00:00Z';
+        let statusUpdated = 0, caughtUp = 0;
         for (const r of rows) {
             const ex = existMap[r.metadata.shopee_order_sn];
-            if (ex && ex.status !== r.status) {
+            if (!ex) continue;
+            if (ex.status !== r.status) {
                 try {
                     await sb('PATCH', `/sales_history?id=eq.${ex.id}`, { status: r.status }, { Prefer: 'return=minimal' });
                     statusUpdated++;
                 } catch (e) { /* best-effort */ }
             }
+            // Catch-up deduct: order exists but was never stock-deducted (prior run died between insert
+            // and deduct = oversell risk). Idempotent via ledger note; bounded to post-fix orders.
+            if (!ex.deducted && !isVoidStatus(r.status) && r.created_at && r.created_at >= M3_CUTOFF) {
+                try {
+                    const cr = await deductStockForItems(sb, r.items, { txnType: 'OUTBOUND_SALE', orderRef: 'shopee:' + r.metadata.shopee_order_sn });
+                    if (!cr.already) {
+                        stock.total_deducted += cr.total_deducted;
+                        for (const s of cr.shortfalls) stock.shortfalls.push({ order_sn: r.metadata.shopee_order_sn, catchup: true, ...s });
+                        for (const e of cr.errors) stock.errors.push({ order_sn: r.metadata.shopee_order_sn, catchup: true, ...e });
+                    }
+                    await sb('PATCH', `/sales_history?id=eq.${ex.id}`, { metadata: Object.assign({}, r.metadata, { stock_deducted: true, stock_deducted_at: new Date().toISOString() }) }, { Prefer: 'return=minimal' });
+                    caughtUp++;
+                } catch (e) { stock.errors.push({ order_sn: r.metadata.shopee_order_sn, catchup: true, err: String(e.message || e).slice(0, 120) }); }
+            }
         }
         out.status_updated = statusUpdated;
+        if (caughtUp) out.stock_caught_up = caughtUp;
         out.inserted = inserted;
         out.dupes_skipped = dupes;
         out.stock = stock;

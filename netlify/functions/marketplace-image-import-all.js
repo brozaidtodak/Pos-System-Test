@@ -60,7 +60,7 @@ exports.handler = async (event) => {
                 if (r.code !== 0) { errors.push({ pid, code: r.code, msg: r.message }); continue; }
                 const imgs = ((r.data && r.data.main_images) || []).map(i => (i.urls && i.urls[0]) || '').filter(Boolean);
                 if (!imgs.length) { noImg++; continue; }
-                const skuList = groups[pid].skus.map(s => `"${s}"`).join(',');
+                const skuList = groups[pid].skus.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5)
                 await shopee.sb('PATCH', `/products_master?sku=in.(${skuList})`, { images: imgs }, { Prefer: 'return=minimal' });
                 filled++; variantsFilled += groups[pid].skus.length;
             } catch (e) { errors.push({ pid, err: String(e).slice(0, 150) }); }

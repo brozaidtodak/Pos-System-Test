@@ -136,7 +136,7 @@ exports.handler = async (event) => {
             const skus = [...new Set(rows.map(r => r.sku).filter(Boolean))];
             const costMap = {};
             for (const b of chunk(skus, 100)) {
-                const list = b.map(s => `"${s.replace(/"/g, '')}"`).join(',');
+                const list = b.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5)
                 const pm = await sb('GET', `/products_master?select=sku,cost_price&sku=in.(${list})`);
                 (pm || []).forEach(x => { costMap[(x.sku || '').toUpperCase()] = Number(x.cost_price || 0); });
             }
@@ -147,7 +147,7 @@ exports.handler = async (event) => {
         const extIds = rows.map(r => r.external_id);
         const seen = new Set();
         for (const b of chunk(extIds, 150)) {
-            const list = b.map(s => `"${s.replace(/"/g, '')}"`).join(',');
+            const list = b.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5)
             const ex = await sb('GET', `/returns_log?select=source,external_id&external_id=in.(${list})`);
             (ex || []).forEach(r => { if (r.external_id) seen.add((r.source || '') + '|' + r.external_id); });
         }

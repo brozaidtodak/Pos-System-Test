@@ -315,7 +315,7 @@ exports.handler = async (event) => {
         if (skus.length) {
             const costMap = {};
             for (const batch of chunk(skus, 100)) {
-                const list = batch.map(s => `"${s.replace(/"/g, '')}"`).join(',');
+                const list = batch.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5) — escape + URL-encode each value
                 // products_master takde kolum supplier name (cuma preferred_supplier_id) — ambil cost_price je
                 const pm = await sb('GET', `/products_master?select=sku,cost_price&sku=in.(${list})`);
                 (pm || []).forEach(p => { costMap[(p.sku || '').toUpperCase()] = Number(p.cost_price || 0); });
@@ -328,7 +328,7 @@ exports.handler = async (event) => {
     const extIds = rows.map(r => r.external_id);
     const seen = new Set();
     for (const batch of chunk(extIds, 150)) {
-        const list = batch.map(s => `"${s.replace(/"/g, '')}"`).join(',');
+        const list = batch.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(','); // p1_789 (M5)
         const ex = await sb('GET', `/returns_log?select=source,external_id&external_id=in.(${list})`);
         (ex || []).forEach(r => { if (r.external_id) seen.add((r.source || '') + '|' + r.external_id); });
     }

@@ -65,7 +65,8 @@ exports.handler = async (event) => {
         out.shop_id = tok.shop_id;
 
         // Resolve mapping (shopee_item_id + shopee_model_id) + current POS stock.
-        const list = skus.map(s => `"${s}"`).join(',');
+        // p1_789 (M5) — escape \ and " then URL-encode each quoted value so a SKU containing "/)/,/( can't break the PostgREST in.() filter.
+        const list = skus.map(s => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')).join(',');
         const [rows, posStock] = await Promise.all([
             sb('GET', `/products_master?select=sku,metadata&sku=in.(${list})`),
             loadPosStock(skus)
