@@ -4936,6 +4936,16 @@ window.__psSetTab = function(tab, btn) {
 // p1_173 — Product list view
 window.__psListState = { filterText: '', filterBrand: '', filterStatus: '' };
 
+// p1_764 — COVER peringkat-produk: gambar muka depan (website / Product Master). Guna
+// metadata.cover_image kalau ada (Zack: cover ≠ gambar variant), fallback images[0].
+window.__coverOf = function(p) {
+ if(!p) return '';
+ const m = (p.metadata && typeof p.metadata === 'object') ? p.metadata : {};
+ if(m.cover_image) return m.cover_image;
+ if(Array.isArray(p.images) && p.images[0]) return p.images[0];
+ if(typeof p.images === 'string' && p.images) return p.images;
+ return '';
+};
 window.__psRenderList = function() {
  const wrap = document.getElementById('psListWrap');
  if(!wrap) return;
@@ -5045,7 +5055,7 @@ window.__psListFilter = function() {
  const pub = (typeof isPublished === 'function') ? isPublished(p) : !!p.is_published;
  const statusBadge = pub ? '<span style="background:#E4EFE2; color:#345E43; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:700;">Live</span>' : '<span style="background:#F3F4F6; color:#6B7280; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:700;">Draft</span>';
  const skuSafe = escHtml(p.sku || '');
- const imgSrc = (p.images && p.images[0]) ? p.images[0] : window.__psNoImg;
+ const imgSrc = window.__coverOf(p) || window.__psNoImg;
  const calcInp = (id, val, ph, w) => `<input id="${id}" type="number" step="0.01" inputmode="decimal" value="${val > 0 ? val : ''}" placeholder="${ph}" oninput="window.__psRowCalc(${i})" onclick="event.stopPropagation();" style="width:${w}px; padding:5px 7px; border:1px solid #E5E7EB; border-radius:5px; font-size:12px; text-align:right;">`;
  const calcCell = (id, val, strong) => `<td class="ps-list-cell" style="padding:9px 10px; text-align:right; color:#374151;${strong ? ' font-weight:700; color:#0F766E;' : ''}"><span id="${id}">${val > 0 ? val.toFixed(2) : '—'}</span></td>`;
  return `<tr class="ps-list-row">`
@@ -5233,7 +5243,7 @@ window.__psComputeAll = function() {
  }
  const imgEl = document.getElementById('psProductImg');
  if(imgEl) {
- const url = (p.images && p.images[0]) ? p.images[0] : '';
+ const url = window.__coverOf(p) || '';
  if(url) imgEl.src = url;
  if(!window.__psNoImg) window.__psNoImg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'><rect width='90' height='90' fill='%23F9FAFB'/><text x='45' y='49' text-anchor='middle' fill='%23D1D5DB' font-family='sans-serif' font-size='10'>No Img</text></svg>";
  imgEl.onerror = function() { this.onerror = null; this.src = window.__psNoImg; };
@@ -16003,7 +16013,8 @@ function renderPublicStorefront() {
         const cardKey = (lead.parent_sku || lead.sku || ('idx' + gIdx)).replace(/[^a-zA-Z0-9]/g, '_');
         const cardId = 'lpCard_' + gIdx + '_' + cardKey;
         const totalStock = stockBySku[lead.sku] || 0;
-        const thumb = lead.images && lead.images[0] ? lead.images[0] : "https://placehold.co/300x300?text=No+Img";
+        // p1_764 — kad muka depan guna COVER produk (metadata.cover_image), fallback images[0]
+        const thumb = (window.__coverOf && window.__coverOf(lead)) || (lead.images && lead.images[0]) || "https://placehold.co/300x300?text=No+Img";
         const compareAt = parseFloat(lead.compare_at_price || 0);
         const price = parseFloat(lead.price || 0);
         const onSale = compareAt > price && price > 0;
@@ -16156,7 +16167,7 @@ window.renderPopularSoldOut = function() {
 
     strip.innerHTML = top.map(p => {
         const parsed = (typeof window.lpParseProductName === 'function') ? window.lpParseProductName(p) : { title: p.name || p.sku };
-        const thumb = (p.images && p.images[0]) ? p.images[0] : 'https://placehold.co/300x300?text=No+Img';
+        const thumb = (window.__coverOf && window.__coverOf(p)) || (p.images && p.images[0]) || 'https://placehold.co/300x300?text=No+Img';
         const nameSafe = String(parsed.title || p.name || p.sku).replace(/"/g,'&quot;');
         const brand = p.brand ? String(p.brand).replace(/</g,'&lt;') : '';
         const waText = waTemplate.replace('{NAME}', parsed.title || p.name || p.sku).replace('{SKU}', p.sku);
@@ -23000,6 +23011,9 @@ window.openPdpModal = function(sku) {
 
  // Media
  let imgs = prod.images || [];
+ // p1_764 — COVER peringkat produk (Zack): metadata.cover_image = gambar muka depan
+ // (website/Product Master), BERASINGAN dari gambar variant. Fallback images[0].
+ window.__pdpCoverUrl = (prod.metadata && prod.metadata.cover_image) || (imgs[0] || '');
  document.getElementById('pdpMediaUrls').value = imgs.join(',');
  renderPdpMediaGallery(imgs);
 
@@ -23664,32 +23678,35 @@ window.pdpConfirmPickImage = async function() {
 
 window.renderPdpMediaGallery = function(urls) {
  const container = document.getElementById('pdpMediaGallery');
- // p1_158 — was innerHTML += in loop (Safari OOM trigger)
- // p1_753 — gambar pertama (idx 0) = COVER (muka depan produk di preview/landing).
- // Boleh pilih mana-mana gambar jadi cover (butang "Set cover" → alih ke depan).
- container.innerHTML = urls.map((url, idx) => `
- <div style="position:relative; width:80px; height:80px; border-radius:8px; border:2px solid ${idx === 0 ? '#CD7C32' : '#e1e3e5'}; overflow:hidden; flex-shrink:0;">
+ // p1_764 — COVER peringkat PRODUK (Zack): satu gambar muka depan website/Product Master,
+ // BERASINGAN dari gambar variant. Badge COVER pada gambar == window.__pdpCoverUrl (bukan idx 0).
+ // Kalau cover belum diset, default gambar pertama.
+ let cover = window.__pdpCoverUrl || (urls[0] || '');
+ if(urls.length && urls.indexOf(cover) === -1) cover = urls[0]; // cover dibuang → fallback
+ window.__pdpCoverUrl = cover;
+ container.innerHTML = urls.map((url) => {
+  const isCover = (url === cover);
+  return `
+ <div style="position:relative; width:80px; height:80px; border-radius:8px; border:2px solid ${isCover ? '#CD7C32' : '#e1e3e5'}; overflow:hidden; flex-shrink:0;">
  <img src="${window.__thumbUrl(url, 160)}" loading="lazy" decoding="async" onclick="window.__ppOpenImg && window.__ppOpenImg('${String(url).replace(/'/g, "\\'")}')" title="Klik untuk zoom" onerror="window.__imgThumbErr(this, '${String(url).replace(/'/g, "\\'")}')" style="width:100%; height:100%; object-fit:cover; cursor:zoom-in;">
- <button onclick="window.removePdpMedia(${idx})" title="Buang gambar" style="position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.85); border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; color:red; line-height:1;">&times;</button>
- ${idx === 0
-   ? `<div style="position:absolute; bottom:0; left:0; right:0; background:#CD7C32; color:#fff; font-size:9px; font-weight:800; letter-spacing:0.3px; text-align:center; padding:2px 0; display:flex; align-items:center; justify-content:center; gap:2px;"><i data-lucide="star" style="width:9px;height:9px;"></i> COVER</div>`
-   : `<button onclick="window.setPdpCover(${idx})" title="Jadikan gambar ni sebagai cover (muka depan produk)" style="position:absolute; bottom:2px; left:2px; background:rgba(255,255,255,0.92); border:1px solid #CD7C32; color:#CD7C32; border-radius:4px; font-size:8px; font-weight:800; cursor:pointer; padding:1px 5px; line-height:1.4;">Set cover</button>`}
- </div>
- `).join('');
+ <button onclick="window.removePdpMedia(${urls.indexOf(url)})" title="Buang gambar" style="position:absolute; top:2px; right:2px; background:rgba(255,255,255,0.85); border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; color:red; line-height:1;">&times;</button>
+ ${isCover
+   ? `<div style="position:absolute; bottom:0; left:0; right:0; background:#CD7C32; color:#fff; font-size:9px; font-weight:800; letter-spacing:0.3px; text-align:center; padding:2px 0; display:flex; align-items:center; justify-content:center; gap:2px;" title="Gambar muka depan produk (website / Product Master)"><i data-lucide="star" style="width:9px;height:9px;"></i> COVER</div>`
+   : `<button onclick="window.setPdpCover('${String(url).replace(/'/g, "\\'")}')" title="Jadikan gambar ni cover (muka depan produk — bukan gambar variant)" style="position:absolute; bottom:2px; left:2px; background:rgba(255,255,255,0.92); border:1px solid #CD7C32; color:#CD7C32; border-radius:4px; font-size:8px; font-weight:800; cursor:pointer; padding:1px 5px; line-height:1.4;">Set cover</button>`}
+ </div>`;
+ }).join('');
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 
-// p1_753 — pilih gambar jadi COVER: alih ke index 0 (images[0] = muka depan preview/landing).
-// Tak save terus — kemaskini pdpMediaUrls + gallery; tekan Save untuk simpan (sama macam Media lain).
-window.setPdpCover = function(idx) {
- const el = document.getElementById('pdpMediaUrls'); if(!el) return;
- let urls = el.value ? el.value.split(',').map(s => s.trim()).filter(Boolean) : [];
- if(idx <= 0 || idx >= urls.length) return;
- const pick = urls.splice(idx, 1)[0];
- urls.unshift(pick);
- el.value = urls.join(',');
+// p1_764 — pilih gambar jadi COVER PRODUK (muka depan website/Product Master). Tak alih images,
+// cuma tanda cover (window.__pdpCoverUrl) → disimpan ke metadata.cover_image (dikongsi semua variant) masa Save.
+window.setPdpCover = function(url) {
+ if(!url) return;
+ window.__pdpCoverUrl = url;
+ const el = document.getElementById('pdpMediaUrls');
+ const urls = el && el.value ? el.value.split(',').map(s => s.trim()).filter(Boolean) : [];
  window.renderPdpMediaGallery(urls);
- if(typeof showToast === 'function') showToast('Cover ditetapkan — tekan Save untuk simpan.', 'success');
+ if(typeof showToast === 'function') showToast('Cover produk ditetapkan — tekan Save untuk simpan.', 'success');
 };
 
 window.addPdpMedia = function() {
@@ -23927,7 +23944,9 @@ window.savePdpData = async function() {
  shopee_url: get('pdpShopeeUrl') || null,
  tiktok_url: get('pdpTiktokUrl') || null,
  // p1_746 — Product Name peringkat-produk (dikongsi semua variant, padan istilah Shopee/TikTok)
- product_name: get('pdpProductName') || null
+ product_name: get('pdpProductName') || null,
+ // p1_764 — COVER peringkat-produk: gambar muka depan website/Product Master (dikongsi semua variant)
+ cover_image: (function(){ const c = window.__pdpCoverUrl || ''; const el = document.getElementById('pdpMediaUrls'); const pool = (el && el.value) ? el.value.split(',').map(s=>s.trim()).filter(Boolean) : []; return (c && pool.indexOf(c) !== -1) ? c : (pool[0] || null); })()
  };
  // p1_533 — disconnect BERSIH: bila staff padam Item/Product ID, buang sekali leftover
  // sync (model_id/sku_id/synced_at) supaya betul-betul terputus + tag grid jadi grey.
@@ -23977,7 +23996,8 @@ window.savePdpData = async function() {
  tiktok_product_id: metadata.tiktok_product_id,
  shopee_url: metadata.shopee_url,
  tiktok_url: metadata.tiktok_url,
- product_name: metadata.product_name // p1_746 — Product Name dikongsi semua variant
+ product_name: metadata.product_name, // p1_746 — Product Name dikongsi semua variant
+ cover_image: metadata.cover_image // p1_764 — Cover (muka depan) dikongsi semua variant
  };
  // p1_745/p1_749/p1_752 — 3 INDUK peringkat-produk dikongsi semua variant (Zack):
  //   (1) MEDIA pool (kekalkan cover tiap sibling), (2) Product Name (metadata.product_name
