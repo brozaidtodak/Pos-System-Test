@@ -4946,6 +4946,14 @@ window.__coverOf = function(p) {
  if(typeof p.images === 'string' && p.images) return p.images;
  return '';
 };
+// p1_769 — nama paparan produk (front page / Product Master): guna metadata.product_name
+// (Zack: ganti "Title"/variant name) kalau ada, fallback __cleanName/name.
+window.__productNameOf = function(p) {
+ if(!p) return '';
+ const m = (p.metadata && typeof p.metadata === 'object') ? p.metadata : {};
+ if(m.product_name && String(m.product_name).trim()) return String(m.product_name).trim();
+ return p.__cleanName || p.name || '';
+};
 window.__psRenderList = function() {
  const wrap = document.getElementById('psListWrap');
  if(!wrap) return;
@@ -32917,7 +32925,7 @@ window.renderProductDatabase = function() {
  </div>
  <div class="pd-card__body">
  <span class="pd-card__brand">${hesc(p.brand || p.category || '·')}</span>
- <span class="pd-card__title">${hesc(((isGrp ? p.__cleanName : p.name) || '').slice(0, 90))}${isGrp ? ` <span style="background:#101010; color:#fff; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800; white-space:nowrap;">${p.__vcount} variants</span>` : ''}</span>
+ <span class="pd-card__title">${hesc((window.__productNameOf(p) || '').slice(0, 90))}${isGrp ? ` <span style="background:#101010; color:#fff; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800; white-space:nowrap;">${p.__vcount} variants</span>` : ''}</span>
  <span class="pd-card__sku">${hesc(isGrp ? (p.parent_sku || p.sku) : p.sku)}${(!isGrp && p.location_bin) ? ` · <span style="background:#F8EFD7; color:#7A5410; padding:1px 6px; border-radius:3px; font-size:9.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${hesc(p.location_bin)}</span>` : ''}</span>
  ${isGrp
  ? `<div class="pd-card__varprices" style="width:100%; font-size:${p.__vcount >= 12 ? 8 : (p.__vcount >= 8 ? 9 : (p.__vcount >= 5 ? 10.5 : 12))}px; max-height:150px; overflow-y:auto; margin-top:3px;">${p.__variants.map(v => `<div style="display:flex; justify-content:space-between; gap:8px; line-height:1.5;"><span style="color:#6B7280; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${hesc(v.label)}</span><span style="font-weight:800; color:#101010; flex-shrink:0;">RM ${v.price.toFixed(2)}</span></div>`).join('')}</div>`
@@ -32946,7 +32954,7 @@ window.renderProductDatabase = function() {
  return `
  <tr onclick="window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')" tabindex="0" role="button">
  <td>${img ? `<img src="${img}" class="pd-row-img" loading="lazy" alt="">` : '<div class="pd-row-img" style="display:flex;align-items:center;justify-content:center;color:var(--neutral-400);"></div>'}</td>
- <td><span class="pd-row-name">${hesc(((isGrp ? p.__cleanName : p.name)||'').slice(0, 70))}${isGrp ? ` <span style="background:#101010; color:#fff; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:800;">${p.__vcount} variants</span>` : ''}</span><span class="pd-row-meta">${hesc(isGrp ? (p.parent_sku||p.sku) : p.sku)}${(!isGrp && p.erp_barcode) ? ' · '+hesc(p.erp_barcode) : ''}</span></td>
+ <td><span class="pd-row-name">${hesc((window.__productNameOf(p)||'').slice(0, 70))}${isGrp ? ` <span style="background:#101010; color:#fff; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:800;">${p.__vcount} variants</span>` : ''}</span><span class="pd-row-meta">${hesc(isGrp ? (p.parent_sku||p.sku) : p.sku)}${(!isGrp && p.erp_barcode) ? ' · '+hesc(p.erp_barcode) : ''}</span></td>
  <td>${p.brand || '—'}</td>
  <td>${p.category || '—'}</td>
  <td>${p.location_bin ? `<span style="background:#F8EFD7; color:#7A5410; padding:2px 7px; border-radius:4px; font-size:10.5px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${p.location_bin}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>'}</td>
