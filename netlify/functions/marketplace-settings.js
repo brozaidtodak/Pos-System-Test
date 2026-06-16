@@ -12,6 +12,7 @@
  */
 
 const { sb } = require('./_shopee');
+const { requireStaff } = require('./_auth'); // p1_786 (C1b) — gate the write behind a staff session
 
 const KEY = 'marketplace_markup';
 const DEFAULTS = { shopee: { mode: 'pct', value: 8 }, tiktok: { mode: 'pct', value: 5 } };
@@ -32,6 +33,9 @@ function clean(ch, fallback) {
 exports.handler = async (event) => {
     try {
         if (event.httpMethod === 'POST') {
+            // p1_786 (C1b) — staff session required to write the markup config (feeds marketplace-price-push).
+            const auth = await requireStaff(event);
+            if (!auth.ok) return auth.response;
             let body = {};
             try { body = JSON.parse(event.body || '{}'); } catch (_) {}
             const value = {

@@ -248,6 +248,16 @@ exports.handler = async (event) => {
         });
     }
 
+    // p1_786 (C2) — DoS guard: if a signing key IS configured but the signature is INVALID,
+    // do NOT spend Shopee API calls re-fetching the order (that's the spam/quota-exhaustion vector).
+    // Ack 200 so Shopee won't retry; the 15-min sync cron picks up the real order safely (backstop).
+    // (When no key is set, verifyResult.skipped=true → fall through and process, so we don't break
+    // an env that hasn't configured SHOPEE_PUSH_KEY yet — the warning above flags that.)
+    if (!verifyResult.ok && !verifyResult.skipped) {
+        return { statusCode: 200, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ok: true, ignored: true, reason: 'invalid signature — deferred to 15-min sync cron' }) };
+    }
+
     try {
         // 4. Load token for this shop_id
         const tokenRows = await sb('GET', `/shopee_tokens?shop_id=eq.${shopId}&limit=1`);

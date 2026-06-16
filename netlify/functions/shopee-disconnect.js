@@ -16,6 +16,8 @@
  * Centre → Apps → Disconnect 10 CAMP POS Sync.
  */
 
+const { requireStaff } = require('./_auth'); // p1_786 (C1a) — gate behind a staff session
+
 const ENV          = (process.env.SHOPEE_ENV || 'sandbox').toLowerCase();
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || '';
@@ -46,6 +48,10 @@ async function sb(method, path, body) {
 
 exports.handler = async (event) => {
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
+
+    // p1_786 (C1a) — staff session required (this can delete marketplace tokens). No more public access.
+    const auth = await requireStaff(event);
+    if (!auth.ok) return auth.response;
 
     try {
         // GET — list connected shops

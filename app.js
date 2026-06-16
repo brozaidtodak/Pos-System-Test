@@ -141,6 +141,21 @@ window.__applyPosAppScope = function(){
  } catch(e){ console.warn('applyPosAppScope failed', e); }
 };
 
+// p1_786 (C1) — attach the staff Supabase session token so gated mutating functions
+// (shopee-disconnect, marketplace-settings write) can verify the caller is a logged-in staff.
+// Returns the base headers unchanged (no Authorization) if there is no active session.
+window.__authHeaders = async function(base) {
+ const h = Object.assign({}, base || {});
+ try {
+  if(db && db.auth && typeof db.auth.getSession === 'function') {
+   const { data } = await db.auth.getSession();
+   const tok = data && data.session && data.session.access_token;
+   if(tok) h['Authorization'] = 'Bearer ' + tok;
+  }
+ } catch(e){}
+ return h;
+};
+
 // p1_75: Auto-login on refresh — Supabase persists session in localStorage by default.
 // On boot, fetch active session; if user matches authUsers, loginAs silent
 // (skip welcome modal flash). Staff stays logged in across refresh.
@@ -19658,7 +19673,7 @@ window.__mpSaveMarkup = async function() {
  });
  const payload = { shopee: get('shopee'), tiktok: get('tiktok') };
  try {
- const r = await fetch('/api/marketplace-settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+ const r = await fetch('/api/marketplace-settings', { method:'POST', headers: await window.__authHeaders({'Content-Type':'application/json'}), body: JSON.stringify(payload) });
  const j = await r.json();
  if(j.ok && typeof showToast === 'function') showToast('Markup disimpan. Tekan "Push Harga" untuk apply ke marketplace.', 'success');
  else if(typeof showToast === 'function') showToast('Gagal simpan markup: ' + (j.error || '?'), 'error');
@@ -37401,7 +37416,7 @@ window.shopeeRefreshConnInfo = async function() {
  const status = document.getElementById('shopeeConnStatus');
  if(!el || !status) return;
  try {
- const res = await fetch('/api/shopee-disconnect', { cache: 'no-store' });
+ const res = await fetch('/api/shopee-disconnect', { cache: 'no-store', headers: await window.__authHeaders() });
  const json = await res.json();
  if(json.count === 0) {
  status.textContent = 'NOT CONNECTED';
@@ -37425,7 +37440,7 @@ window.shopeeDisconnect = async function() {
  try {
  const res = await fetch('/api/shopee-disconnect', {
  method: 'POST',
- headers: { 'Content-Type': 'application/json' },
+ headers: await window.__authHeaders({ 'Content-Type': 'application/json' }),
  body: JSON.stringify({})
  });
  const json = await res.json();
