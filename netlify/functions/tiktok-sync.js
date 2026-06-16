@@ -282,9 +282,10 @@ exports.handler = async (event) => {
         // 4. Dedup against already-imported TikTok-direct orders (+ capture id/status untuk re-sync)
         const idList = rows.map(r => r.metadata.tiktok_order_id);
         const existing = await sb('GET',
-            `/sales_history?select=id,status,payment_method,tid:metadata->>tiktok_order_id&metadata->>tiktok_order_id=in.(${idList.join(',')})`);
+            `/sales_history?select=id,status,payment_method,tid:metadata->>tiktok_order_id,sd:metadata->>stock_deducted&metadata->>tiktok_order_id=in.(${idList.join(',')})`);
         const existMap = {};
-        (existing || []).forEach(r => { if (r.tid) existMap[r.tid] = { id: r.id, status: r.status, payment_method: r.payment_method }; });
+        // p1_791 (M3) — track stock_deducted so a re-run catches up orders inserted-but-not-deducted.
+        (existing || []).forEach(r => { if (r.tid) existMap[r.tid] = { id: r.id, status: r.status, payment_method: r.payment_method, deducted: r.sd === 'true' }; });
         const seen = new Set(Object.keys(existMap));
         const fresh = rows.filter(r => !seen.has(r.metadata.tiktok_order_id));
 
@@ -336,12 +337,37 @@ exports.handler = async (event) => {
         const stock = { orders: 0, total_deducted: 0, shortfalls: [], errors: [] };
         for (const order of fresh) {
             if (isVoidStatus(order.status)) continue;
-            const r = await deductStockForItems(sb, order.items, { txnType: 'OUTBOUND_SALE' });
+            const oid = order.metadata.tiktok_order_id;
+            // p1_791 (M3) — idempotent per-order via ledger note (skip if already deducted on a prior run).
+            const r = await deductStockForItems(sb, order.items, { txnType: 'OUTBOUND_SALE', orderRef: 'tiktok:' + oid });
             stock.orders++;
             stock.total_deducted += r.total_deducted;
-            for (const s of r.shortfalls) stock.shortfalls.push({ tiktok_order_id: order.metadata.tiktok_order_id, ...s });
-            for (const e of r.errors) stock.errors.push({ tiktok_order_id: order.metadata.tiktok_order_id, ...e });
+            for (const s of r.shortfalls) stock.shortfalls.push({ tiktok_order_id: oid, ...s });
+            for (const e of r.errors) stock.errors.push({ tiktok_order_id: oid, ...e });
+            // Mark deducted AFTER deduction so a crash before this leaves it un-flagged → catch-up re-deducts (idempotent).
+            try { await sb('PATCH', `/sales_history?metadata->>tiktok_order_id=eq.${encodeURIComponent(oid)}`, { metadata: Object.assign({}, order.metadata, { stock_deducted: true, stock_deducted_at: new Date().toISOString() }) }, { Prefer: 'return=minimal' }); } catch (_) {}
         }
+        // p1_791 (M3) catch-up — existing orders inserted but never deducted (prior run died between
+        // insert and deduct). Idempotent via ledger note; bounded to post-fix orders (M3_CUTOFF) so
+        // history isn't double-deducted.
+        const M3_CUTOFF = '2026-06-17T00:00:00Z';
+        let caughtUp = 0;
+        for (const r of rows) {
+            const ex = existMap[r.metadata.tiktok_order_id];
+            if (!ex || ex.deducted || isVoidStatus(r.status)) continue;
+            if (!(r.created_at && r.created_at >= M3_CUTOFF)) continue;
+            try {
+                const cr = await deductStockForItems(sb, r.items, { txnType: 'OUTBOUND_SALE', orderRef: 'tiktok:' + r.metadata.tiktok_order_id });
+                if (!cr.already) {
+                    stock.total_deducted += cr.total_deducted;
+                    for (const s of cr.shortfalls) stock.shortfalls.push({ tiktok_order_id: r.metadata.tiktok_order_id, catchup: true, ...s });
+                    for (const e of cr.errors) stock.errors.push({ tiktok_order_id: r.metadata.tiktok_order_id, catchup: true, ...e });
+                }
+                await sb('PATCH', `/sales_history?id=eq.${ex.id}`, { metadata: Object.assign({}, r.metadata, { stock_deducted: true, stock_deducted_at: new Date().toISOString() }) }, { Prefer: 'return=minimal' });
+                caughtUp++;
+            } catch (e) { stock.errors.push({ tiktok_order_id: r.metadata.tiktok_order_id, catchup: true, err: String(e.message || e).slice(0, 120) }); }
+        }
+        if (caughtUp) out.stock_caught_up = caughtUp;
         out.stock = stock;
         out.ok = true;
         return json(200, out);
