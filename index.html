@@ -8372,6 +8372,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_759', label:'Susun semula kad dalam modal edit produk (Zaid): turutan baru Media -> Variants -> Product Name & Description -> Title/SKU/Brand/Type/Vendor (Basic Info) -> SEO. Dulu: Media -> Basic Info -> Description -> Variants -> SEO. Variants & Description naik atas (paling kerap diedit), Basic Info turun. Kad tersembunyi Metafields/Inventory diparkir antara Basic Info & SEO (tiada kesan visual). Reorder blok div lengkap (div balance disahkan kekal). HTML sahaja, tiada app.js.', d:'done' },
  { id:'p1_758', label:'FIX jadual barang pop-up order (Zaid screenshot): (1) Layout p1_756 jadi sempit/terpotong bila tambah lajur Diskaun (HARGA->"HA..", harga wrap "RM/00", JUMLAH->"MLAH") — modal 680px x 7 lajur. FIX: padding sel rapat (8/10->6/7), white-space:nowrap pada lajur nombor (Harga/Diskaun/Jumlah + header) supaya RM tak pecah, wrapper overflow:hidden->overflow-x:auto (header tak terpotong, scroll fallback). (2) "Amaun diskaun tak muncul" — order #5115 diskaun RM2 = custom_discount_amount peringkat-ORDER, item sendiri takde discount_amount jadi lajur "—" (betul). Tambah baris DISKAUN dlm ringkasan total (guna metadata custom_discount_amount + vip_discount_amount): tunjuk Subtotal / Diskaun (−RM, hijau) / TOTAL. Per-item discount kekal di lajur Diskaun. app.js v738->739.', d:'done' },
  { id:'p1_757', label:'Skrin "Payment Successful" — buang butang Print/WhatsApp/Email + mesej e-receipt auto (Zaid: "checkout customer dapat automatic e-receipt, features dalam kotak tu boleh buang, mention e-receipt dah hantar automatik"). Disahkan processNewCheckout MEMANG auto-hantar: email present->Resend HTML+PDF email; phone present->WhatsApp PDF (p1_237/p1_199). FIX: (a) cpSuccessView buang 3 butang cpReceiptPrint/WhatsApp/Email, kekal Selesai (fungsi kekal utk back-compat, fallback resend di All Orders/Reports). (b) cpSuccessSub tunjuk mesej "dah dihantar" kalau ada email ATAU phone (dulu email je). (c) i18n cp_email_can_send: "E-receipt dah dihantar secara automatik." / "E-receipt sent automatically." app.js v737->738.', d:'done' },
  { id:'p1_756', label:'Lajur "Diskaun" per-item dlm jadual barang pop-up order (Aliff: masukkan detail discount setiap barang jika diberikan). __aoViewOrder itemRows: tambah lajur Diskaun antara Harga & Jumlah (header + colspan empty 6->7). Tiap item: kalau discount_amount>0 -> Harga tunjuk harga asal (original_price) dicoret + harga lepas diskaun; lajur Diskaun tunjuk pill "−RM (discount_amount×qty)" + sebab (discount_reason) bawahnya; kalau tiada -> "—". discount_amount = diskaun seunit (set masa walk-in checkout p1_399), total baris = ×qty. app.js v736->737.', d:'done' },
@@ -13609,6 +13610,61 @@
  <input type="text" id="pdpMediaUrls" class="login-input" style="display:none;" placeholder="Comma separated URLs">
  </div>
 
+ <!-- p1_228 Card: Variants -->
+ <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+ <strong style="color:#202223;">Variants</strong>
+ <button type="button" onclick="window.pdpAddVariantOption()" style="background:#CD7C32; color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Variant</button>
+ </div>
+ <!-- p1_300 — sibling variants table (this product's variants, EasyStore-style) -->
+ <div id="pdpSiblingVariants" style="margin-bottom:16px;"></div>
+ <!-- p1_530 — block Warna/Saiz/Barcode/Custom Options/Has Variants/Default Variant SKU DISOROK (redundant; jadual variant atas dah urus per-variant). Input dikekal HIDDEN supaya savePdpData/openPdpModal tak rosak. -->
+ <div style="display:none;" aria-hidden="true">
+ <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+ <div>
+ <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Warna</label>
+ <input type="text" id="pdpVariantColor" class="login-input" placeholder="Khaki">
+ </div>
+ <div>
+ <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Saiz</label>
+ <input type="text" id="pdpVariantSize" class="login-input" placeholder="L / XL">
+ </div>
+ <div>
+ <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Barcode</label>
+ <input type="text" id="pdpErpBarcode" class="login-input" placeholder="EAN/UPC">
+ </div>
+ </div>
+ <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Custom Options (format: <code style="background:#f4f6f8; padding:1px 4px; border-radius:3px;">Nama: v1, v2, v3</code> per line)</label>
+ <textarea id="pdpVariantOptions" class="login-input" rows="3" placeholder="Material: Cotton, Polyester&#10;Length: Short, Long"></textarea>
+ <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+ <div>
+ <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Has Variants</label>
+ <select id="pdpHasVariants" class="login-input">
+ <option value="false">Standalone (tiada variant)</option>
+ <option value="true">Multi-variant</option>
+ </select>
+ </div>
+ <div>
+ <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Default Variant SKU</label>
+ <input type="text" id="pdpDefaultVariantSku" class="login-input" placeholder="kosongkan kalau standalone">
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- p1_228 Card: Description -->
+ <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+ <!-- p1_746 Product Name — nama produk tunggal dikongsi semua variant (istilah sama Shopee/TikTok) -->
+ <label style="display:block; font-size:13px; color:#202223; margin-bottom:5px; font-weight:700;">Product Name <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></label>
+ <input type="text" id="pdpProductName" class="login-input" placeholder="Nama produk untuk integrasi Shopee/TikTok — satu untuk semua variant">
+ <div style="font-size:11px; color:#9CA3AF; margin:5px 0 16px;">Nama rasmi produk (satu, dikongsi semua variant) — guna istilah sama macam "Product Name" di Shopee/TikTok untuk integrasi. Berbeza dengan "Title" di atas (= tajuk variant, boleh beza ikut SKU).</div>
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+ <strong style="color:#202223;">Description / Penerangan <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></strong>
+ <button type="button" onclick="window.pdpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#CE9420; color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
+ </div>
+ <textarea id="pdpDescription" class="login-input" rows="5" placeholder="Penerangan produk untuk customer + staff..." style="resize:vertical;"></textarea>
+ </div>
+
  <!-- Card: Basic Info & Specs -->
  <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
  <div style="margin-bottom:15px;">
@@ -13652,19 +13708,6 @@
  <p style="font-size:12px; color:#6d7175; margin-top:4px; display:flex; align-items:center; gap:6px;"><i data-lucide="arrow-down-circle" style="width:14px; height:14px; flex-shrink:0; color:#CD7C32;"></i> Harga · Cost · Shopee · TikTok diset di <strong>jadual produk</strong> bahagian bawah (kad Variants).</p>
  </div>
 
- <!-- p1_228 Card: Description -->
- <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
- <!-- p1_746 Product Name — nama produk tunggal dikongsi semua variant (istilah sama Shopee/TikTok) -->
- <label style="display:block; font-size:13px; color:#202223; margin-bottom:5px; font-weight:700;">Product Name <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></label>
- <input type="text" id="pdpProductName" class="login-input" placeholder="Nama produk untuk integrasi Shopee/TikTok — satu untuk semua variant">
- <div style="font-size:11px; color:#9CA3AF; margin:5px 0 16px;">Nama rasmi produk (satu, dikongsi semua variant) — guna istilah sama macam "Product Name" di Shopee/TikTok untuk integrasi. Berbeza dengan "Title" di atas (= tajuk variant, boleh beza ikut SKU).</div>
- <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
- <strong style="color:#202223;">Description / Penerangan <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></strong>
- <button type="button" onclick="window.pdpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#CE9420; color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
- </div>
- <textarea id="pdpDescription" class="login-input" rows="5" placeholder="Penerangan produk untuk customer + staff..." style="resize:vertical;"></textarea>
- </div>
-
  <!-- Card: Metafields — p1_710 disorok (Zaid: tak guna; ID dikekal utk savePdpData) -->
  <div style="display:none; background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
  <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
@@ -13686,47 +13729,6 @@
  <p style="font-size:11px; color:#6d7175; margin-top:6px;">Adjust Stock → insert inventory batch baru (append-only, audit trail kekal).</p>
  </div>
 
- <!-- p1_228 Card: Variants -->
- <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
- <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
- <strong style="color:#202223;">Variants</strong>
- <button type="button" onclick="window.pdpAddVariantOption()" style="background:#CD7C32; color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Variant</button>
- </div>
- <!-- p1_300 — sibling variants table (this product's variants, EasyStore-style) -->
- <div id="pdpSiblingVariants" style="margin-bottom:16px;"></div>
- <!-- p1_530 — block Warna/Saiz/Barcode/Custom Options/Has Variants/Default Variant SKU DISOROK (redundant; jadual variant atas dah urus per-variant). Input dikekal HIDDEN supaya savePdpData/openPdpModal tak rosak. -->
- <div style="display:none;" aria-hidden="true">
- <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
- <div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Warna</label>
- <input type="text" id="pdpVariantColor" class="login-input" placeholder="Khaki">
- </div>
- <div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Saiz</label>
- <input type="text" id="pdpVariantSize" class="login-input" placeholder="L / XL">
- </div>
- <div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Barcode</label>
- <input type="text" id="pdpErpBarcode" class="login-input" placeholder="EAN/UPC">
- </div>
- </div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Custom Options (format: <code style="background:#f4f6f8; padding:1px 4px; border-radius:3px;">Nama: v1, v2, v3</code> per line)</label>
- <textarea id="pdpVariantOptions" class="login-input" rows="3" placeholder="Material: Cotton, Polyester&#10;Length: Short, Long"></textarea>
- <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
- <div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Has Variants</label>
- <select id="pdpHasVariants" class="login-input">
- <option value="false">Standalone (tiada variant)</option>
- <option value="true">Multi-variant</option>
- </select>
- </div>
- <div>
- <label style="display:block; font-size:13px; color:#6d7175; margin-bottom:5px;">Default Variant SKU</label>
- <input type="text" id="pdpDefaultVariantSku" class="login-input" placeholder="kosongkan kalau standalone">
- </div>
- </div>
- </div>
- </div>
 
  <!-- p1_492 — Organization + Marketplace cards dipindah ke RIGHT sidebar (lihat bawah) -->
 
