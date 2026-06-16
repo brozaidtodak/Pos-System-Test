@@ -750,7 +750,7 @@ window.renderCustomization = function() {
   + '<p style="font-size:12px; color:#9CA3AF; margin:0 0 18px;">Tetapan yang kerap berubah. Edit, tekan Simpan — tersimpan ke server (semua peranti sama).</p>'
   + card('Kedai &amp; Hubungan','store', f('custName','Nama Kedai',s.shop.name) + f('custPhone','Telefon',s.shop.phone,'+60 11-...') + f('custWhatsapp','WhatsApp (no sahaja)',s.shop.whatsapp,'601133109547') + f('custEmail','Email',s.shop.email,'','email') + f('custAddress','Alamat',s.shop.address) + f('custHours','Waktu Operasi',s.shop.hours) + f('custFooter','Footer Resit',s.shop.footer))
   + card('Operasi','clock', f('custShiftA','Waktu Syif A',s.shifts.A) + f('custShiftB','Waktu Syif B',s.shifts.B) + f('custShiftC','Waktu Syif C',s.shifts.C) + f('custTarget','Sasaran Jualan Bulanan (RM)',s.sales.monthly_target,'0','number') + f('custPin','PIN Laporan Sulit',s.security.confidential_pin,'1999'))
-  + card('Harga &amp; Marketplace','tag', f('custTiktokMult','Markup TikTok (× harga walk-in)',s.pricing.tiktok_markup_mult,'2','number') + f('custFloorMargin','Margin Lantai Default (%)',s.pricing.floor_margin_pct,'35','number') + f('custRrpMarkup','RRP Markup Default (%)',s.pricing.rrp_markup_pct,'30','number') + f('custShopeeStore','Link Store Shopee',s.links.shopee_store) + f('custTiktokStore','Link Store TikTok',s.links.tiktok_store))
+  + card('Harga &amp; Marketplace','tag', '<p style="font-size:11px; color:#9CA3AF; margin:-4px 0 12px;">Harga jual TikTok/Shopee diset PER-PRODUK di kad Variants — bukan global. Di sini cuma peraturan margin + link store.</p>' + f('custFloorMargin','Margin Lantai Default (%)',s.pricing.floor_margin_pct,'35','number') + f('custRrpMarkup','RRP Markup Default (%)',s.pricing.rrp_markup_pct,'30','number') + f('custShopeeStore','Link Store Shopee',s.links.shopee_store) + f('custTiktokStore','Link Store TikTok',s.links.tiktok_store))
   + '<div style="display:flex; gap:10px; align-items:center; margin-bottom:30px;"><button onclick="window.__custSave()" class="btn-brand-primary" style="padding:10px 22px; font-size:13px;"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan</button><span id="custSaveMsg" style="font-size:12px; color:#9CA3AF;"></span></div>';
  if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){}
 };
@@ -762,7 +762,7 @@ window.__custSave = async function() {
  s.shifts.A=g('custShiftA'); s.shifts.B=g('custShiftB'); s.shifts.C=g('custShiftC');
  s.sales.monthly_target=parseFloat(g('custTarget'))||0;
  s.security.confidential_pin=(g('custPin').trim())||'1999';
- s.pricing.tiktok_markup_mult=parseFloat(g('custTiktokMult'))||2; s.pricing.floor_margin_pct=parseFloat(g('custFloorMargin'))||35; s.pricing.rrp_markup_pct=parseFloat(g('custRrpMarkup'))||30;
+ s.pricing.floor_margin_pct=parseFloat(g('custFloorMargin'))||35; s.pricing.rrp_markup_pct=parseFloat(g('custRrpMarkup'))||30;
  s.links.shopee_store=g('custShopeeStore'); s.links.tiktok_store=g('custTiktokStore');
  window.__appSettings=s;
  const msg=document.getElementById('custSaveMsg'); if(msg) msg.textContent='Menyimpan…';
