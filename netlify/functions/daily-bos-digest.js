@@ -18,6 +18,7 @@
  * Schedule: 0 0 * * * (every day at 00:00 UTC = 8:00am Asia/KL)
  */
 
+const { requireAuth } = require('./_auth'); // p1_790 (M4 part 2) — gate the manual ?send=1 email trigger
 const RESEND_KEY  = process.env.RESEND_API_KEY || '';
 const RECIPIENTS  = (process.env.DIGEST_RECIPIENTS || '').split(',').map(s => s.trim()).filter(Boolean);
 const FROM_ADDR   = process.env.DIGEST_FROM || 'onboarding@resend.dev';
@@ -283,6 +284,9 @@ async function sendEmail(html, subject) {
 }
 
 exports.handler = async (event) => {
+    // p1_790 (M4 part 2) — scheduled daily run (no httpMethod) is allowed; any manual HTTP hit
+    // (?send=1 fires a real email, ?preview leaks the digest) now needs a staff session / internal secret.
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const isManualSend = event && event.queryStringParameters && event.queryStringParameters.send === '1';
     const isPreview = event && event.queryStringParameters && event.queryStringParameters.preview === '1';
 

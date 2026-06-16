@@ -28023,7 +28023,7 @@ window.__updateCrmSegmentCounts = function() {
  sms_consent: 'SMS consent',
  tiktok: 'TikTok customers',
  shopee: 'Shopee customers',
- never_bought: '🆕 Newsletter / never bought',
+ never_bought: 'Newsletter / never bought',
  big_spender: 'Big spender (RM1K+)'
  };
  Array.from(sel.options).forEach(opt => {
@@ -31522,8 +31522,8 @@ const FESTIVAL_TEMPLATES = [
  { id:'raya', label:' Hari Raya Aidilfitri', code:'RAYA2026', type:'percent', value:20, scope:'cart_total', minSpend:200, desc:'Diskaun 20% sempena Raya untuk pembelian melebihi RM200' },
  { id:'cny', label:' Chinese New Year', code:'CNY2026', type:'percent', value:15, scope:'cart_total', minSpend:150, desc:'Diskaun 15% sempena CNY untuk pembelian melebihi RM150' },
  { id:'depavali',label:' Deepavali', code:'DEEPAVALI', type:'percent', value:15, scope:'cart_total', minSpend:150, desc:'Diskaun 15% sempena Deepavali' },
- { id:'merdeka', label:'🇲🇾 Hari Merdeka', code:'MERDEKA31', type:'percent', value:31, scope:'cart_total', minSpend:300, desc:'31% off sempena Merdeka untuk pembelian melebihi RM300' },
- { id:'malaysia',label:'🇲🇾 Hari Malaysia', code:'MALAYSIA16', type:'percent', value:16, scope:'cart_total', minSpend:200, desc:'16% off sempena Hari Malaysia' },
+ { id:'merdeka', label:'Hari Merdeka', code:'MERDEKA31', type:'percent', value:31, scope:'cart_total', minSpend:300, desc:'31% off sempena Merdeka untuk pembelian melebihi RM300' },
+ { id:'malaysia',label:'Hari Malaysia', code:'MALAYSIA16', type:'percent', value:16, scope:'cart_total', minSpend:200, desc:'16% off sempena Hari Malaysia' },
  { id:'xmas', label:' Christmas', code:'XMAS2026', type:'fixed', value:50, scope:'cart_total', minSpend:300, desc:'RM50 off sempena Christmas untuk pembelian melebihi RM300' },
  { id:'newyear', label:' New Year', code:'NY2026', type:'percent', value:10, scope:'cart_total', desc:'10% off New Year sale' },
  { id:'pekerja', label:' Hari Pekerja', code:'WORKER', type:'fixed', value:30, scope:'cart_total', minSpend:200, desc:'RM30 off Hari Pekerja' },
@@ -35794,7 +35794,7 @@ const WA_TEMPLATES = {
  raya: 'Selamat Hari Raya {name}! \n\nSpecial diskaun *20% off* untuk member 10 CAMP.\nUse code: *{promo_code}*\nValid sampai 30 Apr.\n\nShop online: 10camp.com\n Visit kedai kami di Setapak.\n\nTerima kasih, semoga raya ceria! ',
  cny: 'Gong Xi Fa Cai {name}! \n\nCelebrate dengan diskaun *8% off* satu store.\nCode: *{promo_code}*\nValid sampai 15 Feb.\n\nShop: 10camp.com\n\nMay your year be filled with adventure! ',
  deepavali: 'Happy Deepavali {name}! \n\nDiskaun spesial *15% off* untuk semua camping gear.\nCode: *{promo_code}*\nValid sampai 7 hari.\n\nShop: 10camp.com\n\nTerima kasih, semoga cahaya membawa kebahagiaan! ',
- merdeka: 'Selamat Hari Merdeka {name}! 🇲🇾\n\nMerdeka deal *RM57 off* untuk pembelian RM 300+.\nCode: *{promo_code}*\nValid 28 Aug – 16 Sep.\n\nShop: 10camp.com\n\nMerdeka! Merdeka! Merdeka! ',
+ merdeka: 'Selamat Hari Merdeka {name}!\n\nMerdeka deal *RM57 off* untuk pembelian RM 300+.\nCode: *{promo_code}*\nValid 28 Aug – 16 Sep.\n\nShop: 10camp.com\n\nMerdeka! Merdeka! Merdeka! ',
  vip_nudge: 'Hi {name}, VIP member 10 CAMP yang dihormati\n\nAnda ada *{points} points* dalam akaun.\nRedeem untuk diskaun atau free items sebelum expire.\n\nLogin: 10camp.com/account\n\nTerima kasih atas sokongan!',
  reorder_nudge: 'Hi {name} \n\nDah {last_order_days} hari last shopping kat 10 CAMP. Rindu! \n\nKalau nak refresh gear, ada banyak new arrival.\nCheckout: 10camp.com\n\nNak tanya apa-apa? Reply je message ni. ',
  generic: 'Hi {name}! \n\nNew update dari 10 CAMP:\n[Tulis announcement di sini]\n\nUse code *{promo_code}* untuk diskaun (kalau ada).\n\nThanks!\n10 CAMP team'
