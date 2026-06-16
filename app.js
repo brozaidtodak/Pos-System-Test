@@ -649,6 +649,106 @@ window.getShopInfo = function() {
  return Object.assign({}, defaults, (s && s.shop) || {});
 };
 
+// p1_773 — APP SETTINGS (Customization staff-editable). localStorage appSettings_v1 + server
+// (staff_report_submissions submission_type='app_settings' period_key='global') = single source
+// semua peranti (sama pola commission rates). Tetapan yang kerap berubah.
+window.__appSettings = window.__appSettings || null;
+window.__appSettingsLoaded = false;
+window.__appSettingsDefaults = function() {
+ let cs = {}; try { cs = (JSON.parse(localStorage.getItem('complianceSettings_v1')) || {}).shop || {}; } catch(e){}
+ let tgt = 0; try { tgt = parseFloat(localStorage.getItem('dashMonthlyTarget_v1')) || 0; } catch(e){}
+ return {
+  shop: { name: cs.name || '10 CAMP', address: cs.address || 'No. 9-G, Block H, Glomac Cyberjaya, Jalan GC 9, 63000 Cyberjaya, Selangor', phone: cs.phone || '+60 11-3310 9547', whatsapp: '601133109547', email: cs.email || 'admin@10camp.com', hours: 'Isnin-Sabtu 11am-8pm · Rabu 2-8pm', footer: cs.footer || 'THANK YOU FOR SHOPPING AT 10 CAMP', logo_url: cs.logo_url || '' },
+  shifts: { A: '11:00 AM - 9:00 PM', B: '2:00 PM - 8:00 PM', C: '11:00 AM - 8:00 PM' },
+  security: { confidential_pin: '1999' },
+  sales: { monthly_target: tgt },
+  pricing: { tiktok_markup_mult: 2, floor_margin_pct: 35, rrp_markup_pct: 30 },
+  links: { shopee_store: 'https://shopee.com.my/10camp.os', tiktok_store: 'https://vt.tiktok.com/ZSxoAXDhd/' }
+ };
+};
+window.__mergeDeep = function(a, b) { const o = Object.assign({}, a); for(const k in (b||{})) { o[k] = (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) ? window.__mergeDeep(a[k]||{}, b[k]) : b[k]; } return o; };
+window.__getSetting = function(path, def) { try { const v = String(path).split('.').reduce((o,k)=> (o&&o[k]!=null)?o[k]:undefined, window.__appSettings||{}); return (v==null) ? def : v; } catch(e) { return def; } };
+window.__loadAppSettings = async function() {
+ let local = {}; try { local = JSON.parse(localStorage.getItem('appSettings_v1') || '{}'); } catch(e){}
+ let server = null;
+ try {
+  if(typeof db !== 'undefined' && db) {
+   const { data } = await db.from('staff_report_submissions').select('payload').eq('submission_type','app_settings').eq('period_key','global').maybeSingle();
+   if(data && data.payload && data.payload.settings) server = data.payload.settings;
+  }
+ } catch(e) { console.warn('load app settings:', e.message); }
+ window.__appSettings = window.__mergeDeep(window.__mergeDeep(window.__appSettingsDefaults(), local), server || {});
+ try { localStorage.setItem('appSettings_v1', JSON.stringify(window.__appSettings)); } catch(e){}
+ window.__appSettingsLoaded = true;
+ window.__applySettingsConsumers();
+};
+window.__applySettingsConsumers = function() {
+ const s = window.__appSettings; if(!s) return;
+ if(s.security && s.security.confidential_pin) window.__CONF_PIN = String(s.security.confidential_pin); // PIN sulit
+ try { if(s.sales && s.sales.monthly_target != null) localStorage.setItem('dashMonthlyTarget_v1', String(s.sales.monthly_target)); } catch(e){} // sasaran
+ try { window.__applyShopSettingsToDOM(); } catch(e){} // kontak landing
+};
+window.__applyShopSettingsToDOM = function() {
+ const s = window.__appSettings; if(!s || !s.shop) return;
+ try {
+  const wa = (s.shop.whatsapp || '').replace(/[^0-9]/g, '');
+  if(wa) document.querySelectorAll('a[href^="https://wa.me/"]').forEach(a => { const parts = a.getAttribute('href').split('?'); a.setAttribute('href', 'https://wa.me/' + wa + (parts[1] ? ('?' + parts[1]) : '')); });
+  if(s.shop.phone) document.querySelectorAll('a[href^="tel:"]').forEach(a => a.setAttribute('href', 'tel:' + s.shop.phone.replace(/\s/g,'')));
+ } catch(e){}
+};
+window.__saveAppSettings = async function() {
+ const s = window.__appSettings; if(!s) return false;
+ try { localStorage.setItem('appSettings_v1', JSON.stringify(s)); } catch(e){}
+ // segerak field kedai ke complianceSettings_v1 (getShopInfo guna utk resit)
+ try { let cs = JSON.parse(localStorage.getItem('complianceSettings_v1') || '{}'); cs.shop = Object.assign({}, cs.shop, { name:s.shop.name, address:s.shop.address, phone:s.shop.phone, email:s.shop.email, footer:s.shop.footer, logo_url:s.shop.logo_url }); localStorage.setItem('complianceSettings_v1', JSON.stringify(cs)); } catch(e){}
+ let ok = false;
+ try {
+  if(typeof db !== 'undefined' && db) {
+   const { error } = await db.from('staff_report_submissions').upsert({ staff_id:'__app_settings', staff_name:'App Settings Config', submission_type:'app_settings', period_key:'global', payload:{ settings:s, updated_by:(window.currentUser&&window.currentUser.name)||'?' }, submitted_at:new Date().toISOString(), bos_read_at:null }, { onConflict:'staff_id,submission_type,period_key' });
+   if(!error) ok = true; else console.warn('save app settings:', error.message);
+  }
+ } catch(e) { console.warn('save app settings:', e.message); }
+ window.__applySettingsConsumers();
+ return ok;
+};
+window.renderCustomization = function() {
+ const host = document.getElementById('customizationBody'); if(!host) return;
+ const u = window.currentUser;
+ if(!u || (u.role !== 'mgmt' && !(window.isBoss && window.isBoss(u)))) {
+  host.innerHTML = '<div class="admin-card" style="padding:28px; text-align:center;"><i data-lucide="lock" style="width:30px;height:30px;color:#9CA3AF;"></i><h3 style="margin:12px 0 6px;">Akses terhad</h3><p style="color:#6B7280; font-size:13px; margin:0;">Customization untuk pengurusan sahaja.</p></div>';
+  if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return;
+ }
+ if(!window.__appSettings) { host.innerHTML = '<div class="admin-card" style="padding:24px; text-align:center; color:#9CA3AF;">Memuatkan…</div>'; window.__loadAppSettings().then(()=>window.renderCustomization()); return; }
+ const s = window.__appSettings;
+ const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
+ const f = (id,label,val,ph,type) => '<div style="margin-bottom:12px;"><label style="display:block; font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;">' + label + '</label><input id="' + id + '" type="' + (type||'text') + '" value="' + esc(val) + '" placeholder="' + esc(ph||'') + '" style="width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:Poppins,sans-serif;"></div>';
+ const card = (title,icon,inner) => '<div class="admin-card" style="padding:18px; margin-bottom:16px;"><div style="font-weight:800; font-size:14px; margin-bottom:14px;"><i data-lucide="' + icon + '" style="width:15px;height:15px;vertical-align:-2px;"></i> ' + title + '</div>' + inner + '</div>';
+ host.innerHTML =
+  '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="sliders-horizontal" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Customization</h2>'
+  + '<p style="font-size:12px; color:#9CA3AF; margin:0 0 18px;">Tetapan yang kerap berubah. Edit, tekan Simpan — tersimpan ke server (semua peranti sama).</p>'
+  + card('Kedai &amp; Hubungan','store', f('custName','Nama Kedai',s.shop.name) + f('custPhone','Telefon',s.shop.phone,'+60 11-...') + f('custWhatsapp','WhatsApp (no sahaja)',s.shop.whatsapp,'601133109547') + f('custEmail','Email',s.shop.email,'','email') + f('custAddress','Alamat',s.shop.address) + f('custHours','Waktu Operasi',s.shop.hours) + f('custFooter','Footer Resit',s.shop.footer))
+  + card('Operasi','clock', f('custShiftA','Waktu Syif A',s.shifts.A) + f('custShiftB','Waktu Syif B',s.shifts.B) + f('custShiftC','Waktu Syif C',s.shifts.C) + f('custTarget','Sasaran Jualan Bulanan (RM)',s.sales.monthly_target,'0','number') + f('custPin','PIN Laporan Sulit',s.security.confidential_pin,'1999'))
+  + card('Harga &amp; Marketplace','tag', f('custTiktokMult','Markup TikTok (× harga walk-in)',s.pricing.tiktok_markup_mult,'2','number') + f('custFloorMargin','Margin Lantai Default (%)',s.pricing.floor_margin_pct,'35','number') + f('custRrpMarkup','RRP Markup Default (%)',s.pricing.rrp_markup_pct,'30','number') + f('custShopeeStore','Link Store Shopee',s.links.shopee_store) + f('custTiktokStore','Link Store TikTok',s.links.tiktok_store))
+  + '<div style="display:flex; gap:10px; align-items:center; margin-bottom:30px;"><button onclick="window.__custSave()" class="btn-brand-primary" style="padding:10px 22px; font-size:13px;"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan</button><span id="custSaveMsg" style="font-size:12px; color:#9CA3AF;"></span></div>';
+ if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){}
+};
+window.__custSave = async function() {
+ const g = (id) => ((document.getElementById(id)||{}).value || '');
+ const s = window.__appSettings || window.__appSettingsDefaults();
+ s.shop=s.shop||{}; s.shifts=s.shifts||{}; s.security=s.security||{}; s.sales=s.sales||{}; s.pricing=s.pricing||{}; s.links=s.links||{};
+ s.shop.name=g('custName')||'10 CAMP'; s.shop.phone=g('custPhone'); s.shop.whatsapp=g('custWhatsapp').replace(/[^0-9]/g,''); s.shop.email=g('custEmail'); s.shop.address=g('custAddress'); s.shop.hours=g('custHours'); s.shop.footer=g('custFooter');
+ s.shifts.A=g('custShiftA'); s.shifts.B=g('custShiftB'); s.shifts.C=g('custShiftC');
+ s.sales.monthly_target=parseFloat(g('custTarget'))||0;
+ s.security.confidential_pin=(g('custPin').trim())||'1999';
+ s.pricing.tiktok_markup_mult=parseFloat(g('custTiktokMult'))||2; s.pricing.floor_margin_pct=parseFloat(g('custFloorMargin'))||35; s.pricing.rrp_markup_pct=parseFloat(g('custRrpMarkup'))||30;
+ s.links.shopee_store=g('custShopeeStore'); s.links.tiktok_store=g('custTiktokStore');
+ window.__appSettings=s;
+ const msg=document.getElementById('custSaveMsg'); if(msg) msg.textContent='Menyimpan…';
+ const ok = await window.__saveAppSettings();
+ if(msg) msg.textContent = ok ? 'Disimpan (semua peranti).' : 'Disimpan setempat (server gagal).';
+ if(window.showToast) showToast(ok ? 'Tetapan disimpan.' : 'Disimpan setempat (server gagal).', ok ? 'success' : 'warn');
+};
+
 // Pagination Defaults
 let publicCurrentPage = 1;
 let posCurrentPage = 1;
@@ -5053,7 +5153,7 @@ window.__psListFilter = function() {
  const cost = Number(p.cost_rmb || 0);
  const ex = (p.exchange_rate != null && p.exchange_rate !== '') ? Number(p.exchange_rate) : 0.60;
  const ship = Number(p.shipping_cost_rm || 0);
- const markup = (p.rrp_markup_pct != null && p.rrp_markup_pct !== '') ? Number(p.rrp_markup_pct) : 30;
+ const markup = (p.rrp_markup_pct != null && p.rrp_markup_pct !== '') ? Number(p.rrp_markup_pct) : (Number(window.__getSetting && window.__getSetting('pricing.rrp_markup_pct', 30)) || 30); // p1_773 — default dari Customization
  const base = cost * ex;
  const sf = base * (HAND / 100);
  const costBersih = base + ship + sf;
@@ -7935,6 +8035,8 @@ async function initApp() {
  if(window.currentUser){ ({ data: master } = await db.from('products_master').select('*').limit(100000)); }
  else { ({ data: master } = await db.from('public_products').select('*').limit(100000)); }
  if(master) masterProducts = master;
+ // p1_773 — muat App Settings (Customization) awal: apply PIN/sasaran/kontak (fire-and-forget)
+ try { window.__loadAppSettings && window.__loadAppSettings(); } catch(e){}
 
  // p1_627 — shop-level marketplace promotions (coupons, BMSM) for Campaigns page (staff-only)
  // p1_675 — guard: anon (landing) tak guna ni; elak baca jadual selepas RLS dikunci.

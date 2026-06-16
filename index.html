@@ -5862,6 +5862,13 @@
  <div class="set-card__sub" data-i18n="set_card_perm_sub">Manage staff access, roles, and what each team member can view or do.</div>
  </div>
 
+ <!-- p1_773 — Customization: tetapan yang kerap berubah, staff (Bos/Aliff) boleh edit -->
+ <div class="set-card" onclick="switchHub(['customizationSection'],'Customization'); if(window.renderCustomization) window.renderCustomization();">
+ <div class="set-card__icon"><i data-lucide="sliders-horizontal" style="width:18px; height:18px;"></i></div>
+ <div class="set-card__title">Customization</div>
+ <div class="set-card__sub">Maklumat kedai &amp; hubungan, waktu operasi/syif, PIN sulit, sasaran jualan, markup &amp; link marketplace.</div>
+ </div>
+
  <div class="set-card" onclick="document.querySelector('#sidebarMain .menu-item[data-tab=admin_settings]')?.click()">
  <div class="set-card__icon"><i data-lucide="settings" style="width:18px; height:18px;"></i></div>
  <div class="set-card__title" data-i18n="set_card_shop_title">Shop Settings</div>
@@ -5887,6 +5894,11 @@
  </div>
  </div>
  </div>
+ </div>
+
+ <!-- p1_773 — Customization section (tetapan kerap-berubah, staff-editable). Render via JS. -->
+ <div id="customizationSection" class="tab-section" style="display:none;">
+ <div id="customizationBody"></div>
  </div>
 
  <!-- ============================================== -->
@@ -8372,6 +8384,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_773', label:'CUSTOMIZATION — page tetapan staff-editable (Zaid: rangka plan supaya staff boleh edit customization kerap-berubah; "buat terus semua"). Kad baru "Customization" dlm Settings Hub -> customizationSection + renderCustomization (gate mgmt/Bos). 3 kumpulan: (1) Kedai & Hubungan (nama/telefon/WhatsApp/email/alamat/waktu operasi/footer resit), (2) Operasi (waktu syif A/B/C, sasaran jualan bulanan, PIN laporan sulit), (3) Harga & Marketplace (markup TikTok ×, margin lantai %, RRP markup %, link store Shopee/TikTok). STORE: window.__appSettings + localStorage appSettings_v1 + server (staff_report_submissions submission_type=app_settings period_key=global) = single source semua peranti (sama pola commission rates). __loadAppSettings dipanggil masa boot. CONSUMER WIRED: PIN (__CONF_PIN), sasaran (dashMonthlyTarget_v1), kontak landing (__applyShopSettingsToDOM update semua a[href^=wa.me]/tel:), shop info resit (segerak ke complianceSettings_v1->getShopInfo), RRP markup default. TERTANGGUH (stored, wiring penuh kemudian): waktu syif legend statik, markup TikTok/margin lantai (per-produk di price-push), link store. NOTA: PIN/harga idealnya Bos-only — kini whole page mgmt/Bos (boleh perhalus role kemudian). app.js v750->751.', d:'done' },
  { id:'p1_772', label:'AUDIT DARK MODE + fix (Zaid: audit dark mode; 1 agen). PUNCA: [data-theme=dark] cuma flip var --neutral-*, TAK flip --card-bg/--text-muted; banyak komponen hardcode #fff -> kekal putih atas body gelap, ada teks tak nampak. FIX additive (dark mode sahaja, tak ganggu light): (1) override [data-theme=dark] untuk .stat-card (+value/label) = KPI cards semua skrin, .product-card (+title/stock) = grid cashier, .rp-comm-input/.rp-input/.rp-select = Reports, .lp-header = landing. (2) Spot-fix sel nama item dlm modal All Orders (dulu bare text -> tak nampak atas panel putih dlm dark) bagi color #1f2937. NOTA TERTANGGUH: ~19 modal JS inline background:#fff kekal "pulau putih" dlm dark (readable, teks ada warna eksplisit) — boleh tukar var(--card-bg) kemudian; var-flip global --card-bg dielak (risiko regresi). app.js v749->750, design-tokens.css v104->105.', d:'done' },
  { id:'p1_771', label:'AUDIT FIX batch 2 — seragamkan butang + a11y alt-text (sambung audit). (1) 3 SISTEM BUTANG nampak beza (btn-brand-* radius10/normal-case/13px vs legacy btn-primary radius8/UPPERCASE/12px vs BEM btn-- radius var). Seragam CSS-sahaja (tak sentuh 100+ HTML): legacy .btn-primary family buang UPPERCASE+letter-spacing, padding 12/22->10/18, radius->10px, font 12->13px; BEM .btn radius var(--radius-md)->10px eksplisit. Semua butang primary kini sama rupa. Tak ubah --radius-md (dikongsi luas, double-def 8/12). (2) A11Y alt-text PDP landing: thumbnail (lp-pdp__thumb) + carousel (lp-pdp__cimg) dulu alt="" -> guna parsed.title (+nombor utk thumb). app.js v748->749, style.css v59->60, design-tokens.css v103->104.', d:'done' },
  { id:'p1_770', label:'AUDIT FIX batch (Zaid: audit landing+back office — duplicated/tak functional/UI-UX; 3 agen selari). ROSAK: (1) butang Settings sidebar panggil renderShopSettings+shopSettingsSection yg TAK wujud -> tekan = skrin kosong; repoint ke settingsHubSection+renderSettingsHub (sedia ada). BUG: (2) rejectRequest ditakrif 2x — versi generic (tiada role-gate) tindih senyap versi Bos-only leave; rename versi Bos jadi rejectLeaveRequest + repoint butang queue cuti (role-gate Bos pulih). (3) wrapper renderStaffSchedule (p1_128) mati (orig undefined masa IIFE) -> my-row filter tak pernah aktif; buang wrapper + panggil __rsApplyMyRowFilter terus dlm def akhir. FONT: (4) .lp-root Inter->Poppins (seluruh storefront ikut brand). WARNA luar-brand->brand: KPI navy #1E3A8A->#101010 (calcTotalCost/valTotalRetail), label magenta #9D174D->grey, kad Location lime->cream, tajuk Isi Data magenta->bronze, kad Untung lime->success green #345E43, pill DISKAUN TINGGI biru->bronze, pill DO biru->cream. DEAD CODE: buang fungsi yatim cpReceiptPrint/WhatsApp/Email (0 pemanggil sejak p1_757). NOTA: TAK buang "Investor Deck CSS" (agen tersilap — class .inv-* DIKONGSI halaman HR/Inventory live, buang = pecah UI) + 18 fungsi double-def/9 stub (harmless, later wins; cleanup hati2 kemudian). app.js v747->748, design-tokens.css v102->103.', d:'done' },
@@ -13570,7 +13583,7 @@
  </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=750"></script>
+ <script src="app.js?v=751"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
