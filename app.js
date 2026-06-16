@@ -20670,8 +20670,28 @@ window.__crRenderRingkasan = function() {
   html += '</div>';
   html += '<div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; margin-top:12px; background:#101010; color:#fff; border-radius:12px;"><span style="font-size:13px; font-weight:700;"><i data-lucide="wallet" style="width:15px;height:15px;vertical-align:-3px;"></i> JUMLAH NAK BAYAR — ' + esc(monthLabel) + '</span><span style="font-size:21px; font-weight:800; color:#E0A567;">' + money(d.totalComm) + '</span></div>';
  }
+ // p1_767 — Export CSV ringkasan komisen bulan (Aliff → staff finance)
+ if(d.rows.length) html += '<div style="margin-top:14px;"><button onclick="window.__crExportRingkasan()" style="background:#fff; border:1px solid #CD7C32; color:#CD7C32; padding:9px 18px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Export CSV (' + esc(monthLabel) + ')</button></div>';
  html += '<p style="font-size:10.5px; color:#9CA3AF; margin:14px 2px 0;">Kiraan live dari sales_history ber-attribute + sesi live. Kadar boleh edit per staf (disimpan server, semua peranti sama). Tab lain: A=rekod rasmi Aliff, AI=semak silang, Banding=cari anomali.</p>';
  return html;
+};
+// p1_767 — Export CSV ringkasan komisen per-staf untuk bulan dipilih (untuk staff finance)
+window.__crExportRingkasan = function() {
+ const ym = window.__crRkMonth || window.__crCurrentYm();
+ const d = window.__crComputeMonth(ym);
+ if(!d.rows.length) { if(window.showToast) showToast('Tiada data untuk export.', 'warn'); return; }
+ let monthLabel = ym; try { const p = ym.split('-'); monthLabel = new Date(Number(p[0]),Number(p[1])-1,1).toLocaleDateString('en-MY',{month:'long',year:'numeric'}); } catch(e){}
+ const esc = (v) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+ const lines = [['Staf','POS Base (RM)','Live TikTok (RM)','Jumlah Base (RM)','Kadar (%)','Komisen (RM)'].join(',')];
+ d.rows.forEach(r => { lines.push([esc(r.name), r.net.toFixed(2), r.live.toFixed(2), r.totalBase.toFixed(2), r.rate, r.comm.toFixed(2)].join(',')); });
+ lines.push('');
+ lines.push(['JUMLAH','','','','', d.totalComm.toFixed(2)].join(','));
+ const blob = new Blob(['﻿' + lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url; a.download = 'Komisen_Staf_' + ym + '.csv';
+ document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+ if(window.showToast) showToast('Export komisen ' + monthLabel + ' siap (' + d.rows.length + ' staf).', 'success');
 };
 
 window.renderCommissionReport = function() {
