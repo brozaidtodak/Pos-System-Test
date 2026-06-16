@@ -27,7 +27,9 @@ async function getActiveCoupons(tok, cipher) {
     return out;
 }
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const params = (event && event.queryStringParameters) || {};
     const mode = params.mode === 'sync' ? 'sync' : 'peek';
     try {

@@ -258,7 +258,9 @@ function mkRow(source, channel, returnId, sku, name, qty, reason, orderRef, stat
     };
 }
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
     // p1_576 (#16) — invokasi berjadual (cron) tiada queryStringParameters → auto IMPORT (default 15 hari lalu).
     const isScheduled = !event.queryStringParameters;

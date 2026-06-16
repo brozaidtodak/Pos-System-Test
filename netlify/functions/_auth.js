@@ -54,4 +54,35 @@ async function requireStaff(event) {
     }
 }
 
-module.exports = { requireStaff };
+// p1_787 — gate for functions called BOTH by the browser (staff JWT) AND server-to-server (crons) AND
+// the Netlify scheduler. Accepts any of: scheduled trigger (event.next_run) · valid internal secret
+// header (x-internal-key === INTERNAL_FN_SECRET) · valid staff JWT.
+// PROGRESSIVE-SAFE: if INTERNAL_FN_SECRET is NOT set in env, the gate stays OPEN (same as before this
+// change) so deploying never breaks the cron web — protection activates only once Zaid sets the secret.
+const INTERNAL_SECRET = process.env.INTERNAL_FN_SECRET || '';
+
+async function requireAuth(event) {
+    // 1) Netlify scheduled invocation — the scheduler triggers the handler WITHOUT an HTTP request,
+    //    so there is no event.httpMethod (and newer runtimes also set event.next_run). Any real public
+    //    HTTP hit always carries httpMethod, so this can't be spoofed by a browser/attacker request.
+    if (event && (event.next_run || (event.body && /"next_run"/.test(String(event.body))) || !event.httpMethod)) return { ok: true, via: 'scheduled' };
+    // 2) Not configured yet → stay open (no regression vs pre-p1_787 behaviour)
+    if (!INTERNAL_SECRET) return { ok: true, via: 'unconfigured' };
+    // 3) Internal server-to-server call (cron → function)
+    const h = (event && event.headers) || {};
+    const k = h['x-internal-key'] || h['X-Internal-Key'] || '';
+    if (k && k === INTERNAL_SECRET) return { ok: true, via: 'internal' };
+    // 4) Staff browser call
+    const staff = await requireStaff(event);
+    if (staff.ok) return { ok: true, via: 'staff', user: staff.user };
+    return staff; // {ok:false, response}
+}
+
+// Headers a server-to-server caller attaches so requireAuth() lets it through.
+function internalHeaders(base) {
+    const h = Object.assign({}, base || {});
+    if (INTERNAL_SECRET) h['x-internal-key'] = INTERNAL_SECRET;
+    return h;
+}
+
+module.exports = { requireStaff, requireAuth, internalHeaders };

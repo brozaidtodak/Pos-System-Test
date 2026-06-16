@@ -156,6 +156,22 @@ window.__authHeaders = async function(base) {
  return h;
 };
 
+// p1_787 (C1) — SYNC variant for fire-and-forget calls (can't await). Reads the token straight from
+// the supabase-js session in localStorage (key sb-<ref>-auth-token). Slightly staler than getSession()
+// but fine for a gate check; if the token is briefly stale the cron backstop re-syncs.
+window.__authHeaderSync = function(base) {
+ const h = Object.assign({}, base || {});
+ try {
+  const raw = localStorage.getItem('sb-asehjdnfzoypbwfeazra-auth-token');
+  if(raw) {
+   const s = JSON.parse(raw);
+   const tok = (s && (s.access_token || (s.currentSession && s.currentSession.access_token))) || null;
+   if(tok) h['Authorization'] = 'Bearer ' + tok;
+  }
+ } catch(e){}
+ return h;
+};
+
 // p1_75: Auto-login on refresh — Supabase persists session in localStorage by default.
 // On boot, fetch active session; if user matches authUsers, loginAs silent
 // (skip welcome modal flash). Staff stays logged in across refresh.
@@ -3067,7 +3083,7 @@ window.__rlPullReturns = async function() {
  const sinceDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
  if(typeof showToast === 'function') showToast('Menyedut returns dari Shopee + TikTok…', 'info');
  try {
-  const res = await fetch(`/api/returns-pull?mode=import&since=${sinceDate}`, { cache: 'no-store' });
+  const res = await fetch(`/api/returns-pull?mode=import&since=${sinceDate}`, { cache: 'no-store', headers: await window.__authHeaders() });
   const j = await res.json();
   if(j.error) { if(typeof showToast === 'function') showToast('Sedut gagal: ' + j.error, 'error'); return; }
   const ins = j.inserted || 0;
@@ -14226,11 +14242,11 @@ window.processNewCheckout = async function() {
    const soldSkus = cart.filter(c => !c.isCustom && !(typeof c.sku === 'string' && c.sku.startsWith('CUSTOM-')) && (parseInt(c.quantity) || 0) > 0).map(c => c.sku);
    if(soldSkus.length) {
      // p1_285 — push to TikTok (EasyStore TikTok channel disconnected)
-     fetch('/api/tiktok-stock-push', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ skus: soldSkus }) })
+     fetch('/api/tiktok-stock-push', { method:'POST', headers: window.__authHeaderSync({'Content-Type':'application/json'}), body: JSON.stringify({ skus: soldSkus }) })
        .catch(e => console.warn('tiktok-stock-push failed (non-blocking):', e));
      // p1_291 — push to Shopee direct (Lubang B Shopee). update_stock is absolute,
      // so safe even while EasyStore also syncs Shopee — both write the same value.
-     fetch('/api/shopee-stock-push', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ skus: soldSkus }) })
+     fetch('/api/shopee-stock-push', { method:'POST', headers: window.__authHeaderSync({'Content-Type':'application/json'}), body: JSON.stringify({ skus: soldSkus }) })
        .catch(e => console.warn('shopee-stock-push failed (non-blocking):', e));
    }
  } catch(e) { console.warn('marketplace stock-push skipped:', e); }
@@ -19693,14 +19709,14 @@ window.__mpPushPrices = async function() {
  for(let i=0;i<batches.length;i++) {
  setS(`Push Shopee... batch ${i+1}/${batches.length}`);
  try {
- const r = await fetch('/api/marketplace-price-push?mode=push&channel=shopee&skus=' + batches[i].join(','));
+ const r = await fetch('/api/marketplace-price-push?mode=push&channel=shopee&skus=' + batches[i].join(','), { headers: await window.__authHeaders() });
  const j = await r.json(); okShopee += (j.shopee && j.shopee.pushed) || 0;
  } catch(e) {}
  }
  for(let i=0;i<batches.length;i++) {
  setS(`Push TikTok... batch ${i+1}/${batches.length}`);
  try {
- const r = await fetch('/api/marketplace-price-push?mode=push&channel=tiktok&skus=' + batches[i].join(','));
+ const r = await fetch('/api/marketplace-price-push?mode=push&channel=tiktok&skus=' + batches[i].join(','), { headers: await window.__authHeaders() });
  const j = await r.json(); okTiktok += (j.tiktok && j.tiktok.pushed) || 0;
  } catch(e) {}
  }
@@ -22269,7 +22285,7 @@ window.saveMasterProduct = async function() {
  // p1_297 — push this product's price to Shopee + TikTok (custom price or markup
  // fallback). Single SKU = fast, fire-and-forget, never blocks the save.
  const __pushSkus = hasVariants ? __vrows.map(r => r.sku).filter(Boolean).join(',') : sku;
- if(__pushSkus) { try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(__pushSkus)).catch(()=>{}); } catch(e){} }
+ if(__pushSkus) { try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(__pushSkus), { headers: window.__authHeaderSync() }).catch(()=>{}); } catch(e){} }
  if(typeof window.__shopeePriceReminder === 'function') window.__shopeePriceReminder();
 
  // p1_226 — Initial Quantity → inventory_batches insert (single item baru sahaja; variant ada batch sendiri)
@@ -23683,7 +23699,7 @@ window.__pdpSaveVariants = async function(parentSku) {
  // p1_351 — Harga Shopee/TikTok kini PER-VARIANT (kolum dalam jadual, disimpan via colMap atas).
  // Blok lama p1_346 (simpan field utama ke curSku) dibuang sebab tindih dengan kolum per-variant.
  // push updated prices to marketplaces (fire-and-forget, single batch)
- try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(skus.join(','))).catch(()=>{}); } catch(e){}
+ try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(skus.join(',')), { headers: window.__authHeaderSync() }).catch(()=>{}); } catch(e){}
  if(typeof window.__shopeePriceReminder === 'function') window.__shopeePriceReminder();
  if(errs.length) console.warn('Variant save errors:', errs);
  // Reload batches so the stock display reflects the adjustments, then re-render
@@ -24231,7 +24247,7 @@ window.savePdpData = async function() {
  }
  } catch(e){ console.warn('propagate marketplace ids ke sibling:', e); }
  // p1_297b — push this product's price to Shopee + TikTok (fire-and-forget)
- try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(sku)).catch(()=>{}); } catch(e){}
+ try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(sku), { headers: window.__authHeaderSync() }).catch(()=>{}); } catch(e){}
  if(typeof showToast === 'function') showToast(`${sku} saved. Harga dipush ke marketplace.`, 'success');
  if(typeof window.__shopeePriceReminder === 'function') window.__shopeePriceReminder();
  else alert("Product saved successfully.");
@@ -25271,7 +25287,7 @@ window.__mpPushNow = async function(){
   const { error } = await db.from('products_master').update(payload).eq('sku', p.sku);
   if(error) throw error;
   Object.assign(p, payload);
-  const r = await fetch('/api/marketplace-price-push?mode=push&skus='+encodeURIComponent(p.sku));
+  const r = await fetch('/api/marketplace-price-push?mode=push&skus='+encodeURIComponent(p.sku), { headers: await window.__authHeaders() });
   const j = await r.json().catch(()=>({}));
   const sp = j.shopee||{}, tt = j.tiktok||{}, clamped = j.clamped||[];
   // p1_664 — bila gagal: tunjuk SEBAB + CARA SELESAI. Bila berjaya tapi produk dalam kempen: nota harga papar ikut kempen.
@@ -25501,7 +25517,7 @@ window.bulkSaveEdits = async function() {
  // push changed prices to marketplaces (batched, fire-and-forget)
  if(pushedSkus.length) {
  const chunk = (a,n)=>{const o=[];for(let i=0;i<a.length;i+=n)o.push(a.slice(i,i+n));return o;};
- for(const c of chunk(pushedSkus, 25)) { try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(c.join(','))).catch(()=>{}); } catch(e){} }
+ for(const c of chunk(pushedSkus, 25)) { try { fetch('/api/marketplace-price-push?mode=push&skus=' + encodeURIComponent(c.join(',')), { headers: window.__authHeaderSync() }).catch(()=>{}); } catch(e){} }
  if(typeof window.__shopeePriceReminder === 'function') window.__shopeePriceReminder();
  }
  // reload batches so stock display reflects adjustments
@@ -30201,7 +30217,7 @@ window.__rescanIntegration = async function(){
  const setBtn = (html, dis)=>{ const b=document.getElementById('__rescanBtn'); if(b){ b.disabled=!!dis; b.innerHTML=html; } if(window.lucide && lucide.createIcons) try{lucide.createIcons();}catch(_){} };
  setBtn('Menyemak…', true);
  if(typeof showToast==='function') showToast('Menyemak harga live… (~1 minit)', 'info');
- try { await fetch('/.netlify/functions/price-sentinel-background?mode=sync').catch(()=>{}); } catch(e){}
+ try { await fetch('/.netlify/functions/price-sentinel-background?mode=sync', { headers: await window.__authHeaders() }).catch(()=>{}); } catch(e){}
  // background fn returns 202 — give it time to pull TikTok+Shopee live prices & rewrite, then refresh.
  setTimeout(()=>{
   try { if(typeof window.__renderDeptAlerts==='function') window.__renderDeptAlerts(); } catch(e){}

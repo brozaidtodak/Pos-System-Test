@@ -142,7 +142,9 @@ function chunk(arr, n) {
     return out;
 }
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     if (!PARTNER_ID || !PARTNER_KEY) return json(500, { error: 'SHOPEE_PARTNER_ID / SHOPEE_PARTNER_KEY not set' });
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
 

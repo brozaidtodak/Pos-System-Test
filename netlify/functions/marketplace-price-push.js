@@ -90,7 +90,9 @@ function parseSkus(event) {
     return clean;
 }
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const p = event.queryStringParameters || {};
     const mode = p.mode === 'push' ? 'push' : 'dryrun';
     // channel: 'both' (default) | 'shopee' | 'tiktok'. Lets callers batch each

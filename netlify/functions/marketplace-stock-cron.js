@@ -16,6 +16,7 @@
  * stay minimal even though it reconciles the full mapped catalog each run.
  */
 
+const { requireAuth, internalHeaders } = require('./_auth'); // p1_787 (C1)
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || '';
 const SITE_URL     = process.env.URL || 'https://www.10camp.com';
@@ -38,7 +39,7 @@ async function logRun(table, row) {
 async function reconcile(name, url) {
     const startMs = Date.now();
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: internalHeaders() }); // p1_787 (C1) — auth to gated stock-sync
         // p1_679 — endpoint can return an HTML 502 page when the sync fn times out; don't crash on
         // res.json() ("Unexpected token '<'"). Read text, parse defensively, log a legible reason.
         const text = await res.text();
@@ -74,7 +75,8 @@ async function lastShopeeOffset() {
     } catch (e) { return 0; }
 }
 
-exports.handler = async () => {
+exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const ranAt = new Date().toISOString();
 
     const offset = await lastShopeeOffset();

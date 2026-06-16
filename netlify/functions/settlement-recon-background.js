@@ -51,7 +51,9 @@ async function fetchJson(url) {
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const p = (event && event.queryStringParameters) || {};
     const mode = p.mode === 'peek' ? 'peek' : 'sync';  // cron (no param) → sync/write; peek = explicit test
     const days = Math.min(Math.max(parseInt(p.days || '45', 10) || 45, 7), 120);

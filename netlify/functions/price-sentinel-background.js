@@ -175,7 +175,9 @@ const writeFindings = async (platform, findings, now) => {
     }
 };
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const mode = (event && event.queryStringParameters && event.queryStringParameters.mode) || 'sync';
     const now = new Date().toISOString();
     const out = { mode };

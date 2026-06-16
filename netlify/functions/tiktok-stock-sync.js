@@ -32,7 +32,9 @@ function json(statusCode, obj) {
     };
 }
 
+const { requireAuth } = require('./_auth'); // p1_787 (C1)
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     if (!APP_KEY || !APP_SECRET) return json(500, { error: 'TIKTOK_APP_KEY / TIKTOK_APP_SECRET not set' });
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
 
