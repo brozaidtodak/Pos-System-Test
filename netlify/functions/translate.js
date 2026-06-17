@@ -21,7 +21,9 @@ exports.handler = async (event) => {
         if (!key) return json(500, { error: 'OPENAI_API_KEY not set' });
 
         const targetLang = target === 'bm' ? 'Malay (Bahasa Melayu)' : 'English';
-        const sys = `You translate workplace memo text to ${targetLang}. The input is a JSON array of strings. Translate each string, preserving dates, numbers, URLs, proper names, currencies and line breaks exactly. Keep tone neutral/professional. Do not add notes. Respond ONLY with a JSON object {"translations": [...]} of the SAME length and order as the input.`;
+        // p1_823 — domain context so retail/inventory/finance terms translate correctly (was mistranslating
+        // e.g. "barang/jualan" → "meals"). 10 CAMP = camping & outdoor GEAR retailer, never food.
+        const sys = `You translate UI text from a Malaysian CAMPING & OUTDOOR GEAR retail point-of-sale, inventory, marketing and finance system (brand: 10 CAMP) to ${targetLang}. The input is a JSON array of strings. Translate retail/inventory/sales/marketing/finance terms accurately and literally — e.g. "barang"/"produk"/"jualan" = goods/products/sales (this business sells camping equipment; NEVER translate them as food, meals, or dishes). Preserve EXACTLY: SKUs/product codes (e.g. BD152), dates, numbers, percentages, currencies (RM), URLs, proper names, brand/platform names (Shopee, TikTok, WhatsApp, Naturehike, Blackdog, etc.) and line breaks. Keep tone neutral/professional, concise. Do not add notes. Respond ONLY with a JSON object {"translations": [...]} of the SAME length and order as the input.`;
 
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',

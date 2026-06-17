@@ -35139,13 +35139,13 @@ window.applyI18N = function() {
 // pada re-render via MutationObserver. Skop: #posAppLayout sahaja (landing dah i18n betul). Skip
 // SKU/nombor/harga/jenama + widget AI + elemen data-i18n (dah dihandle applyI18N).
 window.__UITX = (function(){
- const CACHE_KEY = 'uiTxCache_en_v1';
+ const CACHE_KEY = 'uiTxCache_en_v2';   // p1_823 — bump: buang cache lama (terjemahan salah cth "meals") → terjemah semula dgn prompt domain
  let cache = {};
  try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e){}
  let saveT; const saveCache = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch(e){} }, 1000); };
  const origMap = new WeakMap();   // textNode -> original BM string
  const changed = new Set();       // text nodes we translated (skip re-collect + restore on BM)
- let observer = null, sweepT = null, inflight = false, applying = false;
+ let observer = null, sweepT = null, inflight = false, applying = false, pending = false;
  const SKIP_TAG = { SCRIPT:1, STYLE:1, NOSCRIPT:1, INPUT:1, TEXTAREA:1, SELECT:1, OPTION:1, CODE:1, PRE:1 };
  const SKIP_ID = { saWidget:1, saPanel:1, caWidget:1, caPanel:1, roadmapSection:1, shopAppLayout:1 };
  function visible(el){ if(!el) return false; if(el.offsetParent !== null) return true; return !!(el.getClientRects && el.getClientRects().length); }
@@ -35213,9 +35213,10 @@ window.__UITX = (function(){
    inflight = true;
    try { await fetchTx(need); } finally { inflight = false; }
    applyCached(collect(root));
+   if(pending){ pending = false; scheduleSweep(); }   // tangkap kandungan yg render masa fetch (page render berperingkat)
   }
  }
- function scheduleSweep(){ clearTimeout(sweepT); sweepT = setTimeout(()=>{ sweep(); }, 300); }
+ function scheduleSweep(){ if(inflight){ pending = true; return; } clearTimeout(sweepT); sweepT = setTimeout(()=>{ sweep(); }, 300); }
  function startObserve(){
   if(observer || lang()!=='en') return;
   const root = document.body; if(!root) return;
