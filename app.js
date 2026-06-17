@@ -27526,6 +27526,7 @@ window.__invSubTab = function(z, el){
   ['ringkasan','tindakan','analisa'].forEach(k => { const d=document.getElementById('invZone_'+k); if(d) d.style.display = (k===z) ? '' : 'none'; });
   document.querySelectorAll('#invSubTabs .inv-subtab').forEach(x => x.classList.remove('active'));
   if(el) el.classList.add('active');
+  if(z === 'ringkasan') setTimeout(() => { try { window.__invDrawTrend && window.__invDrawTrend(); } catch(e){} }, 50); // p1_807 — lukis graf trend bila zon dibuka
 };
 window.__invToggleRow = function(skuid){
   const r = document.getElementById('invDtl_'+skuid); if(!r) return;
@@ -27612,6 +27613,23 @@ window.__invStockCard = function(sku) {
   html += '</tbody></table></div>';
   html += '<div style="padding:8px 14px; font-size:11px; color:var(--text-muted); line-height:1.5;">MASUK = restock (delivery order). KELUAR = jualan (test order dikecualikan). Refund = stok balik (masuk). Baki diankor ke stok sebenar sekarang; "Baki awal" ≠ 0 maksudnya ada stok lama sebelum rekod DO bermula.</div>';
   out.innerHTML = html;
+};
+// p1_807 — lukis graf trend nilai stok dari inventory_snapshots (direkod harian oleh cron).
+window.__invDrawTrend = async function() {
+ const cv = document.getElementById('invTrendChart');
+ if(!cv || typeof db === 'undefined' || !db || typeof Chart === 'undefined') return;
+ const empty = document.getElementById('invTrendEmpty');
+ let rows = [];
+ try { const { data } = await db.from('inventory_snapshots').select('snapshot_date,total_cost,total_units').order('snapshot_date', { ascending: true }).limit(120); rows = data || []; } catch(e){}
+ if(rows.length < 2) { if(empty) empty.style.display = 'block'; cv.style.display = 'none'; return; }
+ if(empty) empty.style.display = 'none'; cv.style.display = '';
+ if(window.__invTrendInst) { try { window.__invTrendInst.destroy(); } catch(e){} }
+ const labels = rows.map(r => { const d = new Date(r.snapshot_date + 'T00:00'); return isNaN(d) ? String(r.snapshot_date) : d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }); });
+ window.__invTrendInst = new Chart(cv.getContext('2d'), {
+  type: 'line',
+  data: { labels, datasets: [{ label: 'Nilai Stok (Kos RM)', data: rows.map(r => Number(r.total_cost) || 0), borderColor: '#CD7C32', backgroundColor: 'rgba(205,124,50,0.12)', fill: true, tension: 0.25, pointRadius: 2, borderWidth: 2 }] },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: (v) => 'RM' + Number(v).toLocaleString('en-MY') } } } }
+ });
 };
 window.renderInventoryAnalytics = async function() {
  const body = document.getElementById('anInvBody'); if(!body) return;
@@ -27855,7 +27873,10 @@ window.renderInventoryAnalytics = async function() {
      + '<th style="padding:8px 12px;">Brand</th><th style="padding:8px 12px; text-align:right;">Nilai Stok</th><th style="padding:8px 12px; text-align:right;">SKU</th><th style="padding:8px 12px; text-align:right;">Availability</th><th style="padding:8px 12px; text-align:right;">Dead Stock</th></tr></thead><tbody>'
      + brandRows.map(g => { const ac = g.avail == null ? '#9CA3AF' : (g.avail >= 70 ? '#4E7C4A' : (g.avail >= 40 ? '#9E7016' : '#B23A2E')); const dc = g.deadPct >= 30 ? '#B23A2E' : (g.deadPct >= 15 ? '#9E7016' : '#4E7C4A'); return `<tr><td style="padding:8px 12px; font-weight:600;">${esc(g.brand)}</td><td style="padding:8px 12px; text-align:right;">${fmtRM0(g.cost)}</td><td style="padding:8px 12px; text-align:right; color:var(--text-muted);">${g.skus.toLocaleString()}</td><td style="padding:8px 12px; text-align:right; color:${ac}; font-weight:700;">${g.avail == null ? '—' : g.avail + '%'}</td><td style="padding:8px 12px; text-align:right; color:${dc}; font-weight:700;">${g.deadPct}%</td></tr>`; }).join('')
      + '</tbody></table></div>'
-     + '<p class="soft-note" style="margin:8px 14px 12px;">Availability rendah / Dead Stock tinggi pada satu brand = modal tersangkut di situ — guna untuk clearance atau negotiate supplier.</p>') + '</div>';
+     + '<p class="soft-note" style="margin:8px 14px 12px;">Availability rendah / Dead Stock tinggi pada satu brand = modal tersangkut di situ — guna untuk clearance atau negotiate supplier.</p>') + '</div>'
+   + '<div style="margin-top:16px;">' + card(cardHead('Trend Nilai Stok')
+     + '<div style="padding:14px; position:relative; height:230px;"><canvas id="invTrendChart"></canvas>'
+     + '<div id="invTrendEmpty" style="display:none; text-align:center; color:var(--text-muted); padding:40px 10px; font-size:12.5px;">Trend direkod harian mulai hari ni — datang balik esok-lusa untuk lihat garis trend.</div></div>') + '</div>';
 
  // ============ ZONE: TINDAKAN ============
  const ctrl = `<div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--border-color); font-size:12px; background:#FCFCFD;">
@@ -27999,6 +28020,7 @@ window.renderInventoryAnalytics = async function() {
    + `<div id="invZone_analisa" style="display:${Z==='analisa'?'':'none'}">${zAnal}</div>`;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  window.__invFilterRows();
+ if(Z === 'ringkasan') setTimeout(() => { try { window.__invDrawTrend(); } catch(e){} }, 60); // p1_807 — lukis graf trend
 };
 
 // p1_500 — Export Analytics: pilih bahagian → satu CSV berbilang seksyen

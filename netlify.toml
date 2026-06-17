@@ -161,6 +161,10 @@
   status = 200
   force = true
 
+# p1_807 — daily inventory snapshot for the trend chart (~9:20am MYT)
+[functions."inventory-snapshot-cron"]
+  schedule = "20 1 * * *"
+
 # p1_105 — TikTok cutover ke direct API 2026-05-25. Cron 15-min activated.
 [functions."tiktok-sync-cron"]
   schedule = "*/15 * * * *"
