@@ -27748,6 +27748,27 @@ window.renderInventoryAnalytics = async function() {
  // Tinggi = teruk (modal tersangkut). slowTied + slow dah dikira atas.
  const deadPct = totalCost > 0 ? Math.round(slowTied / totalCost * 100) : null;
  const deadColor = deadPct == null ? '#9CA3AF' : (deadPct >= 30 ? '#B23A2E' : (deadPct >= 15 ? '#9E7016' : '#4E7C4A'));
+ // ---- #2 Hari Stok + Inventory Turnover (p1_803): guna unit terjual 90 hari ----
+ const soldUnits90 = Object.values(u90).reduce((s, x) => s + (Number(x) || 0), 0);
+ const dailySold = soldUnits90 / 90;
+ const daysOfStock = dailySold > 0 ? Math.round(totalUnits / dailySold) : null; // null = tiada jualan 90h (∞)
+ const turnoverYr = (dailySold > 0 && totalUnits > 0) ? +((soldUnits90 * (365 / 90)) / totalUnits).toFixed(1) : 0;
+ const dosColor = daysOfStock == null ? '#9CA3AF' : (daysOfStock > 180 ? '#B23A2E' : (daysOfStock > 90 ? '#9E7016' : '#4E7C4A'));
+ // ---- #1 Umur Stok (Stock Aging) by nilai kos, per-batch (FIFO-aware) ----
+ const ageBuckets = [
+   { lbl: '0–30h', max: 30, cost: 0, col: '#4E7C4A' },
+   { lbl: '31–90h', max: 90, cost: 0, col: '#8AA06A' },
+   { lbl: '91–180h', max: 180, cost: 0, col: '#CE9420' },
+   { lbl: '180h+', max: Infinity, cost: 0, col: '#B23A2E' }
+ ];
+ batches.forEach(b => {
+   const q = Number(b.qty_remaining) || 0; if(q <= 0) return;
+   const c = Number(b.cost_price || b.landed_cost) || 0;
+   const d = b.inbound_date ? Math.floor((now - new Date(b.inbound_date).getTime()) / 864e5) : 99999;
+   const bk = ageBuckets.find(x => d <= x.max) || ageBuckets[3];
+   bk.cost += q * c;
+ });
+ const agingTot = ageBuckets.reduce((s, b) => s + b.cost, 0) || 1;
 
  // ---- Render helpers ----
  const card = (inner, pad) => `<div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:${pad||'0'}; overflow:hidden; margin-bottom:16px;">${inner}</div>`;
@@ -27776,8 +27797,20 @@ window.renderInventoryAnalytics = async function() {
    + `<div class="sa-kpi"><div class="sa-kpi__lbl">Dead Stock %</div><div class="sa-kpi__val" style="color:${deadColor};">${deadPct == null ? '—' : deadPct + '%'}</div>`
      + (deadPct != null ? `<div style="height:6px; background:#EFEAE3; border-radius:4px; margin-top:6px; overflow:hidden;"><div style="height:100%; width:${Math.min(deadPct,100)}%; background:${deadColor};"></div></div>` : '')
      + `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${fmtRM0(slowTied)} terikat · ${slow.length.toLocaleString()} SKU tak bergerak 90h</div></div>`
+   + `<div class="sa-kpi"><div class="sa-kpi__lbl">Hari Stok</div><div class="sa-kpi__val" style="color:${dosColor};">${daysOfStock == null ? '∞' : daysOfStock + 'h'}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${daysOfStock == null ? 'tiada jualan 90h' : 'tahan ~' + daysOfStock + ' hari ikut kadar jualan'}</div></div>`
+   + `<div class="sa-kpi"><div class="sa-kpi__lbl">Inventory Turnover</div><div class="sa-kpi__val">${turnoverYr ? turnoverYr + '×' : '—'}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">pusingan stok setahun (anggaran)</div></div>`
    + '</div>'
    + '<p class="soft-note" style="margin:0 0 16px;">Nilai Kos = baki stok × landed cost. Nilai Retail = baki stok × harga jual. Potensi Untung anggaran kasar sebelum kos jualan. Stock Availability = berbanding tahap restock penuh terakhir (100% = baru penuh; turun bila terjual).</p>'
+   + card(cardHead('Umur Stok (ikut nilai kos)')
+     + '<div style="padding:14px;">'
+     + '<div style="display:flex; height:22px; border-radius:6px; overflow:hidden; margin-bottom:10px; background:#EFEAE3;">'
+     + ageBuckets.map(b => { const pct = b.cost / agingTot * 100; return pct > 0 ? `<div title="${b.lbl}: ${fmtRM0(b.cost)}" style="width:${pct}%; background:${b.col};"></div>` : ''; }).join('')
+     + '</div>'
+     + '<div style="display:flex; flex-wrap:wrap; gap:14px;">'
+     + ageBuckets.map(b => { const pct = Math.round(b.cost / agingTot * 100); return `<div style="font-size:12px;"><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:${b.col}; margin-right:5px; vertical-align:-1px;"></span>${b.lbl}: <b>${pct}%</b> <span style="color:var(--text-muted);">${fmtRM0(b.cost)}</span></div>`; }).join('')
+     + '</div>'
+     + '<p class="soft-note" style="margin:10px 0 0;">Stok lama (180h+) berisiko jadi dead stock — pertimbang promosi / clearance.</p>'
+     + '</div>')
    + '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:10px;">'
    + `<div class="sa-kpi" style="border-left:3px solid #B23A2E;"><div class="sa-kpi__lbl">Reorder Segera</div><div class="sa-kpi__val">${nReorder.toLocaleString()}</div></div>`
    + `<div class="sa-kpi" style="border-left:3px solid #CE9420;"><div class="sa-kpi__lbl">Perhati</div><div class="sa-kpi__val">${nPerhati.toLocaleString()}</div></div>`
