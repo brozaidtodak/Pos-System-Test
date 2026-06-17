@@ -34671,6 +34671,8 @@ window.I18N = {
  lp_about_cta_browse: { bm: 'Lihat Katalog', en: 'Browse Catalogue' },
 
  lp_news_h2: { bm: 'Stay in the loop', en: 'Stay in the loop' },
+ lp_follow_h2: { bm: 'Ikuti Kami', en: 'Follow Us' },
+ lp_follow_sub: { bm: 'Barang baru, promo & idea trip outdoor — kami post di sini dulu.', en: 'New arrivals, promos & trip ideas — we post them here first.' },
  lp_news_sub: { bm: 'Tinggalkan email, kami update bila ada barang baru & deal.', en: "Leave your email and we'll keep you posted on new arrivals and deals." },
  lp_news_placeholder: { bm: 'emel@kau.com', en: 'your@email.com' },
  lp_news_btn: { bm: 'Langgan', en: 'Subscribe' },
