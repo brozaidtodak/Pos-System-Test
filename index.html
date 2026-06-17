@@ -1713,9 +1713,6 @@
  <div class="menu-item" data-tab="nav_points" onclick="event.stopPropagation(); switchHub(['pointsMembershipSection'], 'Points & Membership', this); if(typeof renderPointsMembership==='function') renderPointsMembership();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="star" style="width:15px; height:15px;"></i> <span>Points &amp; Membership</span>
  </div>
- <div class="menu-item" data-tab="nav_store_credit" onclick="event.stopPropagation(); switchHub(['storeCreditSection'], 'Store Credit', this); if(typeof renderStoreCredit==='function') renderStoreCredit();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="wallet" style="width:15px; height:15px;"></i> <span>Store Credit</span>
- </div>
  <!-- p1_575 — Loyalty Portal customer (buka loyalty.html di tab baru) -->
  <div class="menu-item" onclick="event.stopPropagation(); window.open('/loyalty.html','_blank','noopener')" title="Portal ganjaran customer (tier/mata) — buka tab baru" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="gift" style="width:15px; height:15px;"></i> <span>Loyalty Portal</span> <i data-lucide="external-link" style="width:11px; height:11px; opacity:.5;"></i>
@@ -1800,9 +1797,6 @@
  <div class="menu-item" data-tab="nav_broadcast" onclick="event.stopPropagation(); switchHub(['waBroadcastSection'], 'Broadcast', this); if(typeof renderWABroadcast==='function') renderWABroadcast();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="send" style="width:15px; height:15px;"></i> <span>Broadcast</span>
  </div>
- <div class="menu-item" data-tab="nav_connections" onclick="event.stopPropagation(); switchHub(['connectionsSection'], 'Connections', this); if(typeof renderConnections==='function') renderConnections();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="plug" style="width:15px; height:15px;"></i> <span>Connections</span>
- </div>
  </div>
  <!-- p1_702 — Marketing parent (collapsible) — surface tools marketing yg dulu tersorok dlm nav legacy -->
  <div class="menu-item nav-parent" data-nav-parent="marketing" onclick="window.toggleNavGroup('marketing', event)">
@@ -1822,17 +1816,8 @@
  <div class="menu-item" data-tab="nav_social_media" onclick="event.stopPropagation(); switchHub(['socialMediaSection'], 'Social Media', this); if(typeof renderSocialMedia==='function') renderSocialMedia();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="share-2" style="width:15px; height:15px;"></i> <span>Social Media</span>
  </div>
- <div class="menu-item" data-tab="nav_content_schedule" onclick="event.stopPropagation(); switchHub(['contentScheduleSection'], 'Content Schedule', this); if(typeof renderContentSchedule==='function') renderContentSchedule();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="calendar-days" style="width:15px; height:15px;"></i> <span>Content Schedule</span>
- </div>
  <div class="menu-item" data-tab="nav_mktweekly" onclick="event.stopPropagation(); switchHub(['marketingWeeklySection'], 'Marketing Weekly Data', this); if(typeof renderMktWeekly==='function') renderMktWeekly();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="bar-chart-2" style="width:15px; height:15px;"></i> <span>Marketing Data (Weekly)</span>
- </div>
- <div class="menu-item" data-tab="nav_ads" onclick="event.stopPropagation(); switchHub(['adsSection'], 'Ads', this); if(typeof renderAds==='function') renderAds();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="badge-dollar-sign" style="width:15px; height:15px;"></i> <span>Ads</span>
- </div>
- <div class="menu-item" data-tab="nav_mkt_reports" onclick="event.stopPropagation(); switchHub(['marketingReportsSection'], 'Marketing Reports', this); if(typeof renderMarketingReports==='function') renderMarketingReports();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="bar-chart-3" style="width:15px; height:15px;"></i> <span>Reports</span>
  </div>
  </div>
  <!-- p1_280 — Channels parent (collapsible) -->
@@ -1843,9 +1828,6 @@
  <div class="nav-children" data-nav-children="channels">
  <div class="menu-item" data-tab="nav_marketplaces" onclick="event.stopPropagation(); switchHub(['marketplacesSection'], 'Marketplaces', this); if(typeof renderMarketplaces==='function') renderMarketplaces();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="shopping-bag" style="width:15px; height:15px;"></i> <span>Marketplaces</span>
- </div>
- <div class="menu-item" data-tab="nav_apps" onclick="event.stopPropagation(); switchHub(['appsSection'], 'Apps', this); if(typeof renderApps==='function') renderApps();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="grid-3x3" style="width:15px; height:15px;"></i> <span>Apps</span>
  </div>
  </div>
 
@@ -1878,9 +1860,6 @@
  <div class="nav-children" data-nav-children="reports">
  <div class="menu-item mgmt-only" data-tab="nav_commission_report" onclick="event.stopPropagation(); switchHub(['commissionReportSection'], 'Commission Report', this); if(typeof renderCommissionReport==='function') renderCommissionReport();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="coins" style="width:15px; height:15px;"></i> <span>Commission Report</span>
- </div>
- <div class="menu-item" data-tab="nav_exports" onclick="event.stopPropagation(); switchHub(['exportsSection'], 'Exports', this); if(typeof renderExports==='function') renderExports();" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="download" style="width:15px; height:15px;"></i> <span>Exports</span>
  </div>
  <!-- p1_398 — Roadmap dalam group Reports yang VISIBLE (.menu-list), bukan wrapper legacy tersorok. -->
  <div class="menu-item" data-tab="nav_roadmap" onclick="event.stopPropagation(); switchHub(['roadmapSection'], 'Roadmap &amp; Progress', this); if(typeof renderRoadmap==='function') renderRoadmap();" style="display:flex; align-items:center; gap:10px;">
@@ -8433,6 +8412,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_818', label:'Audit + buang item sidebar placeholder kosong (Zaid: "ada lagi tak yang takde fungsi?"). Audit tiap item: semak section + render fn (Coming Soon dlm HTML TAK kira kalau renderfn isi masa runtime). Sahkan 10 kosong; Zaid putuskan: BUANG 7 — Store Credit (dah dibatalkan 12 Jun), Exports, Marketing Reports, Connections, Apps, Content Schedule, Ads (2 terakhir fungsinya akan masuk Social Media). KEKAL+BINA: Campaigns (track kempen kedai/TikTok/Shopee), Social Media (jadual post + analytics video, + Content Schedule + Ads digabung). Points & Membership dibiar buat masa ni. Marketing kini: Campaigns, Vouchers, Engagement, Social Media, Marketing Data. Channels tinggal Marketplaces sahaja (Apps dibuang). Section HTML yatim dibiar (display:none, tak ganggu). Div balance -7/-7 seimbang. HTML sahaja.', d:'done' },
  { id:'p1_817', label:'Buang 2 item sidebar tiada fungsi (Zaid: "buang stock levels dan transfer, no function"). Keluarkan "Stock Levels" (nav_inventory→warehouseConfigSection) + "Transfer" (nav_transfer→stockTransferSection) dari group Inventory. Inventory tinggal: Stock Take, FIFO Listing, Inventory History. HTML sahaja (item dibuang dari .nav-children inventory; section/fungsi lain tak diusik).', d:'done' },
  { id:'p1_816', label:'Susun semula sidebar back office ikut WORKFLOW (Zaid: "positioning & function carca marba... arrange supaya nampak workflow"). PUNCA: "Products" & "System" bercampur — hal stok berselerak (Inventory/Transfer/PO/DO dlm Products; Stock Take/FIFO/Inventory History dlm System) + System jadi tong sampah (inventory + kalkulator harga/kos + barcode). FIX (HTML+CSS sahaja, semua data-tab/onclick/section KEKAL — 0 fungsi berubah): (1) Buang "System", pecah jadi 3 group masuk akal — INVENTORY (Stock Levels, Stock Take, Transfer, FIFO, Inventory History), PURCHASING (Purchase Orders, Delivery Orders), TOOLS (Price Calc, Cost Calc, Price History, Barcode). (2) "Products" jadi katalog tulen (Products, Collections, Bundles). (3) Customers dipindah naik ke kluster Jual (lepas Orders). (4) Setup Guide pindah ke bawah (dekat Settings). (5) Roster kekal atas (pilihan Zaid). (6) Tambah label seksyen workflow: Jual / Katalog & Stok / Pemasaran / Analisis / Setup (.nav-section-label bronze, pointer-events:none jadi navigation logic abai). Susunan akhir: Home, Jadual Tugas | JUAL: Cashier, Orders, Customers | KATALOG & STOK: Products, Inventory, Purchasing, Tools | PEMASARAN: Messages, Marketing, Channels | ANALISIS: Analytics, Reports | SETUP: Setup Guide, Settings, Help. Div balance disahkan (+9/+9 seimbang). toggleNavGroup generik so group baru auto-jalan. design-tokens v110->111.', d:'done' },
  { id:'p1_815', label:'Newsletter → "Follow Us" (Zaid pilih opsyen c). Newsletter dulu capture email tapi takde newsletter dihantar (over-promise). Tukar section jadi "Ikuti Kami / Follow Us" → "Barang baru, promo & idea trip outdoor — kami post di sini dulu" + 3 butang social SEBENAR (Instagram @10campofficial / TikTok @10campofficial / Facebook 10 Camp Store) dgn warna platform. Buang borang email + lpNewsletterSubmit (function dorman, tak dipadam). i18n baru lp_follow_h2/lp_follow_sub (BM+EN). Kekal guna wrapper .lp-newsletter (layout sama). app.js v783->784.', d:'done' },
