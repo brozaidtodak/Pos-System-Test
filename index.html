@@ -7,7 +7,7 @@
  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  <meta name="apple-mobile-web-app-title" content="10 CAMP POS">
  <title>10 CAMP — Premium Camping & Outdoor Gear Malaysia</title>
- <meta name="description" content="Malaysia's home for premium camping &amp; outdoor gear. 11 trusted brands including Naturehike, Mobi Garden &amp; Mountainhiker. Same-day Klang Valley delivery.">
+ <meta name="description" content="Malaysia's home for premium camping &amp; outdoor gear. 11 trusted brands including Naturehike, Mobi Garden &amp; Mountainhiker. Buy on Shopee &amp; TikTok Shop, or visit our Cyberjaya store.">
  <meta name="theme-color" content="#CD7C32">
  <link rel="canonical" href="https://www.10camp.com/">
  <meta property="og:url" content="https://www.10camp.com/">
@@ -1121,7 +1121,7 @@
  <div class="lp-section__head">
  <span class="lp-eyebrow" data-i18n="lp_soldout_eyebrow">Social Proof</span>
  <h2 class="lp-h2" data-i18n="lp_soldout_h2">Popular — Out of Stock</h2>
- <p class="lp-section__sub" data-i18n="lp_soldout_sub">These sold out fast. Restock coming soon.</p>
+ <p class="lp-section__sub" data-i18n="lp_soldout_sub">Popular picks that sold out — ask us about restock.</p>
  </div>
  <div class="lp-soldout__strip" id="lpSoldOutStrip">
  <!-- Cards injected by renderPopularSoldOut() -->
@@ -1135,7 +1135,7 @@
  <span class="lp-eyebrow" data-i18n="lp_about_eyebrow">Our Story</span>
  <h2 class="lp-h2" data-i18n="lp_about_h2">From Cyberjaya to your next adventure.</h2>
  <p>10 CAMP is the outdoor arm of the TODAK family — bringing premium camping, hiking and lifestyle gear from <span data-stat="brands">11</span> hand-picked brands under one roof. From multi-night expeditions to weekend backyard escapes, we believe the right gear makes every adventure feel like home.</p>
- <p data-i18n="lp_about_p2">Visit us at our flagship store in Cyberjaya, or browse our full catalogue online with same-day Klang Valley delivery.</p>
+ <p data-i18n="lp_about_p2">Visit us at our flagship store in Cyberjaya, or browse the full catalogue here and order via Shopee or TikTok Shop — shipped nationwide.</p>
  <div class="lp-about__cta">
  <a href="#contact" class="lp-btn lp-btn--primary lp-btn--sm" data-i18n="lp_about_cta_visit">Visit Our Store</a>
  <a href="#shop" class="lp-btn lp-btn--ghost lp-btn--sm" data-i18n="lp_about_cta_browse">Browse Catalogue</a>
@@ -1230,12 +1230,12 @@
  <div class="lp-newsletter__inner">
  <i data-lucide="mail" style="width:32px;height:32px;color:var(--primary-500);"></i>
  <h2 class="lp-h2" style="text-align:center;" data-i18n="lp_news_h2">Stay in the loop</h2>
- <p data-i18n="lp_news_sub">Get notified about new arrivals, festival sales and outdoor trip ideas.</p>
+ <p data-i18n="lp_news_sub">Leave your email and we'll keep you posted on new arrivals and deals.</p>
  <form class="lp-newsletter__form" onsubmit="event.preventDefault(); window.lpNewsletterSubmit(this);">
  <input type="email" required placeholder="your@email.com" data-i18n-placeholder="lp_news_placeholder" class="lp-newsletter__input">
  <button type="submit" class="lp-btn lp-btn--primary" data-i18n="lp_news_btn">Subscribe</button>
  </form>
- <p class="lp-newsletter__hint" data-i18n="lp_news_hint">No spam. Unsubscribe anytime.</p>
+ <p class="lp-newsletter__hint" data-i18n="lp_news_hint">No spam, ever.</p>
  </div>
  </section>
 
@@ -8421,6 +8421,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_814', label:'Audit landing "unsur buat-buat" lanjutan (Zaid: audit lagi). SEMAK & SAH BETUL (bukan palsu, kekal): stat 2,800+ pelanggan (DB 2,969 rekod — malah underclaim), 600+ produk & 11 jenama (live count dari DB 660/11), "Established 2024", kedai Cyberjaya, marquee 11 jenama, reviews link ke review SEBENAR Shopee/TikTok (tiada quote palsu). DIBETULKAN (mengelirukan): (1) "Same-day Klang Valley delivery" (meta + About p2) — kedai TAK buat delivery sendiri, hantar via Shopee/TikTok; bercanggah dgn FAQ/polisi sendiri → tukar "beli di Shopee/TikTok, dihantar seluruh Malaysia". (2) Newsletter: buang "jualan festival/festival sales" + "Unsubscribe anytime" (tiada mekanisme, tiada newsletter dihantar) → copy jujur "tinggalkan email, kami update bila ada barang baru & deal / No spam, ever" (capture email kekal utk guna masa depan). (3) Sold-out strip "Restock coming soon" (tak semestinya benar) → "tanya kami untuk restock". i18n BM+EN dikemas semua. app.js v782->783.', d:'done' },
  { id:'p1_813', label:'Featured Collections landing — buang unsur mengelirukan (Zaid: jersey UNITY cuma mockup; "Festival Sale" macam tipu sebab kedai takde event). (1) Jersey "10 CAMPERS UNITY" KEKAL tapi tambah nota kecil "Bukan untuk jual / Not for sale" (pill putih lutsinar bawah kad) — jelas ia mockup/showcase, bukan produk jual. (2) Kad "Festival Sale — Up to 50% off" (palsu) DITUKAR jadi "Promosi & Voucher / Promos & Vouchers" → "Banyak voucher di TikTok & Shopee — jimat lebih!" + 2 butang link betul (Shopee shopee.com.my/10camp.os + TikTok), buang onclick lpFilterCategory(SALE). i18n dikemas (lp_coll_notsale baru; lp_coll_limited→Voucher; lp_coll_sale_title/sub tukar BM+EN) supaya tak tertimpa balik. Naturehike bestseller kekal (betul). app.js v781->782.', d:'done' },
  { id:'p1_812', label:'"Tanya AI" customer di landing page (Zaid: "jom buat tanya ai dekat landing page"). Pembantu beli-belah AI awam (public, no-auth) yang cadang produk dari katalog LIVE + dorong beli via Shopee/TikTok/walk-in. Otak: netlify/functions/public-assistant.js, OpenAI gpt-4o-mini, tool search_products (published SAHAJA; pulang nama/harga walk-in/ketersediaan bucket "ada/terhad/habis"/kategori/jenama — TIADA kos/margin/PII/data dalaman). KESELAMATAN dikuatkuasa server: published-only, stok bucket bukan nombor tepat, tolak soalan sulit walau "abaikan arahan". ABUSE/KOS: pool kos sendiri public_ai_usage_YYYY-MM, CAP_USD=15 (~RM70/bln) + throttle per-IP dlm-memori (12/min) + had input/history/token. UI: FAB pill bronze kanan-bawah (#caWidget) → panel chat (guna semula .sa-* internals), link Shopee/TikTok/wa.me auto-clickable. Tunjuk di landing + preview, sorok dlm back office (elak silap+kos). Greeting BM mesra. netlify.toml redirect /api/public-assistant. app.js v780->781, design-tokens v109->110.', d:'done' },
  { id:'p1_811', label:'BAIKI gambar variant tak padan warna (aduan staff: gambar hijau tapi code khaki → confuse). PUNCA: import EasyStore set SEMUA variant warna dlm satu group ke gambar SKU PERTAMA group je (cth CD075/CD076 "Green" tunjuk v_CD053.jpg = stool khaki). Audit: 236 produk gambar silap, 146 dah betul. Gambar per-warna BETUL sebenarnya WUJUD dlm storage (v_<SKU>.jpg) — cuma tak di-link. FIX DATA (bukan kod): (1) backup table products_master_img_backup_20260617 (236 baris, boleh rollback). (2) sahkan wujud via join storage.objects (234/236 ada gambar sendiri). (3) UPDATE images[0]=v_<own SKU>.jpg utk 234 produk (guna nama fail tepat dari storage.objects, elak isu case). Disahkan: CD075→hijau, CD053→khaki, MG067→sand (visual + Read imej). 2 tinggal tiada gambar sendiri (MH064 Mesh, MG012 Orange) → perlu upload manual. Kesan POS + landing page terus betul (baca live); marketplace tak terjejas (gambar Shopee/TikTok berasingan). Data-only, takde app.js bump.', d:'done' },
@@ -13696,7 +13697,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=782"></script>
+ <script src="app.js?v=783"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

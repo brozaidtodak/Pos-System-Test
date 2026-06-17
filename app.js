@@ -34666,15 +34666,15 @@ window.I18N = {
  lp_about_eyebrow: { bm: 'Cerita Kami', en: 'Our Story' },
  lp_about_h2: { bm: 'Dari Cyberjaya ke pengembaraan kau yang seterusnya.', en: 'From Cyberjaya to your next adventure.' },
  lp_about_p1: { bm: '10 CAMP ialah lengan outdoor keluarga TODAK — bawa gear camping, hiking & lifestyle premium dari 11 jenama pilihan bawah satu bumbung. Dari ekspedisi beberapa malam ke escape weekend belakang rumah, kami percaya gear yang betul buat setiap pengembaraan terasa macam di rumah.', en: '10 CAMP is the outdoor arm of the TODAK family — bringing premium camping, hiking and lifestyle gear from 11 hand-picked brands under one roof. From multi-night expeditions to weekend backyard escapes, we believe the right gear makes every adventure feel like home.' },
- lp_about_p2: { bm: 'Singgah kedai flagship kami di Cyberjaya, atau scroll katalog penuh dengan penghantaran sehari di Klang Valley.', en: 'Visit us at our flagship store in Cyberjaya, or browse our full catalogue online with same-day Klang Valley delivery.' },
+ lp_about_p2: { bm: 'Singgah kedai flagship kami di Cyberjaya, atau scroll katalog penuh di sini dan beli di Shopee atau TikTok Shop — dihantar seluruh Malaysia.', en: 'Visit us at our flagship store in Cyberjaya, or browse the full catalogue here and order via Shopee or TikTok Shop — shipped nationwide.' },
  lp_about_cta_visit: { bm: 'Lawat Kedai', en: 'Visit Our Store' },
  lp_about_cta_browse: { bm: 'Lihat Katalog', en: 'Browse Catalogue' },
 
  lp_news_h2: { bm: 'Stay in the loop', en: 'Stay in the loop' },
- lp_news_sub: { bm: 'Dapat notifikasi pasal barang baru, jualan festival & idea trip outdoor.', en: 'Get notified about new arrivals, festival sales and outdoor trip ideas.' },
+ lp_news_sub: { bm: 'Tinggalkan email, kami update bila ada barang baru & deal.', en: "Leave your email and we'll keep you posted on new arrivals and deals." },
  lp_news_placeholder: { bm: 'emel@kau.com', en: 'your@email.com' },
  lp_news_btn: { bm: 'Langgan', en: 'Subscribe' },
- lp_news_hint: { bm: 'Tiada spam. Berhenti bila-bila masa.', en: 'No spam. Unsubscribe anytime.' },
+ lp_news_hint: { bm: 'Kami tak spam, janji.', en: 'No spam, ever.' },
 
  lp_foot_brand_sub: { bm: 'Gear camping & outdoor premium oleh TODAK.', en: 'Premium camping & outdoor gear by TODAK.' },
  lp_foot_visit: { bm: 'Lawat', en: 'Visit' },
@@ -34685,7 +34685,7 @@ window.I18N = {
  // Sold-out strip
  lp_soldout_eyebrow: { bm: 'Bukti Laku', en: 'Social Proof' },
  lp_soldout_h2: { bm: 'Popular — Habis Stok', en: 'Popular — Out of Stock' },
- lp_soldout_sub: { bm: 'Barang yang laku habis. Restock akan datang.', en: 'These sold out fast. Restock coming soon.' },
+ lp_soldout_sub: { bm: 'Barang popular yang dah habis — tanya kami untuk restock.', en: 'Popular picks that sold out — ask us about restock.' },
  lp_soldout_badge: { bm: 'HABIS STOK', en: 'SOLD OUT' },
  lp_soldout_notify: { bm: 'Beritahu Saya', en: 'Notify Me' },
  lp_soldout_wa_text: { bm: 'Hai 10 CAMP, saya berminat dengan {NAME} ({SKU}). Beritahu saya bila restock ya. Terima kasih!', en: 'Hi 10 CAMP, I\'m interested in {NAME} ({SKU}). Please notify me when restocked. Thanks!' },
