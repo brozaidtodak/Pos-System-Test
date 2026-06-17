@@ -27781,6 +27781,9 @@ window.renderInventoryAnalytics = async function() {
    }
    if(t.stock === 0 && (t.sold90 || 0) > 0) { stockoutSkus++; lostRevDay += (t.vel || 0) * (unitPrice[t.sku] || 0); }
  });
+ // ---- #3 Sell-Through Rate 90h (p1_805): unit terjual ÷ (terjual + baki). Tinggi = laku bergerak. ----
+ const sellThru = (soldUnits90 + totalUnits) > 0 ? Math.round(soldUnits90 / (soldUnits90 + totalUnits) * 100) : null;
+ const stColor = sellThru == null ? '#9CA3AF' : (sellThru >= 40 ? '#4E7C4A' : (sellThru >= 20 ? '#9E7016' : '#B23A2E'));
 
  // ---- Render helpers ----
  const card = (inner, pad) => `<div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:${pad||'0'}; overflow:hidden; margin-bottom:16px;">${inner}</div>`;
@@ -27811,6 +27814,7 @@ window.renderInventoryAnalytics = async function() {
      + `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${fmtRM0(slowTied)} terikat · ${slow.length.toLocaleString()} SKU tak bergerak 90h</div></div>`
    + `<div class="sa-kpi"><div class="sa-kpi__lbl">Hari Stok</div><div class="sa-kpi__val" style="color:${dosColor};">${daysOfStock == null ? '∞' : daysOfStock + 'h'}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${daysOfStock == null ? 'tiada jualan 90h' : 'tahan ~' + daysOfStock + ' hari ikut kadar jualan'}</div></div>`
    + `<div class="sa-kpi"><div class="sa-kpi__lbl">Inventory Turnover</div><div class="sa-kpi__val">${turnoverYr ? turnoverYr + '×' : '—'}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">pusingan stok setahun (anggaran)</div></div>`
+   + `<div class="sa-kpi"><div class="sa-kpi__lbl">Sell-Through (90h)</div><div class="sa-kpi__val" style="color:${stColor};">${sellThru == null ? '—' : sellThru + '%'}</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${soldUnits90.toLocaleString()} terjual vs ${totalUnits.toLocaleString()} baki</div></div>`
    + '</div>'
    + '<p class="soft-note" style="margin:0 0 16px;">Nilai Kos = baki stok × landed cost. Nilai Retail = baki stok × harga jual. Potensi Untung anggaran kasar sebelum kos jualan. Stock Availability = berbanding tahap restock penuh terakhir (100% = baru penuh; turun bila terjual).</p>'
    + card(cardHead('Umur Stok (ikut nilai kos)')
