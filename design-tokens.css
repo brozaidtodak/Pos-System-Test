@@ -3158,6 +3158,10 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
  position: relative;
 }
 .nc-item:hover { background: var(--neutral-100, #F4F4F5); }
+/* p1_799 — notifikasi yang boleh navigate ke tempatnya */
+.nc-item--go:hover { background: rgba(205,124,50,0.08); }
+.nc-item--go .nc-item__time { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nc-item__go { color: #A05F22; font-weight: 800; font-size: 11px; white-space: nowrap; }
 .nc-item.is-unread { background: rgba(205, 124, 50,0.06); }
 .nc-item.is-unread::before {
  content: ''; position: absolute; left: 6px; top: 18px;

@@ -480,6 +480,15 @@ window.showToast = function(msg, type) {
  const n = list.find(x => x.id === id);
  if (n && !n.read) { n.read = true; save(); api.renderBadge(); api.renderList(); }
  },
+ // p1_799 — klik notifikasi: tanda dibaca + bawa terus ke tempatnya (kalau ada action terdaftar).
+ go(id) {
+ const list = load();
+ const n = list.find(x => x.id === id);
+ if (n && !n.read) { n.read = true; save(); api.renderBadge(); }
+ const handler = n && n.action && window.__notifyActions && window.__notifyActions[n.action];
+ if (typeof handler === 'function') { api.close(); try { handler(); } catch(e){} }
+ else { api.renderList(); }
+ },
  markAllRead() {
  const list = load();
  let dirty = false;
@@ -520,16 +529,17 @@ window.showToast = function(msg, type) {
  const msg = filter === 'unread' ? 'Semua dah dibaca' : (filter === 'important' ? 'Tiada amaran penting' : 'Tiada notifikasi');
  wrap.innerHTML = '<div class="nc-empty"><i data-lucide="inbox" class="nc-empty__icon" style="width:32px; height:32px;"></i>' + msg + '</div>';
  } else {
- wrap.innerHTML = list.map(n => (
- '<div class="nc-item ' + (n.read ? '' : 'is-unread') + '" role="listitem" data-id="' + n.id + '" onclick="window.notify.markRead(\'' + n.id + '\')">' +
+ wrap.innerHTML = list.map(n => {
+ const hasGo = !!(n.action && window.__notifyActions && window.__notifyActions[n.action]); // p1_799 — boleh navigate
+ return '<div class="nc-item ' + (n.read ? '' : 'is-unread') + (hasGo ? ' nc-item--go' : '') + '" role="listitem" data-id="' + n.id + '" onclick="window.notify.go(\'' + n.id + '\')">' +
  '<div class="nc-item__icon nc-item__icon--' + escape(n.type) + '"><i data-lucide="' + iconFor(n.type) + '" style="width:14px; height:14px;"></i></div>' +
  '<div class="nc-item__body">' +
  '<p class="nc-item__title">' + escape(n.title) + '</p>' +
  '<p class="nc-item__msg">' + escape(n.body) + '</p>' +
- '<div class="nc-item__time">' + escape(fmtTime(n.ts)) + '</div>' +
+ '<div class="nc-item__time">' + escape(fmtTime(n.ts)) + (hasGo ? '<span class="nc-item__go">Buka &rarr;</span>' : '') + '</div>' +
  '</div>' +
- '</div>'
- )).join('');
+ '</div>';
+ }).join('');
  }
  if (window.lucide && typeof window.lucide.createIcons === 'function') { try { window.lucide.createIcons(); } catch(e){} }
  },
@@ -562,6 +572,14 @@ window.showToast = function(msg, type) {
  };
 
  window.notify = api;
+ // p1_799 — destinasi notifikasi (whitelist; klik notifikasi ber-action bawa ke sini). Handler dipanggil
+ // masa klik (runtime) jadi rujukan switchHub/render* yang ditakrif kemudian dalam fail OK.
+ window.__notifyActions = {
+  lowstock: function(){ try { if(typeof switchHub === 'function') switchHub(['reorderSection'], 'Reorder', null); if(typeof window.renderReorderSuggest === 'function') window.renderReorderSuggest(); } catch(e){} },
+  apps: function(){ const el = document.querySelector('[data-tab="nav_apps"]'); if(el) return el.click(); try { if(typeof switchHub === 'function') switchHub(['appsSection'], 'Apps', null); if(typeof window.renderApps === 'function') window.renderApps(); } catch(e){} },
+  invoice: function(){ const el = document.querySelector('[data-tab="admin_invoice"]'); if(el) return el.click(); try { if(typeof switchHub === 'function') switchHub(['invoiceSection'], 'Invoice & Quotation', null); } catch(e){} },
+  amaran: function(){ const el = document.querySelector('[data-ov-tab="aim"]'); const home = document.querySelector('[data-tab="homeTab"]') || document.querySelector('[data-tab="nav_overview"]'); if(home) home.click(); try { if(window.__ovTab) window.__ovTab('aim'); } catch(e){} }
+ };
  // ESC closes panel
  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openState) api.close(); });
  // Initial badge once DOM ready
@@ -16664,7 +16682,7 @@ window.processPublicCheckout = async function() {
  const ref = j.ref;
 
  // notify admin (bell inbox, visible bila staff/admin login)
- try { if(window.notify && window.notify.add) window.notify.add({ title: 'Invois web baru: ' + ref, body: custStr + ' — ' + items.length + ' item, RM ' + subtotal.toFixed(2), type: 'warning' }); } catch(e){}
+ try { if(window.notify && window.notify.add) window.notify.add({ title: 'Invois web baru: ' + ref, body: custStr + ' — ' + items.length + ' item, RM ' + subtotal.toFixed(2), type: 'warning', action: 'invoice' }); } catch(e){}
 
  publicCart = [];
  ['custNamePub','custCompanyPub','custPhonePub','custEmailPub'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -19801,7 +19819,8 @@ window.__shopeePriceReminder = function(){
  window.notify.add({
  title: 'Reminder harga Shopee',
  body: 'Harga dah di-push ke marketplace. Bila update di Shopee, pastikan harga & compare-at tak nampak misleading (jangan lambung harga asal untuk fake diskaun). Shopee boleh flag listing — ambil lebih kurang 7 hari untuk pulih.',
- type: 'warning'
+ type: 'warning',
+ action: 'apps' // p1_799 — klik → Apps (status integrasi marketplace)
  });
  }
  } catch(e){}
@@ -31191,7 +31210,8 @@ window.checkLowStockNotify = async function() {
  window.notify.add({
  title: 'Low stock alert',
  body: `${low.length} produk bawah reorder point. Top 3: ${low.slice(0,3).map(p => p.sku).join(', ')}`,
- type: 'warning'
+ type: 'warning',
+ action: 'lowstock' // p1_799 — klik → Reorder Auto-Suggest
  });
  }
 
