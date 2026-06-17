@@ -35147,7 +35147,8 @@ window.__UITX = (function(){
  const changed = new Set();       // text nodes we translated (skip re-collect + restore on BM)
  let observer = null, sweepT = null, inflight = false, applying = false;
  const SKIP_TAG = { SCRIPT:1, STYLE:1, NOSCRIPT:1, INPUT:1, TEXTAREA:1, SELECT:1, OPTION:1, CODE:1, PRE:1 };
- const SKIP_ID = { saWidget:1, saPanel:1, caWidget:1, caPanel:1, roadmapSection:1 };
+ const SKIP_ID = { saWidget:1, saPanel:1, caWidget:1, caPanel:1, roadmapSection:1, shopAppLayout:1 };
+ function visible(el){ if(!el) return false; if(el.offsetParent !== null) return true; return !!(el.getClientRects && el.getClientRects().length); }
  const lang = () => (window.I18N && window.I18N.lang) || 'bm';
  function skipped(node){
   let el = node.parentElement;
@@ -35173,6 +35174,7 @@ window.__UITX = (function(){
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode(n){
    if(changed.has(n)) return NodeFilter.FILTER_REJECT;
    if(!n.nodeValue || !translatable(n.nodeValue)) return NodeFilter.FILTER_REJECT;
+   if(!visible(n.parentElement)) return NodeFilter.FILTER_REJECT;   // hidden section / landing tersembunyi → langkau
    if(skipped(n)) return NodeFilter.FILTER_REJECT;
    return NodeFilter.FILTER_ACCEPT;
   }});
@@ -35201,7 +35203,7 @@ window.__UITX = (function(){
  }
  async function sweep(){
   if(lang() !== 'en') return;
-  const root = document.getElementById('posAppLayout') || document.body;
+  const root = document.body;   // p1_821b — body (sebahagian section bocor luar posAppLayout) + skrin nampak je
   let nodes = collect(root);
   if(!nodes.length) return;
   applyCached(nodes);
@@ -35216,7 +35218,7 @@ window.__UITX = (function(){
  function scheduleSweep(){ clearTimeout(sweepT); sweepT = setTimeout(()=>{ sweep(); }, 300); }
  function startObserve(){
   if(observer || lang()!=='en') return;
-  const root = document.getElementById('posAppLayout'); if(!root) return;
+  const root = document.body; if(!root) return;
   observer = new MutationObserver((muts)=>{ if(applying) return; for(const m of muts){ if(m.addedNodes.length || m.type==='characterData'){ scheduleSweep(); break; } } });
   observer.observe(root, { childList:true, subtree:true, characterData:true });
  }
