@@ -1174,7 +1174,7 @@ window.__saSend = function(e){
  (async ()=>{
   let reply = 'Maaf, ada masalah sambungan. Cuba lagi sekejap.';
   try {
-   const res = await fetch('/api/staff-assistant', { method:'POST', headers: await window.__authHeaders({'Content-Type':'application/json'}), body: JSON.stringify({ messages: msgs }) });
+   const res = await fetch('/api/staff-assistant', { method:'POST', headers: await window.__authHeaders({'Content-Type':'application/json'}), body: JSON.stringify({ messages: msgs, lang: (window.I18N && window.I18N.lang) || 'bm' }) });
    const j = await res.json().catch(()=>({}));
    if(res.ok && j.reply) reply = j.reply; else if(j && j.error) reply = 'Maaf: ' + j.error;
   } catch(err){ /* keep default */ }
@@ -1231,7 +1231,7 @@ window.__caSend = function(e){
  (async ()=>{
   let reply = 'Maaf, ada masalah sambungan. Cuba lagi sekejap, atau WhatsApp kami di wa.me/601133109547.';
   try {
-   const res = await fetch('/api/public-assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages: msgs }) });
+   const res = await fetch('/api/public-assistant', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages: msgs, lang: (window.I18N && window.I18N.lang) || 'bm' }) });
    const j = await res.json().catch(()=>({}));
    if(res.ok && j.reply) reply = j.reply; else if(j && j.error) reply = 'Maaf: ' + j.error;
   } catch(err){ /* keep default */ }

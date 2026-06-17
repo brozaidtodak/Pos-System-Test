@@ -138,7 +138,12 @@ exports.handler = async (event) => {
     } catch (_) {}
     if (usage.cost_usd >= CAP_USD) return json(200, { reply: 'Maaf, pembantu AI sibuk sangat hari ni. Sementara tu, layari produk kami terus, atau WhatsApp kami di wa.me/' + STORE.whatsapp + ' — kami balas cepat!', capped: true });
 
-    const messages = [{ role: 'system', content: KB }, ...history];
+    // ---- language: follow the site's selected mode (window.I18N.lang), NOT the shopper's typing language ----
+    const __lang = (body.lang === 'en') ? 'en' : 'bm';
+    const __langRule = __lang === 'en'
+        ? '\n\nLANGUAGE — HARD OVERRIDE (overrides any language guidance above): Reply ONLY in English, even if the customer types in Malay / Manglish / mixed. Do not use Malay words.'
+        : '\n\nBAHASA — WAJIB IKUT (atasi arahan bahasa lain): Jawab dalam Bahasa Melayu sahaja, walaupun pelanggan menaip dalam English / campur.';
+    const messages = [{ role: 'system', content: KB + __langRule }, ...history];
     let reply = '', totIn = 0, totOut = 0;
     try {
         for (let step = 0; step < 4; step++) {
