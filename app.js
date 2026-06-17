@@ -578,6 +578,7 @@ window.showToast = function(msg, type) {
   lowstock: function(){ try { if(typeof switchHub === 'function') switchHub(['reorderSection'], 'Reorder', null); if(typeof window.renderReorderSuggest === 'function') window.renderReorderSuggest(); } catch(e){} },
   apps: function(){ const el = document.querySelector('[data-tab="nav_apps"]'); if(el) return el.click(); try { if(typeof switchHub === 'function') switchHub(['appsSection'], 'Apps', null); if(typeof window.renderApps === 'function') window.renderApps(); } catch(e){} },
   invoice: function(){ const el = document.querySelector('[data-tab="admin_invoice"]'); if(el) return el.click(); try { if(typeof switchHub === 'function') switchHub(['invoiceSection'], 'Invoice & Quotation', null); } catch(e){} },
+  bulkedit: function(){ const el = document.querySelector('[data-tab="admin_bulk_ops"]'); if(el) return el.click(); try { if(typeof switchHub === 'function') switchHub(['bulkOpsSection'], 'Bulk Product Edit', null); if(typeof window.renderBulkOps === 'function') window.renderBulkOps(); } catch(e){} },
   amaran: function(){ const el = document.querySelector('[data-ov-tab="aim"]'); const home = document.querySelector('[data-tab="homeTab"]') || document.querySelector('[data-tab="nav_overview"]'); if(home) home.click(); try { if(window.__ovTab) window.__ovTab('aim'); } catch(e){} }
  };
  // ESC closes panel
@@ -30550,6 +30551,9 @@ window.__renderIntegrationAlert = async function(){
   const campList = Object.values(__camps).sort((a,b)=>b.count-a.count);
   const issueCount = below.length + belowFloorReal.length + drift.length + tokBad.length + pushDead.length + cfgFail.length + settleUnpaid.length + settleRugi.length;
   if(!below.length && !belowFloorReal.length && !drift.length && !tokBad.length && !pushDead.length && !cfgFail.length && !campList.length && !settleUnpaid.length && !settleRugi.length){ __setAim(0, false); box.innerHTML=''; return; }
+  // p1_800 — bell notification untuk jual BAWAH KOS (rugi tiap jualan) → klik bawa ke Bulk Edit.
+  // Guard sekali per page-load (elak re-add tiap realtime re-render); dedupe notify handle selebihnya.
+  try { if(below.length && !window.__belowCostNotified && window.notify && window.notify.add){ window.__belowCostNotified = true; window.notify.add({ title: 'Amaran: jual bawah kos', body: below.length + ' produk jual BAWAH KOS di marketplace — rugi tiap jualan. Betulkan harga di Bulk Edit / Seller Centre.', type: 'warning', action: 'bulkedit' }); } } catch(e){}
   const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const chip = (bg,txt)=>`<span style="background:${bg};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:50px;">${txt}</span>`;
   // p1_643 — table helpers + clickable SKU (→ Bulk Edit)
