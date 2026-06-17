@@ -27744,6 +27744,10 @@ window.renderInventoryAnalytics = async function() {
  tracker.forEach(t => { if(t.lastQty > 0){ availDen += t.lastQty; availNum += Math.min(t.stock, t.lastQty); availSkus++; } });
  const availPct = availDen > 0 ? Math.round(availNum / availDen * 100) : null;
  const availColor = availPct == null ? '#9CA3AF' : (availPct >= 70 ? '#4E7C4A' : (availPct >= 40 ? '#9E7016' : '#B23A2E'));
+ // ---- Dead Stock % (p1_802): nilai stok terikat dlm barang TAK BERGERAK (ada stok, 0 jualan 90h) ÷ jumlah nilai stok kos.
+ // Tinggi = teruk (modal tersangkut). slowTied + slow dah dikira atas.
+ const deadPct = totalCost > 0 ? Math.round(slowTied / totalCost * 100) : null;
+ const deadColor = deadPct == null ? '#9CA3AF' : (deadPct >= 30 ? '#B23A2E' : (deadPct >= 15 ? '#9E7016' : '#4E7C4A'));
 
  // ---- Render helpers ----
  const card = (inner, pad) => `<div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:${pad||'0'}; overflow:hidden; margin-bottom:16px;">${inner}</div>`;
@@ -27769,6 +27773,9 @@ window.renderInventoryAnalytics = async function() {
    + `<div class="sa-kpi"><div class="sa-kpi__lbl">Stock Availability</div><div class="sa-kpi__val" style="color:${availColor};">${availPct == null ? '—' : availPct + '%'}</div>`
      + (availPct != null ? `<div style="height:6px; background:#EFEAE3; border-radius:4px; margin-top:6px; overflow:hidden;"><div style="height:100%; width:${availPct}%; background:${availColor};"></div></div>` : '')
      + `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">100% = ${availSkus.toLocaleString()} SKU pada tahap restock penuh</div></div>`
+   + `<div class="sa-kpi"><div class="sa-kpi__lbl">Dead Stock %</div><div class="sa-kpi__val" style="color:${deadColor};">${deadPct == null ? '—' : deadPct + '%'}</div>`
+     + (deadPct != null ? `<div style="height:6px; background:#EFEAE3; border-radius:4px; margin-top:6px; overflow:hidden;"><div style="height:100%; width:${Math.min(deadPct,100)}%; background:${deadColor};"></div></div>` : '')
+     + `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${fmtRM0(slowTied)} terikat · ${slow.length.toLocaleString()} SKU tak bergerak 90h</div></div>`
    + '</div>'
    + '<p class="soft-note" style="margin:0 0 16px;">Nilai Kos = baki stok × landed cost. Nilai Retail = baki stok × harga jual. Potensi Untung anggaran kasar sebelum kos jualan. Stock Availability = berbanding tahap restock penuh terakhir (100% = baru penuh; turun bila terjual).</p>'
    + '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:10px;">'
