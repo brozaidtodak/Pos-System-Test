@@ -27769,6 +27769,18 @@ window.renderInventoryAnalytics = async function() {
    bk.cost += q * c;
  });
  const agingTot = ageBuckets.reduce((s, b) => s + b.cost, 0) || 1;
+ // ---- #4 Anggaran Nilai PO Restock + #6 Stockout/jualan terlepas (p1_804) ----
+ const unitCost = {}, unitPrice = {};
+ products.forEach(p => { unitCost[p.sku] = Number(p.cost_price) || 0; unitPrice[p.sku] = Number(p.price) || 0; });
+ let poUnits = 0, poCost = 0, poSkus = 0, stockoutSkus = 0, lostRevDay = 0;
+ tracker.forEach(t => {
+   if(t.cat === 'reorder') {
+     const target = Math.max(Math.ceil((t.vel || 0) * (LEAD + 30)), t.lastQty || 0, t.ro || 0);
+     const sugg = Math.max(target - t.stock, 0) || (t.ro || 1);
+     poSkus++; poUnits += sugg; poCost += sugg * (unitCost[t.sku] || 0);
+   }
+   if(t.stock === 0 && (t.sold90 || 0) > 0) { stockoutSkus++; lostRevDay += (t.vel || 0) * (unitPrice[t.sku] || 0); }
+ });
 
  // ---- Render helpers ----
  const card = (inner, pad) => `<div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:${pad||'0'}; overflow:hidden; margin-bottom:16px;">${inner}</div>`;
@@ -27813,6 +27825,8 @@ window.renderInventoryAnalytics = async function() {
      + '</div>')
    + '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:10px;">'
    + `<div class="sa-kpi" style="border-left:3px solid #B23A2E;"><div class="sa-kpi__lbl">Reorder Segera</div><div class="sa-kpi__val">${nReorder.toLocaleString()}</div></div>`
+   + `<div class="sa-kpi" style="border-left:3px solid #B23A2E;"><div class="sa-kpi__lbl">Nilai PO Restock</div><div class="sa-kpi__val">${fmtRM0(poCost)}</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${poUnits.toLocaleString()} unit · ${poSkus.toLocaleString()} SKU</div></div>`
+   + `<div class="sa-kpi" style="border-left:3px solid ${stockoutSkus ? '#B23A2E' : '#4E7C4A'};"><div class="sa-kpi__lbl">Habis Stok (laku)</div><div class="sa-kpi__val" style="color:${stockoutSkus ? '#B23A2E' : '#4E7C4A'};">${stockoutSkus.toLocaleString()}</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${stockoutSkus ? '~' + fmtRM0(lostRevDay) + '/hari terlepas' : 'tiada'}</div></div>`
    + `<div class="sa-kpi" style="border-left:3px solid #CE9420;"><div class="sa-kpi__lbl">Perhati</div><div class="sa-kpi__val">${nPerhati.toLocaleString()}</div></div>`
    + `<div class="sa-kpi" style="border-left:3px solid #4E7C4A;"><div class="sa-kpi__lbl">Sihat</div><div class="sa-kpi__val">${nSihat.toLocaleString()}</div></div>`
    + `<div class="sa-kpi" style="border-left:3px solid #9CA3AF;"><div class="sa-kpi__lbl">Stok Mati</div><div class="sa-kpi__val">${nDead.toLocaleString()}</div></div>`
