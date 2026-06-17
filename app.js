@@ -32925,6 +32925,60 @@ window.cpCustPick = function(i) {
  cpVipLookup();
 };
 
+// p1_809 — Nota status "Processing…" yang makin jelas ikut masa. Atas wifi kedai yang
+// lambat, checkout boleh ambil masa — staff tak patut rasa skrin "tergantung". Nota ni
+// tenangkan + jamin TIADA caj berganda + bagi arahan jelas (refresh selamat) bila lama sangat.
+window.__cpProcNote = (function() {
+ let timers = [];
+ function buildStages() {
+ const bm = (window.I18N && window.I18N.lang || 'bm') === 'bm';
+ // {ms, tone, text}. Tone: 'calm' (kelabu), 'wait' (kuning), 'slow' (oren)
+ return [
+ { ms: 0, tone: 'calm',
+ text: bm ? 'Memproses bayaran… sila tunggu sekejap.'
+ : 'Processing payment… please wait a moment.' },
+ { ms: 6000, tone: 'wait',
+ text: bm ? 'Rangkaian agak perlahan. Sila tunggu — jangan tekan butang berulang kali.'
+ : 'Network is a little slow. Please wait — avoid tapping the button repeatedly.' },
+ { ms: 18000, tone: 'slow',
+ text: bm ? 'Sambungan masih perlahan. Jika skrin kekal di sini, muat semula (refresh) halaman dan cuba lagi — jualan TIDAK akan dicaj dua kali untuk troli yang sama.'
+ : 'Connection still slow. If this screen stays here, refresh the page and try again — the same cart will NOT be charged twice.' },
+ ];
+ }
+ const palette = {
+ calm: { bg: '#F3F4F6', fg: '#374151', icon: 'loader' },
+ wait: { bg: '#FEF3C7', fg: '#92400E', icon: 'clock' },
+ slow: { bg: '#FFEDD5', fg: '#9A3412', icon: 'alert-triangle' },
+ };
+ function paint(stage) {
+ const box = document.getElementById('cpProcessingNote');
+ const txt = document.getElementById('cpProcessingNoteText');
+ const icn = document.getElementById('cpProcessingNoteIcon');
+ if(!box || !txt) return;
+ const p = palette[stage.tone] || palette.calm;
+ box.style.display = 'flex';
+ box.style.background = p.bg;
+ box.style.color = p.fg;
+ txt.textContent = stage.text;
+ if(icn) { icn.setAttribute('data-lucide', p.icon); icn.style.color = p.fg; }
+ if(typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+ }
+ return {
+ start() {
+ this.stop();
+ buildStages().forEach(s => {
+ if(s.ms === 0) paint(s);
+ else timers.push(setTimeout(() => paint(s), s.ms));
+ });
+ },
+ stop() {
+ timers.forEach(clearTimeout); timers = [];
+ const box = document.getElementById('cpProcessingNote');
+ if(box) box.style.display = 'none';
+ },
+ };
+})();
+
 // Confirm sale — re-uses processNewCheckout logic by syncing fields back to legacy modal IDs first
 window.cpConfirmSale = async function() {
  // Validate
@@ -32964,6 +33018,8 @@ window.cpConfirmSale = async function() {
  const btn = document.getElementById('cpConfirmBtn');
  btn.disabled = true; btn.classList.add('is-disabled');
  btn.innerHTML = '<i data-lucide="loader" style="width:16px; height:16px;"></i> Processing…';
+ // p1_809 — mula nota status berperingkat (tenangkan staff + jamin tiada caj berganda bila wifi lambat)
+ try { window.__cpProcNote && window.__cpProcNote.start(); } catch(_){}
 
  // Capture sale info for receipt
  const finalTotal = parseFloat(document.getElementById('cpTotalDisplay').textContent) || 0;
@@ -32982,12 +33038,14 @@ window.cpConfirmSale = async function() {
  try {
  __cpOk = await window.processNewCheckout();
  } catch(e) {
+ try { window.__cpProcNote && window.__cpProcNote.stop(); } catch(_){}
  showToast('Ralat checkout: ' + e.message, 'error');
  btn.disabled = false; btn.classList.remove('is-disabled');
  btn.innerHTML = '<i data-lucide="check-circle" style="width:18px; height:18px;"></i> Sahkan Bayaran (RM ' + finalTotal.toFixed(2) + ')';
  window.showReceiptModal = origShow;
  return;
  }
+ try { window.__cpProcNote && window.__cpProcNote.stop(); } catch(_){}
  window.showReceiptModal = origShow;
  // p1_672 — jualan TAK berjaya (timeout/ralat/dibatalkan) → JANGAN tunjuk skrin success; reset butang
  // supaya staf boleh cuba lagi. processNewCheckout dah papar sebab (toast) + rollback stok.
