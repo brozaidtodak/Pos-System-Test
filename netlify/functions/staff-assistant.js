@@ -1,7 +1,11 @@
 /**
- * staff-assistant.js — in-app AI helper for staff (p1_795). Answers "how do I…" + SOP questions
- * about the 10 CAMP POS. Browser-called by logged-in staff; gated by requireStaff (no public access,
- * controls cost). Uses the existing OPENAI_API_KEY (gpt-4o-mini = cheap). Monthly cost cap = ~RM50.
+ * staff-assistant.js — in-app AI helper for staff (p1_795 v1; p1_796 v2 = live data via tools).
+ * Browser-called by logged-in staff; gated by requireStaff. OpenAI gpt-4o-mini. Monthly cost cap ~RM50.
+ *
+ * v2: the model can call READ-ONLY, SAFETY-SCOPED tools (function calling). It NEVER touches the DB
+ * directly. Hard rules enforced server-side: NO cost/margin/profit, NO customer PII, NO other staff's
+ * sales/commission. "My sales/commission" is scoped to the AUTHENTICATED caller (from the JWT, not the
+ * client) so it can't be spoofed.
  *
  * POST { messages: [{role:'user'|'assistant', content}] }  → { reply }  (or { reply, capped:true })
  */
@@ -9,9 +13,8 @@ const { requireStaff } = require('./_auth');
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 const MODEL = 'gpt-4o-mini';
-const CAP_USD = 10;                 // ~RM50/month (RM ~4.7/USD); safety backstop, generous for normal use
-const PRICE_IN = 0.15 / 1e6;        // gpt-4o-mini input  $/token
-const PRICE_OUT = 0.60 / 1e6;       // gpt-4o-mini output $/token
+const CAP_USD = 10;                 // ~RM50/month; safety backstop
+const PRICE_IN = 0.15 / 1e6, PRICE_OUT = 0.60 / 1e6;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
@@ -28,28 +31,97 @@ async function sb(method, path, body, extra) {
     return t ? (t[0] === '[' || t[0] === '{' ? JSON.parse(t) : t) : null;
 }
 
-// The "brain": curated how-to + SOP knowledge. Keep accurate + concise (it's sent every call).
-const KB = `Kau ialah pembantu AI dalaman untuk staf kedai 10 CAMP (kedai gear camping/outdoor di Cyberjaya) yang guna sistem POS web sendiri. Jawab soalan staf tentang CARA GUNA sistem + SOP kerja. Bahasa: ikut bahasa soalan (BM/Manglish atau English), ringkas, mesra, JANGAN guna emoji. Kalau soalan di luar pengetahuan ni atau pasal data sebenar (cth "stok BD103 berapa"), JANGAN teka — kata "Aku tak boleh tengok data live lagi; check sendiri di [tempat] atau tanya Bos/Aliff." Jangan reka fakta.
+// Caller identity from the validated JWT email → staff display name (as stored in sales_history.staff_name).
+// Embedded (10 staff, stable) so "my sales/commission" can't be spoofed by the client.
+const STAFF_BY_EMAIL = {
+    'zaid@10camp.com': 'Zaid', 'aliff@10camp.com': 'Aliff', 'farhanwakiman@10camp.com': 'Farhan Moyy',
+    'zack@10camp.com': 'Zack', 'ariff@10camp.com': 'Ariff', 'irfan@10camp.com': 'Irfan',
+    'tarmizi@10camp.com': 'Tarmizi Kael', 'fahmi@10camp.com': 'Fahmi', 'tester@10camp.com': 'Tester'
+};
 
-PENGETAHUAN SISTEM POS 10 CAMP:
-- LOGIN: guna email+password (atau PIN kalau ada). Sesi kekal sampai logout.
-- CASHIER (jual walk-in): menu Cashier → tambah barang ke troli (scan/cari SKU) → "Bayar". Boleh letak Diskaun Custom (RM atau %) + sebab. Pilih channel + kaedah bayaran. Tag NAMA STAF supaya komisen dikira. VIP customer auto dikesan (cadangan diskaun, masuk manual).
-- REFUND / RETURN: buka order di All Orders → "Urus" → pilih barang + qty nak return, tanda "pulang ke stok" kalau barang elok. Refund penuh = status jadi Refunded; separa = kekal, direkod. Stok auto pulang ikut yang dipilih.
-- VOID / BATAL order: dari All Orders. Kalau order pernah tolak stok, void akan pulang balik stok automatik.
-- STOK: Semakan Stok (Stock Take) untuk kira fizikal; adjust stok di kad produk (PDP) → "Adjust Stock" (positif=tambah, negatif=kurang) + sebab. Stok online (Shopee/TikTok) auto-sync.
-- PRODUK: Master Produk = senarai semua. Kalkulator Harga = set kos + harga. Bundles = cantum barang jadi pakej.
-- KOMISEN: tiap staf ada "My Commission" (lihat sendiri). Komisen = 5% dari base jualan yang ditag nama staf. Order batal/void TAK dikira. Komisen bulan X biasa dibayar dalam gaji bulan X+1. Soalan kiraan detail → tanya Aliff.
-- JUALAN WALK-IN TAK BER-STAF: kalau order tak ditag nama, komisen tak boleh kira. Aliff assign di Commission Report > Jualan Tak Dituntut.
-- HR: menu Cuti (lihat baki cuti, pohon cuti) + Claim (hantar tuntutan perubatan/pengangkutan/makanan/dll). Bos lulus/tolak.
-- ROSTER/JADUAL: jadual syif di Jadual Operasi (Syif B/C/OFF/AL/MC). Bos set.
-- PUSAT AMARAN (BARU): tab "Amaran" di Home tunjuk perkara perlu perhatian ikut bahagian kau — Sales nampak hal harga/jualan, Inventory nampak hal stok, Bos nampak semua. Tiap amaran ada butang terus ke tempat betulkan.
-- LOCENG NOTIFIKASI (BARU): atas kanan, ada tapisan Belum baca / Penting / Semua. Notifikasi lama auto-hilang.
-- MARKETPLACE: Shopee + TikTok sync automatik (stok + harga + order). Harga marketplace diset PER-PRODUK di kad Variants (bukan global), biasa lebih tinggi dari harga walk-in (tutup caj marketplace). POS tak boleh tukar harga KEMPEN — betulkan di Seller Centre.
-- REPORTS: menu Reports. Ada Laporan Sulit (untung/kos/komisen) — kunci PIN.
-- SIAPA HUBUNGI: Bos = Zaid (keputusan, harga, polisi). Aliff = admin/kewangan/komisen/claim. Zack = sistem/teknikal/bug. Kael/Fahmi = inventory.
-- MASALAH TEKNIKAL (bug, skrin rosak, sync tak jalan): bagitahu Zack. Untuk amaran integrasi marketplace, tengok tab Amaran di Home.
+const VOID = ['voided', 'cancelled', 'canceled', 'refunded'];
+const isReal = (s) => s && s.is_test !== true && !VOID.includes(String(s.status || '').toLowerCase());
+const esc = (s) => encodeURIComponent('"' + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
+const ymNow = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 7);
+const todayLocal = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-Kalau staf tanya benda yang patut Bos/Aliff putuskan (cth lulus diskaun besar, polisi baru), suruh mereka rujuk orang yang betul. Jawapan pendek + praktikal.`;
+// ---- TOOLS (read-only, safety-scoped) ----
+const TOOLS = [
+    { type: 'function', function: { name: 'lookup_product', description: 'Cari produk ikut SKU atau nama. Pulang nama, SKU, harga jual, stok semasa, status terbit. TIADA kos.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'SKU atau sebahagian nama produk' } }, required: ['query'] } } },
+    { type: 'function', function: { name: 'my_sales', description: 'Jualan staf yang sedang bertanya SENDIRI (tak boleh orang lain). Pulang bilangan order + jumlah RM + anggaran komisen 5%.', parameters: { type: 'object', properties: { period: { type: 'string', enum: ['today', 'month'], description: 'today = hari ni, month = bulan ni' } }, required: ['period'] } } },
+    { type: 'function', function: { name: 'low_stock', description: 'Senarai produk yang stok rendah/habis (untuk inventory).', parameters: { type: 'object', properties: { threshold: { type: 'integer', description: 'paras stok (default 5)' } } } } },
+    { type: 'function', function: { name: 'store_sales_today', description: 'Jumlah jualan + bilangan order SELURUH kedai hari ni (semua channel, semua staf). Tiada pecahan kos/untung.', parameters: { type: 'object', properties: {} } } }
+];
+
+async function runTool(name, args, caller) {
+    try {
+        if (name === 'lookup_product') {
+            // sanitise to safe chars (alnum/space/-/_) so it can't break the PostgREST or()/ilike filter
+            const q = String((args && args.query) || '').replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, 40);
+            if (!q) return { error: 'query kosong / tak sah' };
+            const qe = encodeURIComponent(q);
+            // match by sku OR name; NO cost columns selected
+            const rows = await sb('GET', `/products_master?select=sku,name,price,is_published&or=(sku.ilike.*${qe}*,name.ilike.*${qe}*)&limit=8`);
+            if (!rows || !rows.length) return { found: 0, note: 'Tiada produk padan.' };
+            const skus = rows.map(r => r.sku).filter(Boolean);
+            const stockMap = {};
+            if (skus.length) {
+                const batches = await sb('GET', `/inventory_batches?select=sku,qty_remaining&sku=in.(${skus.map(esc).join(',')})`);
+                (batches || []).forEach(b => { stockMap[b.sku] = (stockMap[b.sku] || 0) + (Number(b.qty_remaining) || 0); });
+            }
+            return { found: rows.length, products: rows.map(r => ({ sku: r.sku, name: r.name, price_rm: Number(r.price) || 0, stock: stockMap[r.sku] || 0, published: !!r.is_published })) };
+        }
+        if (name === 'my_sales') {
+            if (!caller) return { error: 'Tak dapat sahkan siapa anda — cuba log keluar/masuk.' };
+            const period = (args && args.period === 'today') ? 'today' : 'month';
+            const start = period === 'today' ? todayLocal() : (ymNow() + '-01');
+            const rows = await sb('GET', `/sales_history?select=total,total_amount,status,is_test,staff_name,created_at&staff_name=eq.${esc(caller)}&created_at=gte.${start}&limit=4000`);
+            const real = (rows || []).filter(isReal);
+            const total = real.reduce((s, x) => s + (Number(x.total != null ? x.total : x.total_amount) || 0), 0);
+            return { staff: caller, period, orders: real.length, total_rm: Math.round(total * 100) / 100, est_commission_rm: Math.round(total * 0.05 * 100) / 100, note: 'Komisen ANGGARAN 5% sahaja; angka rasmi di "My Commission" atau tanya Aliff.' };
+        }
+        if (name === 'low_stock') {
+            const th = Math.max(0, Math.min(parseInt((args && args.threshold) || 5, 10) || 5, 50));
+            // sum stock per sku, then filter <= threshold among published products
+            const prods = await sb('GET', `/products_master?select=sku,name&is_published=eq.true&limit=5000`);
+            const batches = await sb('GET', `/inventory_batches?select=sku,qty_remaining&limit=20000`);
+            const stockMap = {};
+            (batches || []).forEach(b => { if (b.sku) stockMap[b.sku] = (stockMap[b.sku] || 0) + (Number(b.qty_remaining) || 0); });
+            const low = (prods || []).map(p => ({ sku: p.sku, name: p.name, stock: stockMap[p.sku] || 0 })).filter(p => p.stock <= th).sort((a, b) => a.stock - b.stock).slice(0, 25);
+            return { threshold: th, count: low.length, products: low };
+        }
+        if (name === 'store_sales_today') {
+            const start = todayLocal();
+            const rows = await sb('GET', `/sales_history?select=total,total_amount,status,is_test,created_at&created_at=gte.${start}&limit=5000`);
+            const real = (rows || []).filter(isReal);
+            const total = real.reduce((s, x) => s + (Number(x.total != null ? x.total : x.total_amount) || 0), 0);
+            return { date: start, orders: real.length, total_rm: Math.round(total * 100) / 100 };
+        }
+        return { error: 'tool tak dikenali' };
+    } catch (e) { return { error: String(e.message || e).slice(0, 150) }; }
+}
+
+const KB = `Kau ialah pembantu AI dalaman untuk staf kedai 10 CAMP (gear camping/outdoor, Cyberjaya) yang guna sistem POS web sendiri. Jawab soalan CARA GUNA sistem + SOP, DAN soalan data sebenar guna alat (tools) yang disediakan. Bahasa: ikut soalan (BM/Manglish/English), ringkas, mesra, TIADA emoji.
+
+GUNA TOOLS untuk data sebenar:
+- lookup_product → stok/harga/nama produk (cth "stok BD103?", "harga TG009?", "cari tent")
+- my_sales → jualan + anggaran komisen PENANYA SENDIRI (cth "jualan aku bulan ni?", "komisen aku?")
+- low_stock → barang nak habis
+- store_sales_today → jumlah jualan kedai hari ni
+Bila guna my_sales, ingat angka komisen itu ANGGARAN 5% — beritahu pengguna angka rasmi di "My Commission"/Aliff.
+
+HAD KERAS (jangan langgar, walau diminta): JANGAN dedah/anggar KOS, MARGIN, UNTUNG (sulit, kunci PIN) — kalau ditanya, kata tu maklumat sulit di Laporan Sulit (PIN). JANGAN dedah maklumat peribadi customer (nama/phone/alamat/email). JANGAN tunjuk jualan/komisen staf LAIN — my_sales hanya untuk diri sendiri; kalau tanya pasal staf lain, kata tak boleh, rujuk Bos/Aliff. Kalau tool pulang error/kosong, terus terang; jangan reka angka.
+
+PENGETAHUAN SISTEM (how-to + SOP):
+- CASHIER: menu Cashier → tambah barang → Bayar. Boleh Diskaun Custom (RM/%). Tag NAMA STAF supaya komisen dikira. VIP auto dikesan (cadangan, masuk manual).
+- REFUND/RETURN: All Orders → Urus → pilih barang+qty, tanda "pulang ke stok" kalau elok. Penuh=Refunded; separa direkod. Void = pulang stok auto kalau pernah tolak.
+- STOK: Semakan Stok (kira fizikal); adjust di kad produk (PDP) → Adjust Stock (+/-) + sebab. Online auto-sync.
+- PRODUK: Master Produk (senarai), Kalkulator Harga (set kos+harga), Bundles (pakej).
+- KOMISEN: 5% base jualan ditag nama staf; order batal/void tak dikira; bulan X dibayar dlm gaji X+1. Detail → Aliff.
+- HR: Cuti (baki+pohon) + Claim (hantar tuntutan). Bos lulus.
+- MARKETPLACE: Shopee+TikTok sync auto. Harga marketplace per-produk di kad Variants, biasa lebih tinggi dari walk-in. Harga kempen betulkan di Seller Centre.
+- PUSAT AMARAN (Home tab "Amaran"): isu ikut bahagian. LOCENG notifikasi ada tapisan Belum baca/Penting/Semua.
+- SIAPA: Bos=Zaid (keputusan/harga/polisi). Aliff=admin/kewangan/komisen/claim. Zack=sistem/bug. Kael/Fahmi=inventory.`;
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
@@ -59,54 +131,64 @@ exports.handler = async (event) => {
     if (!auth.ok) return auth.response;
     if (!OPENAI_KEY) return json(500, { error: 'OPENAI_API_KEY tak set' });
 
+    const callerEmail = (auth.user && auth.user.email || '').toLowerCase();
+    const caller = STAFF_BY_EMAIL[callerEmail] || null;
+
     let body = {};
     try { body = JSON.parse(event.body || '{}'); } catch (_) {}
     let history = Array.isArray(body.messages) ? body.messages : [];
-    // sanitise + cap history (control token cost): keep last 8 turns, only user/assistant text
     history = history.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
         .map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) })).slice(-8);
     if (!history.length || history[history.length - 1].role !== 'user') return json(400, { error: 'no user message' });
 
     // ---- monthly cost cap ----
-    const ym = new Date().toISOString().slice(0, 7);
-    const usageKey = 'ai_usage_' + ym;
+    const usageKey = 'ai_usage_' + ymNow();
     let usage = { cost_usd: 0, calls: 0, in_tok: 0, out_tok: 0 };
     try {
         const rows = await sb('GET', `/app_settings?key=eq.${usageKey}&select=value&limit=1`);
         if (rows && rows[0] && rows[0].value) usage = Object.assign(usage, rows[0].value);
-    } catch (_) { /* if usage read fails, allow (don't block staff over a tracking glitch) */ }
-    if (usage.cost_usd >= CAP_USD) {
-        return json(200, { reply: 'Maaf, had penggunaan AI untuk bulan ni dah dicapai. Cuba lagi bulan depan, atau bagitahu Bos kalau perlu naikkan had.', capped: true });
-    }
+    } catch (_) {}
+    if (usage.cost_usd >= CAP_USD) return json(200, { reply: 'Maaf, had penggunaan AI bulan ni dah dicapai. Cuba bulan depan, atau bagitahu Bos kalau perlu naikkan had.', capped: true });
 
-    // ---- call OpenAI ----
-    let reply = '', pin = 0, pout = 0;
+    // ---- OpenAI loop with tool calls ----
+    const messages = [{ role: 'system', content: KB }, ...history];
+    let reply = '', totIn = 0, totOut = 0;
     try {
-        const r = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: MODEL,
-                messages: [{ role: 'system', content: KB }, ...history],
-                temperature: 0.3,
-                max_tokens: 500
-            })
-        });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) return json(502, { error: 'AI gagal jawab', detail: (d.error && d.error.message) || r.status });
-        reply = (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || 'Maaf, aku tak dapat jawab tu. Cuba tanya lain.';
-        pin = (d.usage && d.usage.prompt_tokens) || 0;
-        pout = (d.usage && d.usage.completion_tokens) || 0;
+        for (let step = 0; step < 4; step++) {
+            const r = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: MODEL, messages, tools: TOOLS, temperature: 0.3, max_tokens: 600 })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) return json(502, { error: 'AI gagal jawab', detail: (d.error && d.error.message) || r.status });
+            totIn += (d.usage && d.usage.prompt_tokens) || 0;
+            totOut += (d.usage && d.usage.completion_tokens) || 0;
+            const msg = d.choices && d.choices[0] && d.choices[0].message;
+            if (!msg) { reply = 'Maaf, aku tak dapat jawab tu.'; break; }
+            if (msg.tool_calls && msg.tool_calls.length) {
+                messages.push(msg);
+                for (const tc of msg.tool_calls) {
+                    let a = {}; try { a = JSON.parse(tc.function.arguments || '{}'); } catch (_) {}
+                    const result = await runTool(tc.function.name, a, caller);
+                    messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+                }
+                continue; // let the model read tool results + answer
+            }
+            reply = msg.content || 'Maaf, aku tak dapat jawab tu.';
+            break;
+        }
+        if (!reply) reply = 'Maaf, soalan tu agak kompleks — cuba pecahkan atau tanya Bos/Aliff.';
     } catch (e) {
         return json(502, { error: 'AI gagal jawab', detail: String(e.message || e).slice(0, 150) });
     }
 
-    // ---- record usage (best-effort) ----
+    // ---- record usage ----
     try {
-        const cost = pin * PRICE_IN + pout * PRICE_OUT;
-        const next = { cost_usd: +(usage.cost_usd + cost).toFixed(6), calls: (usage.calls || 0) + 1, in_tok: (usage.in_tok || 0) + pin, out_tok: (usage.out_tok || 0) + pout, updated_at: new Date().toISOString() };
+        const cost = totIn * PRICE_IN + totOut * PRICE_OUT;
+        const next = { cost_usd: +(usage.cost_usd + cost).toFixed(6), calls: (usage.calls || 0) + 1, in_tok: (usage.in_tok || 0) + totIn, out_tok: (usage.out_tok || 0) + totOut, updated_at: new Date().toISOString() };
         await sb('POST', '/app_settings?on_conflict=key', { key: usageKey, value: next }, { Prefer: 'resolution=merge-duplicates,return=minimal' });
-    } catch (_) { /* tracking failure must not break the reply */ }
+    } catch (_) {}
 
     return json(200, { reply });
 };
