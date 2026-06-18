@@ -39784,3 +39784,128 @@ window.__marginTagHtml = function(price, cost){
     set('localSeoBody', shell('map-pin','Local / Google Business','Kedai Cyberjaya kau patut senang dijumpai di Google Maps & carian tempatan. NAP konsisten + GBP aktif = walk-in percuma.',body));
   };
 })();
+
+/* ============================================================
+   p1_845 — WMS upgrade FASA 1: Stock Levels (paparan stok pelbagai keadaan).
+   Idea dilombong dari GreaterWMS (StockListModel: onhand/available/reserved/
+   incoming). READ-ONLY paparan kira — TIDAK ubah cara stok ditolak.
+   On-hand = masterProducts.stock ; Reserved = order online belum dihantar
+   (ffStage != shipped) ; Available = on-hand - reserved ; Incoming = PO Pending.
+   ============================================================ */
+window.renderStockLevels = function(){
+  var body = document.getElementById('stockLevelsBody');
+  if(!body) return;
+  // Reserved: order online yang belum 'shipped' (stok dah commit, belum keluar gudang)
+  var reservedBySku = {};
+  try {
+    var orders = (typeof ffOnlineOrders === 'function') ? ffOnlineOrders() : [];
+    orders.forEach(function(o){
+      var stage = (typeof ffStage === 'function') ? ffStage(o) : 'to_fulfil';
+      if(stage === 'shipped') return;
+      var items = (typeof ffParseItems === 'function') ? ffParseItems(o.items) : (Array.isArray(o.items) ? o.items : []);
+      (items||[]).forEach(function(it){
+        var sku = (it.sku||'').toString().toUpperCase(); if(!sku) return;
+        var q = parseInt(it.qty||it.quantity||1)||1;
+        reservedBySku[sku] = (reservedBySku[sku]||0) + q;
+      });
+    });
+  } catch(e){}
+  // Incoming: PO status Pending (belum terima)
+  var incomingBySku = {};
+  try {
+    (typeof purchaseOrders !== 'undefined' ? purchaseOrders : []).forEach(function(po){
+      if(!po || po.status !== 'Pending') return;
+      var items = []; try { items = typeof po.items === 'string' ? JSON.parse(po.items) : (po.items||[]); } catch(e){}
+      (items||[]).forEach(function(it){
+        var sku = (it.sku||'').toString().toUpperCase(); if(!sku) return;
+        var q = parseInt(it.qty||it.quantity||0)||0;
+        incomingBySku[sku] = (incomingBySku[sku]||0) + q;
+      });
+    });
+  } catch(e){}
+  var prods = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
+  var rows = [], totAvail = 0, totReserved = 0, totIncoming = 0, oversold = 0, low = 0;
+  prods.forEach(function(p){
+    if(!p) return;
+    var sku = (p.sku||'').toString();
+    var onhand = Number(p.stock != null ? p.stock : (p.qty_on_hand||0)) || 0;
+    var reserved = reservedBySku[sku.toUpperCase()] || 0;
+    var avail = onhand - reserved;
+    var incoming = incomingBySku[sku.toUpperCase()] || 0;
+    totReserved += reserved; totIncoming += incoming; if(avail > 0) totAvail += avail;
+    if(avail <= 0) oversold++; else if(avail < 5) low++;
+    rows.push({ sku:sku, name:p.name||'', onhand:onhand, reserved:reserved, avail:avail, incoming:incoming });
+  });
+  window.__slRows = rows;
+  var kpi = function(lbl, val, col){ return '<div style="flex:1;min-width:120px;background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:13px 15px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">'+lbl+'</div><div style="font-size:22px;font-weight:900;color:'+(col||'#101010')+';letter-spacing:-.5px;margin-top:2px;">'+val+'</div></div>'; };
+  var head = '<div style="max-width:1180px;margin:0 auto;padding:4px 2px 60px;">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;"><i data-lucide="layers" style="width:22px;height:22px;color:var(--primary);"></i><h2 style="margin:0;font-size:22px;font-weight:800;color:var(--text-main);">Stock Levels</h2></div>'
+    + '<p style="margin:0 0 16px;font-size:13px;color:var(--text-muted);max-width:720px;line-height:1.55;">Stok bukan satu nombor. <b>Tersedia jual</b> = on-hand tolak yang dah commit ke order belum hantar (reserved). Idea dari WMS — elak janji stok yang dah terjual. <span style="color:#B23A2E;font-weight:600;">Available &le; 0 = risiko oversell.</span></p>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'
+      + kpi('SKU', rows.length, '#101010')
+      + kpi('Tersedia jual (unit)', totAvail.toLocaleString(), 'var(--primary-600,#B86A26)')
+      + kpi('Reserved (committed)', totReserved.toLocaleString(), '#CE9420')
+      + kpi('Akan masuk (PO)', totIncoming.toLocaleString(), '#101010')
+      + kpi('Oversell (avail&le;0)', oversold, oversold? '#B23A2E':'#2e7d32')
+      + kpi('Stok rendah (&lt;5)', low, low? '#CE9420':'#2e7d32')
+    + '</div>'
+    + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">'
+      + '<input id="slSearch" oninput="window.__slTable&&window.__slTable()" placeholder="Cari SKU atau nama..." style="flex:1;min-width:200px;padding:9px 12px;border:1px solid #ECECEC;border-radius:9px;font-size:13px;margin:0;">'
+      + '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="slIssues" checked onchange="window.__slTable&&window.__slTable()" style="width:auto;margin:0;"> Tunjuk yang perlu perhatian je</label>'
+      + '<button onclick="window.__slExport&&window.__slExport()" style="font-size:12px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:8px 13px;border-radius:8px;cursor:pointer;">Eksport CSV</button>'
+    + '</div>'
+    + '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#FAFAFA;">'
+      + '<th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">SKU</th>'
+      + '<th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Nama</th>'
+      + '<th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">On-hand</th>'
+      + '<th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Reserved</th>'
+      + '<th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Tersedia</th>'
+      + '<th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Akan masuk</th>'
+    + '</tr></thead><tbody id="slTbody"></tbody></table></div>'
+    + '<p style="font-size:11.5px;color:var(--text-muted);margin:10px 2px;">Nota: Reserved = order online belum dihantar (dalam tetingkap fulfilment). Stok rosak akan disambung fasa lanjut bila semantik returns disahkan. Paparan ini read-only, tak ubah stok sebenar.</p>'
+    + '</div>';
+  body.innerHTML = head;
+  window.__slTable();
+  if(window.lucide && lucide.createIcons){ try{ lucide.createIcons(); }catch(e){} }
+};
+window.__slTable = function(){
+  var tb = document.getElementById('slTbody'); if(!tb) return;
+  var q = ((document.getElementById('slSearch')||{}).value||'').trim().toLowerCase();
+  var issues = (document.getElementById('slIssues')||{}).checked;
+  var rows = window.__slRows || [];
+  var f = rows.filter(function(r){
+    if(q) return (r.sku+' '+r.name).toLowerCase().indexOf(q) !== -1;
+    if(issues) return r.reserved>0 || r.avail<5 || r.incoming>0;
+    return true;
+  });
+  f.sort(function(a,b){ return a.avail - b.avail; });
+  var shown = f.slice(0, 300);
+  var esc = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  if(!shown.length){ tb.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px;">Tiada baris padan.</td></tr>'; return; }
+  tb.innerHTML = shown.map(function(r){
+    var availCol = r.avail<=0 ? '#B23A2E' : (r.avail<5 ? '#CE9420' : '#101010');
+    return '<tr style="border-bottom:1px solid #F1F1F1;">'
+      + '<td style="padding:9px 11px;font-weight:700;">'+esc(r.sku)+'</td>'
+      + '<td style="padding:9px 11px;color:#374151;">'+esc(r.name.length>46?r.name.slice(0,46)+'…':r.name)+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;">'+r.onhand+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;color:'+(r.reserved>0?'#CE9420':'#9CA3AF')+';font-weight:'+(r.reserved>0?'700':'400')+';">'+r.reserved+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;font-weight:800;color:'+availCol+';">'+r.avail+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;color:'+(r.incoming>0?'#101010':'#9CA3AF')+';">'+(r.incoming||'—')+'</td>'
+    + '</tr>';
+  }).join('');
+  if(shown.length < f.length){ tb.innerHTML += '<tr><td colspan="6" style="padding:10px;text-align:center;color:#9CA3AF;font-size:11.5px;">Tunjuk 300 daripada '+f.length+' baris — guna carian untuk tapis.</td></tr>'; }
+};
+window.__slExport = function(){
+  var rows = window.__slRows || [];
+  if(!rows.length){ window.showToast && showToast('Tiada data','warn'); return; }
+  var lines = ['sku,name,on_hand,reserved,available,incoming'];
+  rows.forEach(function(r){ lines.push([r.sku,r.name,r.onhand,r.reserved,r.avail,r.incoming].map(function(x){ return '"'+String(x==null?'':x).replace(/"/g,'""')+'"'; }).join(',')); });
+  try {
+    var blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob); var a = document.createElement('a');
+    a.href = url; a.download = 'stock_levels_'+new Date().toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+    window.showToast && showToast('Eksport '+rows.length+' SKU','success');
+  } catch(e){ window.showToast && showToast('Eksport gagal','error'); }
+};
