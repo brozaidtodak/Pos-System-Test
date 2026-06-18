@@ -32,7 +32,7 @@
  <link rel="stylesheet" href="style.css?v=60">
  <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
  <link rel="dns-prefetch" href="https://images.weserv.nl">
- <link rel="stylesheet" href="design-tokens.css?v=116">
+ <link rel="stylesheet" href="design-tokens.css?v=117">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -2544,6 +2544,15 @@
  <div id="homeSection" class="tab-section">
 
  <div class="dash-wrap">
+ <!-- p1_834 — Greeting strip: sapaan ikut waktu + ringkasan plain-language (signature human touch) -->
+ <div class="dash-greet" id="dashGreet">
+  <span class="dash-greet__badge" id="dashGreetIcon" aria-hidden="true"><i data-lucide="sunrise"></i></span>
+  <div class="dash-greet__text">
+   <h2 class="dash-greet__hi" id="dashGreetHi">Selamat datang</h2>
+   <p class="dash-greet__sub" id="dashGreetSub">Jom tengok keadaan kedai hari ni.</p>
+  </div>
+  <div class="dash-greet__date" id="dashGreetDate"></div>
+ </div>
  <!-- p1_665 — Overview sub-tabs: Main / AIM (Amaran Integrasi Marketplace) / Sales / Analytics -->
  <style>
  #homeSection .ov-tabbar{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 18px; border-bottom:2px solid var(--border-color);}
@@ -8438,6 +8447,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_834', label:'Overview UI/UX polish pass #1 (Zaid: "guna skill UI/UX baru — POS lebih cantik, clear, bahasa lebih human"). (1) Greeting strip baru di atas Overview: sapaan ikut waktu (Selamat pagi/tengahari/petang/malam + ikon sunrise/sun/sunset/moon) + nama pertama staf (window.currentUser) + ringkasan plain-language status kedai ("Ada N stok habis · N minta pulangan · N stok rendah nak kau tengok" / fallback "Semua terkawal — takde benda urgent setakat ni. Kerja elok!"). window.__renderDashGreet baca nombor terus dari badge DOM (decoupled, dipanggil hujung renderDashboard); CSS .dash-greet brand-lock (krim→putih gradient, badge ikon ring bronze) + dark-mode + responsif (sorok tarikh ≤560px). Signature element ikut frontend-design skill — satu sentuhan mesra, sekeliling kekal disiplin. (2) Bahasa BM kaku/Indonesia dibaiki (copy-editing/stop-slop): "Antrian Operasi"→"Kerja Nak Buat", "Permohonan Pulang"→"Minta Pulangan", "Tidak Dibayar / Tinggal"→"Belum Bayar / Terbengkalai", "Recover atau Tutup"→"Pulih atau Tutup", "Untuk Dipenuhi"→"Nak Dibungkus". Tiada sentuh logik/ID/data wiring. app.js v800->801, design-tokens.css v116->117.', d:'done' },
  { id:'p1_833', label:'Widget "Memo Terkini" (Today\'s Overview) boleh klik → terus ke memo (Zaid: "upgrade layout, buat clickable dan direct ke memo"). Tiap kad memo dlm __renderDashOverviewMemo kini .dash-memo-item (cursor pointer + hover bronze + chevron-right) onclick window.memoGoTo(id). memoGoTo: set __memoSelectedId + reset tapis (status=ikut memo, dept/kategori=all, search kosong), klik butang nav .menu-item[data-tab=memo_board] (switchHub+rail konsisten) atau fallback switchHub, selaras kelas aktif tab/pill + kosongkan kotak carian, renderMemoBoard, lepas 60ms memoSelect(id) → preview terus keluar di pane kanan (skrol auto di telefon). app.js v799->800, design-tokens.css v115->116.', d:'done' },
  { id:'p1_832', label:'Memo Board — susun atur master-detail (senarai kiri + pratonton kanan) (Zaid: "susun semua memo pada left side, boleh drop down, kalau tekan baru keluar preview"). Ganti grid kad → .memo-split: KIRI senarai ringkas (.memo-row: tajuk + badge dept/kategori/status + masa, border-left warna ikut status, sticky-scroll) ; KANAN .memo-split__detail (sticky) kosong sampai DITEKAN. memoSelect(id) set __memoSelectedId + highlight is-active + __memoRenderDetail → render preview dokumen (.memo-doc-thumb--lg max 560px) + tindakan (Buka PDF/Approve/Reject/Pin/Edit/Padam) + nota approval/reject + author. Tiada auto-select (preview keluar bila tekan je). Reset pilihan bila tukar filter/memo dipadam. Telefon (≤860px): tindan menegak, tekan skrol ke detail. app.js v798->799, design-tokens.css v114->115.', d:'done' },
  { id:'p1_831', label:'Memo Board — pratonton dokumen TERUS dalam kad (Zaid: "dah cantik, cuma nak buat preview disini" + lakar kotak merah). Mini-page A4 berjenama terpapar (macam helaian PDF page 1), klik buka pratonton penuh (overlay p1_830). SATU SUMBER gaya: blok <style> #memoPdfStage dipindah ke design-tokens.css sebagai .mdoc-page (dipakai PDF stage + thumb), __generateMemoPdfBlob kini className=mdoc-page + off-screen positioning. Thumb .memo-doc-thumb bungkus .mdoc-page (absolute, pointer-events:none); __memoLayoutThumbs() kira scale=lebar/794 → transform scale + tinggi=1123×scale (crop page 1), dipanggil hujung render + on resize (debounce). app.js v797->798, design-tokens.css v113->114.', d:'done' },
@@ -13733,7 +13743,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=800"></script>
+ <script src="app.js?v=801"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

@@ -8509,6 +8509,38 @@ function __getDashDateRange() {
  return { start: null, end: null, label: '—' };
 }
 
+// p1_834 — Greeting strip: sapaan ikut waktu + nama + ringkasan plain-language.
+// Baca nombor terus dari badge DOM (sudah diisi __setAlert) supaya decoupled & selamat.
+window.__renderDashGreet = function(){
+ try {
+ const hiEl = document.getElementById('dashGreetHi');
+ if(!hiEl) return;
+ const subEl = document.getElementById('dashGreetSub');
+ const dateEl = document.getElementById('dashGreetDate');
+ const iconEl = document.getElementById('dashGreetIcon');
+ const now = new Date();
+ const hr = now.getHours();
+ const g = hr < 5  ? ['Malam tenang','moon'] :
+          hr < 12 ? ['Selamat pagi','sunrise'] :
+          hr < 15 ? ['Selamat tengahari','sun'] :
+          hr < 19 ? ['Selamat petang','sunset'] :
+                    ['Selamat malam','moon'];
+ const u = window.currentUser || {};
+ const first = ((u.name || '').trim().split(/\s+/)[0]) || '';
+ hiEl.textContent = g[0] + (first ? ', ' + first : '');
+ if(iconEl) iconEl.innerHTML = '<i data-lucide="'+g[1]+'"></i>';
+ const readNum = id => { const e = document.getElementById(id); return e ? (parseInt((e.textContent||'').replace(/[^\d-]/g,''),10) || 0) : 0; };
+ const oos = readNum('badgeOos'), low = readNum('badgeLow'), ret = readNum('badgeReturn');
+ const parts = [];
+ if(oos) parts.push('<b>'+oos+'</b> stok habis');
+ if(ret) parts.push('<b>'+ret+'</b> minta pulangan');
+ if(low) parts.push('<b>'+low+'</b> stok rendah');
+ if(subEl) subEl.innerHTML = parts.length ? ('Ada ' + parts.join(' · ') + ' nak kau tengok.') : 'Semua terkawal — takde benda urgent setakat ni. Kerja elok!';
+ if(dateEl){ try { dateEl.textContent = now.toLocaleDateString('ms-MY', { weekday:'long', day:'numeric', month:'long' }); } catch(e){ dateEl.textContent = now.toLocaleDateString(); } }
+ if(window.lucide && window.lucide.createIcons) { try { window.lucide.createIcons(); } catch(e){} }
+ } catch(e){}
+};
+
 window.renderDashboard = function() {
  const range = __getDashDateRange();
  let filteredSales = salesHistory;
@@ -8652,6 +8684,9 @@ window.renderDashboard = function() {
  // Freshness timestamp
  const stamp = document.getElementById('dashFreshStamp');
  if (stamp) stamp.textContent = new Date().toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit' });
+
+ // p1_834 — greeting strip (badges sudah diisi di atas)
+ if(typeof window.__renderDashGreet === 'function') window.__renderDashGreet();
 }
 
 // p1_439 — Sales Trajectory: Daily / Weekly / Monthly / Custom analytic graph
@@ -34771,16 +34806,16 @@ window.I18N = {
  hs_orders_avg_pre: { bm: 'Purata', en: 'Avg' },
  hs_orders_avg_post: { bm: '/ pesanan', en: '/ order' },
  hs_needs_attention: { bm: 'Perlu Perhatian', en: 'Needs Attention' },
- hs_operations_queue: { bm: 'Antrian Operasi', en: 'Operations Queue' },
+ hs_operations_queue: { bm: 'Kerja Nak Buat', en: 'To-Do Queue' },
  hs_oos_lbl: { bm: 'Stok Habis', en: 'Out of Stock' },
  hs_oos_name: { bm: 'Prioriti Restok', en: 'Restock priority' },
  hs_low_lbl: { bm: 'Stok Rendah (<5)', en: 'Low Stock (<5)' },
  hs_low_name: { bm: 'Senarai Pantau', en: 'Watch list' },
- hs_return_lbl: { bm: 'Permohonan Pulang', en: 'Return Requests' },
+ hs_return_lbl: { bm: 'Minta Pulangan', en: 'Return Requests' },
  hs_return_name: { bm: 'Perlu Tindakan', en: 'Action needed' },
- hs_unpaid_lbl: { bm: 'Tidak Dibayar / Tinggal', en: 'Unpaid / Abandoned' },
- hs_unpaid_name: { bm: 'Recover atau Tutup', en: 'Recover or close' },
- hs_fulfil_lbl: { bm: 'Untuk Dipenuhi', en: 'To Fulfil' },
+ hs_unpaid_lbl: { bm: 'Belum Bayar / Terbengkalai', en: 'Unpaid / Abandoned' },
+ hs_unpaid_name: { bm: 'Pulih atau Tutup', en: 'Recover or close' },
+ hs_fulfil_lbl: { bm: 'Nak Dibungkus', en: 'To Fulfil' },
  hs_fulfil_name: { bm: 'Bungkus & Hantar', en: 'Pack & ship' },
  hs_processing_lbl: { bm: 'Memproses', en: 'Processing' },
  hs_processing_name: { bm: 'Sedang Berjalan', en: 'In progress' },

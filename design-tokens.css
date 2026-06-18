@@ -3870,6 +3870,18 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
    conflict with Manager Dashboard's same-named class.
    ============================================================= */
 #homeSection .dash-wrap { padding:4px 2px 60px; max-width:1280px; margin:0 auto; }
+/* p1_834 — Greeting strip (signature human touch). Brand-lock: bronze/black/cream + Poppins. */
+#homeSection .dash-greet { display:flex; align-items:center; gap:14px; padding:15px 18px; margin:0 0 18px; background:linear-gradient(120deg, #FAF6EF 0%, var(--card-bg) 72%); border:1px solid var(--border-color); border-radius:14px; }
+#homeSection .dash-greet__badge { flex:0 0 auto; width:44px; height:44px; border-radius:12px; display:grid; place-items:center; background:var(--card-bg); border:1px solid rgba(205,124,50,.32); color:var(--primary); box-shadow:0 2px 8px rgba(205,124,50,.10); }
+#homeSection .dash-greet__badge svg { width:22px; height:22px; }
+#homeSection .dash-greet__text { flex:1 1 auto; min-width:0; }
+#homeSection .dash-greet__hi { margin:0; font-size:18px; font-weight:800; color:#101010; letter-spacing:-.3px; line-height:1.2; }
+#homeSection .dash-greet__sub { margin:3px 0 0; font-size:12.5px; color:var(--text-muted); line-height:1.45; }
+#homeSection .dash-greet__sub b { color:var(--primary); font-weight:700; }
+#homeSection .dash-greet__date { flex:0 0 auto; text-align:right; font-size:12px; font-weight:600; color:var(--text-muted); white-space:nowrap; text-transform:capitalize; }
+[data-theme="dark"] #homeSection .dash-greet { background:linear-gradient(120deg, #2A2418 0%, var(--card-bg) 72%); }
+[data-theme="dark"] #homeSection .dash-greet__hi { color:#fff; }
+@media (max-width:560px){ #homeSection .dash-greet__date { display:none; } #homeSection .dash-greet__hi { font-size:16px; } #homeSection .dash-greet { padding:13px 15px; } }
 #homeSection .dash-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
 #homeSection .dash-pill { padding:7px 14px; border-radius:999px; border:1px solid var(--border-color); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-muted); cursor:pointer; transition:.15s; }
 #homeSection .dash-pill:hover { border-color:var(--primary); color:var(--primary); }
