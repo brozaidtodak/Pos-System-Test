@@ -18863,7 +18863,7 @@ window.memoCloseSubmit = function() {
  window.__memoEditId = null; // p1_385
 };
 
-// p1_798 — MEMO PDF: kad memo cuma tunjuk tajuk besar; staf buka PDF berjenama 10 CAMP untuk baca penuh.
+// p1_829 — MEMO PDF: kad memo cuma tunjuk tajuk besar; staf buka PDF berjenama 10 CAMP untuk baca penuh.
 // Guna pipeline jsPDF + html2canvas yang sama dgn resit (__loadPdfLibs).
 window.__memoMonthsBM = ['JAN','FEB','MAC','APR','MEI','JUN','JUL','OGOS','SEP','OKT','NOV','DIS'];
 window.__memoDateBM = function(iso){
@@ -18966,14 +18966,14 @@ window.memoOpenPdf = async function(id){
    url = URL.createObjectURL(blob);
    window.__memoPdfCache[id] = url;
   }
-  // p1_799 — paparan terus dalam overlay (elak popup disekat), butang Muat Turun + Buka Tab kekal ada
+  // p1_830 — paparan terus dalam overlay (elak popup disekat), butang Muat Turun + Buka Tab kekal ada
   window.__memoShowPdfOverlay(url, m);
  } catch(e) {
   console.error('memo pdf gagal:', e);
   if(typeof showToast==='function') showToast('Gagal jana PDF memo: ' + (e.message||e), 'danger');
  }
 };
-// p1_799 — Overlay pratonton PDF memo (iframe) + tindakan muat turun / buka tab baru.
+// p1_830 — Overlay pratonton PDF memo (iframe) + tindakan muat turun / buka tab baru.
 window.__memoShowPdfOverlay = function(url, memo){
  const esc = (s) => String(s == null ? '' : s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
  const fileName = 'MEMO ' + (memo.title || 'memo').replace(/[^\w\s-]/g,'').trim().slice(0,60) + '.pdf';
@@ -19040,7 +19040,7 @@ window.memoSubmit = function() {
  if(m) {
  m.department = dept; m.category = category; m.title = title; m.body = body; m.pinned = pinned;
  m.edited_at = new Date().toISOString(); m.edited_by_name = u.name;
- // p1_798 — buang PDF cache lama supaya jana semula ikut kandungan baru
+ // p1_829 — buang PDF cache lama supaya jana semula ikut kandungan baru
  try { if(window.__memoPdfCache && window.__memoPdfCache[m.id]) { URL.revokeObjectURL(window.__memoPdfCache[m.id]); delete window.__memoPdfCache[m.id]; } } catch(e){}
  window.memoSaveAll(memos);
  if(typeof window.memoUpsertRemote === 'function') window.memoUpsertRemote(m);
@@ -19335,6 +19335,7 @@ window.renderMemoBoard = function() {
  return new Date(b.posted_at) - new Date(a.posted_at);
  });
 
+ const detail = document.getElementById('memoBoardDetail');
  if(!rows.length) {
  let emptyKey;
  if(q) emptyKey = 'mb_empty_search';
@@ -19344,18 +19345,73 @@ window.renderMemoBoard = function() {
  else if(window.__memoStatus === 'mine') emptyKey = 'mb_empty_mine';
  else emptyKey = 'mb_empty_approved';
  list.innerHTML = '<div class="memo-empty">' + escapeHtml(T(emptyKey, 'Tiada memo.')) + '</div>';
+ if(detail) detail.innerHTML = '<div class="memo-detail-empty"><i data-lucide="inbox" style="width:32px;height:32px;"></i><div>Tiada memo untuk dipaparkan.</div></div>';
+ window.__memoSelectedId = null;
  window.memoRefreshSidebarBadge();
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
  return;
  }
 
+ // p1_832 — SENARAI KIRI: baris ringkas (tajuk + meta). Tekan → preview keluar di kanan.
  list.innerHTML = rows.map(m => {
- const cardClass = 'memo-card' +
- (m.pinned && m.status === 'approved' ? ' memo-card--pinned' : '') +
- (m.status === 'pending' ? ' memo-card--pending' : '') +
- (m.status === 'rejected' ? ' memo-card--rejected' : '');
+ const pinIcon = (m.pinned && m.status === 'approved') ? '<i data-lucide="pin" class="memo-pin-icon" style="width:13px; height:13px;"></i> ' : '';
+ const active = (window.__memoSelectedId === m.id) ? ' is-active' : '';
+ const statusCls = m.status === 'pending' ? ' memo-row--pending' : (m.status === 'rejected' ? ' memo-row--rejected' : '');
+ return `<button type="button" class="memo-row${active}${statusCls}" data-memo-id="${m.id}" onclick="window.memoSelect('${m.id}')">
+ <span class="memo-row__title">${pinIcon}${escapeHtml(window.__memoTx(m.title))}</span>
+ <span class="memo-row__meta">
+ <span class="memo-dept-badge" data-dept="${m.department}">${escapeHtml(window.memoDeptLabel(m.department))}</span>
+ ${(m.category && m.category !== 'umum') ? `<span class="memo-row__cat"><i data-lucide="tag" style="width:9px;height:9px;"></i> ${escapeHtml(window.__memoCatLabel(m.category))}</span>` : ''}
+ <span class="memo-status-pill memo-status-pill--${m.status}">${escapeHtml(T('mb_status_'+m.status, m.status))}</span>
+ <span class="memo-row__time">${window.memoTimeAgo(m.posted_at)}</span>
+ </span>
+ </button>`;
+ }).join('');
+
+ // Reset pilihan kalau memo terpilih tiada lagi dalam senarai (cth tukar filter).
+ if(window.__memoSelectedId && !rows.some(m => m.id === window.__memoSelectedId)) window.__memoSelectedId = null;
+ // Preview cuma keluar bila ditekan (tiada auto-select).
+ if(window.__memoSelectedId) {
+ window.__memoRenderDetail(rows.find(m => m.id === window.__memoSelectedId));
+ } else if(detail) {
+ detail.innerHTML = '<div class="memo-detail-empty"><i data-lucide="mouse-pointer-click" style="width:32px;height:32px;"></i><div>Pilih memo di kiri untuk lihat pratonton.</div></div>';
+ }
+
+ window.memoRefreshSidebarBadge();
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+ // p1_831 — kecilkan pratonton dokumen A4 supaya muat lebar pane
+ window.__memoLayoutThumbs();
+ // p1_630 — EN mode: auto-translate memo title+body (cached), re-render when ready
+ if(window.I18N && window.I18N.lang === 'en'){
+  const txt = []; rows.forEach(m => { if(m.title) txt.push(m.title); if(m.body) txt.push(m.body); });
+  window.__txEnsure(txt, () => window.renderMemoBoard());
+ }
+};
+
+// p1_832 — Pilih memo dari senarai kiri → render preview + tindakan di pane kanan.
+window.__memoSelectedId = window.__memoSelectedId || null;
+window.memoSelect = function(id){
+ window.__memoSelectedId = id;
+ document.querySelectorAll('#memoBoardList .memo-row').forEach(b => b.classList.toggle('is-active', b.getAttribute('data-memo-id') === id));
+ const m = window.memoLoad().find(x => x.id === id);
+ if(!m) return;
+ window.__memoRenderDetail(m);
+ // Telefon: skrol ke pane detail bila dipilih
+ try {
+  const detail = document.getElementById('memoBoardDetail');
+  if(detail && window.matchMedia && window.matchMedia('(max-width: 860px)').matches) detail.scrollIntoView({ behavior:'smooth', block:'start' });
+ } catch(e){}
+};
+window.__memoRenderDetail = function(m){
+ const detail = document.getElementById('memoBoardDetail');
+ if(!detail || !m) return;
+ const u = window.memoCurrentUser();
+ const isSuperior = window.isBoss(u);
+ const T = (k, fb) => (typeof window.t === 'function' ? window.t(k) : fb) || fb;
+ const deptColor = { general:'#6B7280', sales:'#101010', inv:'#cd7c32', admin:'#cd7c32', hr:'#cd7c32', finance:'#9E7016' };
+ const initials = (name) => { if(!name) return '?'; const p = String(name).trim().split(/\s+/); return (p.length===1 ? p[0].slice(0,2) : (p[0][0]+p[p.length-1][0])).toUpperCase(); };
  const canApprove = isSuperior && m.status === 'pending';
  const canDelete = u && (window.isBoss(u) || (m.posted_by_id === u.staff_id && m.status === 'pending'));
- // p1_385 — edit: Bos mana-mana memo; author kalau belum approved. Pin/unpin: Bos, memo approved.
  const canEdit = u && (window.isBoss(u) || (m.posted_by_id === u.staff_id && m.status !== 'approved'));
  const canPin = isSuperior && m.status === 'approved';
  const actions = [];
@@ -19373,45 +19429,31 @@ window.renderMemoBoard = function() {
  } else if(m.status === 'approved' && m.approved_by_name) {
  reasonHtml = '<div class="memo-approval-note"><i data-lucide="check-circle" style="width:13px; height:13px;"></i> '+escapeHtml(T('mb_approval_prefix','Approved oleh'))+' ' + escapeHtml(m.approved_by_name) + ' · ' + window.memoTimeAgo(m.approved_at) + '</div>';
  }
-
  const avatarBg = deptColor[m.department] || '#6B7280';
- const pinIcon = (m.pinned ? '<i data-lucide="pin" class="memo-pin-icon" style="width:14px; height:14px;"></i> ' : '');
 
- return `<div class="${cardClass} memo-card--doc">
- <div class="memo-card__head">
- <h4 class="memo-card__title">${pinIcon}${escapeHtml(window.__memoTx(m.title))}</h4>
- </div>
- <div class="memo-card__meta">
+ detail.innerHTML = `
+ <div class="memo-detail__head">
+ <h3 class="memo-detail__title">${escapeHtml(window.__memoTx(m.title))}</h3>
+ <div class="memo-detail__meta">
  <span class="memo-dept-badge" data-dept="${m.department}">${escapeHtml(window.memoDeptLabel(m.department))}</span>
- ${(m.category && m.category !== 'umum') ? `<span style="display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; background:#fff8f0; color:#7c4a1a;"><i data-lucide="tag" style="width:9px;height:9px;"></i> ${escapeHtml(window.__memoCatLabel(m.category))}</span>` : ''}
+ ${(m.category && m.category !== 'umum') ? `<span class="memo-row__cat"><i data-lucide="tag" style="width:9px;height:9px;"></i> ${escapeHtml(window.__memoCatLabel(m.category))}</span>` : ''}
  <span class="memo-status-pill memo-status-pill--${m.status}">${escapeHtml(T('mb_status_'+m.status, m.status))}</span>
+ <span class="memo-detail__author" title="${window.memoFormatFull(m.posted_at)}"><span class="memo-avatar" style="background:${avatarBg};">${initials(m.posted_by_name)}</span> <strong>${escapeHtml(m.posted_by_name||'')}</strong> · ${window.memoTimeAgo(m.posted_at)}</span>
  </div>
- <div class="memo-doc-thumb" onclick="window.memoOpenPdf('${m.id}')" title="Klik untuk buka memo penuh">
+ </div>
+ <div class="memo-doc-thumb memo-doc-thumb--lg" onclick="window.memoOpenPdf('${m.id}')" title="Klik untuk buka memo penuh">
  <div class="mdoc-page">${window.__buildMemoDocHtml(m)}</div>
  <div class="memo-doc-thumb__hint"><i data-lucide="maximize-2" style="width:13px; height:13px;"></i> Klik untuk buka penuh</div>
  </div>
- <button class="memo-card__pdfbtn" onclick="window.memoOpenPdf('${m.id}')" title="Buka memo penuh dalam PDF"><i data-lucide="file-text" style="width:15px; height:15px;"></i> Buka Memo (PDF)</button>
  ${reasonHtml}
- <div class="memo-card__foot">
- <span class="memo-card__author" title="${window.memoFormatFull(m.posted_at)}">
- <span class="memo-avatar" style="background:${avatarBg};">${initials(m.posted_by_name)}</span>
- <span class="memo-author-meta"><strong>${escapeHtml(m.posted_by_name)}</strong><span class="memo-author-time">${window.memoTimeAgo(m.posted_at)}</span></span>
- </span>
- <span class="memo-card__actions">${actions.join('')}</span>
- </div>
+ <div class="memo-detail__actions">
+ <button class="memo-card__pdfbtn" onclick="window.memoOpenPdf('${m.id}')" title="Buka memo penuh dalam PDF"><i data-lucide="file-text" style="width:15px; height:15px;"></i> Buka Memo (PDF)</button>
+ ${actions.join('')}
  </div>`;
- }).join('');
- window.memoRefreshSidebarBadge();
  if(window.lucide && lucide.createIcons) lucide.createIcons();
- // p1_800 — kecilkan pratonton dokumen A4 supaya muat lebar kad
  window.__memoLayoutThumbs();
- // p1_630 — EN mode: auto-translate memo title+body (cached), re-render when ready
- if(window.I18N && window.I18N.lang === 'en'){
-  const txt = []; rows.forEach(m => { if(m.title) txt.push(m.title); if(m.body) txt.push(m.body); });
-  window.__txEnsure(txt, () => window.renderMemoBoard());
- }
 };
-// p1_800 — Skala pratonton dokumen: page asal 794×1123 (A4) → kecil ikut lebar kad.
+// p1_831 — Skala pratonton dokumen: page asal 794×1123 (A4) → kecil ikut lebar kad.
 window.__memoLayoutThumbs = function(){
  try {
   document.querySelectorAll('.memo-doc-thumb').forEach(wrap => {
