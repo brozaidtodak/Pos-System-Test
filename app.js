@@ -14030,10 +14030,30 @@ window.cpkAddNewCustomer = async function() {
  const payload = { name: name || null, phone: phone || null, email: email || null, is_member: isMember, points: 0, total_spent: 0, total_orders: 0 };
  // Strip nulls
  Object.keys(payload).forEach(k => { if(payload[k] === null) delete payload[k]; });
- const { data, error } = await db.from('customers').insert([payload]).select().single();
+ let { data, error } = await db.from('customers').insert([payload]).select().single();
+ let reused = false;
+ // p1_822 — email/phone dah wujud (unique constraint). Bukan ralat sebenar:
+ // cari customer sedia ada & terus attach, daripada keluar error mentah.
+ if(error && (error.code === '23505' || /duplicate key|unique constraint/i.test(error.message || ''))) {
+  const msg = (error.message || '') + ' ' + (error.details || '');
+  let lookup = null;
+  if(/email/i.test(msg) && email) lookup = db.from('customers').select('*').eq('email', email).maybeSingle();
+  else if(/phone/i.test(msg) && phone) lookup = db.from('customers').select('*').eq('phone', phone).maybeSingle();
+  else if(email) lookup = db.from('customers').select('*').eq('email', email).maybeSingle();
+  else if(phone) lookup = db.from('customers').select('*').eq('phone', phone).maybeSingle();
+  if(lookup) {
+   const ex = await lookup;
+   if(ex && ex.data) { data = ex.data; error = null; reused = true; }
+  }
+ }
  if(error) throw error;
- // Sync in-memory cache
- if(typeof customersData !== 'undefined' && Array.isArray(customersData)) customersData.push(data);
+ // Sync in-memory cache (elak duplicate dalam memori bila reuse)
+ if(typeof customersData !== 'undefined' && Array.isArray(customersData)) {
+  if(!customersData.some(c => c && c.id === data.id)) customersData.push(data);
+ }
+ const okMsg = reused
+  ? `Customer sedia ada "${data.name || data.phone || data.email}" dijumpai & dipilih.`
+  : `Customer baru "${data.name || data.phone}" attached.`;
  // p1_235 — kalau dari Edit Sale modal, sync ke ppEdit fields (bukan posCustomer)
  if(window.__ppEditPickerActive) {
  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v == null ? '' : String(v)); };
@@ -14042,14 +14062,14 @@ window.cpkAddNewCustomer = async function() {
  set('ppEditCustEmail', data.email);
  window.__ppEditPickerActive = false;
  document.getElementById('customerPickerModal').style.display = 'none';
- if(typeof showToast === 'function') showToast(`Customer baru "${data.name || data.phone}" dah dibuat & loaded.`, 'success');
+ if(typeof showToast === 'function') showToast(reused ? okMsg : `Customer baru "${data.name || data.phone}" dah dibuat & loaded.`, 'success');
  return;
  }
  window.posSetCustomer(data);
  // p1_234 — sync ke checkout panel kalau open
  if(typeof window.cpSyncCustomerFromPos === 'function') window.cpSyncCustomerFromPos();
  document.getElementById('customerPickerModal').style.display = 'none';
- if(typeof showToast === 'function') showToast(`Customer baru "${data.name || data.phone}" attached.`, 'success');
+ if(typeof showToast === 'function') showToast(okMsg, 'success');
  } catch(e) {
  if(typeof showToast === 'function') showToast('Daftar gagal: ' + e.message, 'error');
  }
