@@ -39993,6 +39993,7 @@ window.renderReceiving = function(){
       + '<td style="padding:9px 11px;color:var(--text-muted);">'+esc(p.received_by||'-')+'</td>'
       + '<td style="padding:9px 11px;text-align:right;">'+pr.rec+' / '+pr.ord+'</td>'
       + '<td style="padding:9px 11px;text-align:center;">'+badge+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;"><button onclick="window.__rcvEdit&&window.__rcvEdit('+p.id+')" style="font-size:11.5px;font-weight:700;color:var(--primary);background:#fff;border:1px solid var(--primary);padding:5px 11px;border-radius:7px;cursor:pointer;">Edit rosak</button></td>'
     + '</tr>';
   }
   function tbl(headCells, rowsHtml, empty){
