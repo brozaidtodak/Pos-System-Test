@@ -33706,7 +33706,7 @@ window.openCashDrawerHub = async function(){
  setTxt('hubExpected', fmt(round2((d.floatOpen || 0) + d.cashSales - d.cashOut)));
  const hint = document.getElementById('hubFloatHint'); const inp = document.getElementById('hubFloatInput');
  if(inp) inp.value = '';
- if(hint) hint.textContent = (d.floatOpen != null) ? ('Float dah diset hari ni (' + fmt(d.floatOpen) + '). Simpan lagi untuk tukar.') : 'Belum buka shift hari ni. Masukkan duit mula dalam laci.';
+ if(hint) hint.textContent = (d.floatOpen != null) ? ('Shift dah dibuka hari ni (cash mula ' + fmt(d.floatOpen) + '). Masukkan semula untuk betulkan.') : 'Belum buka shift hari ni. Kira cash dalam box, masukkan jumlah.';
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 window.closeCashDrawerHub = function(){ const m = document.getElementById('cashDrawerHub'); if(m) m.style.display = 'none'; };
@@ -33721,10 +33721,10 @@ window.saveOpeningFloat = async function(){
  try {
  const { error } = await db.from('cash_drawer_log').insert({ type:'float_open', amount: amt, category:'buka_shift', staff_name: staff });
  if(error) throw error;
- showToast('Float pagi RM ' + amt.toFixed(2) + ' direkod. Shift dibuka.', 'success');
+ showToast('Shift dibuka — cash mula RM ' + amt.toFixed(2) + ' direkod.', 'success');
  window.openCashDrawerHub();
  } catch(e){ showToast('Gagal simpan: ' + e.message, 'error'); }
- finally { if(btn){ btn.disabled = false; btn.textContent = 'Simpan Float'; } }
+ finally { if(btn){ btn.disabled = false; btn.textContent = 'Buka Shift'; } }
 };
 
 // p1_860 — OFFLINE mode (SELAMAT by design): laluan checkout ONLINE tak diubah. Bila takde

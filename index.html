@@ -861,28 +861,36 @@
  <div id="cashDrawerHub" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:430px; width:93%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
- <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="wallet" style="width:19px;height:19px; color:#101010;"></i> Laci Duit</h2>
+ <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="sunrise" style="width:19px;height:19px; color:#CD7C32;"></i> Buka Shift</h2>
  <button type="button" onclick="window.closeCashDrawerHub()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
- <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Status laci hari ini. Buka shift dengan float pagi, dan tutup kira hujung hari.</p>
+ <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Mula shift: kira semua duit dalam cash box dan masukkan jumlah. Operasi tunai shift (Duit Keluar, Pulangan, Tutup Kira) semua di sini.</p>
 
- <div class="cc-rows" style="margin-bottom:14px;">
+ <!-- p1_879 — Buka Shift: staff kira cash sebenar dalam box (float mula) -->
+ <div id="hubShiftSection" style="background:#FAF6EF; border:1px solid #EEE7DA; border-radius:12px; padding:13px 14px; margin-bottom:14px;">
+ <p class="cp-section__title" style="margin:0 0 4px; display:flex; align-items:center; gap:6px;"><i data-lucide="banknote" style="width:15px;height:15px; color:#CD7C32;"></i> Kira Cash Dalam Box</p>
+ <p style="font-size:11.5px; color:#9a948b; margin:0 0 8px;">Kira semua duit dalam cash box sekarang, masukkan jumlahnya untuk buka shift.</p>
+ <div style="display:flex; gap:8px; align-items:stretch;">
+ <span class="cc-row__inp" style="flex:1; background:#fff; border:1px solid #EEE7DA; border-radius:10px; padding:0 12px; display:flex; align-items:center; gap:6px;"><span style="color:#9a948b; font-size:13px;">RM</span> <input type="number" id="hubFloatInput" aria-label="Jumlah cash dalam box (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1; border:none; background:none; text-align:right; font:700 16px Poppins; color:#101010; font-variant-numeric:tabular-nums; min-height:46px;"></span>
+ <button type="button" id="hubSaveFloatBtn" onclick="window.saveOpeningFloat()" class="login-btn" style="background:#CD7C32; width:auto; padding:0 18px; font-size:14px; margin:0; flex-shrink:0;">Buka Shift</button>
+ </div>
+ <p id="hubFloatHint" style="font-size:11.5px; color:#9a948b; margin:7px 2px 0;"></p>
+ </div>
+
+ <div class="cc-rows" style="margin-bottom:16px;">
  <div class="cc-row"><span class="cc-row__lbl">Float pagi</span><span class="cc-row__val" id="hubFloat">—</span></div>
  <div class="cc-row"><span class="cc-row__lbl">+ Jualan tunai <span id="hubSalesCount" style="color:#9a948b; font-weight:500;"></span></span><span class="cc-row__val" id="hubSales">RM 0.00</span></div>
  <div class="cc-row"><span class="cc-row__lbl">− Duit keluar <span id="hubOutCount" style="color:#9a948b; font-weight:500;"></span></span><span class="cc-row__val" id="hubOut">RM 0.00</span></div>
  <div class="cc-row cc-row--total"><span class="cc-row__lbl">Dalam laci sekarang</span><span class="cc-row__val" id="hubExpected">RM 0.00</span></div>
  </div>
 
- <div id="hubShiftSection">
- <p class="cp-section__title" style="margin:0 0 6px;">Buka Shift — Float Pagi</p>
- <div style="display:flex; gap:8px; align-items:stretch;">
- <span class="cc-row__inp" style="flex:1; background:#FAF6EF; border:1px solid #EEE7DA; border-radius:10px; padding:0 12px; display:flex; align-items:center; gap:6px;"><span style="color:#9a948b; font-size:13px;">RM</span> <input type="number" id="hubFloatInput" aria-label="Float pagi (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1; border:none; background:none; text-align:right; font:700 16px Poppins; color:#101010; font-variant-numeric:tabular-nums; min-height:46px;"></span>
- <button type="button" id="hubSaveFloatBtn" onclick="window.saveOpeningFloat()" class="login-btn" style="background:#CD7C32; width:auto; padding:0 18px; font-size:14px; margin:0; flex-shrink:0;">Simpan Float</button>
+ <!-- p1_879 — operasi tunai dalam shift -->
+ <p class="cp-section__title" style="margin:0 0 8px;">Operasi Shift</p>
+ <div style="display:flex; gap:8px; margin-bottom:10px;">
+ <button type="button" onclick="window.closeCashDrawerHub(); window.openCashOut();" class="login-btn" style="flex:1; background:#FBE9E7; border:1.5px solid #E5897E; color:#B23A2E; padding:13px 10px; font-size:14px; margin:0;"><i data-lucide="arrow-up-from-line" style="width:15px;height:15px;vertical-align:-2px;"></i> Duit Keluar</button>
+ <button type="button" onclick="window.closeCashDrawerHub(); window.openReturnPicker();" class="login-btn" style="flex:1; background:#F3ECE4; border:1.5px solid #B89B7A; color:#7C2A20; padding:13px 10px; font-size:14px; margin:0;"><i data-lucide="rotate-ccw" style="width:15px;height:15px;vertical-align:-2px;"></i> Pulangan</button>
  </div>
- <p id="hubFloatHint" style="font-size:11.5px; color:#9a948b; margin:7px 2px 0;"></p>
- </div>
-
- <button type="button" onclick="window.closeCashDrawerHub(); window.openCashClose();" class="login-btn" style="background:#101010; width:100%; padding:15px; font-size:15px; margin-top:18px;"><i data-lucide="calculator" style="width:15px;height:15px;vertical-align:-2px;"></i> Tutup Kira (Z-Report)</button>
+ <button type="button" onclick="window.closeCashDrawerHub(); window.openCashClose();" class="login-btn" style="background:#101010; width:100%; padding:15px; font-size:15px; margin:0;"><i data-lucide="calculator" style="width:15px;height:15px;vertical-align:-2px;"></i> Tutup Kira (Z-Report)</button>
  </div>
  </div>
 
@@ -3176,9 +3184,8 @@
  </div>
  <!-- p1_229 — Custom Sales button (ad-hoc/service item bukan dari master) -->
  <button onclick="window.openCustomSaleModal()" class="btn-secondary" id="btnCustomSale" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#FAF2E6; border:1.5px solid #fb923c; color:#9a3412; font-weight:700;" title="Tambah item custom (service charge, repair, deposit, etc.)"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Custom Sale</button>
- <button onclick="window.openCashOut()" class="btn-secondary" id="btnCashOut" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#FBE9E7; border:1.5px solid #E5897E; color:#B23A2E; font-weight:700;" title="Rekod duit keluar dari box (Lalamove, beli air, bayaran urgent)"><i data-lucide="arrow-up-from-line" style="width:14px;height:14px;vertical-align:-2px;"></i> Duit Keluar</button>
- <button onclick="window.openReturnPicker()" class="btn-secondary" id="btnReturnPicker" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#F3ECE4; border:1.5px solid #B89B7A; color:#7C2A20; font-weight:700;" title="Proses pulangan / refund jualan"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px;"></i> Pulangan</button>
- <button onclick="window.openCashDrawerHub()" class="btn-secondary" id="btnCashDrawer" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#101010; border:1.5px solid #101010; color:#FAF6EF; font-weight:700;" title="Laci duit — buka shift (float) + tutup kira"><i data-lucide="wallet" style="width:14px;height:14px;vertical-align:-2px;"></i> Laci Duit</button>
+ <!-- p1_879 — satu butang "Buka Shift" (ganti Laci Duit). Duit Keluar + Pulangan + Tutup Kira kini DALAM hub shift. -->
+ <button onclick="window.openCashDrawerHub()" class="btn-secondary" id="btnCashDrawer" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#101010; border:1.5px solid #101010; color:#FAF6EF; font-weight:700;" title="Buka shift — kira cash dalam box. Duit Keluar, Pulangan & Tutup Kira semua di sini."><i data-lucide="sunrise" style="width:14px;height:14px;vertical-align:-2px;"></i> Buka Shift</button>
  <button onclick="window.togglePosLayoutMode()" class="btn-secondary" id="btnPosLayoutToggle" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 20px;" data-i18n="cs_small_screen">Skrin Kecil</button>
  </div>
  <!-- p1_130 — Quick-Sell pills (top 5-8 most-sold last 30d) -->
@@ -8685,6 +8692,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_879', label:'Cashier: "Laci Duit" → "Buka Shift" + Duit Keluar & Pulangan masuk DALAM shift (Zaid: "gantikan laci duit kepada buka shift (mintak staff kira cash dalam cash box). letak duit keluar dan pulangan dalam shift"). (1) Baris butang Cashier: BUANG butang berasingan "Duit Keluar" + "Pulangan", tukar "Laci Duit" (wallet) → satu butang "Buka Shift" (sunrise) → buka hub. Baris kini ringkas: Custom Sale / Buka Shift / Skrin Kecil. (2) Hub #cashDrawerHub dinamakan "Buka Shift": seksyen ATAS = "Kira Cash Dalam Box" (staff kira duit fizikal dalam cash box → masukkan jumlah = float mula; reframe dari "Float Pagi", butang jadi "Buka Shift"); diikuti status laci (float/+jualan tunai/−duit keluar/=dalam laci); kemudian "Operasi Shift" = butang Duit Keluar (openCashOut) + Pulangan (openReturnPicker) 2-lajur + Tutup Kira (openCashClose) penuh. Fungsi sedia ada diguna semula (tiada logik baru), cuma susun semula UI. saveOpeningFloat toast/butang + hint dikemas ikut bahasa shift. app.js v832->833.', d:'done' },
  { id:'p1_878', label:'Stock Take "Tunjuk SKU" mesra-PHONE: jadual detail SKU (Gambar/SKU/Nama/Lokasi/Sistem/Dikira/Selisih/Catatan/Status/Oleh/Check2/Final/Aksi — ~13 kolum) kena slide kiri/kanan di phone, nama berlonggok (Zaid: "table tu tak mesra user phone, tolong fix" — staff tekan Tunjuk SKU selepas sesi Zack). FIX ikut corak p1_872 (All Orders): tiap <td> tambah data-label + table class scs-sku-table; CSS @media<=768 + pos-app-scoped: thead sorok, tr jadi KAD (border+radius+shadow), td jadi baris label:nilai (::before=data-label), SKU jadi tajuk besar, Nama mengalir penuh, Aksi butang bawah kad. Takde slide lagi. Tablet/desktop kekal jadual penuh. app.js v831->832, design-tokens.css v144->145.', d:'done' },
  { id:'p1_877', label:'Tanya AI (phone): FIX panel HANCUR bila tekan Tanya AI — input terapung ke ATAS skrin (atas dynamic island) + produk Cashier tembus (Zaid screenshot IMG_0982). PUNCA: input auto-focus bila buka → keyboard naik → iOS WKWebView tolak SELURUH halaman ke atas (auto-scroll), position:fixed panel ter-displace. FIX kukuh p1_877: (1) BUANG auto-focus bila buka — panel papar bersih dulu, user tap input sendiri (gaya WhatsApp). (2) Panel tak lagi guna bottom:keyboard; JEJAK visualViewport → set --sa-top/--sa-h (TOP=bawah bar native, HEIGHT=hingga atas keyboard) supaya panel sentiasa muat tepat kawasan-nampak. (3) window.scrollTo(0,0) setiap sync → batalkan auto-scroll iOS yg tolak input ke atas. (4) multi-sync masa keyboard animate (0/60/160/300/450ms). (5) body.sa-panel-open overflow:hidden kunci halaman bawah. app.js v830->831, design-tokens.css v143->144.', d:'done' },
  { id:'p1_876', label:'Tanya AI (phone): gaya WhatsApp betul-betul bila keyboard buka — conversation kekal nampak ATAS keyboard (Zaid: "bila buka keypad, buat macam whatsapp, boleh tengok conversation diatas"). p1_873 dah cuba tapi belum kukuh di iOS WKWebView. FIX p1_876: (1) kira tinggi keyboard = innerHeight−visualViewport.height SAHAJA (buang tolak offsetTop — di WKWebView bila page auto-scroll, offsetTop silap-kecilkan nilai → input/mesej tenggelam bawah keyboard). (2) keyboard iOS beranimasi ~300ms → sync --sa-kb beberapa kali (0/80/200/350ms) supaya nilai akhir tepat. (3) scroll mesej ke bawah selepas layout settle (rAF + lepas resize). (4) kunci scroll halaman bawah masa panel buka (body.sa-panel-open overflow:hidden) supaya position:fixed kekal stabil. (5) input padding-bottom safe-area + sa-msgs overscroll-contain. app.js v829->830, design-tokens.css v142->143.', d:'done' },
@@ -14025,7 +14033,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=832"></script>
+ <script src="app.js?v=833"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
