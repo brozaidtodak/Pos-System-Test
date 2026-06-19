@@ -40228,6 +40228,11 @@ window.__autoPosLayout = function(){
   if(localStorage.getItem('posMode') === 'mobile') document.body.classList.add('pos-mobile-mode');
   else document.body.classList.remove('pos-mobile-mode');
  }
+ // p1_864 — TABLET 2-pane: lebar >=768 & tinggi >=600 (tablet portrait/landscape, BUKAN phone
+ // landscape yg pendek) → troli jadi rail tetap di kanan (catalog kiri sentiasa + troli nampak),
+ // bukan drawer bawah. Layer atas pos-mobile-mode (kekal satu-scroll + simplifikasi lain).
+ var tabletPane = narrow && window.innerWidth >= 768 && window.innerHeight >= 600;
+ document.body.classList.toggle('pos-tablet-pane', tabletPane);
  var btn = document.getElementById('btnPosLayoutToggle');
  if(btn) btn.style.display = narrow ? 'none' : '';
  try { window.__updatePosLayoutBtn && window.__updatePosLayoutBtn(); } catch(e){}
