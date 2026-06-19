@@ -4342,3 +4342,6 @@ body.pos-app-scoped #saPanel .sa-msgs { flex: 1 1 auto !important; overflow-y: a
 body.pos-app-scoped #saPanel .sa-form { flex: 0 0 auto !important; }
 /* tablet: chat sheet di kawasan kandungan kanan sidebar (takde bottom tab bar) */
 body.pos-tablet-pane #saPanel { left: calc(220px + 12px) !important; right: 12px !important; bottom: 14px !important; top: calc(var(--pos-app-header-h, 60px) + 12px) !important; }
+/* p1_874 — sorok bar troli terapung "Lihat Troli" bila panel Tanya AI dibuka (cart bar z-4999
+   dulu terapung ATAS sheet chat → nampak macam ada troli dalam skrin Tanya AI). Terpakai phone+tablet. */
+body:has(#saPanel:not([hidden])) #mobileCartFloatingBar { display: none !important; }
