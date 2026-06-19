@@ -37,7 +37,7 @@
  <link rel="stylesheet" href="style.css?v=61">
  <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
  <link rel="dns-prefetch" href="https://images.weserv.nl">
- <link rel="stylesheet" href="design-tokens.css?v=122">
+ <link rel="stylesheet" href="design-tokens.css?v=123">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -721,6 +721,45 @@
  </select>
  <input type="text" id="cpEwalletRef" class="cp-input" placeholder="Ref # confirmation">
  </div>
+ </div>
+ </div>
+
+ <!-- p1_853 — Tunai Diterima + Baki (kira duit pulang). Hanya papar bila Cara Bayar = Tunai. -->
+ <div class="cp-section cp-cash" id="cpCashPanel">
+ <div class="cp-cash__title-row">
+ <p class="cp-section__title" style="margin:0;" data-i18n="cp_cash_received">Tunai Diterima</p>
+ <button type="button" class="cp-cash__clear" onclick="window.cpCashKey('clear')"><i data-lucide="x" style="width:13px;height:13px;"></i> Kosong</button>
+ </div>
+ <div class="cp-cash__amounts">
+ <div class="cp-cash__received">
+ <span class="cp-cash__rm" data-i18n="cp_cash_in">Diterima</span>
+ <span><span class="cp-cash__rm" style="font-size:13px;">RM</span> <span id="cpCashReceived" class="cp-cash__val">0.00</span></span>
+ </div>
+ <div class="cp-cash__change" id="cpCashChangeWrap">
+ <span class="cp-cash__change-lbl" data-i18n="cp_change">Baki Pulang</span>
+ <span id="cpCashChange" class="cp-cash__change-val">RM 0.00</span>
+ </div>
+ </div>
+ <div class="cp-cash__quick" id="cpCashQuick">
+ <button type="button" class="cp-cash__chip cp-cash__chip--exact" onclick="window.cpCashQuick('exact')"><i data-lucide="equal" style="width:13px;height:13px;"></i> Ngam</button>
+ <button type="button" class="cp-cash__chip" onclick="window.cpCashQuick(50)">50</button>
+ <button type="button" class="cp-cash__chip" onclick="window.cpCashQuick(100)">100</button>
+ <button type="button" class="cp-cash__chip" onclick="window.cpCashQuick(150)">150</button>
+ <button type="button" class="cp-cash__chip" onclick="window.cpCashQuick(200)">200</button>
+ </div>
+ <div class="cp-cash__keypad">
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('1')">1</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('2')">2</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('3')">3</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('4')">4</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('5')">5</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('6')">6</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('7')">7</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('8')">8</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('9')">9</button>
+ <button type="button" class="cp-cash__key cp-cash__key--util" onclick="window.cpCashKey('.')">.</button>
+ <button type="button" class="cp-cash__key" onclick="window.cpCashKey('0')">0</button>
+ <button type="button" class="cp-cash__key cp-cash__key--util" onclick="window.cpCashKey('back')" aria-label="Padam"><i data-lucide="delete" style="width:20px;height:20px;"></i></button>
  </div>
  </div>
  </div>
@@ -8509,6 +8548,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_853', label:'Cashier: KIRA BAKI + keypad tunai (audit operasi harian — Zaid: paling kritikal untuk walk-in). Dulu modal bayar tunjuk total je, takde input duit diterima / kira baki → staff kira sendiri (senang silap). FIX: panel checkout (cpFormView) tambah seksyen "Tunai Diterima" (#cpCashPanel) yang HANYA papar bila Cara Bayar=Tunai (cpSetPayment toggle): paparan Diterima + Baki Pulang (nombor tabular besar), chip cepat (Ngam=exact, 50/100/150/200), keypad 1-9/./0/padam (touch ≥52px, maklum balas tekan). Fungsi window.cpCashKey/cpCashQuick/cpCashRender/cpCashReset; baki = diterima−total, hijau bila cukup, merah "Kurang RM X" bila tak cukup; cpRecomputeTotal panggil cpCashRender (baki auto-update bila diskaun berubah); openCheckoutPanel reset tiap sale. Simpan audit ke sales_history.metadata.cash_received + cash_change (via cpConfirmSale→processNewCheckout saleMeta). UX skill: tabular figures, touch target besar, scale feedback, brand-lock 3 warna (hijau/merah functional). app.js v811->812, design-tokens.css v122->123.', d:'done' },
  { id:'p1_852', label:'view.html: status bar iOS HIASAN pada bingkai app staf (Zaid: "tambah hiasan preview... letak masa & icon sebiji macam phone aku"). Bingkai phone preview dulu bezel kosong terus ke app — tak realistik vs iPhone betul (yg ada status bar jam+signal+wifi+bateri). Tambah .ios-statusbar dlm #deviceR (atas iframe): jam 20:37 kiri + Dynamic Island pil tengah (phone) + signal/wifi/bateri(hijau) kanan, latar #101010 (sama bar atas native → nampak bersambung). Phone+Tablet (island sorok di tablet, bar lebih nipis). Hanya pane kanan (app staf), bukan back-office. fit() auto-skala ikut offsetHeight jadi tak perlu laras manual. Halaman statik sahaja — TIADA perubahan app.js/app sebenar.', d:'done' },
  { id:'p1_851', label:'iOS app native — build berjaya pasang ke iPhone + polish widget AI (Zaid: "developer apple dah siap, individual team dah ada"). (1) BUILD FIX: project Xcode warisan ada team ID salah (48VWD69HBN) + bundle ID placeholder sampah (https---github.com-brozaidtodak-Pos-System-Test) → betulkan ke akaun individual baru DEVELOPMENT_TEAM=294P46M42M (mzaidax1999) + PRODUCT_BUNDLE_IDENTIFIER=com.tencamp.pos (padan capacitor.config.json appId) di Debug+Release + exportOptions.plist teamID. App POS kini build & pasang ke iPhone 15 Pro Max (disahkan jalan: top bar + bottom tab bar Cashier/Orders/Komisen/Stok muncul lepas login). (2) POLISH: widget AI Tanya (#saWidget) bertindan separa dgn bar terapung "Lihat Troli" dalam body.pos-app-scoped (bubble bottom:84px jatuh dlm julat bar oren ~70-130px → tutup jumlah RM kanan). FIX: angkat bubble ke bottom:calc(140px+safe-area) supaya duduk ATAS bar oren. design-tokens.css?v=121->122. Fail ios cuma config (tiada section baru, div balance tak berubah). (3) FIX search bar "terlalu ke bawah" dalam app (Zaid screenshot view.html): PUNCA — .pos-prodsearch-row position:sticky top:var(--pos-app-header-h); JS setHdrH() ukur .app-header offsetHeight, tapi dlm mod app header itu display:none (offsetHeight 0) → var TAK update → nilai lama besar (>padding atas kandungan) tersangkut → sticky TOLAK search row turun ~76px masa rehat. FIX: setHdrH kini detect body.pos-app-scoped → set --pos-app-header-h = tinggi #posAppTopBar native (~113px < padding 123px, tiada tolak); + __applyPosAppScope panggil __setPosHeaderH selepas suntik bar. app.js v810->811.', d:'done' },
  { id:'p1_850', label:'Receiving › Edit Rosak (Zaid: "create function untuk edit, sebab ada je unit damaged dulu2"). Butang "Edit rosak" pada tiap baris sejarah penerimaan → modal __rcvEdit(poId): senarai item PO (sku/nama/qty diterima) + papar rosak yang DAH direkod (dari returns_log order_ref=PO type=damaged) + input "Rosak (tambah)" per baris + checkbox "Tolak dari stok jual (FIFO)" (default on) + catatan. __rcvSaveDamage: insert returns_log (type damaged, source po_edit, cost_impact=unit_cost_rm) + (jika dicentang) tolak FIFO via __applyStockDelta(sku,-dmg) — papar amaran kalau stok tak cukup (short). Refetch inventory_batches + re-render. Guna enjin sedia ada (returns_log + deduct_stock_fifo RPC), modal append ke body (tiada section baru). app.js v809->810.', d:'done' },
@@ -13823,7 +13863,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=811"></script>
+ <script src="app.js?v=812"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

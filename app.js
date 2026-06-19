@@ -14383,6 +14383,12 @@ window.processNewCheckout = async function() {
  saleMeta.has_custom_sale = true;
  saleMeta.custom_sale_count = customItems.length;
  }
+ // p1_853 — tunai diterima + baki (audit; hanya bila bayar Tunai & staff masukkan jumlah)
+ if(window.__cpCashPayment && pm === 'Cash') {
+ saleMeta.cash_received = window.__cpCashPayment.received;
+ saleMeta.cash_change = window.__cpCashPayment.change;
+ window.__cpCashPayment = null;
+ }
 
  // p1_180 — upload payment proof to Storage before insert (skip if no file)
  // p1_185 — surface upload failure to user (was silent — staff may not realize
@@ -33018,6 +33024,8 @@ window.openCheckoutPanel = function() {
  // p1_383 — JANGAN reset resit state di sini lagi (dulu p1_372): staff boleh snap
  // resit SIAP-SIAP di skrin cart sebelum checkout; reset hanya bila cart clear /
  // lepas sale siap (clearCart + post-checkout cleanup). Badge panel baca __proofState.
+ // p1_853 — reset Tunai Diterima setiap checkout baru (elak baki sale lepas terbawa)
+ if(typeof window.cpCashReset === 'function') window.cpCashReset();
  cpSetPayment('Cash');
 
  // Compute & show total
@@ -33079,6 +33087,12 @@ window.cpSetPayment = function(method) {
  cpPopulateEwallets();
  } else {
  ewl.classList.add('is-hidden');
+ }
+ // p1_853 — papar panel "Tunai Diterima + Baki" hanya untuk Tunai
+ const cashPanel = document.getElementById('cpCashPanel');
+ if(cashPanel){
+ cashPanel.style.display = (method === 'Cash') ? 'block' : 'none';
+ if(method === 'Cash' && typeof window.cpCashRender === 'function') window.cpCashRender();
  }
  // p1_230 — Refresh cpFormView proof badge (Snap/Pilih buttons manual)
  // p1_372 — Zaid: staff nak snap resit untuk SEMUA jualan termasuk Cash. Buang gate Cash.
@@ -33191,7 +33205,54 @@ window.cpRecomputeTotal = function() {
  }
  const legacy = document.getElementById('paymentTotalDisplay');
  if(legacy) legacy.textContent = final.toFixed(2);
+ // p1_853 — refresh baki bila total berubah (cth: diskaun ditambah)
+ if(typeof window.cpCashRender === 'function') window.cpCashRender();
 };
+
+// p1_853 — Tunai Diterima + Baki (kira duit pulang). Keypad besar untuk laju di phone.
+window.__cpCashRaw = ''; // string mentah yang ditaip (cth "150" atau "27.50")
+window.cpCashKey = function(k){
+ let s = window.__cpCashRaw || '';
+ if(k === 'clear'){ s = ''; }
+ else if(k === 'back'){ s = s.slice(0, -1); }
+ else if(k === '.'){ if(!s.includes('.')) s = (s === '' ? '0' : s) + '.'; }
+ else { // digit 0-9
+ if(s.includes('.') && s.split('.')[1].length >= 2) return; // max 2 titik perpuluhan
+ if(s.replace('.', '').length >= 7) return; // had waras (<= RM 99999.99)
+ s = (s === '0') ? k : s + k;
+ }
+ window.__cpCashRaw = s;
+ window.cpCashRender();
+};
+window.cpCashQuick = function(amt){
+ if(amt === 'exact'){
+ const t = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
+ window.__cpCashRaw = t.toFixed(2);
+ } else {
+ window.__cpCashRaw = String(amt);
+ }
+ window.cpCashRender();
+};
+window.cpCashRender = function(){
+ const raw = window.__cpCashRaw || '';
+ const recv = parseFloat(raw) || 0;
+ const total = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
+ const rEl = document.getElementById('cpCashReceived');
+ if(rEl) rEl.textContent = (raw === '' ? '0.00' : recv.toFixed(2));
+ const cEl = document.getElementById('cpCashChange');
+ const wrap = document.getElementById('cpCashChangeWrap');
+ if(cEl && wrap){
+ const change = round2(recv - total);
+ if(raw === '' || recv === 0){
+ cEl.textContent = 'RM 0.00'; wrap.className = 'cp-cash__change';
+ } else if(change >= 0){
+ cEl.textContent = 'RM ' + change.toFixed(2); wrap.className = 'cp-cash__change is-ok';
+ } else {
+ cEl.textContent = 'Kurang RM ' + Math.abs(change).toFixed(2); wrap.className = 'cp-cash__change is-short';
+ }
+ }
+};
+window.cpCashReset = function(){ window.__cpCashRaw = ''; window.__cpCashPayment = null; if(typeof window.cpCashRender === 'function') window.cpCashRender(); };
 
 // p1_33 — Walk-in quick toggle: skip customer info for fast counter sales
 window.cpToggleWalkin = function() {
@@ -33418,6 +33479,15 @@ window.cpConfirmSale = async function() {
  sync('cpDiscType', 'checkoutDiscType');
  sync('cpDiscAmt', 'checkoutDiscAmt');
  sync('cpDiscReason', 'checkoutDiscReason');
+
+ // p1_853 — rekod tunai diterima + baki (kalau bayar Tunai & staff masukkan jumlah) untuk audit
+ if(pm === 'Cash' && window.__cpCashRaw && window.__cpCashRaw !== ''){
+ const recv = parseFloat(window.__cpCashRaw) || 0;
+ const tot = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
+ window.__cpCashPayment = { received: recv, change: round2(recv - tot) };
+ } else {
+ window.__cpCashPayment = null;
+ }
 
  // Disable button while processing
  const btn = document.getElementById('cpConfirmBtn');

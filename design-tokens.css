@@ -4125,3 +4125,29 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 /* p1_492 — Product editor (pdpModal) EasyStore-style 2-column layout */
 .pdp-edit-grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 980px) { .pdp-edit-grid { grid-template-columns: 1fr; } }
+
+/* p1_853 — Tunai Diterima + Baki (panel checkout, Cara Bayar = Tunai). Brand-lock + tabular figures. */
+.cp-cash__title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cp-cash__clear { background: none; border: none; color: #B23A2E; font: 700 11.5px 'Poppins', sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; min-height: 32px; }
+.cp-cash__amounts { display: flex; gap: 10px; margin-bottom: 12px; }
+.cp-cash__received, .cp-cash__change { flex: 1; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cp-cash__received { background: #FAF6EF; border: 1px solid #EEE7DA; }
+.cp-cash__rm { font-size: 11px; font-weight: 600; color: #9a948b; letter-spacing: .3px; }
+.cp-cash__val { font-size: 24px; font-weight: 800; color: #101010; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cp-cash__change { background: #F2F2F2; border: 1px solid #E5E5E5; transition: background .15s, border-color .15s; }
+.cp-cash__change-lbl { font-size: 11px; font-weight: 600; color: #9a948b; letter-spacing: .3px; }
+.cp-cash__change-val { font-size: 24px; font-weight: 800; color: #6B7280; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cp-cash__change.is-ok { background: #E4F4E7; border-color: #BFE3C6; }
+.cp-cash__change.is-ok .cp-cash__change-lbl { color: #2F7D3F; }
+.cp-cash__change.is-ok .cp-cash__change-val { color: #16A34A; }
+.cp-cash__change.is-short { background: #FBE9E7; border-color: #F3C2BD; }
+.cp-cash__change.is-short .cp-cash__change-lbl { color: #B23A2E; }
+.cp-cash__change.is-short .cp-cash__change-val { color: #DC2626; font-size: 17px; }
+.cp-cash__quick { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.cp-cash__chip { flex: 1; min-width: 54px; min-height: 42px; border: 1px solid #E2D9C8; background: #fff; border-radius: 9px; font: 700 14px 'Poppins', sans-serif; color: #101010; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: transform .06s, background .12s; -webkit-tap-highlight-color: transparent; }
+.cp-cash__chip:active { transform: scale(.94); background: #FAF6EF; }
+.cp-cash__chip--exact { background: #FBF1E4; border-color: #E7C68A; color: #7A5410; }
+.cp-cash__keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.cp-cash__key { min-height: 52px; border: 1px solid #E6E0D4; background: #fff; border-radius: 11px; font: 700 20px 'Poppins', sans-serif; color: #101010; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; transition: transform .06s, background .12s; -webkit-tap-highlight-color: transparent; }
+.cp-cash__key:active { transform: scale(.93); background: #FAF6EF; }
+.cp-cash__key--util { color: #9A3412; background: #FBF1E4; }
