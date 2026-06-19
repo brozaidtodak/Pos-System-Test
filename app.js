@@ -61,7 +61,7 @@ window.__isPOSAppPreview = /[?&]posapp=1/.test(location.search || '') && !/TenCa
  '.posAppTab.active{color:#CD7C32;}',
  '.posAppTab:active{transform:scale(.88);}',
  // Content edge-to-edge + ruang untuk bar atas/bawah + safe area
- 'body.pos-app-scoped #main-content{max-width:none!important; margin:0!important; width:100%!important; padding:calc(54px + env(safe-area-inset-top) + 10px) 12px calc(72px + env(safe-area-inset-bottom)) 12px !important;}',
+ 'body.pos-app-scoped #main-content{max-width:none!important; margin:0!important; width:100%!important; padding:calc(54px + env(safe-area-inset-top) + 10px) 12px calc(134px + env(safe-area-inset-bottom)) 12px !important;}',
  // Tap feedback ringan
  'body.pos-app-scoped .product-card:active{transform:scale(.97); transition:transform .05s;}',
  // p1_553 — kalau floating cart bar (pos-mobile-mode) muncul, angkat ia ATAS bar tab supaya tak bertindih.
@@ -216,6 +216,8 @@ window.__restoreSession = async function() {
 // Money helper: avoid float-drift accumulation. Use after every += / arithmetic
 // that contributes to a money total. Display layers can still toFixed(2).
 window.round2 = function(n) { return Math.round((parseFloat(n) || 0) * 100) / 100; };
+// p1_863 — format duit seragam (en-MY, pemisah ribuan + 2 titik perpuluhan) untuk SEMUA paparan tunai
+window.__money = function(n) { return Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
 const round2 = window.round2;
 
 // p1_452 — SATU sumber kebenaran utk "jualan dikira dalam analytics".
@@ -13575,11 +13577,11 @@ function renderCart() {
  <div class="cart-item" style="${belowFloor ? 'border-left:3px solid #B23A2E; background:rgba(254,226,226,.15);' : ''}">
  <img src="${__img}" loading="lazy" onerror="this.onerror=null;this.src=window.__cartNoImg;" style="width:48px; height:48px; object-fit:cover; border-radius:8px; border:1px solid #E5E7EB; flex-shrink:0; margin-right:10px;" alt="">
  <div style="flex:1; min-width:0;"><strong style="font-size:13px; color:#111;">[${hesc(item.sku)}] ${hesc(item.name)}</strong><br><small style="color:#666;">${(item.discount_amount && item.original_price) ? `<s style="color:#9CA3AF;">RM${item.original_price.toFixed(2)}</s> ` : ''}RM${item.price.toFixed(2)} x ${item.quantity}</small> ${(item.discount_amount && item.discount_amount > 0) ? `<span style="display:inline-block; margin-left:5px; padding:1px 6px; background:#F8EFD7; color:#7A5410; border-radius:50px; font-size:10px; font-weight:700;" title="${item.discount_reason || 'Diskaun manual'}">-RM ${item.discount_amount.toFixed(2)}</span>` : ''} ${floorBadge}<div style="margin-top:5px;"><button onclick="openCartItemDiscount('${item.sku}')" title="Diskaun untuk item ni" style="width:auto !important; height:auto !important; display:inline-block; white-space:nowrap; background:${(item.discount_amount > 0) ? '#ECD9A4' : '#F3F4F6'}; color:#7A5410; border:1px solid ${(item.discount_amount > 0) ? '#CE9420' : '#E5E7EB'}; padding:4px 12px; border-radius:6px; font-weight:600; font-size:10.5px; line-height:1.4; cursor:pointer;">${(item.discount_amount > 0) ? 'Edit discount' : '+ Apply discount on item'}</button></div></div>
- <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
- <button onclick="decreaseQuantity('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">-</button>
- <span style="font-weight:bold;">${item.quantity}</span>
- <button onclick="addToCart('${item.sku}')" style="background:#eee; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold;">+</button>
- <button onclick="removeFromCart('${item.sku}')" style="color:#B23A2E; background:#F4E4DF; border:none; width:25px; height:25px; border-radius:5px; font-weight:bold; margin-left:5px;">X</button>
+ <div style="display:flex; gap:10px; align-items:center; flex-shrink:0;">
+ <button onclick="decreaseQuantity('${item.sku}')" aria-label="Kurang kuantiti" style="background:#eee; border:none; width:40px; height:40px; border-radius:8px; font-weight:bold; font-size:18px; line-height:1; cursor:pointer;">-</button>
+ <span style="font-weight:bold; min-width:18px; text-align:center; font-variant-numeric:tabular-nums;">${item.quantity}</span>
+ <button onclick="addToCart('${item.sku}')" aria-label="Tambah kuantiti" style="background:#eee; border:none; width:40px; height:40px; border-radius:8px; font-weight:bold; font-size:18px; line-height:1; cursor:pointer;">+</button>
+ <button onclick="removeFromCart('${item.sku}')" aria-label="Buang dari troli" style="color:#B23A2E; background:#F4E4DF; border:none; width:40px; height:40px; border-radius:8px; font-weight:bold; font-size:15px; line-height:1; cursor:pointer; margin-left:14px;">X</button>
  </div>
  </div>`;
  }).join('');
@@ -33306,7 +33308,7 @@ window.cpCashRender = function(){
  const recv = parseFloat(raw) || 0;
  const total = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
  const rEl = document.getElementById('cpCashReceived');
- if(rEl) rEl.textContent = (raw === '' ? '0.00' : recv.toFixed(2));
+ if(rEl) rEl.textContent = (raw === '' ? '0.00' : window.__money(recv));
  const cEl = document.getElementById('cpCashChange');
  const wrap = document.getElementById('cpCashChangeWrap');
  if(cEl && wrap){
@@ -33314,9 +33316,9 @@ window.cpCashRender = function(){
  if(raw === '' || recv === 0){
  cEl.textContent = 'RM 0.00'; wrap.className = 'cp-cash__change';
  } else if(change >= 0){
- cEl.textContent = 'RM ' + change.toFixed(2); wrap.className = 'cp-cash__change is-ok';
+ cEl.textContent = 'RM ' + window.__money(change); wrap.className = 'cp-cash__change is-ok';
  } else {
- cEl.textContent = 'Kurang RM ' + Math.abs(change).toFixed(2); wrap.className = 'cp-cash__change is-short';
+ cEl.textContent = 'Kurang RM ' + window.__money(Math.abs(change)); wrap.className = 'cp-cash__change is-short';
  }
  }
 };
@@ -33345,12 +33347,12 @@ window.cpSplitRecompute = function(){
  const v = id => round2(parseFloat((document.getElementById(id) || {}).value) || 0);
  const entered = round2(v('cpSplitCash') + v('cpSplitCard') + v('cpSplitEwallet'));
  const bal = round2(total - entered);
- const eEl = document.getElementById('cpSplitEntered'); if(eEl) eEl.textContent = 'RM ' + entered.toFixed(2);
+ const eEl = document.getElementById('cpSplitEntered'); if(eEl) eEl.textContent = 'RM ' + window.__money(entered);
  const bEl = document.getElementById('cpSplitBalance'); const wrap = document.getElementById('cpSplitBalWrap');
  if(bEl && wrap){
  if(bal === 0){ bEl.textContent = 'Cukup'; wrap.className = 'cp-split__sum cp-split__bal is-ok'; }
- else if(bal > 0){ bEl.textContent = 'RM ' + bal.toFixed(2); wrap.className = 'cp-split__sum cp-split__bal'; }
- else { bEl.textContent = 'Lebih RM ' + Math.abs(bal).toFixed(2); wrap.className = 'cp-split__sum cp-split__bal is-short'; }
+ else if(bal > 0){ bEl.textContent = 'RM ' + window.__money(bal); wrap.className = 'cp-split__sum cp-split__bal'; }
+ else { bEl.textContent = 'Lebih RM ' + window.__money(Math.abs(bal)); wrap.className = 'cp-split__sum cp-split__bal is-short'; }
  }
 };
 
@@ -33378,7 +33380,7 @@ window.cashOutKey = function(k){
 };
 window.cashOutRender = function(){
  const raw = window.__cashOutRaw || ''; const v = parseFloat(raw) || 0;
- const el = document.getElementById('cashOutAmount'); if(el) el.textContent = (raw === '' ? '0.00' : v.toFixed(2));
+ const el = document.getElementById('cashOutAmount'); if(el) el.textContent = (raw === '' ? '0.00' : window.__money(v));
 };
 window.cashOutCat = function(btn){
  window.__cashOutCat = btn.dataset.cat;
@@ -33483,7 +33485,7 @@ window.__returnPickerPick = function(saleId){
 // p1_857 — Tutup Kira (Z-Report). Float + jualan tunai − duit keluar = dijangka vs kira sebenar.
 window.__cashCloseCounted = '';
 window.__cashCloseData = { cashSales:0, cashSalesCount:0, cashOut:0, cashOutCount:0, floatOpen:0 };
-window.__ccFmt = function(n){ return 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
+window.__ccFmt = function(n){ return 'RM ' + window.__money(n); };
 window.openCashClose = async function(){
  const m = document.getElementById('cashCloseModal'); if(!m) return;
  const now = new Date();
@@ -33535,7 +33537,7 @@ window.cashCloseKey = function(k){
  else if(k === '.'){ if(!s.includes('.')) s = (s === '' ? '0' : s) + '.'; }
  else { if(s.includes('.') && s.split('.')[1].length >= 2) return; if(s.replace('.', '').length >= 7) return; s = (s === '0') ? k : s + k; }
  window.__cashCloseCounted = s;
- const el = document.getElementById('cashCloseCounted'); if(el) el.textContent = (s === '' ? '0.00' : (parseFloat(s) || 0).toFixed(2));
+ const el = document.getElementById('cashCloseCounted'); if(el) el.textContent = (s === '' ? '0.00' : window.__money(parseFloat(s) || 0));
  window.cashCloseRecompute();
 };
 window.cashCloseRecompute = function(){
@@ -33723,6 +33725,8 @@ window.__syncOfflineSales = async function(opts){
 window.__renderOfflineUI = function(){
  const q = window.__getOfflineQueue();
  const offline = !window.__isOnline();
+ // p1_863 — body class supaya kandungan (KPI/search) ditolak bawah banner, bukan tertutup
+ try { document.body.classList.toggle('pos-offline-on', !!(offline || q.length)); } catch(e){}
  let b = document.getElementById('posOfflineBanner');
  if(offline || q.length){
  if(!b){ b = document.createElement('div'); b.id = 'posOfflineBanner'; (document.body || document.documentElement).appendChild(b); }

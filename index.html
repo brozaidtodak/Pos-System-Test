@@ -37,7 +37,7 @@
  <link rel="stylesheet" href="style.css?v=61">
  <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
  <link rel="dns-prefetch" href="https://images.weserv.nl">
- <link rel="stylesheet" href="design-tokens.css?v=131">
+ <link rel="stylesheet" href="design-tokens.css?v=132">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -710,9 +710,9 @@
  <!-- p1_859 — Pisah bayaran (split payment): bahagi 1 jualan ke beberapa cara bayar -->
  <label class="cp-split-toggle"><input type="checkbox" id="cpSplitToggle" onchange="window.cpToggleSplit()"> <span>Pisah bayaran (split — cth: tunai + e-wallet)</span></label>
  <div id="cpSplitPanel" class="is-hidden cp-split">
- <div class="cp-split__row"><span class="cp-split__lbl"><i data-lucide="banknote" style="width:15px;height:15px;"></i> Tunai</span><span class="cp-split__inp"><span>RM</span><input type="number" id="cpSplitCash" step="0.01" min="0" placeholder="0.00" inputmode="decimal" oninput="window.cpSplitRecompute()"></span></div>
- <div class="cp-split__row"><span class="cp-split__lbl"><i data-lucide="credit-card" style="width:15px;height:15px;"></i> Kad/Bank</span><span class="cp-split__inp"><span>RM</span><input type="number" id="cpSplitCard" step="0.01" min="0" placeholder="0.00" inputmode="decimal" oninput="window.cpSplitRecompute()"></span></div>
- <div class="cp-split__row"><span class="cp-split__lbl"><i data-lucide="wallet" style="width:15px;height:15px;"></i> E-Wallet/QR</span><span class="cp-split__inp"><span>RM</span><input type="number" id="cpSplitEwallet" step="0.01" min="0" placeholder="0.00" inputmode="decimal" oninput="window.cpSplitRecompute()"></span></div>
+ <div class="cp-split__row"><span class="cp-split__lbl"><i data-lucide="banknote" style="width:15px;height:15px;"></i> Tunai</span><span class="cp-split__inp"><span>RM</span><input type="number" id="cpSplitCash" aria-label="Tunai (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" oninput="window.cpSplitRecompute()"></span></div>
+ <div class="cp-split__row"><span class="cp-split__lbl"><i data-lucide="credit-card" style="width:15px;height:15px;"></i> Kad/Bank</span><span class="cp-split__inp"><span>RM</span><input type="number" id="cpSplitCard" aria-label="Kad/Bank (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" oninput="window.cpSplitRecompute()"></span></div>
+ <div class="cp-split__row"><span class="cp-split__lbl"><i data-lucide="wallet" style="width:15px;height:15px;"></i> E-Wallet/QR</span><span class="cp-split__inp"><span>RM</span><input type="number" id="cpSplitEwallet" aria-label="E-Wallet/QR (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" oninput="window.cpSplitRecompute()"></span></div>
  <div class="cp-split__sum"><span>Dimasuk</span><span id="cpSplitEntered">RM 0.00</span></div>
  <div class="cp-split__sum cp-split__bal" id="cpSplitBalWrap"><span>Baki perlu</span><span id="cpSplitBalance">RM 0.00</span></div>
  </div>
@@ -801,11 +801,11 @@
  </aside>
 
  <!-- p1_854 — Duit Keluar (Cash Out / Petty Cash dari box kaunter). Semua staff boleh; gambar resit WAJIB. -->
- <div id="cashOutModal" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
+ <div id="cashOutModal" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:430px; width:92%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
  <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="arrow-up-from-line" style="width:19px;height:19px; color:#B23A2E;"></i> Duit Keluar</h2>
- <button type="button" onclick="window.closeCashOut()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; padding:6px;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+ <button type="button" onclick="window.closeCashOut()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
  <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Rekod duit dikeluarkan dari box kaunter (Lalamove, beli air, bayaran urgent). Nama staff + masa direkod automatik.</p>
 
@@ -833,7 +833,7 @@
  <button type="button" class="co-cat" data-cat="Lain-lain" onclick="window.cashOutCat(this)">Lain-lain</button>
  </div>
 
- <input type="text" id="cashOutNote" class="cp-input" placeholder="Nota (cth: Lalamove ke pelanggan Ali)" maxlength="120" style="margin:12px 0;">
+ <input type="text" id="cashOutNote" aria-label="Nota duit keluar" class="cp-input" placeholder="Nota (cth: Lalamove ke pelanggan Ali)" maxlength="120" style="margin:12px 0;">
 
  <p class="cp-section__title" style="margin:0 0 6px;">Resit / Bukti <span style="color:#B23A2E;">(wajib)</span></p>
  <input type="file" id="cashOutPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="window.cashOutPickPhoto(this)">
@@ -845,24 +845,24 @@
  </div>
 
  <!-- p1_855 — Pulangan/Refund picker dari Cashier: cari jualan terkini → buka flow return sedia ada -->
- <div id="returnPickerModal" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
+ <div id="returnPickerModal" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:480px; width:94%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
  <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="rotate-ccw" style="width:19px;height:19px; color:#7C2A20;"></i> Pulangan / Refund</h2>
- <button type="button" onclick="window.closeReturnPicker()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; padding:6px;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+ <button type="button" onclick="window.closeReturnPicker()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
  <p style="font-size:12.5px; color:#6B7280; margin:0 0 12px;">Cari jualan untuk proses pulangan/refund. Taip No. jualan, nama, atau telefon.</p>
- <input type="text" id="returnPickerSearch" class="cp-input" placeholder="Cari: No. jualan / nama / telefon" oninput="window.__renderReturnPicker(this.value)" style="margin-bottom:12px;">
+ <input type="text" id="returnPickerSearch" aria-label="Cari jualan untuk pulangan" class="cp-input" placeholder="Cari: No. jualan / nama / telefon" oninput="window.__renderReturnPicker(this.value)" style="margin-bottom:12px;">
  <div id="returnPickerList" style="max-height:50vh; overflow-y:auto;"></div>
  </div>
  </div>
 
  <!-- p1_858 — Laci Duit hub: Buka Shift (float pagi) + status + Tutup Kira -->
- <div id="cashDrawerHub" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
+ <div id="cashDrawerHub" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:430px; width:93%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
  <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="wallet" style="width:19px;height:19px; color:#101010;"></i> Laci Duit</h2>
- <button type="button" onclick="window.closeCashDrawerHub()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; padding:6px;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+ <button type="button" onclick="window.closeCashDrawerHub()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
  <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Status laci hari ini. Buka shift dengan float pagi, dan tutup kira hujung hari.</p>
 
@@ -876,7 +876,7 @@
  <div id="hubShiftSection">
  <p class="cp-section__title" style="margin:0 0 6px;">Buka Shift — Float Pagi</p>
  <div style="display:flex; gap:8px; align-items:stretch;">
- <span class="cc-row__inp" style="flex:1; background:#FAF6EF; border:1px solid #EEE7DA; border-radius:10px; padding:0 12px; display:flex; align-items:center; gap:6px;"><span style="color:#9a948b; font-size:13px;">RM</span> <input type="number" id="hubFloatInput" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1; border:none; background:none; text-align:right; font:700 16px Poppins; color:#101010; font-variant-numeric:tabular-nums; min-height:46px;"></span>
+ <span class="cc-row__inp" style="flex:1; background:#FAF6EF; border:1px solid #EEE7DA; border-radius:10px; padding:0 12px; display:flex; align-items:center; gap:6px;"><span style="color:#9a948b; font-size:13px;">RM</span> <input type="number" id="hubFloatInput" aria-label="Float pagi (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1; border:none; background:none; text-align:right; font:700 16px Poppins; color:#101010; font-variant-numeric:tabular-nums; min-height:46px;"></span>
  <button type="button" id="hubSaveFloatBtn" onclick="window.saveOpeningFloat()" class="login-btn" style="background:#CD7C32; width:auto; padding:0 18px; font-size:14px; margin:0; flex-shrink:0;">Simpan Float</button>
  </div>
  <p id="hubFloatHint" style="font-size:11.5px; color:#9a948b; margin:7px 2px 0;"></p>
@@ -887,16 +887,16 @@
  </div>
 
  <!-- p1_857 — Tutup Kira (Z-Report): float + jualan tunai − duit keluar = dijangka vs kira sebenar -->
- <div id="cashCloseModal" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
+ <div id="cashCloseModal" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:440px; width:93%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
  <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="calculator" style="width:19px;height:19px; color:#101010;"></i> Tutup Kira</h2>
- <button type="button" onclick="window.closeCashClose()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; padding:6px;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+ <button type="button" onclick="window.closeCashClose()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
  <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Kira duit dalam laci hujung hari vs yang sepatutnya. Rekod disimpan untuk audit.</p>
 
  <div class="cc-rows">
- <div class="cc-row"><span class="cc-row__lbl">Float pagi</span><span class="cc-row__inp"><span style="color:#9a948b; font-size:12px;">RM</span> <input type="number" id="cashCloseFloat" step="0.01" min="0" value="0.00" oninput="window.cashCloseRecompute()" inputmode="decimal"></span></div>
+ <div class="cc-row"><span class="cc-row__lbl">Float pagi</span><span class="cc-row__inp"><span style="color:#9a948b; font-size:12px;">RM</span> <input type="number" id="cashCloseFloat" aria-label="Float pagi (RM)" step="0.01" min="0" value="0.00" oninput="window.cashCloseRecompute()" inputmode="decimal"></span></div>
  <div class="cc-row"><span class="cc-row__lbl">+ Jualan tunai <span id="cashCloseSalesCount" style="color:#9a948b; font-weight:500;"></span></span><span class="cc-row__val" id="cashCloseSales">RM 0.00</span></div>
  <div class="cc-row"><span class="cc-row__lbl">− Duit keluar <span id="cashCloseOutCount" style="color:#9a948b; font-weight:500;"></span></span><span class="cc-row__val" id="cashCloseOut">RM 0.00</span></div>
  <div class="cc-row cc-row--total"><span class="cc-row__lbl">Dijangka dalam laci</span><span class="cc-row__val" id="cashCloseExpected">RM 0.00</span></div>
@@ -8685,6 +8685,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_863', label:'Full UI/UX audit app staf (phone+tablet) — fix 9 isu disahkan (Zaid: "full audit sebagai pakar UI/UX, fix bugs + overlay tertindih, guna semua skill"). Audit via 3 agent + skill ui-ux-pro-max. FIX: (1) butang +/−/X troli 25px→40px + jarakkan X 14px (touch target, elak salah-padam — setiap jualan). (2) baris 5 butang Cashier: media 640px dulu flex 2 butang je → semua butang flex 1 1 50% (grid 2-baris kemas, dulu 3 butang baru terburai). (3) banner OFFLINE (z95 top:54px) dulu TUTUP KPI+sticky search (cashier tak boleh scan masa offline) → body.pos-offline-on tolak #main-content padding-top +48px & search top +40px. (4) bar "Lihat Troli" tutup baris produk terakhir → #main-content padding-bottom 72px→134px. (5) format duit TAK seragam (KPI 1,234.50 vs keypad 1234.50) → helper __money(en-MY grouped) seragamkan keypad baki/split/duit-keluar/tutup-kira. (6) warna off-brand #9A3412 keypad util→bronze #9E7016. (7) butang tutup X modal ~30px→44px (4 modal). (8) 7 input placeholder-only tambah aria-label (a11y). (9) modal tunai z5200→6000 selaras peer modal (elak tembus). DEFER (flag, tak buat — rombakan besar/berisiko): tablet 900-1200px two-pane cart-rail (kini single-column drawer). app.js v820->821, design-tokens.css v131->132.', d:'done' },
  { id:'p1_862', label:'Tanya AI jadi TAB bottom bar (Zaid: "wujudkan ruangan Tanya AI, bottom bar yang baru" — ganti bubble terapung yg tembus modal). __POS_APP_TABS tambah tab ke-5 {key:ai, icon:sparkles, label:Tanya AI, special:ai}; __posAppGo special-case: buka panel chat (__saShow+__saToggle) bukan tukar section, highlight kekal pada tab sebelum. CSS app: sorok #saFab (bubble takde lagi di app), #saPanel jadi sheet penuh (left/right 8px, height 66vh) atas bottom tab bar. Web/tablet mode kekal FAB biasa (z-index 2900 p1_861). Bottom bar app kini 5 tab: Cashier/Orders/Komisen/Stok/Tanya AI. app.js v819->820, design-tokens.css v130->131.', d:'done' },
  { id:'p1_861', label:'Fix: bulatan FAB "Tanya AI" (#saWidget) tembus ATAS modal (Zaid screenshot Laci Duit — sparkle terapung atas modal). PUNCA: z-index 9600 lebih tinggi dari semua modal (login-overlay 3000-5200, cart drawer 5001, product detail pdm-overlay 4500). FIX: turun #saWidget z-index 9600→2900 — kekal atas kandungan + bar native (z100) tapi BAWAH semua modal/overlay. Lindungi semua modal sekali gus (Laci Duit/Duit Keluar/Pulangan/Tutup Kira + modal lama spt product detail/cart drawer yg pun tertembus sebelum ni). design-tokens.css v129->130.', d:'done' },
  { id:'p1_860', label:'Cashier: OFFLINE MODE (Zaid: "buat ketiga2 fungsi" — 3/3). SELAMAT by design — laluan checkout ONLINE tak diubah langsung. Bila navigator.onLine=false: cpConfirmSale simpan jualan ke barisan tempatan (localStorage posOfflineQueue_v1) supaya TAK HILANG + tunjuk skrin success "Disimpan OFFLINE" + kosongkan troli (stok tolak masa sync nanti). Banner merah "OFFLINE" / amber "X menunggu" (fixed atas, bawah bar native). Auto-sync (guarded: cashier idle je, elak ganggu sale aktif) bila event online + masa load kalau ada baki; atau butang "Hantar sekarang" manual. Replay guna processNewCheckout SEBENAR (battle-tested: idempotency/stok/komisen) dgn client_txn_id UNIK per jualan offline (s.txnId) → elak salah-dedupe jualan serupa; modal resit di-stub masa sync. Fn __saveSaleOffline/__replayOfflineSale/__syncOfflineSales/__renderOfflineUI/__isOnline/__cashierIdle. CAVEAT (perlu test simulasi offline): stok & e-resit diproses masa SYNC, bukan masa jualan offline. NOTA arkitek: app Capacitor load live site → offline hanya berfungsi kalau app DAH terbuka & wifi putus tengah guna (cold-start offline perlu service worker yg sengaja dimatikan p1_560). app.js v818->819, design-tokens.css v128->129.', d:'done' },
@@ -14009,7 +14010,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=820"></script>
+ <script src="app.js?v=821"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

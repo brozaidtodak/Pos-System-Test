@@ -2534,7 +2534,8 @@ a:focus-visible {
 /* p1_471 — phone: search takes full width, action buttons drop to their own row (was squeezed in one flex line) */
 @media (max-width: 640px) {
  .pos-prodsearch-box { flex: 1 1 100% !important; min-width: 0 !important; }
- .pos-prodsearch-row > #btnCustomSale, .pos-prodsearch-row > #btnPosLayoutToggle { flex: 1 1 auto; }
+ /* p1_863 — semua butang aksi (Custom Sale/Duit Keluar/Pulangan/Laci Duit/Skrin Kecil) jadi grid 2-per-baris kemas di phone (dulu cuma 2 butang di-flex → 3 butang baru terburai) */
+ .pos-prodsearch-row > button { flex: 1 1 calc(50% - 5px) !important; min-width: 0 !important; padding-left: 10px !important; padding-right: 10px !important; }
 }
 [data-theme="dark"].table-responsive,
 [data-theme="dark"].data-table thead { background: #18181B; }
@@ -4150,7 +4151,7 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 .cp-cash__keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .cp-cash__key { min-height: 52px; border: 1px solid #E6E0D4; background: #fff; border-radius: 11px; font: 700 20px 'Poppins', sans-serif; color: #101010; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; transition: transform .06s, background .12s; -webkit-tap-highlight-color: transparent; }
 .cp-cash__key:active { transform: scale(.93); background: #FAF6EF; }
-.cp-cash__key--util { color: #9A3412; background: #FBF1E4; }
+.cp-cash__key--util { color: #9E7016; background: #FBF1E4; }
 
 /* p1_854 — Duit Keluar (Cash Out) modal */
 .co-amount { text-align: center; font-size: 13px; color: #9a948b; font-weight: 600; margin-bottom: 12px; }
@@ -4219,6 +4220,9 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 .pos-offline-banner__btn { background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.55); color: #fff; font: 700 11px 'Poppins', sans-serif; padding: 5px 11px; border-radius: 6px; cursor: pointer; margin-left: 4px; -webkit-tap-highlight-color: transparent; }
 .pos-offline-banner__btn:active { transform: scale(.95); }
 body.pos-app-scoped .pos-offline-banner { top: calc(54px + env(safe-area-inset-top)); }
+/* p1_863 — bila banner offline ada, tolak kandungan + sticky search ke bawah supaya tak tertutup */
+body.pos-offline-on.pos-app-scoped #main-content { padding-top: calc(54px + env(safe-area-inset-top) + 48px) !important; }
+body.pos-offline-on.pos-app-scoped .pos-prodsearch-row { top: calc(var(--pos-app-header-h, 64px) + 40px); }
 
 /* p1_862 — Tanya AI jadi tab bottom bar dalam app: sorok FAB terapung; panel chat = sheet penuh atas tab bar */
 body.pos-app-scoped #saFab { display: none !important; }
