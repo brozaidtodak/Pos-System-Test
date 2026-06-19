@@ -848,6 +848,35 @@
  </div>
  </div>
 
+ <!-- p1_858 — Laci Duit hub: Buka Shift (float pagi) + status + Tutup Kira -->
+ <div id="cashDrawerHub" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
+ <div class="login-box" style="max-width:430px; width:93%; text-align:left;">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+ <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="wallet" style="width:19px;height:19px; color:#101010;"></i> Laci Duit</h2>
+ <button type="button" onclick="window.closeCashDrawerHub()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; padding:6px;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+ </div>
+ <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Status laci hari ini. Buka shift dengan float pagi, dan tutup kira hujung hari.</p>
+
+ <div class="cc-rows" style="margin-bottom:14px;">
+ <div class="cc-row"><span class="cc-row__lbl">Float pagi</span><span class="cc-row__val" id="hubFloat">—</span></div>
+ <div class="cc-row"><span class="cc-row__lbl">+ Jualan tunai <span id="hubSalesCount" style="color:#9a948b; font-weight:500;"></span></span><span class="cc-row__val" id="hubSales">RM 0.00</span></div>
+ <div class="cc-row"><span class="cc-row__lbl">− Duit keluar <span id="hubOutCount" style="color:#9a948b; font-weight:500;"></span></span><span class="cc-row__val" id="hubOut">RM 0.00</span></div>
+ <div class="cc-row cc-row--total"><span class="cc-row__lbl">Dalam laci sekarang</span><span class="cc-row__val" id="hubExpected">RM 0.00</span></div>
+ </div>
+
+ <div id="hubShiftSection">
+ <p class="cp-section__title" style="margin:0 0 6px;">Buka Shift — Float Pagi</p>
+ <div style="display:flex; gap:8px; align-items:stretch;">
+ <span class="cc-row__inp" style="flex:1; background:#FAF6EF; border:1px solid #EEE7DA; border-radius:10px; padding:0 12px; display:flex; align-items:center; gap:6px;"><span style="color:#9a948b; font-size:13px;">RM</span> <input type="number" id="hubFloatInput" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1; border:none; background:none; text-align:right; font:700 16px Poppins; color:#101010; font-variant-numeric:tabular-nums; min-height:46px;"></span>
+ <button type="button" id="hubSaveFloatBtn" onclick="window.saveOpeningFloat()" class="login-btn" style="background:#CD7C32; width:auto; padding:0 18px; font-size:14px; margin:0; flex-shrink:0;">Simpan Float</button>
+ </div>
+ <p id="hubFloatHint" style="font-size:11.5px; color:#9a948b; margin:7px 2px 0;"></p>
+ </div>
+
+ <button type="button" onclick="window.closeCashDrawerHub(); window.openCashClose();" class="login-btn" style="background:#101010; width:100%; padding:15px; font-size:15px; margin-top:18px;"><i data-lucide="calculator" style="width:15px;height:15px;vertical-align:-2px;"></i> Tutup Kira (Z-Report)</button>
+ </div>
+ </div>
+
  <!-- p1_857 — Tutup Kira (Z-Report): float + jualan tunai − duit keluar = dijangka vs kira sebenar -->
  <div id="cashCloseModal" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:440px; width:93%; text-align:left;">
@@ -3140,7 +3169,7 @@
  <button onclick="window.openCustomSaleModal()" class="btn-secondary" id="btnCustomSale" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#FAF2E6; border:1.5px solid #fb923c; color:#9a3412; font-weight:700;" title="Tambah item custom (service charge, repair, deposit, etc.)"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Custom Sale</button>
  <button onclick="window.openCashOut()" class="btn-secondary" id="btnCashOut" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#FBE9E7; border:1.5px solid #E5897E; color:#B23A2E; font-weight:700;" title="Rekod duit keluar dari box (Lalamove, beli air, bayaran urgent)"><i data-lucide="arrow-up-from-line" style="width:14px;height:14px;vertical-align:-2px;"></i> Duit Keluar</button>
  <button onclick="window.openReturnPicker()" class="btn-secondary" id="btnReturnPicker" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#F3ECE4; border:1.5px solid #B89B7A; color:#7C2A20; font-weight:700;" title="Proses pulangan / refund jualan"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px;"></i> Pulangan</button>
- <button onclick="window.openCashClose()" class="btn-secondary" id="btnCashClose" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#101010; border:1.5px solid #101010; color:#FAF6EF; font-weight:700;" title="Tutup kira hujung hari — kira duit laci vs jualan"><i data-lucide="calculator" style="width:14px;height:14px;vertical-align:-2px;"></i> Tutup Kira</button>
+ <button onclick="window.openCashDrawerHub()" class="btn-secondary" id="btnCashDrawer" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#101010; border:1.5px solid #101010; color:#FAF6EF; font-weight:700;" title="Laci duit — buka shift (float) + tutup kira"><i data-lucide="wallet" style="width:14px;height:14px;vertical-align:-2px;"></i> Laci Duit</button>
  <button onclick="window.togglePosLayoutMode()" class="btn-secondary" id="btnPosLayoutToggle" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 20px;" data-i18n="cs_small_screen">Skrin Kecil</button>
  </div>
  <!-- p1_130 — Quick-Sell pills (top 5-8 most-sold last 30d) -->
@@ -8647,6 +8676,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_858', label:'Cashier: BUKA SHIFT (float pagi) + satukan jadi hub "Laci Duit" (Zaid: "buat ketiga2 fungsi" — 1/3; + selesaikan butang Cashier terlalu ramai). Butang "Tutup Kira" ditukar jadi "Laci Duit" (wallet) → modal hub #cashDrawerHub: status hari ini (Float pagi / + Jualan tunai / − Duit keluar / = Dalam laci sekarang) + seksyen Buka Shift (input float + Simpan → insert cash_drawer_log type=float_open) + butang Tutup Kira (buka #cashCloseModal sedia ada). Float pagi kini direkod betul masa MULA → tutup kira auto-isi float. Fn __fetchCashDrawerToday (shared) / openCashDrawerHub / closeCashDrawerHub / saveOpeningFloat. app.js v816->817.', d:'done' },
  { id:'p1_857', label:'Cashier #4: TUTUP KIRA / Z-Report (audit operasi harian — cash reconciliation). Butang "Tutup Kira" (hitam, calculator) di baris Cashier → modal #cashCloseModal: Float pagi (input, auto dari float_open hari ini kalau ada) + Jualan tunai hari ini (auto dari salesHistory, payment Cash/Tunai, real sale) − Duit keluar hari ini (auto dari cash_drawer_log type=cash_out) = Dijangka dalam laci. Staff kira duit sebenar guna keypad → Beza (hijau Padan / amber Lebih / merah Kurang). Simpan type=close_count ke cash_drawer_log (amount=sebenar, note=breakdown audit). Fn openCashClose(async)/closeCashClose/cashCloseKey/cashCloseRecompute/cashCloseSave. Lengkapkan rangkaian wang tunai: float→jualan→duit keluar(p1_854)→tutup kira. app.js v815->816, design-tokens.css v126->127.', d:'done' },
  { id:'p1_856', label:'Cashier #3: KPI Cashier (jualan hari ini + komisen aku) + UX polish (audit operasi harian — Zaid: tunjuk jualan hari ini + komisen atas skrin Cashier supaya tak payah tukar tab). Strip 3 kad KPI (#posTodayKpi) di atas skrin Cashier: "Jualan Hari Ini" (kedai, real sales), "Jualan Aku" (net jualan staf + bilangan), "Komisen Aku" (klik → tab Komisen). Guna helper SAMA dgn renderPersonalCommission (__saleCommissionBase + __getCommissionRate) → angka selaras dgn tab Komisen. Render masa masuk Cashier + selepas setiap jualan (hook sebelah __renderSalesTarget). UX polish (skill ui-ux-pro-max): nombor tabular (font-variant-numeric) pada KPI + harga produk + teks stok supaya tak "lompat". app.js v814->815, design-tokens.css v125->126.', d:'done' },
  { id:'p1_855', label:'Cashier #2: Return di Cashier + amaran stok rendah (audit operasi harian). (A) RETURN: dulu refund kena pergi tab All Orders → Edit. Sekarang butang "Pulangan" (rotate-ccw) di baris Cashier → modal #returnPickerModal cari jualan terkini (No./nama/telefon, 40 terkini, tanda DAH REFUND) → pilih → buka flow return sedia ada window.__returnRefundOpen(saleId). Fn openReturnPicker/closeReturnPicker/__renderReturnPicker/__returnPickerPick. (B) AMARAN STOK RENDAH: kad produk Cashier kini papar badge kuning "Stok rendah" + teks stok jadi amber bila stok <= window.__POS_LOW_STOCK (default 3); STOK HABIS (merah) kekal bila 0. addToCart sedia ada dah toast backorder/OOS. app.js v813->814, design-tokens.css v124->125.', d:'done' },
@@ -13966,7 +13996,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=816"></script>
+ <script src="app.js?v=817"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

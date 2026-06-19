@@ -33517,6 +33517,66 @@ window.cashCloseSave = async function(){
  finally { if(btn){ btn.disabled = false; btn.textContent = 'Simpan Tutup Kira'; } }
 };
 
+// p1_858 — Laci Duit hub: status hari ini + Buka Shift (float_open). Shared fetch helper.
+window.__fetchCashDrawerToday = async function(){
+ const now = new Date();
+ const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+ let cashSales = 0, cashSalesCount = 0;
+ (Array.isArray(salesHistory) ? salesHistory : []).forEach(s => {
+ const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+ if(dt < dayStart.getTime()) return;
+ if(s.is_test) return;
+ const st = (s.status || '').toLowerCase(); if(st.indexOf('cancel') !== -1 || st.indexOf('void') !== -1) return;
+ if(!/cash|tunai/i.test(s.payment_method || 'Cash')) return;
+ const recv = parseFloat(s.total != null ? s.total : s.total_amount) || 0; if(recv <= 0) return;
+ const isReal = (typeof window.__isRealSale === 'function') ? window.__isRealSale(s) : true; if(!isReal) return;
+ cashSales = round2(cashSales + recv); cashSalesCount++;
+ });
+ let cashOut = 0, cashOutCount = 0, floatOpen = null;
+ try {
+ if(typeof db !== 'undefined' && db){
+ const { data, error } = await db.from('cash_drawer_log').select('type,amount,created_at').gte('created_at', dayStart.toISOString());
+ if(!error && Array.isArray(data)){
+ data.forEach(r => { if(r.type === 'cash_out'){ cashOut = round2(cashOut + (parseFloat(r.amount) || 0)); cashOutCount++; } else if(r.type === 'float_open'){ floatOpen = parseFloat(r.amount) || 0; } });
+ }
+ }
+ } catch(e){ console.warn('fetchCashDrawerToday', e); }
+ return { cashSales, cashSalesCount, cashOut, cashOutCount, floatOpen };
+};
+window.openCashDrawerHub = async function(){
+ const m = document.getElementById('cashDrawerHub'); if(!m) return;
+ m.style.display = 'flex';
+ const setTxt = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+ setTxt('hubFloat', '…'); setTxt('hubSales', '…'); setTxt('hubOut', '…'); setTxt('hubExpected', '…');
+ const d = await window.__fetchCashDrawerToday();
+ const fmt = window.__ccFmt || (n => 'RM ' + Number(n).toFixed(2));
+ setTxt('hubFloat', d.floatOpen == null ? 'belum set' : fmt(d.floatOpen));
+ setTxt('hubSales', fmt(d.cashSales)); setTxt('hubSalesCount', d.cashSalesCount ? '(' + d.cashSalesCount + ')' : '');
+ setTxt('hubOut', fmt(d.cashOut)); setTxt('hubOutCount', d.cashOutCount ? '(' + d.cashOutCount + ')' : '');
+ setTxt('hubExpected', fmt(round2((d.floatOpen || 0) + d.cashSales - d.cashOut)));
+ const hint = document.getElementById('hubFloatHint'); const inp = document.getElementById('hubFloatInput');
+ if(inp) inp.value = '';
+ if(hint) hint.textContent = (d.floatOpen != null) ? ('Float dah diset hari ni (' + fmt(d.floatOpen) + '). Simpan lagi untuk tukar.') : 'Belum buka shift hari ni. Masukkan duit mula dalam laci.';
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.closeCashDrawerHub = function(){ const m = document.getElementById('cashDrawerHub'); if(m) m.style.display = 'none'; };
+window.saveOpeningFloat = async function(){
+ const inp = document.getElementById('hubFloatInput');
+ if(!inp || inp.value === '') return showToast('Masukkan jumlah float pagi.', 'warn');
+ const amt = round2(parseFloat(inp.value) || 0);
+ if(!(amt >= 0)) return showToast('Jumlah float tak sah.', 'warn');
+ if(typeof db === 'undefined' || !db) return showToast('Tiada sambungan.', 'error');
+ const staff = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : 'Unknown';
+ const btn = document.getElementById('hubSaveFloatBtn'); if(btn){ btn.disabled = true; btn.textContent = '…'; }
+ try {
+ const { error } = await db.from('cash_drawer_log').insert({ type:'float_open', amount: amt, category:'buka_shift', staff_name: staff });
+ if(error) throw error;
+ showToast('Float pagi RM ' + amt.toFixed(2) + ' direkod. Shift dibuka.', 'success');
+ window.openCashDrawerHub();
+ } catch(e){ showToast('Gagal simpan: ' + e.message, 'error'); }
+ finally { if(btn){ btn.disabled = false; btn.textContent = 'Simpan Float'; } }
+};
+
 // p1_33 — Walk-in quick toggle: skip customer info for fast counter sales
 window.cpToggleWalkin = function() {
     const btn = document.getElementById('cpWalkinBtn');
