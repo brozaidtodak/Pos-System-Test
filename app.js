@@ -1171,11 +1171,15 @@ window.__saShow = function(show){
  const w = document.getElementById('saWidget'); if(w) w.style.display = show ? 'block' : 'none';
  if(show){ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){} }
  else { window.__saOpen = false; const p = document.getElementById('saPanel'); if(p) p.hidden = true; }
+ // p1_875 — sorok bar troli terapung bila widget AI ditutup/disorok
+ try { document.body.classList.remove('sa-panel-open'); } catch(e){}
 };
 window.__saToggle = function(){
  const p = document.getElementById('saPanel'); if(!p) return;
  window.__saOpen = !window.__saOpen;
  p.hidden = !window.__saOpen;
+ // p1_875 — body class kawal sorok bar troli "Lihat Troli" masa panel Tanya AI buka (lebih kukuh dari :has)
+ try { document.body.classList.toggle('sa-panel-open', window.__saOpen); } catch(e){}
  if(window.__saOpen){
   if(!window.__saHistory.length){ window.__saHistory.push({ role:'assistant', content:'Hai! Aku pembantu AI staf 10 CAMP. Tanya aku cara guna POS atau SOP — cth "macam mana buat refund?", "macam mana check stok?", "SOP cuti macam mana?". Nota: aku tak boleh tengok data live lagi (cth stok sebenar) — tu check sendiri atau tanya Bos/Aliff.' }); }
   window.__saRender();
