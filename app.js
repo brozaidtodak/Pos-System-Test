@@ -154,6 +154,8 @@ window.__applyPosAppScope = function(){
  window.__posAppGo('cashier');
  // Set --pos-app-header-h ikut tinggi bar native (search row sticky lekat tepat bawahnya).
  if(typeof window.__setPosHeaderH === 'function'){ window.__setPosHeaderH(); setTimeout(window.__setPosHeaderH, 60); }
+ // p1_865 — kemas kini layout (sidebar tablet / mobile) sebaik pos-app-scoped diset (resize tak fire selepas login)
+ if(typeof window.__autoPosLayout === 'function'){ window.__autoPosLayout(); setTimeout(window.__autoPosLayout, 80); }
  } catch(e){ console.warn('applyPosAppScope failed', e); }
 };
 
@@ -40223,19 +40225,21 @@ window.renderCampaigns = function(){
  * satu scroll) + sorok butang toggle (tak relevan). Di desktop: hormati toggle staf. */
 window.__POS_MOBILE_BREAKPOINT = 1200; // p1_591 — cover tablet landscape (iPad 1024/1112/1194); laptop 1280+ kekal desktop
 window.__autoPosLayout = function(){
- var narrow = window.innerWidth <= (window.__POS_MOBILE_BREAKPOINT || 1024);
- if(narrow){
+ // p1_865 — Dalam APP (pos-app-scoped) ia SENTIASA peranti iPad/iPhone — takde "desktop" sebenar.
+ // Jadi paksa layout ringkas (pos-mobile-mode) di SEMUA lebar app, + sidebar di tablet (mana-mana lebar >=768).
+ var isApp = !!(document.body && document.body.classList.contains('pos-app-scoped'));
+ var narrow = window.innerWidth <= (window.__POS_MOBILE_BREAKPOINT || 1200);
+ if(narrow || isApp){
   document.body.classList.add('pos-mobile-mode');
  } else {
   if(localStorage.getItem('posMode') === 'mobile') document.body.classList.add('pos-mobile-mode');
   else document.body.classList.remove('pos-mobile-mode');
  }
- // p1_864/865 — TABLET master-detail (gaya iPad): SIDEBAR nav kiri (ganti bottom tab bar)
- // bila lebar >=768 & tinggi >=600 (tablet portrait/landscape, BUKAN phone landscape pendek).
- // CART RAIL tetap di kanan hanya bila CUKUP LEBAR (>=1100, biasanya landscape) — portrait
- // kekal troli drawer sebab sidebar+rail buat katalog terlalu sempit.
- var tabletPane = narrow && window.innerWidth >= 768 && window.innerHeight >= 600;
- var cartRail = tabletPane && window.innerWidth >= 1100;
+ // SIDEBAR nav kiri (ganti bottom tab bar) bila tablet: lebar >=768 & tinggi >=600 (BUKAN phone
+ // landscape pendek). Dalam app, apply mana-mana lebar >=768; di web, hanya bila narrow.
+ var tabletPane = (isApp || narrow) && window.innerWidth >= 768 && window.innerHeight >= 600;
+ // CART RAIL tetap kanan hanya bila cukup lebar (>=1000, biasanya landscape); portrait kekal drawer.
+ var cartRail = tabletPane && window.innerWidth >= 1000;
  document.body.classList.toggle('pos-tablet-pane', tabletPane);
  document.body.classList.toggle('pos-cart-rail', cartRail);
  var btn = document.getElementById('btnPosLayoutToggle');
