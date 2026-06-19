@@ -8055,6 +8055,7 @@ function switchHub(sectionIds, title, btnElement) {
  const term = document.getElementById("posSearchBox") ? document.getElementById("posSearchBox").value : "";
  renderPOS(term);
  if(typeof window.__renderSalesTarget === 'function') window.__renderSalesTarget(); // p1_559 — banner sasaran masa masuk cashier
+ if(typeof window.__renderCashierKPI === 'function') window.__renderCashierKPI(); // p1_856 — KPI hari ini
  }
  if(sectionIds.includes('stockTakeSection')) renderAuditCards();
 
@@ -12865,6 +12866,47 @@ window.__renderSalesTarget = function(){
  + '</div>';
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
+
+// p1_856 — KPI Cashier: Jualan Hari Ini (kedai) + Jualan Aku + Komisen Aku (hari ini).
+// Guna helper sama dgn tab Komisen (__saleCommissionBase + __getCommissionRate) supaya angka selaras.
+window.__renderCashierKPI = function(){
+ const sec = document.getElementById('posSection'); if(!sec) return;
+ if(typeof salesHistory === 'undefined') return;
+ const now = new Date();
+ const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+ const staffName = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : null;
+ let storeToday = 0, myBase = 0, myRefund = 0, myCount = 0;
+ (Array.isArray(salesHistory) ? salesHistory : []).forEach(s => {
+ const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+ if(dt < dayStart) return;
+ if(s.is_test) return;
+ const st = (s.status || '').toLowerCase();
+ if(st.indexOf('cancel') !== -1 || st.indexOf('void') !== -1) return;
+ const recv = parseFloat(s.total != null ? s.total : s.total_amount) || 0;
+ const isReal = (typeof window.__isRealSale === 'function') ? window.__isRealSale(s) : true;
+ if(isReal && recv > 0) storeToday = round2(storeToday + recv);
+ if(staffName && s.staff_name === staffName){
+ const base = Math.abs((typeof window.__saleCommissionBase === 'function') ? window.__saleCommissionBase(s) : recv);
+ if(recv < 0) myRefund = round2(myRefund + base);
+ else { myBase = round2(myBase + base); myCount++; }
+ }
+ });
+ const myNet = round2(myBase - myRefund);
+ const rate = (typeof __getCommissionRate === 'function' && staffName) ? __getCommissionRate(staffName) : 0;
+ const myComm = round2(myNet * rate / 100);
+ const fmt = n => 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
+ let el = document.getElementById('posTodayKpi');
+ if(!el){
+ el = document.createElement('div'); el.id = 'posTodayKpi'; el.className = 'pos-kpi';
+ const banner = document.getElementById('posTargetBanner');
+ if(banner && banner.parentNode === sec) sec.insertBefore(el, banner.nextSibling);
+ else sec.insertBefore(el, sec.firstChild);
+ }
+ el.innerHTML =
+ '<div class="pos-kpi__card"><div class="pos-kpi__lbl">Jualan Hari Ini</div><div class="pos-kpi__val">' + fmt(storeToday) + '</div></div>'
+ + '<div class="pos-kpi__card"><div class="pos-kpi__lbl">Jualan Aku</div><div class="pos-kpi__val">' + fmt(myNet) + '</div><div class="pos-kpi__sub">' + myCount + ' jualan</div></div>'
+ + '<div class="pos-kpi__card pos-kpi__card--comm" onclick="window.__posAppGo ? window.__posAppGo(\'commission\') : (window.switchHub && switchHub([\'commissionSection\'],\'My Commission\'), window.renderPersonalCommission && window.renderPersonalCommission())" title="Lihat komisen penuh"><div class="pos-kpi__lbl">Komisen Aku</div><div class="pos-kpi__val">' + fmt(myComm) + '</div><div class="pos-kpi__sub">' + rate + '%</div></div>';
+};
 // p1_570 — Thumbnail via proxy percuma images.weserv.nl (Supabase resize tak aktif — free plan).
 // Gambar grid kecik dari ~140KB → ~15KB (webp 300px) = load laju + scroll smooth atas phone/data.
 window.__thumbUrl = function(url, w){
@@ -14506,6 +14548,7 @@ window.processNewCheckout = async function() {
  cart = [];
  window.__pendingRedeem = null; window.__cpRedeemCustomer = null; // p1_561 — reset redeem selepas jualan
  if(typeof window.__renderSalesTarget === 'function') window.__renderSalesTarget(); // p1_559 — banner sasaran gerak selepas jualan
+ if(typeof window.__renderCashierKPI === 'function') window.__renderCashierKPI(); // p1_856 — KPI hari ini refresh selepas jualan
  document.getElementById("customerName").value = "";
  document.getElementById("customerPhone").value = "";
  document.getElementById("customerEmail").value = "";

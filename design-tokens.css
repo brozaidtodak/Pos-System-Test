@@ -4165,3 +4165,14 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 .product-card__low { position: absolute; top: 8px; right: 8px; z-index: 4; background: #FEF3C7; color: #B45309; border: 1px solid #FCD34D; padding: 4px 9px; border-radius: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.3px; line-height: 1; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(180,83,9,0.2); }
 .rp-pick-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #fff; border: 1px solid #EEE7DA; border-radius: 10px; margin-bottom: 7px; cursor: pointer; text-align: left; transition: background .12s, transform .06s; -webkit-tap-highlight-color: transparent; }
 .rp-pick-row:active { transform: scale(.99); background: #FAF6EF; }
+
+/* p1_856 — KPI Cashier (Jualan Hari Ini / Jualan Aku / Komisen Aku) + UX polish nombor tabular */
+.pos-kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 14px; }
+.pos-kpi__card { background: #FAF6EF; border: 1px solid #EEE7DA; border-radius: 12px; padding: 11px 12px; min-width: 0; }
+.pos-kpi__card--comm { background: #FBF1E4; border-color: #E7C68A; cursor: pointer; transition: transform .06s; -webkit-tap-highlight-color: transparent; }
+.pos-kpi__card--comm:active { transform: scale(.97); }
+.pos-kpi__lbl { font-size: 10.5px; font-weight: 700; color: #9a948b; letter-spacing: .3px; text-transform: uppercase; margin-bottom: 3px; }
+.pos-kpi__val { font-size: 16px; font-weight: 800; color: #101010; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.pos-kpi__sub { font-size: 10.5px; color: #9a948b; font-weight: 600; margin-top: 2px; }
+@media (max-width: 380px) { .pos-kpi__val { font-size: 14px; } .pos-kpi__lbl { font-size: 9.5px; } }
+.product-card .price, .product-card__stock { font-variant-numeric: tabular-nums; }
