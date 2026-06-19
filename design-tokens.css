@@ -4321,6 +4321,27 @@ body.pos-app-scoped .login-input { font-size: 16px !important; }
   body.pos-app-scoped #allOrdersSection .data-table td:nth-child(12) { display: flex !important; justify-content: flex-start; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding-top: 8px !important; border-top: 1px solid #F3F4F6 !important; }
 }
 
+/* p1_878 — Stock Take "Tunjuk SKU" jadual lebar (kena slide kiri/kanan) → KAD mesra-phone (label:nilai).
+   Phone sahaja (<=768px); tablet/desktop kekal jadual penuh. Setiap baris SKU jadi satu kad. */
+@media (max-width: 768px) {
+  body.pos-app-scoped .scs-sku-wrap { overflow-x: visible !important; border: 0 !important; }
+  body.pos-app-scoped .scs-sku-table thead { display: none !important; }
+  body.pos-app-scoped .scs-sku-table,
+  body.pos-app-scoped .scs-sku-table tbody,
+  body.pos-app-scoped .scs-sku-table tr { display: block !important; width: auto !important; }
+  body.pos-app-scoped .scs-sku-table tr { border: 1px solid #EEE7DA !important; border-radius: 12px; margin-bottom: 10px; padding: 10px 14px; background: #fff; box-shadow: 0 1px 4px rgba(16,16,16,.05); }
+  body.pos-app-scoped .scs-sku-table td { display: flex !important; justify-content: space-between; align-items: center; gap: 12px; width: auto !important; text-align: right !important; padding: 6px 0 !important; border: none !important; border-bottom: 1px solid #F6F2EA !important; font-size: 13px; }
+  body.pos-app-scoped .scs-sku-table td:last-child { border-bottom: 0 !important; }
+  body.pos-app-scoped .scs-sku-table td[data-label]::before { content: attr(data-label); font: 700 11px 'Poppins',sans-serif; color: #9a948b; text-transform: uppercase; letter-spacing: .3px; text-align: left; flex: 0 0 auto; white-space: nowrap; }
+  /* SKU = tajuk kad (besar, menonjol). Nama biar mengalir penuh ke kanan. */
+  body.pos-app-scoped .scs-sku-table td.scs-cell-sku { font-size: 16px !important; font-weight: 800; color: #101010; }
+  body.pos-app-scoped .scs-sku-table td.scs-cell-name { text-align: right; line-height: 1.4; }
+  body.pos-app-scoped .scs-sku-table td.scs-cell-thumb img,
+  body.pos-app-scoped .scs-sku-table td.scs-cell-thumb > div { width: 44px !important; height: 44px !important; }
+  /* Aksi (Reset/Buang) = butang di hujung kad, rata kiri */
+  body.pos-app-scoped .scs-sku-table td.scs-cell-aksi { justify-content: flex-start; padding-top: 8px !important; }
+}
+
 body.pos-app-scoped #saFab { display: none !important; }
 /* p1_869 — FIX KRITIKAL: #saWidget jangan jadi lapisan penuh skrin yg tangkap semua tekanan.
    #saPanel dah position:fixed (sangkut viewport sendiri) → #saWidget boleh kekal 0x0 + pointer-events:none. */
