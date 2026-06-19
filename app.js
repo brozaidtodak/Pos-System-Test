@@ -40008,7 +40008,7 @@ window.renderReceiving = function(){
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:0 0 8px;">Untuk diterima ('+pending.length+')</div>'
     + tbl([{t:'PO'},{t:'Pembekal'},{t:'ETA'},{t:'Terima',a:'right'},{t:'Status',a:'center'},{t:'',a:'right'}], pending.map(pendRow).join(''), 'Tiada PO menunggu penerimaan. Cipta PO di Purchasing › Purchase Orders.')
     + '<div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:0 0 8px;">Sejarah penerimaan (30 terkini)</div>'
-    + tbl([{t:'PO'},{t:'Pembekal'},{t:'Tarikh'},{t:'Oleh'},{t:'Terima',a:'right'},{t:'Status',a:'center'}], history.map(histRow).join(''), 'Belum ada penerimaan direkod.')
+    + tbl([{t:'PO'},{t:'Pembekal'},{t:'Tarikh'},{t:'Oleh'},{t:'Terima',a:'right'},{t:'Status',a:'center'},{t:'',a:'right'}], history.map(histRow).join(''), 'Belum ada penerimaan direkod.')
     + '<p style="font-size:11.5px;color:var(--text-muted);margin:0 2px;">Barang rosak masa terima direkod di Returns/Damage log (sumber: po_receive). Fasa lanjut: papar baki "rosak/hold" dalam Stock Levels.</p>'
     + '</div>';
   body.innerHTML = html;
@@ -40340,4 +40340,78 @@ window.__bfoUndo = async function(){
     window.showToast&&showToast('Backfill batch dibuang (undo)','success');
     await window.__bfoRefresh();
   } catch(e){ window.showToast&&showToast('Undo gagal: '+(e.message||e),'error'); console.error('bfo undo:',e); }
+};
+
+/* ============================================================
+   p1_850 — Receiving: Edit Rosak. Rekod unit rosak yang terlepas dulu
+   pada PO yang dah diterima → returns_log (type damaged, source po_edit)
+   + pilihan tolak dari stok jual (FIFO via __applyStockDelta).
+   ============================================================ */
+window.__rcvEdit = async function(poId){
+  var po = (typeof purchaseOrdersV2!=='undefined'?purchaseOrdersV2:[]).find(function(p){return p.id===poId;});
+  if(!po){ window.showToast&&showToast('PO tak jumpa','warn'); return; }
+  var its = (typeof purchaseOrderItemsV2!=='undefined'?purchaseOrderItemsV2:[]).filter(function(i){return i.po_id===poId;});
+  if(!its.length){ window.showToast&&showToast('Tiada item dalam PO ni','warn'); return; }
+  var existDmg = {};
+  try {
+    var r = await db.from('returns_log').select('sku,qty').eq('order_ref', po.po_number).eq('type','damaged');
+    (r.data||[]).forEach(function(x){ existDmg[x.sku] = (existDmg[x.sku]||0) + (x.qty||0); });
+  } catch(e){}
+  var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');};
+  var rows = its.map(function(it, idx){
+    var prod = (typeof masterProducts!=='undefined')?masterProducts.find(function(p){return p.sku===it.sku;}):null;
+    var ed = existDmg[it.sku]||0;
+    return '<tr><td style="padding:6px 8px;"><b>'+esc(it.sku)+'</b><div style="font-size:10px;color:#888;">'+esc((prod&&prod.name?prod.name:'').slice(0,34))+'</div></td>'
+      +'<td style="padding:6px 8px;text-align:center;">'+(it.qty_received||0)+'</td>'
+      +'<td style="padding:6px 8px;text-align:center;color:'+(ed?'#B23A2E':'#9CA3AF')+';">'+(ed||'—')+'</td>'
+      +'<td style="padding:6px 8px;"><input type="number" id="rcvDmg_'+idx+'" data-sku="'+esc(it.sku)+'" data-cost="'+(Number(it.unit_cost_rm)||0)+'" min="0" value="0" style="width:64px;padding:4px;text-align:center;margin:0;" class="login-input"></td></tr>';
+  }).join('');
+  var html = '<div id="rcvEditOverlay" class="login-overlay" style="display:flex;z-index:3700;align-items:center;justify-content:center;">'
+    +'<div class="login-box" style="max-width:680px;width:96%;padding:22px;">'
+    +'<button onclick="document.getElementById(\'rcvEditOverlay\').remove()" style="float:right;border:none;background:none;font-size:24px;cursor:pointer;color:var(--text-muted);">&times;</button>'
+    +'<h2 style="font-weight:800;font-size:19px;margin-bottom:4px;">Edit Rosak &mdash; '+esc(po.po_number)+'</h2>'
+    +'<p style="font-size:12px;color:#666;margin-bottom:12px;">Pembekal '+esc(po.supplier_name||'-')+' &middot; '+esc(po.received_date||'-')+'. Rekod unit rosak yang terlepas dulu.</p>'
+    +'<div class="table-responsive" style="max-height:320px;border:1px solid var(--border-color);"><table class="data-table" style="font-size:12px;width:100%;"><thead style="position:sticky;top:0;background:#FAFAFA;"><tr><th>SKU</th><th>Diterima</th><th>Rosak (dah rekod)</th><th style="color:#B23A2E;">Rosak (tambah)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rcvDeduct" checked style="width:auto;margin:0;"> Tolak unit rosak dari stok jual (FIFO)</label>'
+    +'<label class="small-lbl" style="margin-top:10px;">Catatan</label><textarea id="rcvDmgNote" class="login-input" rows="2" placeholder="cth jumpa rosak masa susun stok..."></textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:14px;"><button onclick="document.getElementById(\'rcvEditOverlay\').remove()" class="login-btn" style="background:#6B7280;flex:1;">Batal</button><button onclick="window.__rcvSaveDamage('+poId+')" class="login-btn" style="flex:2;">Simpan Rosak</button></div>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+window.__rcvSaveDamage = async function(poId){
+  var po = (typeof purchaseOrdersV2!=='undefined'?purchaseOrdersV2:[]).find(function(p){return p.id===poId;});
+  if(!po) return;
+  var note = ((document.getElementById('rcvDmgNote')||{}).value||'').trim();
+  var deduct = !!((document.getElementById('rcvDeduct')||{}).checked);
+  var u = window.currentUser||{};
+  var lines=[];
+  document.querySelectorAll('#rcvEditOverlay input[id^="rcvDmg_"]').forEach(function(el){
+    var dmg=parseInt(el.value)||0; if(dmg<=0) return;
+    lines.push({ sku:el.getAttribute('data-sku'), dmg:dmg, cost:parseFloat(el.getAttribute('data-cost'))||0 });
+  });
+  if(!lines.length){ window.showToast&&showToast('Tiada qty rosak diisi','warn'); return; }
+  var totDmg = lines.reduce(function(s,l){return s+l.dmg;},0);
+  if(!confirm('Rekod '+totDmg+' unit rosak'+(deduct?' + tolak dari stok jual':' (log sahaja)')+'?')) return;
+  try {
+    var rl = lines.map(function(l){
+      var prod=(typeof masterProducts!=='undefined')?masterProducts.find(function(p){return p.sku===l.sku;}):null;
+      return { sku:l.sku, product_name:prod?prod.name:null, qty:l.dmg, type:'damaged',
+        reason:'Edit receiving - rosak terlepas', notes:'PO '+po.po_number+(note?' - '+note:''),
+        order_ref:po.po_number, supplier:po.supplier_name, cost_impact:l.cost,
+        reported_by_name:u.name||'System', reported_at:new Date().toISOString(), source:'po_edit' };
+    });
+    var ins = await db.from('returns_log').insert(rl);
+    if(ins.error) throw ins.error;
+    var shortMsg='';
+    if(deduct){
+      for(var i=0;i<lines.length;i++){
+        try { var res=await window.__applyStockDelta(lines[i].sku, -lines[i].dmg, 'Rosak (edit receiving) PO '+po.po_number); if(res&&res.short>0) shortMsg+=' '+lines[i].sku+'(-'+res.short+')'; }
+        catch(e){ shortMsg+=' '+lines[i].sku+'(gagal)'; }
+      }
+    }
+    var el=document.getElementById('rcvEditOverlay'); if(el) el.remove();
+    window.showToast&&showToast('Rosak direkod ('+totDmg+' unit)'+(shortMsg?' · stok tak cukup:'+shortMsg:''), shortMsg?'warn':'success');
+    try { var rb=await db.from('inventory_batches').select('*'); if(rb&&rb.data) inventoryBatches=rb.data; } catch(e){}
+    if(window.renderReceiving) window.renderReceiving();
+  } catch(e){ window.showToast&&showToast('Simpan gagal: '+(e.message||e),'error'); console.error('rcv save dmg:',e); }
 };
