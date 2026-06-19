@@ -40231,3 +40231,112 @@ window.__binBarcode = function(code){
     w.document.close();
   } catch(e){ window.showToast && showToast('Label gagal: '+(e.message||e),'error'); }
 };
+
+/* ============================================================
+   p1_849 — Tools › Backfill Order (SEMENTARA). Cipta inventory_batches
+   dari rekod PO-DO (backfill) TANPA ganggu stok live. Mode SELAMAT
+   (skip DO yg dah ada batch) + SEMUA (amaran). Setiap batch di-tag
+   notes 'BACKFILL-DO ...' supaya boleh UNDO. Run lepas kedai tutup.
+   ============================================================ */
+window.__bfoCompute = function(){
+  var pos = (typeof purchaseOrdersV2!=='undefined'?purchaseOrdersV2:[]).filter(function(p){ return p && /^PO-DO-/.test(p.po_number||''); });
+  var items = (typeof purchaseOrderItemsV2!=='undefined'?purchaseOrderItemsV2:[]);
+  var batches = (typeof inventoryBatches!=='undefined'?inventoryBatches:[]);
+  var batchedDo = {}, skuHasBatch = {}, bfoExisting = 0;
+  batches.forEach(function(b){
+    if(!b) return;
+    if(b.delivery_order_ref) batchedDo[String(b.delivery_order_ref)] = 1;
+    if(b.sku) skuHasBatch[b.sku] = 1;
+    if(b.notes && /^BACKFILL-DO/.test(String(b.notes))) bfoExisting++;
+  });
+  var rows = pos.map(function(p){
+    var doRef = (p.po_number||'').replace(/^PO-/,'');
+    var its = items.filter(function(i){ return i.po_id === p.id; });
+    var units = its.reduce(function(s,i){ return s+(i.qty_ordered||0); },0);
+    var dblRisk = its.filter(function(i){ return skuHasBatch[i.sku]; }).length;
+    return { po:p, doRef:doRef, date:p.received_date, items:its, units:units, alreadyBatched: !!batchedDo[doRef], dblRisk:dblRisk };
+  }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+  return { rows:rows, bfoExisting:bfoExisting };
+};
+window.renderBackfillOrder = function(){
+  var body = document.getElementById('backfillOrderBody'); if(!body) return;
+  var d = window.__bfoCompute();
+  var rows = d.rows;
+  var cand = rows.filter(function(r){ return !r.alreadyBatched; });
+  var candUnits = cand.reduce(function(s,r){ return s+r.units; },0);
+  var candItems = cand.reduce(function(s,r){ return s+r.items.length; },0);
+  var dblItems = rows.reduce(function(s,r){ return s+r.dblRisk; },0);
+  var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+  var kpi=function(l,v,c){return '<div style="flex:1;min-width:120px;background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:13px 15px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">'+l+'</div><div style="font-size:21px;font-weight:900;color:'+(c||"#101010")+';margin-top:2px;">'+v+'</div></div>';};
+  var trs = rows.map(function(r){
+    var st = r.alreadyBatched
+      ? '<span style="background:#EAF3E8;color:#2e5d34;border:1px solid #CBE3C4;padding:2px 8px;border-radius:50px;font-size:11px;font-weight:700;">Dah ada batch</span>'
+      : '<span style="background:#FFF8F0;color:#7c4a1a;border:1px solid #F0DCA8;padding:2px 8px;border-radius:50px;font-size:11px;font-weight:700;">Belum (candidate)</span>';
+    return '<tr style="border-bottom:1px solid #F1F1F1;">'
+      +'<td style="padding:8px 11px;font-weight:700;">'+esc(r.doRef)+'</td>'
+      +'<td style="padding:8px 11px;color:var(--text-muted);">'+esc(r.date||'-')+'</td>'
+      +'<td style="padding:8px 11px;text-align:right;">'+r.items.length+'</td>'
+      +'<td style="padding:8px 11px;text-align:right;">'+r.units+'</td>'
+      +'<td style="padding:8px 11px;text-align:right;color:'+(r.dblRisk?'#B23A2E':'#9CA3AF')+';">'+(r.dblRisk||'—')+'</td>'
+      +'<td style="padding:8px 11px;text-align:center;">'+st+'</td>'
+    +'</tr>';
+  }).join('');
+  var html='<div style="max-width:1100px;margin:0 auto;padding:4px 2px 60px;">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;"><i data-lucide="database-backup" style="width:22px;height:22px;color:var(--primary);"></i><h2 style="margin:0;font-size:22px;font-weight:800;color:var(--text-main);">Backfill Order <span style="font-size:12px;font-weight:600;color:var(--text-muted);">(sementara)</span></h2></div>'
+    +'<div style="background:#FDF4F2;border:1px solid #F1C9C0;border-radius:10px;padding:12px 14px;margin:10px 0 16px;font-size:13px;color:#7C2A20;line-height:1.55;"><b>AMARAN:</b> Tool ni cipta stok (batch) dari rekod PO-DO. SKU yang <b>dah ada batch</b> akan jadi DOUBLE kalau backfill. Guna <b>Mode Selamat</b> (skip DO yang dah ada batch). Jalankan <b>lepas kedai tutup (8 malam)</b>. Setiap batch di-tag <code>BACKFILL-DO</code> → boleh Undo.</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
+      +kpi('PO-DO',rows.length)+kpi('Candidate (belum batch)',cand.length,'#7c4a1a')+kpi('Unit candidate',candUnits.toLocaleString())+kpi('Item double-risk',dblItems,dblItems?'#B23A2E':'#2e7d32')+kpi('Batch backfill sedia ada',d.bfoExisting,d.bfoExisting?'#CE9420':'#2e7d32')
+    +'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'
+      +'<button onclick="window.__bfoExecute&&window.__bfoExecute(\'safe\')" style="font-size:13px;font-weight:700;color:#fff;background:#2e7d32;border:none;padding:10px 16px;border-radius:9px;cursor:pointer;">Backfill SELAMAT ('+cand.length+' DO · '+candItems+' item)</button>'
+      +'<button onclick="window.__bfoExecute&&window.__bfoExecute(\'all\')" style="font-size:13px;font-weight:700;color:#fff;background:#B23A2E;border:none;padding:10px 16px;border-radius:9px;cursor:pointer;">Backfill SEMUA (amaran double)</button>'
+      +'<button onclick="window.__bfoUndo&&window.__bfoUndo()" style="font-size:13px;font-weight:700;color:var(--text-muted);background:#fff;border:1px solid #ECECEC;padding:10px 16px;border-radius:9px;cursor:pointer;">Undo backfill</button>'
+    +'</div>'
+    +'<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">DO</th><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Tarikh</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Item</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Unit</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Double-risk</th><th style="text-align:center;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Status</th></tr></thead><tbody>'+(trs||'<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-muted);">Tiada rekod PO-DO. Backfill PO dahulu.</td></tr>')+'</tbody></table></div>'
+    +'</div>';
+  body.innerHTML=html;
+  if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}}
+};
+window.__bfoRefresh = async function(){
+  try { var r = await db.from('inventory_batches').select('*'); if(r && r.data) inventoryBatches = r.data; } catch(e){}
+  if(window.renderBackfillOrder) window.renderBackfillOrder();
+};
+window.__bfoExecute = async function(mode){
+  var d = window.__bfoCompute();
+  var rows = d.rows.filter(function(r){ return mode==='all' ? true : !r.alreadyBatched; });
+  var batchRows = [];
+  rows.forEach(function(r){
+    var yr = r.date ? (new Date(r.date).getFullYear()||null) : null;
+    r.items.forEach(function(i){
+      var q = i.qty_ordered||0; if(q<=0) return;
+      batchRows.push({
+        sku: i.sku, batch_year: yr, inbound_date: r.date || null,
+        qty_received: q, qty_remaining: q,
+        cost_price: Number(i.unit_cost_rm)||0, landed_cost: Number(i.unit_cost_rm)||0,
+        po_number: r.po.po_number, supplier_name: r.po.supplier_name||null,
+        delivery_order_ref: r.doRef, notes: 'BACKFILL-DO '+r.doRef
+      });
+    });
+  });
+  if(!batchRows.length){ window.showToast&&showToast('Tiada item untuk backfill','warn'); return; }
+  var dblNote = mode==='all' ? '\n\nAMARAN: Mode SEMUA — SKU yang dah ada stok akan jadi DOUBLE.' : '';
+  if(!confirm('Cipta '+batchRows.length+' batch ('+rows.length+' DO)?'+dblNote+'\n\nSetiap batch di-tag BACKFILL-DO (boleh Undo). Teruskan?')) return;
+  try {
+    for(var i=0;i<batchRows.length;i+=500){
+      var chunk = batchRows.slice(i,i+500);
+      var res = await db.from('inventory_batches').insert(chunk);
+      if(res.error) throw res.error;
+    }
+    window.showToast&&showToast('Backfill siap · '+batchRows.length+' batch dicipta','success');
+    await window.__bfoRefresh();
+  } catch(e){ window.showToast&&showToast('Backfill gagal: '+(e.message||e),'error'); console.error('bfo execute:',e); }
+};
+window.__bfoUndo = async function(){
+  if(!confirm('Buang SEMUA batch backfill (tag BACKFILL-DO)?\nIni patah balik backfill. Teruskan?')) return;
+  try {
+    var res = await db.from('inventory_batches').delete().like('notes','BACKFILL-DO%');
+    if(res.error) throw res.error;
+    window.showToast&&showToast('Backfill batch dibuang (undo)','success');
+    await window.__bfoRefresh();
+  } catch(e){ window.showToast&&showToast('Undo gagal: '+(e.message||e),'error'); console.error('bfo undo:',e); }
+};
