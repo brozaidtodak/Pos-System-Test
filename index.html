@@ -1947,6 +1947,9 @@
  <div class="menu-item" data-tab="nav_sys_invhistory" onclick="event.stopPropagation(); switchHub(['inventoryHistorySection'], 'Inventory History', this); if(typeof renderInventoryHistory==='function') renderInventoryHistory();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="history" style="width:15px; height:15px;"></i> <span>Inventory History</span>
  </div>
+ <div class="menu-item" data-tab="nav_stock_recon" onclick="event.stopPropagation(); switchHub(['stockReconSection'], 'Rekonsiliasi Stok', this); if(typeof renderStockRecon==='function') renderStockRecon();" style="display:flex; align-items:center; gap:10px;">
+ <i data-lucide="scale" style="width:15px; height:15px;"></i> <span>Rekonsiliasi Stok</span>
+ </div>
  <div class="menu-item" data-tab="nav_bins" onclick="event.stopPropagation(); switchHub(['binsSection'], 'Locations & Bins', this); if(typeof renderBinsLocations==='function') renderBinsLocations();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="map-pin" style="width:15px; height:15px;"></i> <span>Locations &amp; Bins</span>
  </div>
@@ -3753,6 +3756,52 @@
  <input type="text" id="receiveRef" class="login-input" placeholder="DO-2024-04-24 / shipment…">
 
  <button type="button" id="receiveSaveBtn" onclick="window.__receiveSave()" class="login-btn" style="background:#CD7C32; width:100%; padding:15px; font-size:15px; margin-top:16px;"><i data-lucide="check" style="width:15px;height:15px;vertical-align:-2px;"></i> Terima &amp; Cipta Batch</button>
+ </div>
+ </div>
+
+ <!-- p1_883 — REKONSILIASI STOK: jejak ke mana stok hilang (Diterima − Jualan − CUD/CUR/SCUD/R&R/lain − Stok kini = Tak Terjelas) -->
+ <div id="stockReconSection" class="tab-section" style="display:none;">
+ <style>
+ #stockReconSection .data-table { border-collapse:collapse; width:100%; font-size:12.5px; }
+ #stockReconSection .data-table th { text-align:right; padding:9px 10px; border-bottom:2px solid #D1D5DB; white-space:nowrap; font-size:11px; text-transform:uppercase; letter-spacing:.3px; color:#6B7280; }
+ #stockReconSection .data-table th.l { text-align:left; }
+ #stockReconSection .data-table td { text-align:right; padding:8px 10px; border-bottom:1px solid #EEE; white-space:nowrap; }
+ #stockReconSection .data-table td.l { text-align:left; }
+ #stockReconSection .data-table tbody tr:hover { background:#fff8f0; }
+ #stockReconSection .recon-gap { font-weight:800; }
+ </style>
+ <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="scale" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Rekonsiliasi Stok</h2>
+ <p style="color:#6B7280; font-size:13px; margin:2px 0 14px;">Jejak <strong>ke mana stok pergi</strong>. Untuk tiap SKU: <strong>Diterima − Jualan − Display(CUD) − Rental(CUR) − SCUD − Return/Rosak − Lain = sepatutnya tinggal</strong>, dibanding stok sebenar. Beza = <strong>tak terjelas</strong> (kena siasat / belum direkod).</p>
+ <div id="reconKpis" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:14px;"></div>
+ <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:end;">
+ <div style="flex:1; min-width:200px;"><label class="small-lbl">Cari SKU / Nama</label><input type="text" id="reconSearch" class="login-input" placeholder="BD005 / tent..." style="margin:0;" oninput="window.renderStockRecon && window.renderStockRecon()"></div>
+ <label style="display:flex; align-items:center; gap:7px; font-size:13px; color:#374151; cursor:pointer; padding-bottom:8px;"><input type="checkbox" id="reconGapOnly" onchange="window.renderStockRecon && window.renderStockRecon()" style="width:16px;height:16px;"> Tunjuk yang ada beza sahaja</label>
+ <button type="button" onclick="window.__reconExport && window.__reconExport()" class="btn-secondary" style="padding:10px 16px; border-radius:8px; flex-shrink:0;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Eksport CSV</button>
+ </div>
+ <div class="admin-card" style="padding:0;">
+ <div style="overflow-x:auto;">
+ <table class="data-table">
+ <thead style="background:var(--card-bg);">
+ <tr>
+ <th class="l">SKU</th>
+ <th class="l">Produk</th>
+ <th>Diterima</th>
+ <th>Jualan</th>
+ <th title="Company Use Display">Display</th>
+ <th title="Company Rental">Rental</th>
+ <th title="Stock become new display">SCUD</th>
+ <th title="Return &amp; Refund / Rosak">Return/Rosak</th>
+ <th title="Transfer / ambilan staf / hilang / sampel">Lain</th>
+ <th>Stok Kini</th>
+ <th title="Diterima − semua keluar − stok kini. Tak sifar = belum direkod / hilang.">Tak Terjelas</th>
+ </tr>
+ </thead>
+ <tbody id="reconTbody">
+ <tr><td colspan="11" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>
+ </tbody>
+ </table>
+ </div>
+ <p id="reconSummary" style="font-size:12px; color:#666; padding:10px 14px; margin:0;"></p>
  </div>
  </div>
 
@@ -8727,6 +8776,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_883', label:'WMS — REKONSILIASI STOK: page jejak "ke mana stok hilang" (Zaid: "perlu ada page untuk scan kenapa sales tak cukup/kemana produk tu hilang"; istilah CUD=Company Use Display, CUR/CR=Company Rental, SCUD=stok jadi display baru, R&R=Return&Refund customer). FASA 1 (guna data POS sedia ada; tepat penuh selepas import DO+sejarah Drive=Fasa 2). Sidebar Inventory → "Rekonsiliasi Stok" (stockReconSection). renderStockRecon: asas lejar batch — Diterima(Σqty_received) − Stok kini(Σqty_remaining) = consumed, dijelaskan oleh Jualan(OUTBOUND_SALE) + pergerakan keluar (inventory_transactions qty_change<0 bucket ikut reason: Display/Rental/SCUD/Return-Rosak/Lain) + returns_log; baki = TAK TERJELAS (− hilang/belum direkod, + lebih). Jadual per SKU + KPI (SKU ada beza/unit tak terjelas/nilai anggaran) + carian + toggle "beza sahaja" + CSV. Read-only (0 risiko). Tambah kategori sebab CUD/CUR/SCUD/R&R/Transfer dlm Rekod Pergerakan (__IH_REASONS) supaya staff log betul → auto-bucket. FIX bonus: __receiveSave guna qty_change (bukan qty) utk log inventory_transactions. app.js v836->837.', d:'done' },
  { id:'p1_882', label:'WMS Fasa 2 (ringkas) — TERIMA STOK (Receive) → cipta batch ikut TARIKH MENDARAT (Zaid: "siapkan inventory, setiap unit SKU perlu ada batch; PO-DO-receive-batch; batch based on date product landed (cth DO 24 April 2024); SKU mendarat pertama = #1 batch (FIFO)"). Audit: 681 produk, 13 TIADA batch (8 published), 37 batch tanpa kos. Bina alat Receive ringkas: butang "Terima Stok" di FIFO Listing → modal #receiveStockModal (cari SKU + auto papar nama/stok/nombor-batch-akan-datang, Kuantiti, Kos/unit AUTO dari product_landed_cost (fallback master cost, boleh ubah), TARIKH MENDARAT wajib (ikut DO; tentukan urutan), Pembekal + Ref DO pilihan). __receiveSave insert inventory_batches (inbound_date=tarikh mendarat, batch_year, cost_price+landed_cost, supplier, delivery_order_ref) + log inventory_transactions IN + push ke global inventoryBatches (stok/Cashier/FIFO update tanpa reload). FIFO Listing tambah lajur "Batch #" = urutan per-SKU ikut tarikh mendarat (#1=paling lama, dijual dulu); FIFO outbound sedia ada dah susun ikut inbound_date. Guna utk tampung 13 lubang + semua penerimaan masa depan. app.js v835->836.', d:'done' },
  { id:'p1_881', label:'Cashier: gambar produk boleh ZOOM penuh skrin (Zaid: "buatkan semua gambar di cashier boleh zoom in full page dan zoom out"). Bina lightbox reusable __imgZoomOpen(url,alt): overlay hitam penuh skrin (z-10000) dgn gambar resolusi penuh; sokong pinch-zoom 2-jari, double-tap toggle (1x↔2.5x), pan (seret bila zoom), butang Zoom in/out/Reset, scroll-wheel (desktop), ESC/klik latar/X tutup; clamp pan + skala 1x–5x. Wire: (1) gambar grid Cashier kini tap → ZOOM (dulu buka detail; detail kekal via tajuk kad). (2) gambar utama modal detail produk (#pdMainImg) pun tap → zoom gambar semasa galeri. CSS .imgZoom__* + body.img-zoom-open kunci scroll. app.js v834->835, design-tokens.css v146->147.', d:'done' },
  { id:'p1_880', label:'Tablet app: sidebar nav boleh KECIL/BESAR (Zaid: "sidebar tu boleh dikecilkan dan dibesarkan, bila kecil nampak icon sahaja"). Tambah butang toggle (chevrons) dalam brand header sidebar → __togglePosSidebar tukar body.pos-sidebar-collapsed + simpan localStorage pos_sidebar_collapsed (kekal lepas reopen). CSS guna var --pos-sidebar-w (220px besar / 66px kecil); SEMUA offset kandungan (top bar/main-content/offline banner/cart floating bar/tab-section/saPanel) tukar dari 220px hardcode → var(--pos-sidebar-w) supaya geser auto + transisi .18s. Bila KECIL: sorok label (.posAppTab span) + brand text/logo, ikon di tengah, tooltip via title=label; toggle icon putar 180°. Hanya tablet (pos-tablet-pane); phone bottom-bar & desktop tak terjejas. app.js v833->834, design-tokens.css v145->146.', d:'done' },
@@ -14071,7 +14121,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=836"></script>
+ <script src="app.js?v=837"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

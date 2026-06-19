@@ -4185,8 +4185,8 @@ window.__ihRows = window.__ihRows || [];
 window.__ihTxns = window.__ihTxns || [];   // p1_479 — pergerakan manual (ambilan/display/rosak/restock)
 window.__ihMoveDir = window.__ihMoveDir || 'OUT';
 window.__IH_REASONS = {
- OUT: ['Ambilan Staf','Jadikan Display','Rosak / Damaged','Hilang','Sampel / Hadiah','Guna Dalaman','Pembetulan Kira (kurang)','Lain-lain'],
- IN: ['Restock Manual','Pulangan Pelanggan','Jumpa Semula','Pembetulan Kira (tambah)','Lain-lain']
+ OUT: ['Jadi Display (CUD)','Rental Company (CUR)','Ganti Display (SCUD)','Return & Refund (R&R)','Rosak / Damaged','Ambilan Staf','Hilang','Sampel / Hadiah','Guna Dalaman','Transfer Cawangan','Pembetulan Kira (kurang)','Lain-lain'],
+ IN: ['Restock Manual','Pulangan Pelanggan','Rental Pulang (CUR balik)','Jumpa Semula','Pembetulan Kira (tambah)','Lain-lain']
 };
 
 window.__ihBuildRows = function() {
@@ -20271,7 +20271,7 @@ window.__receiveSave = async function(){
   // kemaskini global supaya stok + FIFO + Cashier update tanpa reload penuh
   if(Array.isArray(data) && data[0] && typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches)) inventoryBatches.push(data[0]);
   try {
-   await db.from('inventory_transactions').insert([{ sku, transaction_type: 'IN', qty, reason: 'Terima Stok' + (supplier ? ' from ' + supplier : '') + (ref ? ' (' + ref + ')' : '') + (cost ? ' @ RM' + cost.toFixed(2) : '') + ' · landed ' + date, staff_name: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'System', created_at: new Date().toISOString() }]);
+   await db.from('inventory_transactions').insert([{ sku, transaction_type: 'IN', qty_change: qty, reason: 'Terima Stok' + (supplier ? ' from ' + supplier : '') + (ref ? ' (' + ref + ')' : '') + (cost ? ' @ RM' + cost.toFixed(2) : '') + ' · landed ' + date, staff_name: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'System', created_at: new Date().toISOString() }]);
   } catch(e){}
   showToast('+' + qty + ' ' + sku + ' diterima — batch ' + date + (cost ? ' @ RM' + cost.toFixed(2) : ''), 'success');
   window.__receiveClose();
@@ -20280,6 +20280,105 @@ window.__receiveSave = async function(){
   try { if(typeof renderPOS === 'function') renderPOS((document.getElementById('searchInput')||{}).value || ''); } catch(e){}
  } catch(e){ showToast('Ralat Terima Stok: ' + e.message, 'error'); }
  finally { if(btn){ btn.disabled = false; btn.innerHTML = '<i data-lucide="check" style="width:15px;height:15px;vertical-align:-2px;"></i> Terima &amp; Cipta Batch'; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} } }
+};
+
+// =============================================================
+// p1_883 — Rekonsiliasi Stok: ke mana stok pergi? Asas = lejar batch.
+// Diterima(Σqty_received) − Stok kini(Σqty_remaining) = Consumed. Consumed dijelaskan oleh
+// Jualan(OUTBOUND_SALE) + pergerakan keluar (Display/Rental/SCUD/Return-Rosak/Lain dari
+// inventory_transactions) + returns_log. Baki tak terjelas = belum direkod / hilang.
+// FASA 1: guna data POS sedia ada. Tepat penuh selepas import DO + sejarah CUD/CUR/SCUD/R&R (Fasa 2).
+// =============================================================
+window.__reconRows = [];
+window.renderStockRecon = async function(){
+ const tbody = document.getElementById('reconTbody'); if(!tbody) return;
+ if(typeof inventoryBatches === 'undefined' || !Array.isArray(inventoryBatches)){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">Loading...</td></tr>'; return; }
+ // fetch movements + returns (cache 90s supaya tak fetch tiap taip carian)
+ const now = Date.now();
+ if(!window.__reconCache || (now - (window.__reconCacheAt||0)) > 90000){
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">Mengira pergerakan stok…</td></tr>';
+  let txns = [], rets = [];
+  try { if(typeof db !== 'undefined' && db){
+   const t = await db.from('inventory_transactions').select('sku,transaction_type,qty_change,reason').limit(200000); txns = (t.data) || [];
+   const r = await db.from('returns_log').select('sku,qty').limit(50000); rets = (r.data) || [];
+  }} catch(e){ console.warn('recon fetch', e); }
+  window.__reconCache = { txns, rets }; window.__reconCacheAt = now;
+ }
+ const { txns, rets } = window.__reconCache;
+ const nameOf = (sku) => { const p = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.find(x => x.sku === sku) : null; return p ? (p.name || '') : ''; };
+ const agg = {};
+ const ensure = (sku) => agg[sku] || (agg[sku] = { sku, received:0, onhand:0, costSum:0, costQty:0, sales:0, display:0, rental:0, scud:0, retdmg:0, other:0 });
+ inventoryBatches.forEach(b => { if(!b.sku) return; const a = ensure(b.sku); const qr = Number(b.qty_received)||0, rem = Number(b.qty_remaining)||0; a.received += qr; a.onhand += rem; const c = Number(b.cost_price || b.landed_cost)||0; if(c>0 && qr>0){ a.costSum += c*qr; a.costQty += qr; } });
+ (txns||[]).forEach(t => {
+  if(!t.sku || !agg[t.sku]) { if(!t.sku) return; }
+  const a = ensure(t.sku);
+  const qc = Number(t.qty_change)||0; const tt = (t.transaction_type||'').toUpperCase(); const rs = (t.reason||'').toLowerCase();
+  if(tt === 'OUTBOUND_SALE'){ a.sales += Math.abs(qc); return; }
+  if(qc >= 0) return; // IN / receiving / pelarasan-tambah — jangan kira (received dari batch)
+  const out = Math.abs(qc);
+  if(/display|cud/.test(rs)) a.display += out;
+  else if(/rental|sewa|\bcur\b|\bcr\b/.test(rs)) a.rental += out;
+  else if(/scud/.test(rs)) a.scud += out;
+  else if(/rosak|defect|return|refund|r&r|pulangan|pecah/.test(rs)) a.retdmg += out;
+  else a.other += out;
+ });
+ (rets||[]).forEach(r => { if(!r.sku) return; const a = ensure(r.sku); a.retdmg += Math.abs(Number(r.qty)||0); });
+ const q = (document.getElementById('reconSearch')?.value || '').trim().toLowerCase();
+ const gapOnly = !!(document.getElementById('reconGapOnly')?.checked);
+ let rows = Object.values(agg).map(a => {
+  const unexplained = a.received - a.onhand - a.sales - a.display - a.rental - a.scud - a.retdmg - a.other;
+  const avgCost = a.costQty ? (a.costSum / a.costQty) : 0;
+  return Object.assign(a, { unexplained, avgCost, name: nameOf(a.sku) });
+ });
+ if(q) rows = rows.filter(r => (r.sku||'').toLowerCase().includes(q) || (r.name||'').toLowerCase().includes(q));
+ if(gapOnly) rows = rows.filter(r => r.unexplained !== 0);
+ rows.sort((x,y) => Math.abs(y.unexplained) - Math.abs(x.unexplained) || (x.sku||'').localeCompare(y.sku||''));
+ window.__reconRows = rows;
+ // KPIs (atas SEMUA SKU, bukan ikut carian)
+ const all = Object.values(agg).map(a => Object.assign(a, { unexplained: a.received - a.onhand - a.sales - a.display - a.rental - a.scud - a.retdmg - a.other, avgCost: a.costQty ? a.costSum/a.costQty : 0 }));
+ const withGap = all.filter(r => r.unexplained !== 0);
+ const totalGapUnits = all.reduce((s,r) => s + Math.abs(r.unexplained), 0);
+ const totalGapVal = all.reduce((s,r) => s + Math.abs(r.unexplained) * (r.avgCost||0), 0);
+ const kpis = document.getElementById('reconKpis');
+ if(kpis) kpis.innerHTML =
+   '<div class="stat-card" style="border-left-color:var(--primary);"><div class="stat-card__label"><i data-lucide="package" style="width:13px;height:13px;color:var(--primary);"></i> SKU Dipantau</div><div class="stat-card__value">' + all.length.toLocaleString() + '</div></div>'
+ + '<div class="stat-card" style="border-left-color:#B23A2E;"><div class="stat-card__label"><i data-lucide="alert-triangle" style="width:13px;height:13px;color:#B23A2E;"></i> SKU Ada Beza</div><div class="stat-card__value">' + withGap.length.toLocaleString() + '</div></div>'
+ + '<div class="stat-card" style="border-left-color:#B23A2E;"><div class="stat-card__label"><i data-lucide="boxes" style="width:13px;height:13px;color:#B23A2E;"></i> Unit Tak Terjelas</div><div class="stat-card__value">' + totalGapUnits.toLocaleString() + '</div></div>'
+ + '<div class="stat-card" style="border-left-color:#7A5410;"><div class="stat-card__label"><i data-lucide="banknote" style="width:13px;height:13px;color:#7A5410;"></i> Nilai (anggaran)</div><div class="stat-card__value">RM ' + totalGapVal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</div></div>';
+ if(!rows.length){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">Tiada SKU' + (q||gapOnly ? ' padan tapisan' : '') + '.</td></tr>'; }
+ else {
+  const cell = (v) => v ? v.toLocaleString() : '<span style="color:#D1D5DB;">·</span>';
+  tbody.innerHTML = rows.slice(0, 600).map(r => {
+   const gapColor = r.unexplained > 0 ? '#B23A2E' : (r.unexplained < 0 ? '#7A5410' : '#345E43');
+   const gapTxt = r.unexplained === 0 ? '<span style="color:#345E43;">0 ✓</span>' : (r.unexplained > 0 ? '−' + r.unexplained : '+' + Math.abs(r.unexplained));
+   return '<tr>'
+    + '<td class="l" style="font-family:\'SF Mono\',Menlo,monospace;font-weight:700;font-size:11.5px;">' + (r.sku||'-') + '</td>'
+    + '<td class="l" style="color:#374151;">' + (String(r.name||'').slice(0,38) || '-') + '</td>'
+    + '<td style="font-weight:600;">' + cell(r.received) + '</td>'
+    + '<td>' + cell(r.sales) + '</td>'
+    + '<td>' + cell(r.display) + '</td>'
+    + '<td>' + cell(r.rental) + '</td>'
+    + '<td>' + cell(r.scud) + '</td>'
+    + '<td>' + cell(r.retdmg) + '</td>'
+    + '<td>' + cell(r.other) + '</td>'
+    + '<td style="font-weight:700;">' + cell(r.onhand) + '</td>'
+    + '<td class="recon-gap" style="color:' + gapColor + ';">' + gapTxt + '</td>'
+    + '</tr>';
+  }).join('');
+ }
+ const sum = document.getElementById('reconSummary');
+ if(sum) sum.innerHTML = rows.length.toLocaleString() + ' SKU' + (rows.length > 600 ? ' (papar 600 teratas ikut beza terbesar)' : '') + '. <strong>−</strong> = stok hilang/belum direkod · <strong>+</strong> = lebih dari dijangka. <span style="color:#9a948b;">Nota Fasa 1: "Jualan" = jualan POS yang tolak batch; tepat penuh selepas import DO + sejarah CUD/CUR/SCUD/R&R dari Drive.</span>';
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.__reconExport = function(){
+ const rows = window.__reconRows || [];
+ if(!rows.length) return (typeof showToast==='function') && showToast('Tiada data untuk eksport.', 'warn');
+ const head = ['SKU','Produk','Diterima','Jualan','Display_CUD','Rental_CUR','SCUD','Return_Rosak','Lain','Stok_Kini','Tak_Terjelas'];
+ const esc = (v) => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+ const lines = [head.join(',')].concat(rows.map(r => [r.sku, r.name, r.received, r.sales, r.display, r.rental, r.scud, r.retdmg, r.other, r.onhand, r.unexplained].map(esc).join(',')));
+ const blob = new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+ const url = URL.createObjectURL(blob); const a = document.createElement('a');
+ a.href = url; a.download = 'rekonsiliasi-stok.csv'; a.click(); URL.revokeObjectURL(url);
 };
 
 // p1_274 — Stock Transfer stub (build flow later)
