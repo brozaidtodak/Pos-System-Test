@@ -20190,8 +20190,9 @@ window.renderFifoListing = function() {
  const cost = Number(b.cost_price || b.landed_cost) || 0;
  const poSup = [b.po_number, b.supplier_name].filter(Boolean).join(' · ');
  const seqNo = __batchSeq.get(b.id) || '';
+ const seqTot = __seqBySku[b.sku] || seqNo;
  return `<tr>
- <td style="padding:10px; text-align:center; font-weight:800; color:#7A5410;">${seqNo ? '#' + seqNo : '—'}</td>
+ <td style="padding:10px; text-align:center; font-weight:800; color:#7A5410;" title="Batch ke-${seqNo} daripada ${seqTot} batch aktif SKU ni (ikut tarikh mendarat)">${seqNo ? '#' + seqNo + '/' + seqTot : '—'}</td>
  <td style="padding:10px; white-space:nowrap;">${esc(dt)}</td>
  <td style="padding:10px; font-family:'SF Mono',Menlo,monospace; font-size:11.5px;">${esc(b.sku || '-')}</td>
  <td style="padding:10px;">${esc(nameOf(b.sku).slice(0, 45) || '-')}</td>
