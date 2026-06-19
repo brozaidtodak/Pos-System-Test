@@ -40129,3 +40129,105 @@ window.__ccCreateSession = async function(){
     console.error('cycle count create gagal:', e);
   }
 };
+
+/* ============================================================
+   p1_848 — WMS Fasa 4: Locations & Bins. Idea dari GreaterWMS (binset +
+   StockBinModel). Reuse field produk location_bin (tiada table baru):
+   directory bin + stok per bin + scan-cari kandungan + SKU tiada lokasi +
+   cetak label barcode bin (JsBarcode CODE128). Tetapkan lokasi guna modal
+   sedia ada (openLocModal).
+   ============================================================ */
+window.__binBuild = function(){
+  var prods = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.filter(function(p){return p&&p.sku;}) : [];
+  var stockMap = (typeof window.__ccStockMap === 'function') ? window.__ccStockMap() : {};
+  var stockOf = function(p){ var s = stockMap[p.sku]; return (s!=null) ? s : (Number(p.stock)||0); };
+  var bins = {}, unassigned = [];
+  prods.forEach(function(p){
+    var loc = (p.location_bin || '').trim();
+    var st = stockOf(p);
+    if(!loc){ unassigned.push({ sku:p.sku, name:p.name||'', stock:st }); return; }
+    if(!bins[loc]) bins[loc] = { code:loc, skus:[], units:0, value:0 };
+    bins[loc].skus.push({ sku:p.sku, name:p.name||'', stock:st });
+    bins[loc].units += st;
+    bins[loc].value += st * (Number(p.cost_price)||0);
+  });
+  var arr = Object.keys(bins).map(function(k){ return bins[k]; }).sort(function(a,b){ return String(a.code).localeCompare(String(b.code)); });
+  return { bins:bins, list:arr, unassigned:unassigned };
+};
+window.renderBinsLocations = function(){
+  var body = document.getElementById('binsBody'); if(!body) return;
+  var data = window.__binBuild(); window.__binData = data;
+  var totUnits = data.list.reduce(function(s,b){ return s+b.units; }, 0);
+  var skuLoc = data.list.reduce(function(s,b){ return s+b.skus.length; }, 0);
+  var esc = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  var kpi = function(lbl,val,col){ return '<div style="flex:1;min-width:120px;background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:13px 15px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);">'+lbl+'</div><div style="font-size:22px;font-weight:900;color:'+(col||'#101010')+';letter-spacing:-.5px;margin-top:2px;">'+val+'</div></div>'; };
+  var binRows = data.list.map(function(b){
+    return '<tr style="border-bottom:1px solid #F1F1F1;cursor:pointer;" onclick="window.__binShow&&window.__binShow('+JSON.stringify(b.code).replace(/"/g,'&quot;')+')">'
+      + '<td style="padding:9px 11px;font-weight:700;">'+esc(b.code)+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;">'+b.skus.length+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;">'+b.units+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;color:var(--text-muted);">RM '+Math.round(b.value).toLocaleString()+'</td>'
+      + '<td style="padding:9px 11px;text-align:right;"><button onclick="event.stopPropagation();window.__binBarcode&&window.__binBarcode('+JSON.stringify(b.code).replace(/"/g,'&quot;')+')" style="font-size:11px;font-weight:700;color:var(--primary);background:#fff;border:1px solid var(--primary);padding:5px 10px;border-radius:7px;cursor:pointer;">Label</button></td>'
+    + '</tr>';
+  }).join('');
+  var unRows = data.unassigned.slice(0,40).map(function(p){
+    return '<tr style="border-bottom:1px solid #F1F1F1;"><td style="padding:8px 11px;font-weight:700;">'+esc(p.sku)+'</td><td style="padding:8px 11px;color:#374151;">'+esc((p.name||'').slice(0,48))+'</td><td style="padding:8px 11px;text-align:right;">'+p.stock+'</td><td style="padding:8px 11px;text-align:right;"><button onclick="window.openLocModal&&window.openLocModal('+JSON.stringify(p.sku).replace(/"/g,'&quot;')+')" style="font-size:11px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:5px 11px;border-radius:7px;cursor:pointer;">Tetapkan</button></td></tr>';
+  }).join('');
+  var html = '<div style="max-width:1100px;margin:0 auto;padding:4px 2px 60px;">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;"><i data-lucide="map-pin" style="width:22px;height:22px;color:var(--primary);"></i><h2 style="margin:0;font-size:22px;font-weight:800;color:var(--text-main);">Locations & Bins</h2></div>'
+    + '<p style="margin:0 0 16px;font-size:13px;color:var(--text-muted);max-width:720px;line-height:1.55;">Direktori lokasi gudang kau (dari medan lokasi produk). Scan/taip kod bin untuk lihat apa di dalamnya, cetak label barcode bin, dan tetapkan lokasi untuk SKU yang belum ada. Idea dari WMS (bin master).</p>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'+kpi('Bin',data.list.length)+kpi('SKU berlokasi',skuLoc,'var(--primary-600,#B86A26)')+kpi('SKU tiada lokasi',data.unassigned.length, data.unassigned.length?'#CE9420':'#2e7d32')+kpi('Unit dalam bin',totUnits.toLocaleString())+'</div>'
+    + '<div style="background:#fff8f0;border:2px dashed #e89348;padding:10px 12px;border-radius:10px;margin-bottom:14px;"><label style="font-size:11.5px;font-weight:700;color:#7c4a1a;">Scan / taip kod bin atau SKU</label><input id="binScan" onkeyup="if(event.key===\'Enter\')window.__binSearch&&window.__binSearch()" placeholder="cth Z1-A2-R3 atau SKU" style="margin:6px 0 0;padding:8px 11px;border:1px solid #ECECEC;border-radius:8px;width:100%;font-weight:600;"></div>'
+    + '<div id="binDetail"></div>'
+    + '<div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin:6px 0 8px;">Senarai bin ('+data.list.length+')</div>'
+    + '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));margin-bottom:20px;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Bin</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">SKU</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Unit</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Nilai</th><th></th></tr></thead><tbody>'+(binRows||'<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text-muted);">Tiada lokasi ditetapkan lagi. Guna butang Tetapkan di bawah.</td></tr>')+'</tbody></table></div>'
+    + (data.unassigned.length ? ('<div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#CE9420;margin:0 0 8px;">SKU tiada lokasi ('+data.unassigned.length+(data.unassigned.length>40?' — papar 40':'')+')</div><div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">SKU</th><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Nama</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Stok</th><th></th></tr></thead><tbody>'+unRows+'</tbody></table></div>') : '')
+    + '</div>';
+  body.innerHTML = html;
+  if(window.lucide && lucide.createIcons){ try{ lucide.createIcons(); }catch(e){} }
+};
+window.__binShow = function(code){
+  var d = (window.__binData && window.__binData.bins) ? window.__binData.bins[code] : null;
+  var el = document.getElementById('binDetail'); if(!el) return;
+  if(!d){ el.innerHTML = ''; return; }
+  var esc = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  var rows = d.skus.slice().sort(function(a,b){return String(a.sku).localeCompare(String(b.sku));}).map(function(s){
+    return '<tr style="border-bottom:1px solid #F1F1F1;"><td style="padding:7px 11px;font-weight:700;">'+esc(s.sku)+'</td><td style="padding:7px 11px;color:#374151;">'+esc((s.name||'').slice(0,50))+'</td><td style="padding:7px 11px;text-align:right;">'+s.stock+'</td></tr>';
+  }).join('');
+  el.innerHTML = '<div style="background:#fff;border:1px solid var(--primary);border-radius:12px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;"><div style="font-size:15px;font-weight:800;color:#101010;">Bin '+esc(d.code)+' <span style="font-weight:600;color:var(--text-muted);font-size:12.5px;">· '+d.skus.length+' SKU · '+d.units+' unit</span></div>'
+    + '<div><button onclick="window.__binBarcode&&window.__binBarcode('+JSON.stringify(d.code).replace(/"/g,'&quot;')+')" style="font-size:12px;font-weight:700;color:var(--primary);background:#fff;border:1px solid var(--primary);padding:6px 12px;border-radius:8px;cursor:pointer;margin-right:6px;">Cetak label</button><button onclick="document.getElementById(\'binDetail\').innerHTML=\'\'" style="font-size:12px;font-weight:700;color:var(--text-muted);background:#fff;border:1px solid #ECECEC;padding:6px 12px;border-radius:8px;cursor:pointer;">Tutup</button></div></div>'
+    + '<div style="border:1px solid #ECECEC;border-radius:10px;overflow:hidden;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:8px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">SKU</th><th style="text-align:left;padding:8px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Nama</th><th style="text-align:right;padding:8px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Stok</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  try { el.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(e){}
+};
+window.__binSearch = function(){
+  var q = ((document.getElementById('binScan')||{}).value||'').trim().toUpperCase();
+  if(!q) return;
+  var data = window.__binData || window.__binBuild();
+  if(data.bins[q]){ window.__binShow(q); return; }
+  // cuba match SKU → cari bin dia
+  var found = null;
+  Object.keys(data.bins).some(function(code){
+    if(data.bins[code].skus.some(function(s){ return String(s.sku).toUpperCase() === q; })){ found = code; return true; }
+    return false;
+  });
+  if(found){ window.__binShow(found); window.showToast && showToast('SKU '+q+' di bin '+found,'info'); }
+  else { window.showToast && showToast('"'+q+'" tiada bin / lokasi','warn'); }
+};
+window.__binBarcode = function(code){
+  try {
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    if(typeof JsBarcode === 'undefined'){ window.showToast && showToast('Barcode lib belum dimuat (perlu internet)','warn'); return; }
+    JsBarcode(svg, code, { format:'CODE128', width:2, height:70, displayValue:true, fontSize:16, margin:6 });
+    var markup = new XMLSerializer().serializeToString(svg);
+    var w = window.open('', '_blank', 'width=420,height=320');
+    w.document.write('<!DOCTYPE html><html><head><title>Label Bin '+code+'</title></head><body style="font-family:Poppins,Arial,sans-serif;text-align:center;padding:24px;">'
+      + '<div style="font-size:13px;font-weight:700;letter-spacing:1px;color:#101010;margin-bottom:8px;">LOKASI BIN</div>'
+      + '<div style="font-size:20px;font-weight:900;margin-bottom:12px;">'+code+'</div>'
+      + markup
+      + '<div style="margin-top:14px;"><button onclick="window.print()" style="padding:8px 16px;font-weight:700;cursor:pointer;">Cetak</button></div>'
+      + '</body></html>');
+    w.document.close();
+  } catch(e){ window.showToast && showToast('Label gagal: '+(e.message||e),'error'); }
+};
