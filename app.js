@@ -115,7 +115,9 @@ window.__injectPosAppTabBar = function(){
  if(document.getElementById('posAppTabBar')) return;
  const bar = document.createElement('div');
  bar.id = 'posAppTabBar';
- bar.innerHTML = window.__POS_APP_TABS.map(t =>
+ // p1_865 — brand header (nampak hanya bila sidebar tablet); di phone (bottom bar) disorok via CSS
+ bar.innerHTML = '<div class="posAppNavBrand"><i data-lucide="tent" style="width:18px;height:18px;"></i><span>10 CAMP POS</span></div>'
+ + window.__POS_APP_TABS.map(t =>
  `<button class="posAppTab" data-key="${t.key}" onclick="window.__posAppGo('${t.key}')"><i data-lucide="${t.icon}"></i><span>${t.label}</span></button>`
  ).join('');
  document.body.appendChild(bar);
@@ -40228,11 +40230,14 @@ window.__autoPosLayout = function(){
   if(localStorage.getItem('posMode') === 'mobile') document.body.classList.add('pos-mobile-mode');
   else document.body.classList.remove('pos-mobile-mode');
  }
- // p1_864 — TABLET 2-pane: lebar >=768 & tinggi >=600 (tablet portrait/landscape, BUKAN phone
- // landscape yg pendek) → troli jadi rail tetap di kanan (catalog kiri sentiasa + troli nampak),
- // bukan drawer bawah. Layer atas pos-mobile-mode (kekal satu-scroll + simplifikasi lain).
+ // p1_864/865 — TABLET master-detail (gaya iPad): SIDEBAR nav kiri (ganti bottom tab bar)
+ // bila lebar >=768 & tinggi >=600 (tablet portrait/landscape, BUKAN phone landscape pendek).
+ // CART RAIL tetap di kanan hanya bila CUKUP LEBAR (>=1100, biasanya landscape) — portrait
+ // kekal troli drawer sebab sidebar+rail buat katalog terlalu sempit.
  var tabletPane = narrow && window.innerWidth >= 768 && window.innerHeight >= 600;
+ var cartRail = tabletPane && window.innerWidth >= 1100;
  document.body.classList.toggle('pos-tablet-pane', tabletPane);
+ document.body.classList.toggle('pos-cart-rail', cartRail);
  var btn = document.getElementById('btnPosLayoutToggle');
  if(btn) btn.style.display = narrow ? 'none' : '';
  try { window.__updatePosLayoutBtn && window.__updatePosLayoutBtn(); } catch(e){}

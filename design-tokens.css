@@ -4224,36 +4224,59 @@ body.pos-app-scoped .pos-offline-banner { top: calc(54px + env(safe-area-inset-t
 body.pos-offline-on.pos-app-scoped #main-content { padding-top: calc(54px + env(safe-area-inset-top) + 48px) !important; }
 body.pos-offline-on.pos-app-scoped .pos-prodsearch-row { top: calc(var(--pos-app-header-h, 64px) + 40px); }
 
-/* p1_864 — TABLET 2-pane cashier: catalog kiri + troli rail kanan sentiasa nampak (ganti drawer bawah).
-   Layered atas pos-mobile-mode; hanya kesan skrin Cashier (#posSection). Phone/desktop tak terjejas. */
-body.pos-tablet-pane #posSection > .main-content { display: flex !important; gap: 16px; align-items: flex-start; padding-bottom: 0 !important; }
-body.pos-tablet-pane #posSection .products-section { flex: 1 1 auto !important; min-width: 0 !important; order: 1; }
-body.pos-tablet-pane #posSection .products-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
-body.pos-tablet-pane #posSection .cart-section {
-  order: 2;
-  position: sticky !important;
+/* ===== p1_865 — TABLET master-detail (gaya iPad): SIDEBAR nav kiri (ganti bottom tab bar) =====
+   pos-tablet-pane = lebar>=768 & tinggi>=600. Hanya app (pos-app-scoped). Phone/desktop tak terjejas. */
+.posAppNavBrand { display: none; }
+body.pos-tablet-pane #posAppTabBar {
+  flex-direction: column !important;
+  top: 0 !important; bottom: 0 !important; left: 0 !important; right: auto !important;
+  width: 220px !important; height: 100% !important;
+  padding: calc(env(safe-area-inset-top) + 14px) 12px calc(env(safe-area-inset-bottom) + 14px) 12px !important;
+  border-top: none !important; border-right: 1px solid #2a241d !important;
+  background: #101010 !important;
+  justify-content: flex-start !important; align-items: stretch !important;
+  gap: 3px !important; z-index: 120 !important;
+  box-shadow: 2px 0 16px rgba(0,0,0,.18) !important;
+}
+body.pos-tablet-pane .posAppNavBrand {
+  display: flex !important; align-items: center; gap: 9px;
+  color: #FAF6EF; font-weight: 800; font-size: 15px; letter-spacing: .3px; padding: 8px 12px 16px;
+}
+body.pos-tablet-pane .posAppNavBrand i { color: #CD7C32; }
+body.pos-tablet-pane .posAppTab {
+  flex: 0 0 auto !important; flex-direction: row !important; justify-content: flex-start !important;
+  gap: 13px !important; padding: 13px 14px !important; border-radius: 10px !important;
+  color: #C9C2B8 !important; transition: background .12s, color .12s;
+}
+body.pos-tablet-pane .posAppTab span { font-size: 14px !important; }
+body.pos-tablet-pane .posAppTab i { width: 21px !important; height: 21px !important; }
+body.pos-tablet-pane .posAppTab.active { background: rgba(205,124,50,.16) !important; color: #E59A56 !important; }
+/* geser top bar + kandungan + overlay ke kanan sidebar */
+body.pos-tablet-pane #posAppTopBar { left: 220px !important; }
+body.pos-tablet-pane.pos-app-scoped #main-content { margin-left: 220px !important; padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
+body.pos-tablet-pane .pos-offline-banner { left: 220px !important; }
+body.pos-tablet-pane #mobileCartFloatingBar { left: calc(220px + 16px) !important; bottom: calc(16px + env(safe-area-inset-bottom)) !important; }
+
+/* ===== p1_865 — CART RAIL (hanya landscape lebar>=1100): troli tetap di kanan ===== */
+body.pos-cart-rail #posSection > .main-content { display: flex !important; gap: 16px; align-items: flex-start; padding-bottom: 0 !important; }
+body.pos-cart-rail #posSection .products-section { flex: 1 1 auto !important; min-width: 0 !important; order: 1; }
+body.pos-cart-rail #posSection .products-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
+body.pos-cart-rail #posSection .cart-section {
+  order: 2; position: sticky !important;
   top: calc(var(--pos-app-header-h, 60px) + 12px) !important;
   left: auto !important; right: auto !important;
-  flex: 0 0 340px !important; width: 340px !important;
-  height: auto !important;
-  max-height: calc(100dvh - var(--pos-app-header-h, 60px) - 92px) !important;
-  transform: none !important;
-  background: #fff !important;
-  border: 1px solid var(--border-color, #E8E2D8) !important;
-  border-radius: 14px !important;
+  flex: 0 0 330px !important; width: 330px !important; height: auto !important;
+  max-height: calc(100dvh - var(--pos-app-header-h, 60px) - 30px) !important;
+  transform: none !important; background: #fff !important;
+  border: 1px solid var(--border-color, #E8E2D8) !important; border-radius: 14px !important;
   box-shadow: 0 6px 24px rgba(16,16,16,.08) !important;
-  padding: 16px !important;
-  overflow-y: auto !important;
-  display: flex !important; flex-direction: column;
-  z-index: 1 !important;
+  padding: 16px !important; overflow-y: auto !important;
+  display: flex !important; flex-direction: column; z-index: 1 !important;
 }
-/* troli sentiasa nampak → buang bar terapung "Lihat Troli" + header drawer (X) */
-body.pos-tablet-pane #mobileCartFloatingBar { display: none !important; }
-body.pos-tablet-pane #posSection .mobile-cart-header { display: none !important; }
-/* BAYAR SEKARANG lekat bawah rail */
-body.pos-tablet-pane #posSection .cart-section > div:last-child { position: sticky; bottom: 0; background: #fff; }
-/* kurangkan ruang bawah berlebihan (bar terapung dah tiada) */
-body.pos-tablet-pane.pos-app-scoped #main-content { padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important; }
+body.pos-cart-rail #mobileCartFloatingBar { display: none !important; }
+body.pos-cart-rail #posSection .mobile-cart-header { display: none !important; }
+body.pos-cart-rail #posSection .cart-section > div:last-child { position: sticky; bottom: 0; background: #fff; }
+body.pos-cart-rail.pos-app-scoped #main-content { padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important; }
 
 /* p1_862 — Tanya AI jadi tab bottom bar dalam app: sorok FAB terapung; panel chat = sheet penuh atas tab bar */
 body.pos-app-scoped #saFab { display: none !important; }
