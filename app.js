@@ -95,7 +95,9 @@ window.__POS_APP_TABS = [
  { key:'cashier',    icon:'shopping-cart',  label:'Cashier', sections:['posSection'],           title:'POS / Cashier' },
  { key:'orders',     icon:'receipt',        label:'Orders',  sections:['allOrdersSection'],     title:'All Orders',    render:'renderAllOrders' },
  { key:'commission', icon:'coins',          label:'Komisen', sections:['commissionSection'],     title:'My Commission', render:'renderPersonalCommission' },
- { key:'stock',      icon:'clipboard-check',label:'Stok',    sections:['checkSessionsSection'], title:'Stock Take',    render:'renderCheckSessions' }
+ { key:'stock',      icon:'clipboard-check',label:'Stok',    sections:['checkSessionsSection'], title:'Stock Take',    render:'renderCheckSessions' },
+ // p1_862 — Tanya AI jadi tab bottom bar (Zaid: ganti bubble terapung). special='ai' → buka chat, bukan tukar section.
+ { key:'ai',         icon:'sparkles',       label:'Tanya AI', special:'ai',                     title:'Tanya AI' }
 ];
 // Top bar native: tajuk skrin semasa + butang logout.
 window.__injectPosAppTopBar = function(){
@@ -122,6 +124,16 @@ window.__injectPosAppTabBar = function(){
 // Navigasi tab: switchHub + render + highlight tab aktif + update tajuk + scroll atas.
 window.__posAppGo = function(key){
  const t = (window.__POS_APP_TABS || []).find(x => x.key === key); if(!t) return;
+ // p1_862 — tab "Tanya AI": buka panel chat (bukan tukar section). Highlight kekal pada tab sebelum.
+ if(t.special === 'ai'){
+ try {
+ if(typeof window.__saShow === 'function') window.__saShow(true); // pastikan widget aktif (FAB disorok di app, panel je nampak)
+ const p = document.getElementById('saPanel');
+ if(!window.__saOpen){ if(typeof window.__saToggle === 'function') window.__saToggle(); } // buka kalau belum buka
+ else if(p){ const i = document.getElementById('saInput'); if(i) i.focus(); }
+ } catch(e){ console.warn('posAppGo ai', e); }
+ return;
+ }
  try {
  if(typeof switchHub === 'function') switchHub(t.sections, t.title);
  if(t.render && typeof window[t.render] === 'function') window[t.render]();

@@ -4219,3 +4219,8 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 .pos-offline-banner__btn { background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.55); color: #fff; font: 700 11px 'Poppins', sans-serif; padding: 5px 11px; border-radius: 6px; cursor: pointer; margin-left: 4px; -webkit-tap-highlight-color: transparent; }
 .pos-offline-banner__btn:active { transform: scale(.95); }
 body.pos-app-scoped .pos-offline-banner { top: calc(54px + env(safe-area-inset-top)); }
+
+/* p1_862 — Tanya AI jadi tab bottom bar dalam app: sorok FAB terapung; panel chat = sheet penuh atas tab bar */
+body.pos-app-scoped #saFab { display: none !important; }
+body.pos-app-scoped #saWidget { left: 8px !important; right: 8px !important; bottom: calc(64px + env(safe-area-inset-bottom)) !important; }
+body.pos-app-scoped #saPanel { left: 0; right: 0; bottom: 0; width: auto; max-width: none; height: 66vh; max-height: 66vh; }
