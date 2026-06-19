@@ -33423,6 +33423,100 @@ window.__returnPickerPick = function(saleId){
  else if(typeof showToast === 'function') showToast('Fungsi return tak dijumpai.', 'error');
 };
 
+// p1_857 — Tutup Kira (Z-Report). Float + jualan tunai − duit keluar = dijangka vs kira sebenar.
+window.__cashCloseCounted = '';
+window.__cashCloseData = { cashSales:0, cashSalesCount:0, cashOut:0, cashOutCount:0, floatOpen:0 };
+window.__ccFmt = function(n){ return 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
+window.openCashClose = async function(){
+ const m = document.getElementById('cashCloseModal'); if(!m) return;
+ const now = new Date();
+ const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+ // Jualan tunai hari ini dari salesHistory
+ let cashSales = 0, cashSalesCount = 0;
+ (Array.isArray(salesHistory) ? salesHistory : []).forEach(s => {
+ const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
+ if(dt < dayStart.getTime()) return;
+ if(s.is_test) return;
+ const st = (s.status || '').toLowerCase(); if(st.indexOf('cancel') !== -1 || st.indexOf('void') !== -1) return;
+ if(!/cash|tunai/i.test(s.payment_method || 'Cash')) return;
+ const recv = parseFloat(s.total != null ? s.total : s.total_amount) || 0;
+ if(recv <= 0) return;
+ const isReal = (typeof window.__isRealSale === 'function') ? window.__isRealSale(s) : true;
+ if(!isReal) return;
+ cashSales = round2(cashSales + recv); cashSalesCount++;
+ });
+ // Duit keluar + float hari ini dari cash_drawer_log
+ let cashOut = 0, cashOutCount = 0, floatOpen = 0;
+ try {
+ if(typeof db !== 'undefined' && db){
+ const { data, error } = await db.from('cash_drawer_log').select('type,amount,created_at').gte('created_at', dayStart.toISOString());
+ if(!error && Array.isArray(data)){
+ data.forEach(r => {
+ if(r.type === 'cash_out'){ cashOut = round2(cashOut + (parseFloat(r.amount) || 0)); cashOutCount++; }
+ else if(r.type === 'float_open'){ floatOpen = parseFloat(r.amount) || 0; }
+ });
+ }
+ }
+ } catch(e){ console.warn('openCashClose fetch', e); }
+ window.__cashCloseData = { cashSales, cashSalesCount, cashOut, cashOutCount, floatOpen };
+ window.__cashCloseCounted = '';
+ const setTxt = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+ const fEl = document.getElementById('cashCloseFloat'); if(fEl) fEl.value = floatOpen.toFixed(2);
+ setTxt('cashCloseSales', window.__ccFmt(cashSales));
+ setTxt('cashCloseSalesCount', cashSalesCount ? '(' + cashSalesCount + ')' : '');
+ setTxt('cashCloseOut', window.__ccFmt(cashOut));
+ setTxt('cashCloseOutCount', cashOutCount ? '(' + cashOutCount + ')' : '');
+ setTxt('cashCloseCounted', '0.00');
+ window.cashCloseRecompute();
+ m.style.display = 'flex';
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.closeCashClose = function(){ const m = document.getElementById('cashCloseModal'); if(m) m.style.display = 'none'; };
+window.cashCloseKey = function(k){
+ let s = window.__cashCloseCounted || '';
+ if(k === 'back') s = s.slice(0, -1);
+ else if(k === '.'){ if(!s.includes('.')) s = (s === '' ? '0' : s) + '.'; }
+ else { if(s.includes('.') && s.split('.')[1].length >= 2) return; if(s.replace('.', '').length >= 7) return; s = (s === '0') ? k : s + k; }
+ window.__cashCloseCounted = s;
+ const el = document.getElementById('cashCloseCounted'); if(el) el.textContent = (s === '' ? '0.00' : (parseFloat(s) || 0).toFixed(2));
+ window.cashCloseRecompute();
+};
+window.cashCloseRecompute = function(){
+ const d = window.__cashCloseData || {};
+ const floatV = parseFloat((document.getElementById('cashCloseFloat') || {}).value) || 0;
+ const expected = round2(floatV + (d.cashSales || 0) - (d.cashOut || 0));
+ const exEl = document.getElementById('cashCloseExpected'); if(exEl) exEl.textContent = window.__ccFmt(expected);
+ const counted = parseFloat(window.__cashCloseCounted) || 0;
+ const variance = round2(counted - expected);
+ const wrap = document.getElementById('cashCloseVarianceWrap'); const vEl = document.getElementById('cashCloseVariance');
+ if(wrap && vEl){
+ if(window.__cashCloseCounted === ''){ vEl.textContent = 'RM 0.00'; wrap.className = 'cc-variance'; }
+ else if(variance === 0){ vEl.textContent = 'Padan tepat'; wrap.className = 'cc-variance is-ok'; }
+ else if(variance > 0){ vEl.textContent = 'Lebih RM ' + variance.toFixed(2); wrap.className = 'cc-variance is-over'; }
+ else { vEl.textContent = 'Kurang RM ' + Math.abs(variance).toFixed(2); wrap.className = 'cc-variance is-short'; }
+ }
+};
+window.cashCloseSave = async function(){
+ if(window.__cashCloseCounted === '') return showToast('Kira duit sebenar dalam laci dulu.', 'warn');
+ if(typeof db === 'undefined' || !db) return showToast('Tiada sambungan.', 'error');
+ const d = window.__cashCloseData || {};
+ const floatV = round2(parseFloat((document.getElementById('cashCloseFloat') || {}).value) || 0);
+ const expected = round2(floatV + (d.cashSales || 0) - (d.cashOut || 0));
+ const counted = round2(parseFloat(window.__cashCloseCounted) || 0);
+ const variance = round2(counted - expected);
+ const staff = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : 'Unknown';
+ const note = 'Float ' + floatV.toFixed(2) + ' + Jualan ' + (d.cashSales || 0).toFixed(2) + ' (' + (d.cashSalesCount || 0) + ') - Keluar ' + (d.cashOut || 0).toFixed(2) + ' (' + (d.cashOutCount || 0) + ') = Dijangka ' + expected.toFixed(2) + ' | Sebenar ' + counted.toFixed(2) + ' | Beza ' + (variance >= 0 ? '+' : '') + variance.toFixed(2);
+ const btn = document.getElementById('cashCloseSaveBtn'); if(btn){ btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+ try {
+ const { error } = await db.from('cash_drawer_log').insert({ type:'close_count', amount: counted, category:'tutup_kira', note: note, staff_name: staff });
+ if(error) throw error;
+ let msg = 'Tutup kira disimpan. ' + (variance === 0 ? 'Padan tepat!' : (variance > 0 ? 'Lebih RM ' + variance.toFixed(2) : 'Kurang RM ' + Math.abs(variance).toFixed(2)));
+ showToast(msg, variance === 0 ? 'success' : 'warn');
+ window.closeCashClose();
+ } catch(e){ showToast('Gagal simpan: ' + e.message, 'error'); }
+ finally { if(btn){ btn.disabled = false; btn.textContent = 'Simpan Tutup Kira'; } }
+};
+
 // p1_33 — Walk-in quick toggle: skip customer info for fast counter sales
 window.cpToggleWalkin = function() {
     const btn = document.getElementById('cpWalkinBtn');
