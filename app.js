@@ -14254,6 +14254,10 @@ window.processNewCheckout = async function() {
  // canonical pm stays 'E-Wallet'; full provider+ref goes to pmDetail
  pmDetail = ewalletProvider + ' (Ref: ' + ewalletRef + ')';
  }
+ // p1_859 — Split payment: pmDetail = senarai cara+jumlah; pm canonical kekal 'Split'
+ if (pm === 'Split' && Array.isArray(window.__cpSplit) && window.__cpSplit.length) {
+ pmDetail = window.__cpSplit.map(p => p.method + ' RM' + p.amount.toFixed(2)).join(' + ');
+ }
  // B14: optional buyer TIN for e-Invoice
  const buyerTin = (document.getElementById("customerBuyerTin")?.value || '').trim();
 
@@ -14430,6 +14434,11 @@ window.processNewCheckout = async function() {
  saleMeta.cash_received = window.__cpCashPayment.received;
  saleMeta.cash_change = window.__cpCashPayment.change;
  window.__cpCashPayment = null;
+ }
+ // p1_859 — split payment breakdown (audit)
+ if(pm === 'Split' && Array.isArray(window.__cpSplit) && window.__cpSplit.length) {
+ saleMeta.split_payments = window.__cpSplit;
+ window.__cpSplit = null;
  }
 
  // p1_180 — upload payment proof to Storage before insert (skip if no file)
@@ -33069,6 +33078,10 @@ window.openCheckoutPanel = function() {
  // lepas sale siap (clearCart + post-checkout cleanup). Badge panel baca __proofState.
  // p1_853 — reset Tunai Diterima setiap checkout baru (elak baki sale lepas terbawa)
  if(typeof window.cpCashReset === 'function') window.cpCashReset();
+ // p1_859 — reset split tiap checkout baru
+ window.__cpSplitActive = false; window.__cpSplit = null;
+ const __spT = document.getElementById('cpSplitToggle'); if(__spT) __spT.checked = false;
+ const __spP = document.getElementById('cpSplitPanel'); if(__spP) __spP.classList.add('is-hidden');
  cpSetPayment('Cash');
 
  // Compute & show total
@@ -33296,6 +33309,38 @@ window.cpCashRender = function(){
  }
 };
 window.cpCashReset = function(){ window.__cpCashRaw = ''; window.__cpCashPayment = null; if(typeof window.cpCashRender === 'function') window.cpCashRender(); };
+
+// p1_859 — Split payment (pisah bayaran): bahagi 1 jualan ke beberapa cara bayar.
+window.__cpSplitActive = false;
+window.__cpSplit = null;
+window.cpToggleSplit = function(){
+ const on = !!(document.getElementById('cpSplitToggle') || {}).checked;
+ window.__cpSplitActive = on;
+ const panel = document.getElementById('cpSplitPanel'); if(panel) panel.classList.toggle('is-hidden', !on);
+ if(on){
+ const cashPanel = document.getElementById('cpCashPanel'); if(cashPanel) cashPanel.style.display = 'none';
+ const ewl = document.getElementById('cpEwalletInline'); if(ewl) ewl.classList.add('is-hidden');
+ ['cpSplitCash','cpSplitCard','cpSplitEwallet'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+ window.cpSplitRecompute();
+ } else {
+ const pm = (document.getElementById('cpPaymentMethod') || {}).value || 'Cash';
+ if(typeof window.cpSetPayment === 'function') window.cpSetPayment(pm);
+ }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.cpSplitRecompute = function(){
+ const total = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
+ const v = id => round2(parseFloat((document.getElementById(id) || {}).value) || 0);
+ const entered = round2(v('cpSplitCash') + v('cpSplitCard') + v('cpSplitEwallet'));
+ const bal = round2(total - entered);
+ const eEl = document.getElementById('cpSplitEntered'); if(eEl) eEl.textContent = 'RM ' + entered.toFixed(2);
+ const bEl = document.getElementById('cpSplitBalance'); const wrap = document.getElementById('cpSplitBalWrap');
+ if(bEl && wrap){
+ if(bal === 0){ bEl.textContent = 'Cukup'; wrap.className = 'cp-split__sum cp-split__bal is-ok'; }
+ else if(bal > 0){ bEl.textContent = 'RM ' + bal.toFixed(2); wrap.className = 'cp-split__sum cp-split__bal'; }
+ else { bEl.textContent = 'Lebih RM ' + Math.abs(bal).toFixed(2); wrap.className = 'cp-split__sum cp-split__bal is-short'; }
+ }
+};
 
 // p1_854 — Duit Keluar (Cash Out / petty cash dari box kaunter). Semua staff; gambar resit WAJIB.
 window.__cashOutRaw = '';
@@ -33776,7 +33821,24 @@ window.cpConfirmSale = async function() {
  // Auto-fill Walk-In
  document.getElementById('cpCustName').value = 'Walk-In';
  }
- const pm = document.getElementById('cpPaymentMethod').value;
+ let pm = document.getElementById('cpPaymentMethod').value;
+ // p1_859 — Split payment: bahagi total ke beberapa cara bayar. Override pm jadi 'Split'.
+ if(window.__cpSplitActive){
+ const total = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
+ const parts = [];
+ [['Cash','cpSplitCash'],['Card','cpSplitCard'],['E-Wallet','cpSplitEwallet']].forEach(([m, id]) => {
+ const amt = round2(parseFloat((document.getElementById(id) || {}).value) || 0);
+ if(amt > 0) parts.push({ method: m, amount: amt });
+ });
+ const sum = round2(parts.reduce((s, p) => s + p.amount, 0));
+ if(parts.length < 2) return showToast('Split perlu sekurang-kurangnya 2 cara bayar.', 'warn');
+ if(Math.abs(sum - total) > 0.009) return showToast('Jumlah split (RM ' + sum.toFixed(2) + ') kena sama dengan total (RM ' + total.toFixed(2) + ').', 'warn');
+ window.__cpSplit = parts;
+ const pmh = document.getElementById('cpPaymentMethod'); if(pmh) pmh.value = 'Split';
+ pm = 'Split';
+ } else {
+ window.__cpSplit = null;
+ }
  if(pm === 'E-Wallet') {
  const provider = document.getElementById('cpEwalletProvider').value;
  const ref = document.getElementById('cpEwalletRef').value.trim();

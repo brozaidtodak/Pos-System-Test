@@ -4196,3 +4196,18 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 .cc-variance.is-over .cc-variance__lbl { color: #7A5410; } .cc-variance.is-over .cc-variance__val { color: #B45309; }
 .cc-variance.is-short { background: #FBE9E7; border-color: #F3C2BD; }
 .cc-variance.is-short .cc-variance__lbl { color: #B23A2E; } .cc-variance.is-short .cc-variance__val { color: #DC2626; }
+
+/* p1_859 — Split payment (pisah bayaran) */
+.cp-split-toggle { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12.5px; font-weight: 600; color: #5c554c; cursor: pointer; padding: 8px 2px; }
+.cp-split-toggle input { width: 18px; height: 18px; accent-color: #CD7C32; flex-shrink: 0; }
+.cp-split { margin-top: 10px; padding: 12px; background: #FAF6EF; border: 1px solid #EEE7DA; border-radius: 10px; }
+.cp-split__row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cp-split__lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #101010; }
+.cp-split__inp { display: inline-flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #E2D9C8; border-radius: 8px; padding: 0 10px; }
+.cp-split__inp > span { color: #9a948b; font-size: 12px; }
+.cp-split__inp input { width: 92px; border: none; background: none; text-align: right; font: 700 14px 'Poppins', sans-serif; color: #101010; font-variant-numeric: tabular-nums; min-height: 42px; }
+.cp-split__sum { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; padding-top: 8px; border-top: 1px dashed #E0D7C7; margin-top: 4px; font-weight: 700; color: #5c554c; }
+.cp-split__sum > span:last-child { font-variant-numeric: tabular-nums; color: #101010; }
+.cp-split__bal { font-size: 14px; }
+.cp-split__bal.is-ok > span:last-child { color: #16A34A; }
+.cp-split__bal.is-short > span:last-child { color: #DC2626; }
