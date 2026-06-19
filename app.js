@@ -40013,3 +40013,119 @@ window.renderReceiving = function(){
   body.innerHTML = html;
   if(window.lucide && lucide.createIcons){ try{ lucide.createIcons(); }catch(e){} }
 };
+
+/* ============================================================
+   p1_847 — WMS Fasa 3: Cycle Count (kira separa berputar).
+   Idea dari GreaterWMS (cyclecount). Bukan tutup kedai kira semua —
+   jana subset SKU (berputar / nilai tertinggi / rawak), cipta
+   stock_check_session guna infra sedia ada → counting/variance/adjust
+   guna flow Stock Take yang dah ada.
+   ============================================================ */
+window.__ccPicked = [];
+window.__ccStockMap = function(){
+  var m = {};
+  try {
+    (typeof inventoryBatches !== 'undefined' ? inventoryBatches : []).forEach(function(b){
+      if(!b || !b.sku) return; m[b.sku] = (m[b.sku]||0) + (b.qty_remaining||0);
+    });
+  } catch(e){}
+  return m;
+};
+window.renderCycleCount = function(){
+  var body = document.getElementById('cycleCountBody'); if(!body) return;
+  var totalSku = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.filter(function(p){return p&&p.sku;}).length : 0;
+  var cursor = parseInt(localStorage.getItem('cc_cursor_v1')||'0')||0;
+  var html = '<div style="max-width:1080px;margin:0 auto;padding:4px 2px 60px;">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;"><i data-lucide="clipboard-check" style="width:22px;height:22px;color:var(--primary);"></i><h2 style="margin:0;font-size:22px;font-weight:800;color:var(--text-main);">Cycle Count</h2></div>'
+    + '<p style="margin:0 0 18px;font-size:13px;color:var(--text-muted);max-width:720px;line-height:1.55;">Kira <b>sikit-sikit ikut giliran</b>, bukan tutup kedai kira semua. Jana senarai pendek, kira, baiki variance. Lama-lama semua '+totalSku+' SKU terkira berpusing. Kiraan guna sistem Stock Take sedia ada (boleh adjust + audit).</p>'
+    + '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;">'
+      + '<div><label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:4px;">Berapa SKU</label><input id="ccN" type="number" min="1" max="200" value="25" style="width:90px;padding:8px 10px;border:1px solid #ECECEC;border-radius:8px;margin:0;"></div>'
+      + '<div><label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:4px;">Strategi</label><select id="ccStrat" style="padding:8px 10px;border:1px solid #ECECEC;border-radius:8px;margin:0;"><option value="rotate">Berputar (giliran)</option><option value="value">Nilai tertinggi (stok × kos)</option><option value="random">Rawak</option></select></div>'
+      + '<button onclick="window.__ccGenerate&&window.__ccGenerate()" style="font-size:13px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:10px 18px;border-radius:9px;cursor:pointer;">Jana senarai</button>'
+      + '<span style="font-size:11.5px;color:var(--text-muted);">Kedudukan giliran: '+cursor+' / '+totalSku+'</span>'
+    + '</div>'
+    + '<div id="ccResult"></div>'
+    + '</div>';
+  body.innerHTML = html;
+  if(window.lucide && lucide.createIcons){ try{ lucide.createIcons(); }catch(e){} }
+};
+window.__ccGenerate = function(){
+  var prods = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.filter(function(p){return p&&p.sku;}) : [];
+  if(!prods.length){ window.showToast && showToast('Tiada produk dimuat','warn'); return; }
+  var N = Math.max(1, Math.min(parseInt((document.getElementById('ccN')||{}).value)||25, 200));
+  var strat = (document.getElementById('ccStrat')||{}).value || 'rotate';
+  var stockMap = window.__ccStockMap();
+  var stockOf = function(sku){ return (stockMap[sku] != null) ? stockMap[sku] : 0; };
+  var picked = [];
+  if(strat === 'value'){
+    picked = prods.slice().map(function(p){ return { p:p, v: stockOf(p.sku) * (Number(p.cost_price)||0) }; })
+      .sort(function(a,b){ return b.v - a.v; }).slice(0, N).map(function(x){ return x.p; });
+  } else if(strat === 'random'){
+    var arr = prods.slice();
+    for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=arr[i];arr[i]=arr[j];arr[j]=t; }
+    picked = arr.slice(0, N);
+  } else { // rotate
+    var sorted = prods.slice().sort(function(a,b){ return String(a.sku).localeCompare(String(b.sku)); });
+    var cursor = parseInt(localStorage.getItem('cc_cursor_v1')||'0')||0;
+    if(cursor >= sorted.length) cursor = 0;
+    picked = [];
+    for(var k=0;k<N && k<sorted.length;k++){ picked.push(sorted[(cursor+k)%sorted.length]); }
+  }
+  window.__ccPicked = picked;
+  var esc = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  var rows = picked.map(function(p){
+    var st = stockOf(p.sku);
+    return '<tr style="border-bottom:1px solid #F1F1F1;"><td style="padding:8px 11px;font-weight:700;">'+esc(p.sku)+'</td><td style="padding:8px 11px;color:#374151;">'+esc((p.name||'').slice(0,48))+'</td><td style="padding:8px 11px;color:var(--text-muted);">'+esc(p.location_bin||'—')+'</td><td style="padding:8px 11px;text-align:right;">'+st+'</td></tr>';
+  }).join('');
+  var out = document.getElementById('ccResult'); if(!out) return;
+  out.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">'
+    + '<div style="font-size:13px;font-weight:700;color:var(--text-main);">'+picked.length+' SKU dipilih untuk dikira</div>'
+    + '<button onclick="window.__ccCreateSession&&window.__ccCreateSession()" style="font-size:13px;font-weight:700;color:#fff;background:#101010;border:none;padding:9px 16px;border-radius:9px;cursor:pointer;">Cipta sesi kiraan &amp; buka</button>'
+    + '</div>'
+    + '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">SKU</th><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Nama</th><th style="text-align:left;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Lokasi</th><th style="text-align:right;padding:9px 11px;font-size:11px;text-transform:uppercase;color:var(--text-muted);">Stok sistem</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<p style="font-size:11.5px;color:var(--text-muted);margin:10px 2px;">Tekan "Cipta sesi" untuk buka skrin kira (Stock Take). Strategi berputar akan maju ke SKU seterusnya selepas sesi dicipta.</p>';
+  if(window.lucide && lucide.createIcons){ try{ lucide.createIcons(); }catch(e){} }
+};
+window.__ccCreateSession = async function(){
+  var picked = window.__ccPicked || [];
+  if(!picked.length){ window.showToast && showToast('Jana senarai dahulu','warn'); return; }
+  var u = window.currentUser || {};
+  var stockMap = window.__ccStockMap();
+  var d = new Date();
+  var name = 'Cycle Count ' + d.toISOString().slice(0,10) + ' #' + (d.getHours()) + (d.getMinutes());
+  try {
+    var locsSet = {}; picked.forEach(function(p){ if(p.location_bin) locsSet[p.location_bin.trim()] = 1; });
+    var sesIns = await db.from('stock_check_sessions').insert([{
+      name: name, locations: Object.keys(locsSet), assigned_to: u.name || 'Unknown',
+      created_by_id: u.staff_id || 'unknown', created_by_name: u.name || 'Unknown',
+      status: 'active'
+    }]).select().single();
+    if(sesIns.error) throw sesIns.error;
+    var sid = sesIns.data.id;
+    var items = picked.map(function(p){
+      var imgUrl = (p.images && Array.isArray(p.images) && p.images[0]) ? p.images[0] : null;
+      return { session_id: sid, sku: p.sku, product_name: p.name || '', location_bin: p.location_bin || '', system_qty: (stockMap[p.sku]||0), image_url: imgUrl };
+    });
+    for(var i=0;i<items.length;i+=500){
+      var chunk = items.slice(i, i+500);
+      var itIns = await db.from('stock_check_session_items').insert(chunk);
+      if(itIns.error) throw itIns.error;
+    }
+    await db.from('stock_check_sessions').update({ items_total: items.length }).eq('id', sid);
+    // Maju cursor berputar
+    try {
+      var strat = (document.getElementById('ccStrat')||{}).value || 'rotate';
+      if(strat === 'rotate'){
+        var total = (typeof masterProducts !== 'undefined') ? masterProducts.filter(function(p){return p&&p.sku;}).length : 0;
+        var cur = parseInt(localStorage.getItem('cc_cursor_v1')||'0')||0;
+        cur = total ? (cur + picked.length) % total : 0;
+        localStorage.setItem('cc_cursor_v1', String(cur));
+      }
+    } catch(e){}
+    window.showToast && showToast('Sesi cycle count cipta · '+items.length+' SKU. Buka untuk kira.', 'success');
+    if(typeof window.__scsOpenSession === 'function') window.__scsOpenSession(sid);
+  } catch(e){
+    window.showToast && showToast('Cipta sesi gagal: '+(e.message||e), 'error');
+    console.error('cycle count create gagal:', e);
+  }
+};
