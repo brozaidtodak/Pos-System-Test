@@ -5168,7 +5168,7 @@ window.scRenderArchive = function(){
  let rows = window.__scArchive || [];
  if(q) rows = rows.filter(r=> (`${r.supplier||''} ${r.label||''}`).toLowerCase().includes(q));
  const fmt = (n)=> 'RM' + (Number(n)||0).toFixed(2);
- if(!rows.length){ tb.innerHTML='<tr><td colspan="12" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod.</td></tr>'; const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent=''; return; }
+ if(!rows.length){ tb.innerHTML='<tr><td colspan="11" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod.</td></tr>'; const sum=document.getElementById('scArchiveSummary'); if(sum) sum.textContent=''; return; }
  const unitsOf = (r)=> (r.rows||[]).reduce((s,it)=> s + (it.qty||0), 0);
  const fmtEx = (n)=> { const v = Number(n); if(!v) return '—'; return (Math.round(v*10000)/10000).toString(); };
  const shortBy = (s)=> { s = String(s||'—'); const i = s.indexOf('('); return i>0 ? s.slice(0,i).trim() : s; };
@@ -5192,7 +5192,7 @@ window.scRenderArchive = function(){
  <button onclick="event.stopPropagation(); scDeleteArchived(${r.id})" style="padding:4px 8px; font-size:11px; font-weight:600; background:#fff; color:#B23A2E; border:1px solid #ECD2CA; border-radius:6px; cursor:pointer; margin-left:4px;">Padam</button>
  </td>
  </tr>
- <tr id="scDetail_${r.id}" style="display:none;"><td colspan="12" style="padding:0; background:#FCFAF7;"><div id="scDetailBody_${r.id}" style="padding:12px 16px;"></div></td></tr>`;
+ <tr id="scDetail_${r.id}" style="display:none;"><td colspan="11" style="padding:0; background:#FCFAF7;"><div id="scDetailBody_${r.id}" style="padding:12px 16px;"></div></td></tr>`;
  }).join('');
  // p1_395 — baris Jumlah (totals) supaya table elok tersusun
  const tot = rows.reduce((a,r)=>({ items:a.items+(r.items||0), units:a.units+unitsOf(r), goods:a.goods+(r.goods||0), shipping:a.shipping+(r.shipping||0), parttimer:a.parttimer+(r.parttimer||0), landed:a.landed+(r.landed||0) }), {items:0,units:0,goods:0,shipping:0,parttimer:0,landed:0});
@@ -20298,11 +20298,11 @@ window.__receiveSave = async function(){
 window.__reconRows = [];
 window.renderStockRecon = async function(){
  const tbody = document.getElementById('reconTbody'); if(!tbody) return;
- if(typeof inventoryBatches === 'undefined' || !Array.isArray(inventoryBatches)){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">Loading...</td></tr>'; return; }
+ if(typeof inventoryBatches === 'undefined' || !Array.isArray(inventoryBatches)){ tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:32px;">Loading...</td></tr>'; return; }
  // fetch movements + returns (cache 90s supaya tak fetch tiap taip carian)
  const now = Date.now();
  if(!window.__reconCache || (now - (window.__reconCacheAt||0)) > 90000){
-  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">Mengira pergerakan stok…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:32px;">Mengira pergerakan stok…</td></tr>';
   let txns = [], rets = [], doItems = [];
   try { if(typeof db !== 'undefined' && db){
    const t = await db.from('inventory_transactions').select('sku,transaction_type,qty_change,reason').limit(200000); txns = (t.data) || [];
@@ -20324,7 +20324,7 @@ window.renderStockRecon = async function(){
  });
  const nameOf = (sku) => { const p = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts.find(x => x.sku === sku) : null; return p ? (p.name || '') : ''; };
  const agg = {};
- const ensure = (sku) => agg[sku] || (agg[sku] = { sku, received:0, onhand:0, costSum:0, costQty:0, sales:0, display:0, rental:0, scud:0, retdmg:0, other:0 });
+ const ensure = (sku) => agg[sku] || (agg[sku] = { sku, received:0, onhand:0, costSum:0, costQty:0, sales:0, display:0, rental:0, scud:0, retdmg:0, lost:0, other:0 });
  inventoryBatches.forEach(b => { if(!b.sku) return; const a = ensure(b.sku); const qr = Number(b.qty_received)||0, rem = Number(b.qty_remaining)||0; a.received += qr; a.onhand += rem; const c = Number(b.cost_price || b.landed_cost)||0; if(c>0 && qr>0){ a.costSum += c*qr; a.costQty += qr; } });
  (txns||[]).forEach(t => {
   if(!t.sku || !agg[t.sku]) { if(!t.sku) return; }
@@ -20333,9 +20333,10 @@ window.renderStockRecon = async function(){
   if(tt === 'OUTBOUND_SALE') return; // jualan dikira dari salesHistory (sepanjang hayat), elak double
   if(qc >= 0) return; // IN / receiving / pelarasan-tambah — jangan kira (received dari DO/batch)
   const out = Math.abs(qc);
-  if(/display|cud/.test(rs)) a.display += out;
-  else if(/rental|sewa|\bcur\b|\bcr\b/.test(rs)) a.rental += out;
+  if(/hilang|lost/.test(rs)) a.lost += out;
   else if(/scud/.test(rs)) a.scud += out;
+  else if(/display|cud/.test(rs)) a.display += out;
+  else if(/rental|sewa|\bcur\b|\bcr\b/.test(rs)) a.rental += out;
   else if(/rosak|defect|return|refund|r&r|pulangan|pecah/.test(rs)) a.retdmg += out;
   else a.other += out;
  });
@@ -20348,7 +20349,7 @@ window.renderStockRecon = async function(){
  const finalize = (a) => {
   const received = (doTotal[a.sku] > 0) ? doTotal[a.sku] : a.received;
   const sales = salesBySku[a.sku] || 0;
-  const unexplained = received - sales - a.display - a.rental - a.scud - a.retdmg - a.other - a.onhand;
+  const unexplained = received - sales - a.display - a.rental - a.scud - a.retdmg - a.lost - a.other - a.onhand;
   const avgCost = a.costQty ? (a.costSum / a.costQty) : 0;
   return Object.assign(a, { received, sales, unexplained, avgCost, name: nameOf(a.sku) });
  };
@@ -20362,13 +20363,15 @@ window.renderStockRecon = async function(){
  const withGap = all.filter(r => r.unexplained !== 0);
  const totalGapUnits = all.reduce((s,r) => s + Math.abs(r.unexplained), 0);
  const totalGapVal = all.reduce((s,r) => s + Math.abs(r.unexplained) * (r.avgCost||0), 0);
+ const totalLost = all.reduce((s,r) => s + (r.lost||0), 0);
  const kpis = document.getElementById('reconKpis');
  if(kpis) kpis.innerHTML =
    '<div class="stat-card" style="border-left-color:var(--primary);"><div class="stat-card__label"><i data-lucide="package" style="width:13px;height:13px;color:var(--primary);"></i> SKU Dipantau</div><div class="stat-card__value">' + all.length.toLocaleString() + '</div></div>'
+ + '<div class="stat-card" style="border-left-color:#B23A2E;"><div class="stat-card__label"><i data-lucide="search-x" style="width:13px;height:13px;color:#B23A2E;"></i> Hilang (Lost Count)</div><div class="stat-card__value" style="color:#B23A2E;">' + totalLost.toLocaleString() + '</div></div>'
  + '<div class="stat-card" style="border-left-color:#B23A2E;"><div class="stat-card__label"><i data-lucide="alert-triangle" style="width:13px;height:13px;color:#B23A2E;"></i> SKU Ada Beza</div><div class="stat-card__value">' + withGap.length.toLocaleString() + '</div></div>'
  + '<div class="stat-card" style="border-left-color:#B23A2E;"><div class="stat-card__label"><i data-lucide="boxes" style="width:13px;height:13px;color:#B23A2E;"></i> Unit Tak Terjelas</div><div class="stat-card__value">' + totalGapUnits.toLocaleString() + '</div></div>'
  + '<div class="stat-card" style="border-left-color:#7A5410;"><div class="stat-card__label"><i data-lucide="banknote" style="width:13px;height:13px;color:#7A5410;"></i> Nilai (anggaran)</div><div class="stat-card__value">RM ' + totalGapVal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</div></div>';
- if(!rows.length){ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#999;padding:32px;">Tiada SKU' + (q||gapOnly ? ' padan tapisan' : '') + '.</td></tr>'; }
+ if(!rows.length){ tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:32px;">Tiada SKU' + (q||gapOnly ? ' padan tapisan' : '') + '.</td></tr>'; }
  else {
   const cell = (v) => v ? v.toLocaleString() : '<span style="color:#D1D5DB;">·</span>';
   tbody.innerHTML = rows.slice(0, 600).map(r => {
@@ -20383,6 +20386,7 @@ window.renderStockRecon = async function(){
     + '<td>' + cell(r.rental) + '</td>'
     + '<td>' + cell(r.scud) + '</td>'
     + '<td>' + cell(r.retdmg) + '</td>'
+    + '<td style="' + (r.lost ? 'color:#B23A2E;font-weight:800;' : '') + '">' + cell(r.lost) + '</td>'
     + '<td>' + cell(r.other) + '</td>'
     + '<td style="font-weight:700;">' + cell(r.onhand) + '</td>'
     + '<td class="recon-gap" style="color:' + gapColor + ';">' + gapTxt + '</td>'
@@ -20396,9 +20400,9 @@ window.renderStockRecon = async function(){
 window.__reconExport = function(){
  const rows = window.__reconRows || [];
  if(!rows.length) return (typeof showToast==='function') && showToast('Tiada data untuk eksport.', 'warn');
- const head = ['SKU','Produk','Diterima','Jualan','Display_CUD','Rental_CUR','SCUD','Return_Rosak','Lain','Stok_Kini','Tak_Terjelas'];
+ const head = ['SKU','Produk','Diterima','Jualan','Display_CUD','Rental_CUR','SCUD','Return_Rosak','Hilang','Lain','Stok_Kini','Tak_Terjelas'];
  const esc = (v) => '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
- const lines = [head.join(',')].concat(rows.map(r => [r.sku, r.name, r.received, r.sales, r.display, r.rental, r.scud, r.retdmg, r.other, r.onhand, r.unexplained].map(esc).join(',')));
+ const lines = [head.join(',')].concat(rows.map(r => [r.sku, r.name, r.received, r.sales, r.display, r.rental, r.scud, r.retdmg, r.lost, r.other, r.onhand, r.unexplained].map(esc).join(',')));
  const blob = new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' });
  const url = URL.createObjectURL(blob); const a = document.createElement('a');
  a.href = url; a.download = 'rekonsiliasi-stok.csv'; a.click(); URL.revokeObjectURL(url);
@@ -29540,7 +29544,7 @@ window.renderAllOrders = function() {
  _arrow('aoSortDateArrow', 'date_asc', 'date_desc');
  _arrow('aoSortIdArrow', 'id_asc', 'id_desc');
  if(typeof salesHistory === 'undefined' || !Array.isArray(salesHistory)) {
- tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>';
  return;
  }
  const q = (document.getElementById('aoSearch')?.value || '').trim().toLowerCase();
@@ -29572,7 +29576,7 @@ window.renderAllOrders = function() {
  `;
 
  if(filtered.length === 0) {
- tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:#999; padding:32px;">Tiada order match filter. Cuba clear filter atau tambah order baru.</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#999; padding:32px;">Tiada order match filter. Cuba clear filter atau tambah order baru.</td></tr>';
  document.getElementById('aoSummaryLine').textContent = '';
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  return;
