@@ -138,6 +138,8 @@ window.__applyPosAppScope = function(){
  window.__injectPosAppTopBar();
  window.__injectPosAppTabBar();
  window.__posAppGo('cashier');
+ // Set --pos-app-header-h ikut tinggi bar native (search row sticky lekat tepat bawahnya).
+ if(typeof window.__setPosHeaderH === 'function'){ window.__setPosHeaderH(); setTimeout(window.__setPosHeaderH, 60); }
  } catch(e){ console.warn('applyPosAppScope failed', e); }
 };
 
@@ -39594,6 +39596,15 @@ window.renderCampaigns = function(){
  * di mobile/tablet) melekat TEPAT bawah header tanpa gap/tindih. Update on load + resize. */
 (function(){
  function setHdrH(){
+  // Mod app native (pos-app-scoped): .app-header disorok (offsetHeight 0) — guna tinggi
+  // bar native (#posAppTopBar) supaya search row sticky lekat TEPAT bawah bar, bukan
+  // nilai lama yg tersangkut (dulu search ditolak jauh ke bawah).
+  if(document.body && document.body.classList.contains('pos-app-scoped')){
+   var tb = document.getElementById('posAppTopBar');
+   var th = (tb && tb.offsetHeight) ? tb.offsetHeight : 54;
+   document.documentElement.style.setProperty('--pos-app-header-h', th + 'px');
+   return;
+  }
   var h = document.querySelector('.app-header');
   if(h && h.offsetHeight) document.documentElement.style.setProperty('--pos-app-header-h', h.offsetHeight + 'px');
  }
