@@ -33254,6 +33254,94 @@ window.cpCashRender = function(){
 };
 window.cpCashReset = function(){ window.__cpCashRaw = ''; window.__cpCashPayment = null; if(typeof window.cpCashRender === 'function') window.cpCashRender(); };
 
+// p1_854 — Duit Keluar (Cash Out / petty cash dari box kaunter). Semua staff; gambar resit WAJIB.
+window.__cashOutRaw = '';
+window.__cashOutCat = 'Lalamove/Penghantaran';
+window.__cashOutPhoto = null; // File
+window.openCashOut = function(){
+ window.__cashOutRaw = '';
+ window.__cashOutCat = 'Lalamove/Penghantaran';
+ window.__cashOutPhoto = null;
+ const note = document.getElementById('cashOutNote'); if(note) note.value = '';
+ document.querySelectorAll('#cashOutCats .co-cat').forEach(b => b.classList.toggle('is-active', b.dataset.cat === 'Lalamove/Penghantaran'));
+ window.cashOutRender(); window.cashOutRenderPhoto();
+ const m = document.getElementById('cashOutModal'); if(m) m.style.display = 'flex';
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.closeCashOut = function(){ const m = document.getElementById('cashOutModal'); if(m) m.style.display = 'none'; };
+window.cashOutKey = function(k){
+ let s = window.__cashOutRaw || '';
+ if(k === 'back') s = s.slice(0, -1);
+ else if(k === '.'){ if(!s.includes('.')) s = (s === '' ? '0' : s) + '.'; }
+ else { if(s.includes('.') && s.split('.')[1].length >= 2) return; if(s.replace('.', '').length >= 7) return; s = (s === '0') ? k : s + k; }
+ window.__cashOutRaw = s; window.cashOutRender();
+};
+window.cashOutRender = function(){
+ const raw = window.__cashOutRaw || ''; const v = parseFloat(raw) || 0;
+ const el = document.getElementById('cashOutAmount'); if(el) el.textContent = (raw === '' ? '0.00' : v.toFixed(2));
+};
+window.cashOutCat = function(btn){
+ window.__cashOutCat = btn.dataset.cat;
+ document.querySelectorAll('#cashOutCats .co-cat').forEach(b => b.classList.toggle('is-active', b === btn));
+};
+window.cashOutPickPhoto = function(input){
+ if(!input || !input.files || !input.files[0]) return;
+ window.__cashOutPhoto = input.files[0];
+ window.cashOutRenderPhoto();
+};
+window.cashOutRenderPhoto = function(){
+ const badge = document.getElementById('cashOutPhotoBadge'); if(!badge) return;
+ const f = window.__cashOutPhoto;
+ if(f){
+ badge.style.background = '#E4F4E7'; badge.style.borderColor = '#BFE3C6'; badge.style.color = '#2F7D3F';
+ badge.innerHTML = '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> Resit siap (' + (f.size / 1024).toFixed(0) + ' KB)</div>'
+ + '<button type="button" onclick="document.getElementById(\'cashOutPhotoInput\').click(); return false;" style="width:100%; background:#fff; border:1px solid #2F7D3F; color:#2F7D3F; padding:10px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700; min-height:44px;">Snap Semula</button>';
+ } else {
+ badge.style.background = '#F8EFD7'; badge.style.borderColor = '#CE9420'; badge.style.color = '#7A5410';
+ badge.innerHTML = '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><i data-lucide="alert-circle" style="width:16px;height:16px;"></i> Belum ada resit (wajib)</div>'
+ + '<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">'
+ + '<button type="button" onclick="document.getElementById(\'cashOutPhotoInput\').click(); return false;" style="background:#7c4a1a; color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="camera" style="width:13px;height:13px;"></i> Snap</button>'
+ + '<button type="button" onclick="document.getElementById(\'cashOutFileInput\').click(); return false;" style="background:#fff; color:#7c4a1a; border:1.5px solid #7c4a1a; padding:10px; border-radius:8px; cursor:pointer; font-size:12.5px; font-weight:700; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="folder" style="width:13px;height:13px;"></i> Pilih</button>'
+ + '</div>';
+ }
+ if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.__cashOutUploadPhoto = async function(){
+ const f = window.__cashOutPhoto; if(!f || typeof db === 'undefined' || !db) return null;
+ try {
+ const ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
+ const ts = new Date().toISOString().replace(/[:.]/g, '-');
+ const fileName = 'cashout/' + ts + '.' + ext;
+ const extMime = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp', heic:'image/heic', heif:'image/heic', pdf:'application/pdf' };
+ const { data, error } = await db.storage.from('payment-proofs').upload(fileName, f, { cacheControl: '3600', upsert: false, contentType: f.type || extMime[ext] || 'image/jpeg' });
+ if(error) throw error;
+ const { data: pub } = db.storage.from('payment-proofs').getPublicUrl(data.path);
+ return pub && pub.publicUrl ? pub.publicUrl : null;
+ } catch(e){ if(typeof showToast === 'function') showToast('Upload resit gagal: ' + e.message, 'warn'); return null; }
+};
+window.cashOutSave = async function(){
+ const amt = round2(parseFloat(window.__cashOutRaw) || 0);
+ if(!(amt > 0)) return showToast('Masukkan jumlah duit keluar.', 'warn');
+ if(!window.__cashOutPhoto) return showToast('Snap resit/bukti dulu (wajib).', 'warn');
+ if(typeof db === 'undefined' || !db) return showToast('Tiada sambungan.', 'error');
+ const btn = document.getElementById('cashOutSaveBtn');
+ if(btn){ btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+ try {
+ const proofUrl = await window.__cashOutUploadPhoto();
+ if(!proofUrl) throw new Error('Resit gagal upload');
+ const note = ((document.getElementById('cashOutNote') || {}).value || '').trim();
+ const staff = (typeof currentUser !== 'undefined' && currentUser && currentUser.name) ? currentUser.name : 'Unknown';
+ const { error } = await db.from('cash_drawer_log').insert({ type:'cash_out', amount: amt, category: window.__cashOutCat, note: note || null, proof_url: proofUrl, staff_name: staff });
+ if(error) throw error;
+ showToast('Duit keluar RM ' + amt.toFixed(2) + ' direkod.', 'success');
+ window.closeCashOut();
+ } catch(e){
+ showToast('Gagal simpan: ' + e.message, 'error');
+ } finally {
+ if(btn){ btn.disabled = false; btn.textContent = 'Simpan Duit Keluar'; }
+ }
+};
+
 // p1_33 — Walk-in quick toggle: skip customer info for fast counter sales
 window.cpToggleWalkin = function() {
     const btn = document.getElementById('cpWalkinBtn');

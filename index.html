@@ -37,7 +37,7 @@
  <link rel="stylesheet" href="style.css?v=61">
  <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
  <link rel="dns-prefetch" href="https://images.weserv.nl">
- <link rel="stylesheet" href="design-tokens.css?v=123">
+ <link rel="stylesheet" href="design-tokens.css?v=124">
  <!-- Supabase Core -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <!-- Chart.js -->
@@ -790,6 +790,50 @@
  </button>
  </footer>
  </aside>
+
+ <!-- p1_854 — Duit Keluar (Cash Out / Petty Cash dari box kaunter). Semua staff boleh; gambar resit WAJIB. -->
+ <div id="cashOutModal" class="login-overlay" style="display:none; z-index:5200; align-items:flex-start; overflow-y:auto; padding:20px 0;">
+ <div class="login-box" style="max-width:430px; width:92%; text-align:left;">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+ <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="arrow-up-from-line" style="width:19px;height:19px; color:#B23A2E;"></i> Duit Keluar</h2>
+ <button type="button" onclick="window.closeCashOut()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; padding:6px;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+ </div>
+ <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Rekod duit dikeluarkan dari box kaunter (Lalamove, beli air, bayaran urgent). Nama staff + masa direkod automatik.</p>
+
+ <div class="co-amount"><span class="co-amount__rm">RM</span> <span id="cashOutAmount" class="co-amount__val">0.00</span></div>
+ <div class="cp-cash__keypad" style="margin-bottom:14px;">
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('1')">1</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('2')">2</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('3')">3</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('4')">4</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('5')">5</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('6')">6</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('7')">7</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('8')">8</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('9')">9</button>
+ <button type="button" class="cp-cash__key cp-cash__key--util" onclick="window.cashOutKey('.')">.</button>
+ <button type="button" class="cp-cash__key" onclick="window.cashOutKey('0')">0</button>
+ <button type="button" class="cp-cash__key cp-cash__key--util" onclick="window.cashOutKey('back')" aria-label="Padam"><i data-lucide="delete" style="width:20px;height:20px;"></i></button>
+ </div>
+
+ <p class="cp-section__title" style="margin:0 0 6px;">Kategori</p>
+ <div class="co-cats" id="cashOutCats">
+ <button type="button" class="co-cat is-active" data-cat="Lalamove/Penghantaran" onclick="window.cashOutCat(this)">Lalamove / Penghantaran</button>
+ <button type="button" class="co-cat" data-cat="Beli barang/air" onclick="window.cashOutCat(this)">Beli barang / air</button>
+ <button type="button" class="co-cat" data-cat="Bayaran urgent" onclick="window.cashOutCat(this)">Bayaran urgent</button>
+ <button type="button" class="co-cat" data-cat="Lain-lain" onclick="window.cashOutCat(this)">Lain-lain</button>
+ </div>
+
+ <input type="text" id="cashOutNote" class="cp-input" placeholder="Nota (cth: Lalamove ke pelanggan Ali)" maxlength="120" style="margin:12px 0;">
+
+ <p class="cp-section__title" style="margin:0 0 6px;">Resit / Bukti <span style="color:#B23A2E;">(wajib)</span></p>
+ <input type="file" id="cashOutPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="window.cashOutPickPhoto(this)">
+ <input type="file" id="cashOutFileInput" accept="image/*" style="display:none;" onchange="window.cashOutPickPhoto(this)">
+ <div id="cashOutPhotoBadge" style="padding:12px 14px; border:1px solid #CE9420; background:#F8EFD7; border-radius:10px; font-size:12.5px; font-weight:700; color:#7A5410;"></div>
+
+ <button type="button" id="cashOutSaveBtn" onclick="window.cashOutSave()" class="login-btn" style="background:#B23A2E; width:100%; padding:15px; font-size:15px; margin-top:16px;">Simpan Duit Keluar</button>
+ </div>
+ </div>
 
  <!-- 0.2 CUSTOMER HISTORY MODAL (STAFF ONLY) -->
  <div id="staffCustomerHistoryModal" class="login-overlay" style="display:none; z-index:3000;">
@@ -3042,6 +3086,7 @@
  </div>
  <!-- p1_229 — Custom Sales button (ad-hoc/service item bukan dari master) -->
  <button onclick="window.openCustomSaleModal()" class="btn-secondary" id="btnCustomSale" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#FAF2E6; border:1.5px solid #fb923c; color:#9a3412; font-weight:700;" title="Tambah item custom (service charge, repair, deposit, etc.)"><i data-lucide="plus-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Custom Sale</button>
+ <button onclick="window.openCashOut()" class="btn-secondary" id="btnCashOut" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#FBE9E7; border:1.5px solid #E5897E; color:#B23A2E; font-weight:700;" title="Rekod duit keluar dari box (Lalamove, beli air, bayaran urgent)"><i data-lucide="arrow-up-from-line" style="width:14px;height:14px;vertical-align:-2px;"></i> Duit Keluar</button>
  <button onclick="window.togglePosLayoutMode()" class="btn-secondary" id="btnPosLayoutToggle" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 20px;" data-i18n="cs_small_screen">Skrin Kecil</button>
  </div>
  <!-- p1_130 — Quick-Sell pills (top 5-8 most-sold last 30d) -->
@@ -8548,6 +8593,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_854', label:'Cashier: DUIT KELUAR (Cash Out / petty cash dari box) (Zaid: "boleh tambah cash keluar untuk bayar lalamove/beli air/bayaran urgent guna duit cash dalam box?"). Berpasangan dgn tutup kira (#4): duit dijangka = float + jualan tunai − duit keluar. Petty cash POS lama deprecated + localStorage je; ni BARU server-logged. Jadual baru public.cash_drawer_log (id/type/amount/category/note/proof_url/staff_name/shift_date/created_at; RLS anon+authenticated select+insert; direka utk float/cash_in/close_count masa depan). Butang "Duit Keluar" (merah, arrow-up-from-line) di baris Cashier sebelah Custom Sale → modal #cashOutModal: keypad jumlah + kategori chip (Lalamove/Penghantaran, Beli barang/air, Bayaran urgent, Lain-lain) + nota + gambar resit WAJIB (Zaid pilih: semua staff boleh + wajib snap). Upload ke bucket payment-proofs prefix cashout/. Simpan nama staff + masa auto. Fn openCashOut/closeCashOut/cashOutKey/cashOutRender/cashOutCat/cashOutPickPhoto/cashOutRenderPhoto/__cashOutUploadPhoto/cashOutSave. app.js v812->813, design-tokens.css v123->124.', d:'done' },
  { id:'p1_853', label:'Cashier: KIRA BAKI + keypad tunai (audit operasi harian — Zaid: paling kritikal untuk walk-in). Dulu modal bayar tunjuk total je, takde input duit diterima / kira baki → staff kira sendiri (senang silap). FIX: panel checkout (cpFormView) tambah seksyen "Tunai Diterima" (#cpCashPanel) yang HANYA papar bila Cara Bayar=Tunai (cpSetPayment toggle): paparan Diterima + Baki Pulang (nombor tabular besar), chip cepat (Ngam=exact, 50/100/150/200), keypad 1-9/./0/padam (touch ≥52px, maklum balas tekan). Fungsi window.cpCashKey/cpCashQuick/cpCashRender/cpCashReset; baki = diterima−total, hijau bila cukup, merah "Kurang RM X" bila tak cukup; cpRecomputeTotal panggil cpCashRender (baki auto-update bila diskaun berubah); openCheckoutPanel reset tiap sale. Simpan audit ke sales_history.metadata.cash_received + cash_change (via cpConfirmSale→processNewCheckout saleMeta). UX skill: tabular figures, touch target besar, scale feedback, brand-lock 3 warna (hijau/merah functional). app.js v811->812, design-tokens.css v122->123.', d:'done' },
  { id:'p1_852', label:'view.html: status bar iOS HIASAN pada bingkai app staf (Zaid: "tambah hiasan preview... letak masa & icon sebiji macam phone aku"). Bingkai phone preview dulu bezel kosong terus ke app — tak realistik vs iPhone betul (yg ada status bar jam+signal+wifi+bateri). Tambah .ios-statusbar dlm #deviceR (atas iframe): jam 20:37 kiri + Dynamic Island pil tengah (phone) + signal/wifi/bateri(hijau) kanan, latar #101010 (sama bar atas native → nampak bersambung). Phone+Tablet (island sorok di tablet, bar lebih nipis). Hanya pane kanan (app staf), bukan back-office. fit() auto-skala ikut offsetHeight jadi tak perlu laras manual. Halaman statik sahaja — TIADA perubahan app.js/app sebenar.', d:'done' },
  { id:'p1_851', label:'iOS app native — build berjaya pasang ke iPhone + polish widget AI (Zaid: "developer apple dah siap, individual team dah ada"). (1) BUILD FIX: project Xcode warisan ada team ID salah (48VWD69HBN) + bundle ID placeholder sampah (https---github.com-brozaidtodak-Pos-System-Test) → betulkan ke akaun individual baru DEVELOPMENT_TEAM=294P46M42M (mzaidax1999) + PRODUCT_BUNDLE_IDENTIFIER=com.tencamp.pos (padan capacitor.config.json appId) di Debug+Release + exportOptions.plist teamID. App POS kini build & pasang ke iPhone 15 Pro Max (disahkan jalan: top bar + bottom tab bar Cashier/Orders/Komisen/Stok muncul lepas login). (2) POLISH: widget AI Tanya (#saWidget) bertindan separa dgn bar terapung "Lihat Troli" dalam body.pos-app-scoped (bubble bottom:84px jatuh dlm julat bar oren ~70-130px → tutup jumlah RM kanan). FIX: angkat bubble ke bottom:calc(140px+safe-area) supaya duduk ATAS bar oren. design-tokens.css?v=121->122. Fail ios cuma config (tiada section baru, div balance tak berubah). (3) FIX search bar "terlalu ke bawah" dalam app (Zaid screenshot view.html): PUNCA — .pos-prodsearch-row position:sticky top:var(--pos-app-header-h); JS setHdrH() ukur .app-header offsetHeight, tapi dlm mod app header itu display:none (offsetHeight 0) → var TAK update → nilai lama besar (>padding atas kandungan) tersangkut → sticky TOLAK search row turun ~76px masa rehat. FIX: setHdrH kini detect body.pos-app-scoped → set --pos-app-header-h = tinggi #posAppTopBar native (~113px < padding 123px, tiada tolak); + __applyPosAppScope panggil __setPosHeaderH selepas suntik bar. app.js v810->811.', d:'done' },
@@ -13863,7 +13909,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=812"></script>
+ <script src="app.js?v=813"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">

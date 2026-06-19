@@ -4151,3 +4151,12 @@ body:has(.cart-section.drawer-open) #saWidget { display: none !important; }
 .cp-cash__key { min-height: 52px; border: 1px solid #E6E0D4; background: #fff; border-radius: 11px; font: 700 20px 'Poppins', sans-serif; color: #101010; cursor: pointer; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; transition: transform .06s, background .12s; -webkit-tap-highlight-color: transparent; }
 .cp-cash__key:active { transform: scale(.93); background: #FAF6EF; }
 .cp-cash__key--util { color: #9A3412; background: #FBF1E4; }
+
+/* p1_854 — Duit Keluar (Cash Out) modal */
+.co-amount { text-align: center; font-size: 13px; color: #9a948b; font-weight: 600; margin-bottom: 12px; }
+.co-amount__rm { font-size: 15px; }
+.co-amount__val { font-size: 34px; font-weight: 800; color: #101010; font-variant-numeric: tabular-nums; }
+.co-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.co-cat { min-height: 44px; border: 1px solid #E2D9C8; background: #fff; border-radius: 9px; font: 600 12.5px 'Poppins', sans-serif; color: #101010; cursor: pointer; padding: 8px 10px; transition: transform .06s, background .12s, border-color .12s; -webkit-tap-highlight-color: transparent; }
+.co-cat:active { transform: scale(.96); }
+.co-cat.is-active { background: #FBE9E7; border-color: #E5897E; color: #B23A2E; }
