@@ -4387,6 +4387,10 @@ body.pos-app-scoped #saPanel {
 /* mesej = kawasan scroll yg mengecut bila keyboard buka (latest mesej kekal nampak) */
 body.pos-app-scoped #saPanel .sa-msgs { flex: 1 1 auto !important; overflow-y: auto !important; min-height: 0 !important; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 body.pos-app-scoped #saPanel .sa-form { flex: 0 0 auto !important; padding-bottom: 10px !important; }
+/* p1_892 — chip soalan contoh (keadaan kosong) isi ruang panel supaya nampak kemas + senang staf tekan */
+#saMessages .sa-chips { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+#saMessages .sa-chip { text-align: left; background: #fff; border: 1px solid var(--brand-bronze, #CD7C32); color: #101010; border-radius: 12px; padding: 11px 14px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .12s, transform .06s; -webkit-tap-highlight-color: transparent; }
+#saMessages .sa-chip:active { background: #FAF1E6; transform: scale(.98); }
 /* p1_876/p1_877 — kunci scroll halaman bawah masa panel Tanya AI buka → position:fixed kekal stabil di iOS
    (elak WKWebView auto-scroll halaman yg buatkan input terapung ke atas skrin). */
 body.sa-panel-open { overflow: hidden !important; }

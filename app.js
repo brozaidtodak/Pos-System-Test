@@ -1268,8 +1268,20 @@ window.__saViewportSync = function(){
 window.__saRender = function(){
  const box = document.getElementById('saMessages'); if(!box) return;
  const esc = (typeof hesc === 'function') ? hesc : (s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
- box.innerHTML = window.__saHistory.map(m => '<div class="sa-bubble sa-bubble--' + (m.role==='user'?'me':(m.typing?'bot sa-bubble--typing':'bot')) + '">' + esc(m.content) + '</div>').join('');
+ let html = window.__saHistory.map(m => '<div class="sa-bubble sa-bubble--' + (m.role==='user'?'me':(m.typing?'bot sa-bubble--typing':'bot')) + '">' + esc(m.content) + '</div>').join('');
+ // Keadaan kosong (welcome je) → tunjuk chip soalan contoh untuk isi ruang + senang staf tekan
+ if(window.__saHistory.filter(m => m.role==='user' || !m.typing).length <= 1 && !window.__saBusy){
+  const sugg = ['Macam mana buat refund?','Macam mana check stok?','Macam mana buka shift?','SOP cuti macam mana?'];
+  html += '<div class="sa-chips">' + sugg.map(s => '<button type="button" class="sa-chip" data-q="'+esc(s)+'" onclick="window.__saAsk(this.getAttribute(\'data-q\'))">'+esc(s)+'</button>').join('') + '</div>';
+ }
+ box.innerHTML = html;
  box.scrollTop = box.scrollHeight;
+};
+window.__saAsk = function(q){
+ if(window.__saBusy) return;
+ const input = document.getElementById('saInput'); if(!input) return;
+ input.value = q;
+ window.__saSend();
 };
 window.__saSend = function(e){
  if(e && e.preventDefault) e.preventDefault();
