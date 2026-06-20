@@ -8066,7 +8066,7 @@ window.refreshRailBadges = function() {
 // TIDAK digate sebab ia sebahagian Home; commission manager-view digate berasingan.)
 // p1_517 — Reports management-only + PIN 1999 (Zaid). Tambah Analytics + Returns/Damage + Payment Proofs
 // ke senarai gated (selain financial sedia ada). Laporan Saya (personal) kekal terbuka utk staf.
-window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection','marginReportSection','deliveryOrdersSection'];
+window.__CONFIDENTIAL_SECTIONS = ['channelProfitSection','brandPerfSection','salesMgmtSection','confidentialSection','analyticsSection','returnsSection','paymentProofsSection','marginReportSection','deliveryOrdersSection','procurementSection'];
 window.__CONF_PIN = '1999';
 window.__confIsUnlocked = function() {
  try { return sessionStorage.getItem('confUnlocked_v1') === '1'; } catch(e) { return window.__confUnlockedMem === true; }
@@ -41740,3 +41740,103 @@ window.__pdbRefresh = async function(btn){
  } catch(e){ if(typeof showToast === 'function') showToast('Refresh gagal: ' + (e.message || e), 'error'); }
  finally { if(btn){ btn.disabled = false; btn.classList.remove('is-loading'); } }
 };
+
+// ===================================================================
+// p1_899 — PROCUREMENT viewer (read-only) — baca DB sebenar: purchase_orders +
+// purchase_order_items + delivery_orders + delivery_order_items. PO lama (poSection)
+// = sistem localStorage berasingan; ini browser sejarah PO/DO yg direkonstruksi.
+// ===================================================================
+(function(){
+ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const rm = (n) => 'RM ' + (Number(n)||0).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
+ const nm = (sku) => { const p = (typeof masterProducts !== 'undefined' ? masterProducts : []).find(x => x.sku === sku); return p ? p.name : ''; };
+
+ window.__procView = window.__procView || 'po';
+ window.__procSetView = function(v){ window.__procView = v; window.__procRenderBody(); document.querySelectorAll('#procurementSection .proc-pills button').forEach(b => b.classList.toggle('active', b.dataset.v === v)); };
+ window.__procLoad = async function(force){
+  if(window.__procData && !force) return window.__procData;
+  const [po, poi, doo, doi] = await Promise.all([
+   db.from('purchase_orders').select('*').limit(5000),
+   db.from('purchase_order_items').select('*').limit(20000),
+   db.from('delivery_orders').select('*').limit(5000),
+   db.from('delivery_order_items').select('*').limit(20000)
+  ]);
+  window.__procData = { po: po.data||[], poi: poi.data||[], doo: doo.data||[], doi: doi.data||[] };
+  return window.__procData;
+ };
+ window.renderProcurement = async function(){
+  const sec = document.getElementById('procurementSection'); if(!sec) return;
+  const v = window.__procView;
+  sec.innerHTML = `<div style="max-width:1000px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+     <div><h2 style="margin:0; font-size:20px; font-weight:800; color:#101010;">Procurement — PO &amp; DO</h2>
+      <p style="margin:4px 0 0; font-size:13px; color:#6B7280;">Sejarah pembelian sebenar dari database. Klik kad untuk lihat barang.</p></div>
+     <button onclick="window.__procLoad(true).then(window.__procRenderBody)" style="background:#fff; border:1px solid #E2E2E2; color:#374151; padding:9px 16px; border-radius:9px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh</button>
+    </div>
+    <div class="proc-pills">
+     <button data-v="po" class="${v==='po'?'active':''}" onclick="window.__procSetView('po')">Purchase Orders</button>
+     <button data-v="do" class="${v==='do'?'active':''}" onclick="window.__procSetView('do')">Delivery Orders</button>
+    </div>
+    <div id="procBody"><div style="text-align:center; color:#9CA3AF; padding:30px;">Memuatkan…</div></div>
+   </div>`;
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+  try { await window.__procLoad(); } catch(e){ const b = document.getElementById('procBody'); if(b) b.innerHTML = '<div style="color:#B23A2E; padding:20px;">Gagal muat: ' + esc(e.message) + '</div>'; return; }
+  window.__procRenderBody();
+ };
+ window.__procRenderBody = function(){
+  const body = document.getElementById('procBody'); if(!body) return;
+  const d = window.__procData || { po:[], poi:[], doo:[], doi:[] };
+  if(window.__procView === 'po'){
+   const byPo = {}; d.poi.forEach(i => { (byPo[i.po_id] = byPo[i.po_id]||[]).push(i); });
+   const pos = d.po.slice().sort((a,b) => String(b.received_date||b.eta_date||'').localeCompare(String(a.received_date||a.eta_date||'')));
+   body.innerHTML = pos.map(po => {
+    const items = byPo[po.id] || [];
+    const ord = items.reduce((s,i)=>s+(Number(i.qty_ordered)||0),0);
+    const recv = items.reduce((s,i)=>s+(Number(i.qty_received)||0),0);
+    const total = items.reduce((s,i)=>s+(Number(i.line_total_rm)||0),0);
+    const short = ord - recv;
+    const rows = items.map(i => {
+     const o = Number(i.qty_ordered)||0, r = Number(i.qty_received)||0, sh = o - r;
+     return `<tr><td class="l" style="font-weight:700;">${esc(i.sku||'')}</td><td class="l" style="color:#6B7280;">${esc(nm(i.sku))}</td><td>${o}</td><td>${r}</td><td style="color:${sh>0?'#B23A2E':'#9CA3AF'}; font-weight:${sh>0?'700':'400'};">${sh>0?'−'+sh:'·'}</td><td>${rm(i.unit_cost_rm)}</td><td style="font-weight:700;">${rm(i.line_total_rm)}</td></tr>`;
+    }).join('');
+    const sb = po.status === 'Completed' ? '<span style="background:#E4EFE2; color:#345E43; padding:2px 8px; border-radius:5px; font-weight:700; font-size:11px;">Completed</span>' : `<span style="background:#F8EFD7; color:#7A5410; padding:2px 8px; border-radius:5px; font-weight:700; font-size:11px;">${esc(po.status||'?')}</span>`;
+    return `<div class="proc-card">
+      <div class="proc-card__head" onclick="this.parentNode.classList.toggle('open')">
+       <div style="min-width:0;"><div style="font-weight:800; color:#101010; font-size:14px;">${esc(po.po_number||'PO')}</div><div style="font-size:11.5px; color:#9CA3AF;">${esc(po.supplier_name||'')} · terima ${esc(po.received_date||po.eta_date||'-')}</div></div>
+       <div style="display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap;">
+        ${sb}
+        <span style="font-size:11.5px; color:#374151; font-weight:700;">${recv}/${ord}${short>0?` <span style="color:#B23A2E;">(−${short})</span>`:''}</span>
+        <span style="font-size:11.5px; color:#7A5410; font-weight:700;">${rm(total)}</span>
+        <i data-lucide="chevron-right" class="proc-chev" style="width:16px;height:16px;color:#9CA3AF;"></i>
+       </div>
+      </div>
+      <div class="proc-card__body">
+       <table class="proc-tbl"><thead><tr><th class="l">SKU</th><th class="l">Nama</th><th>Order</th><th>Terima</th><th>Kurang</th><th>Kos/unit</th><th>Jumlah</th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center; color:#9CA3AF;">Tiada item</td></tr>'}</tbody></table>
+      </div>
+     </div>`;
+   }).join('') || '<div style="text-align:center; color:#9CA3AF; padding:30px;">Tiada PO.</div>';
+  } else {
+   const byDo = {}; d.doi.forEach(i => { (byDo[i.do_ref] = byDo[i.do_ref]||[]).push(i); });
+   const dos = d.doo.slice().sort((a,b) => String(b.delivery_date||'').localeCompare(String(a.delivery_date||'')));
+   body.innerHTML = dos.map(o => {
+    const items = byDo[o.do_ref] || [];
+    const units = items.reduce((s,i)=>s+(Number(i.qty)||0),0) || Number(o.total_units)||0;
+    const rows = items.map(i => `<tr><td class="l" style="font-weight:700;">${esc(i.sku||'')}</td><td class="l" style="color:#6B7280;">${esc(i.product_name||nm(i.sku))}</td><td>${Number(i.qty)||0}</td><td>${i.unit_cost_rmb?('¥'+i.unit_cost_rmb):'·'}</td><td>${i.unit_cost_myr?rm(i.unit_cost_myr):'·'}</td></tr>`).join('');
+    return `<div class="proc-card">
+      <div class="proc-card__head" onclick="this.parentNode.classList.toggle('open')">
+       <div style="min-width:0;"><div style="font-weight:800; color:#101010; font-size:14px;">${esc(o.do_ref||'DO')}</div><div style="font-size:11.5px; color:#9CA3AF;">${esc(o.delivery_date||'-')}${o.shipment_no?(' · '+esc(o.shipment_no)):''}${o.supplier_order_ref?(' · '+esc(o.supplier_order_ref)):''}</div></div>
+       <div style="display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap;">
+        <span style="font-size:11.5px; color:#374151; font-weight:700;">${units} unit</span>
+        ${o.freight_myr?`<span style="font-size:11.5px; color:#7A5410; font-weight:700;">freight ${rm(o.freight_myr)}</span>`:''}
+        <i data-lucide="chevron-right" class="proc-chev" style="width:16px;height:16px;color:#9CA3AF;"></i>
+       </div>
+      </div>
+      <div class="proc-card__body">
+       <table class="proc-tbl"><thead><tr><th class="l">SKU</th><th class="l">Nama</th><th>Qty</th><th>Kos RMB</th><th>Kos MYR</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center; color:#9CA3AF;">Tiada item</td></tr>'}</tbody></table>
+      </div>
+     </div>`;
+   }).join('') || '<div style="text-align:center; color:#9CA3AF; padding:30px;">Tiada DO.</div>';
+  }
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ };
+})();

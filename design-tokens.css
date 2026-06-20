@@ -4397,6 +4397,22 @@ body.sa-panel-open { overflow: hidden !important; }
 /* tablet: chat sheet di kawasan kandungan kanan sidebar (takde bottom tab bar) */
 body.pos-tablet-pane #saPanel { left: calc(var(--pos-sidebar-w, 220px) + 12px) !important; right: 12px !important; bottom: 14px !important; top: calc(var(--pos-app-header-h, 60px) + 12px) !important; }
 
+/* p1_899 — Procurement viewer (PO/DO) */
+.proc-pills { display:flex; gap:8px; margin:16px 0; }
+.proc-pills button { padding:8px 18px; border:1px solid #E2E2E2; background:#fff; border-radius:20px; font-weight:700; font-size:13px; cursor:pointer; color:#6B7280; }
+.proc-pills button.active { background:#101010; color:#fff; border-color:#101010; }
+.proc-card { border:1px solid #EAE6DE; border-radius:12px; margin-bottom:10px; background:#fff; overflow:hidden; }
+.proc-card__head { display:flex; align-items:center; gap:12px; padding:13px 16px; cursor:pointer; }
+.proc-card__head:hover { background:#FAF8F4; }
+.proc-card__body { display:none; padding:2px 16px 14px; overflow-x:auto; }
+.proc-card.open .proc-card__body { display:block; }
+.proc-card.open .proc-chev { transform:rotate(90deg); }
+.proc-chev { transition:transform .15s; flex:0 0 auto; }
+.proc-tbl { width:100%; border-collapse:collapse; font-size:12px; }
+.proc-tbl th { text-align:right; padding:6px 8px; border-bottom:2px solid #E5E7EB; color:#6B7280; font-size:10.5px; text-transform:uppercase; white-space:nowrap; }
+.proc-tbl th.l, .proc-tbl td.l { text-align:left; }
+.proc-tbl td { text-align:right; padding:6px 8px; border-bottom:1px solid #F1EFEA; white-space:nowrap; }
+
 /* p1_897 — butang Refresh berputar masa loading */
 @keyframes pdbSpin { to { transform: rotate(360deg); } }
 .pdb-btn.is-loading i { animation: pdbSpin .8s linear infinite; }
