@@ -33630,8 +33630,9 @@ window.closeCheckoutPanel = function() {
 
 window.cpSetPayment = function(method) {
  document.getElementById('cpPaymentMethod').value = method;
- document.querySelectorAll('#cpPayPills.cp-pay-pill').forEach(b => {
+ document.querySelectorAll('#cpPayPills .cp-pay-pill').forEach(b => {
  b.classList.toggle('is-active', b.dataset.method === method);
+ b.blur(); // buang :focus border supaya tak nampak macam 2 dipilih
  });
  const ewl = document.getElementById('cpEwalletInline');
  if(method === 'E-Wallet') {
