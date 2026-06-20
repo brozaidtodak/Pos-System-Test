@@ -7571,7 +7571,7 @@ window.__ppUploadFor = function(saleId) {
  if(typeof showToast==='function') showToast('Upload gagal: ' + e.message, 'error');
  }
  };
- input.click();
+ window.__iosSafeFilePick(input);
 };
 
 // ===================================================================
@@ -7648,6 +7648,23 @@ window.__ppManageRender = function() {
  `;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
+// p1_895 — iOS/iPad WKWebView: file <input> MESTI dalam DOM (& bukan display:none)
+// supaya picker buka. createElement + .click() yg detached buka senyap je di iPad
+// → staf "tak dapat upload" di tablet. Helper ni append (off-screen) → click → auto-buang.
+window.__iosSafeFilePick = function(input){
+ input.style.position = 'fixed';
+ input.style.left = '-9999px';
+ input.style.top = '0';
+ input.style.opacity = '0';
+ input.style.width = '1px';
+ input.style.height = '1px';
+ document.body.appendChild(input);
+ const cleanup = () => { try { input.remove(); } catch(e){} };
+ input.addEventListener('change', () => setTimeout(cleanup, 2000), { once: true });
+ // kalau user batal picker (tiada change), buang bila tetingkap fokus balik
+ window.addEventListener('focus', () => setTimeout(() => { if(!input.files || !input.files.length) cleanup(); }, 600), { once: true });
+ input.click();
+};
 window.__ppAddProof = function(saleId) {
  const urls = window.__ppManageUrls || [];
  if(urls.length >= window.__PP_MAX) { if(typeof showToast === 'function') showToast('Maksimum ' + window.__PP_MAX + ' resit.', 'warn'); return; }
@@ -7675,7 +7692,7 @@ window.__ppAddProof = function(saleId) {
    if(typeof showToast === 'function') showToast('Resit ditambah (' + next.length + '/' + window.__PP_MAX + ').', 'success');
   } catch(e) { if(typeof showToast === 'function') showToast('Upload gagal: ' + e.message, 'error'); }
  };
- input.click();
+ window.__iosSafeFilePick(input);
 };
 window.__ppRemoveProof = async function(saleId, idx) {
  const urls = (window.__ppManageUrls || []).slice();
@@ -7796,7 +7813,7 @@ window.__dpAddProof = function(saleId) {
    if(typeof showToast === 'function') showToast('Gambar ditambah (' + next.length + '/' + window.__DP_MAX + ').', 'success');
   } catch(e) { if(typeof showToast === 'function') showToast('Upload gagal: ' + e.message, 'error'); }
  };
- input.click();
+ window.__iosSafeFilePick(input);
 };
 window.__dpRemoveProof = async function(saleId, idx) {
  const urls = (window.__dpManageUrls || []).slice();
