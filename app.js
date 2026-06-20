@@ -41807,10 +41807,12 @@ window.__pdbRefresh = async function(btn){
         ${sb}
         <span style="font-size:11.5px; color:#374151; font-weight:700;">${recv}/${ord}${short>0?` <span style="color:#B23A2E;">(−${short})</span>`:''}</span>
         <span style="font-size:11.5px; color:#7A5410; font-weight:700;">${rm(total)}</span>
+        ${po.delivery_refs ? `<button onclick="event.stopPropagation(); window.__procGotoDO('${esc(po.delivery_refs)}')" title="Pergi ke Delivery Order ${esc(po.delivery_refs)}" style="background:#FAF1E6; border:1px solid #CD7C32; color:#7A5410; padding:4px 10px; border-radius:7px; font-weight:700; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="truck" style="width:12px;height:12px;"></i> DO →</button>` : ''}
         <i data-lucide="chevron-right" class="proc-chev" style="width:16px;height:16px;color:#9CA3AF;"></i>
        </div>
       </div>
       <div class="proc-card__body">
+       ${po.delivery_refs ? `<div style="font-size:11.5px; color:#6B7280; padding:8px 0 2px;">Delivery Order: <button onclick="window.__procGotoDO('${esc(po.delivery_refs)}')" style="background:none; border:none; color:#CD7C32; font-weight:700; cursor:pointer; text-decoration:underline; padding:0;">${esc(po.delivery_refs)} →</button></div>` : ''}
        <table class="proc-tbl"><thead><tr><th class="l">SKU</th><th class="l">Nama</th><th>Order</th><th>Terima</th><th>Kurang</th><th>Kos/unit</th><th>Jumlah</th></tr></thead><tbody>${rows||'<tr><td colspan="7" style="text-align:center; color:#9CA3AF;">Tiada item</td></tr>'}</tbody></table>
       </div>
      </div>`;
@@ -41822,7 +41824,7 @@ window.__pdbRefresh = async function(btn){
     const items = byDo[o.do_ref] || [];
     const units = items.reduce((s,i)=>s+(Number(i.qty)||0),0) || Number(o.total_units)||0;
     const rows = items.map(i => `<tr><td class="l" style="font-weight:700;">${esc(i.sku||'')}</td><td class="l" style="color:#6B7280;">${esc(i.product_name||nm(i.sku))}</td><td>${Number(i.qty)||0}</td><td>${i.unit_cost_rmb?('¥'+i.unit_cost_rmb):'·'}</td><td>${i.unit_cost_myr?rm(i.unit_cost_myr):'·'}</td></tr>`).join('');
-    return `<div class="proc-card">
+    return `<div class="proc-card" id="procDO-${esc(o.do_ref||'')}" style="transition:box-shadow .3s;">
       <div class="proc-card__head" onclick="this.parentNode.classList.toggle('open')">
        <div style="min-width:0;"><div style="font-weight:800; color:#101010; font-size:14px;">${esc(o.do_ref||'DO')}</div><div style="font-size:11.5px; color:#9CA3AF;">${esc(o.delivery_date||'-')}${o.shipment_no?(' · '+esc(o.shipment_no)):''}${o.supplier_order_ref?(' · '+esc(o.supplier_order_ref)):''}</div></div>
        <div style="display:flex; align-items:center; gap:8px; margin-left:auto; flex-wrap:wrap;">
@@ -41838,5 +41840,17 @@ window.__pdbRefresh = async function(btn){
    }).join('') || '<div style="text-align:center; color:#9CA3AF; padding:30px;">Tiada DO.</div>';
   }
   if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ };
+ // p1_900 — dari kad PO → lompat ke kad DO berkaitan (tukar view DO + buka + scroll + highlight)
+ window.__procGotoDO = function(refs){
+  window.__procView = 'do';
+  window.__procRenderBody();
+  document.querySelectorAll('#procurementSection .proc-pills button').forEach(b => b.classList.toggle('active', b.dataset.v === 'do'));
+  const first = String(refs||'').split(',')[0].trim();
+  setTimeout(function(){
+   const el = document.getElementById('procDO-' + first);
+   if(el){ el.classList.add('open'); el.scrollIntoView({ behavior:'smooth', block:'center' }); el.style.boxShadow = '0 0 0 3px #CD7C32'; setTimeout(function(){ el.style.boxShadow = ''; }, 2200); }
+   else if(typeof showToast === 'function') showToast('DO ' + first + ' tak dijumpai dalam senarai.', 'warn');
+  }, 60);
  };
 })();
