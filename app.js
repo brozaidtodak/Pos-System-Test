@@ -17264,10 +17264,11 @@ window.lpSelectVariant = function(cardId, sku, btn) {
     const offPct = onSale ? Math.round(((compareAt - price) / compareAt) * 100) : 0;
     const priceEl = card.querySelector('[data-role="price"]');
     if (priceEl) {
-        // p1_149 — Shopee-style cut price display (Irfan cadangan): sale price red+bold, strikethrough was-price, discount % badge
+        // p1_149 — Shopee-style cut price display; p1_934 — handle price=0
         priceEl.innerHTML = onSale
             ? `<span class="lp-product-card__price--sale">${fmt(price)}</span><span class="lp-product-card__price--was">${fmt(compareAt)}</span><span class="lp-product-card__price--off">${fmt(compareAt - price)}</span>`
-            : fmt(price);
+            : price > 0 ? fmt(price)
+            : `<span style="font-size:13px;font-weight:500;color:#9CA3AF;">Semak harga &rarr;</span>`;
     }
     const parsed = window.lpParseProductName(product);
     const labelEl = card.querySelector('[data-role="variant-label"]');
@@ -17729,6 +17730,18 @@ function renderPublicStorefront() {
         const onSale = compareAt > price && price > 0;
         // p1_149 — hoist `off` so price row inline badge can reuse (Irfan cadangan)
         const off = onSale ? Math.round(((compareAt - price) / compareAt) * 100) : 0;
+        // p1_934 — price range for multi-variant groups; "Semak harga" if price=0
+        const _varPrices = variants.map(v => parseFloat(v.price||0)).filter(p => p > 0);
+        const _minP = _varPrices.length ? Math.min(..._varPrices) : 0;
+        const _maxP = _varPrices.length ? Math.max(..._varPrices) : 0;
+        const _hasRange = _varPrices.length > 1 && _minP !== _maxP;
+        const _priceHtml = onSale
+          ? `<span class="lp-product-card__price--sale">${fmt(price)}</span><span class="lp-product-card__price--was">${fmt(compareAt)}</span><span class="lp-product-card__price--off">${fmt(compareAt - price)}</span>`
+          : _hasRange
+            ? `<span style="font-size:11px;font-weight:500;color:#9CA3AF;display:block;margin-bottom:1px;">Mulai dari</span>${fmt(_minP)}`
+            : price > 0 ? fmt(price)
+            : _minP > 0 ? fmt(_minP)
+            : `<span style="font-size:13px;font-weight:500;color:#9CA3AF;">Semak harga &rarr;</span>`;
         let badge = '';
         const soldOutLabel = (window.t ? window.t('lp_card_soldout') : 'Sold Out');
         const optionsLabel = (window.t ? window.t('lp_card_options') : 'options');
@@ -17782,7 +17795,7 @@ function renderPublicStorefront() {
                     <div class="lp-product-card__meta">${brandPill}${catPill}</div>
                     <h3 class="lp-product-card__name" onclick="window.lpOpenProductDetail('${skuEsc}')">${parsed.title}</h3>
                     <p class="lp-product-card__variant" data-role="variant-label" style="${parsed.variantName ? '' : 'display:none'}">${parsed.variantName || ''}</p>
-                    <p class="lp-product-card__price" data-role="price">${onSale ? `<span class="lp-product-card__price--sale">${fmt(price)}</span><span class="lp-product-card__price--was">${fmt(compareAt)}</span><span class="lp-product-card__price--off">${fmt(compareAt - price)}</span>` : fmt(price)}</p>
+                    <p class="lp-product-card__price" data-role="price">${_priceHtml}</p>
                     ${chipsHtml}
                     <!-- p1_434 — buy row dibuang dari card (Zaid); customer klik card → PDP untuk beli. Sold-out badge kekal. -->
                     ${totalStock <= 0
