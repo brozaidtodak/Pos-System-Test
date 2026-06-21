@@ -41548,6 +41548,24 @@ window.__rcvSaveDamage = async function(poId){
  const _toast = (m,t) => { try { if(typeof showToast === 'function') showToast(m,t); else if(typeof toast === 'function') toast(m,t); } catch(e){} };
  // p1_898 — lookup produk master utk barcode / stok sistem / gambar (picker side)
  const __niProd = (sku) => { try { return (typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts.find(p => p.sku === sku) : null; } catch(e){ return null; } };
+ // p1_909 — popup barcode BESAR (CODE128 sebenar, boleh scan) — barcode kecil dlm senarai cuma trigger
+ window.__niShowBarcode = function(barcode, name){
+  if(!barcode){ _toast('Tiada barcode untuk barang ni.', 'warn'); return; }
+  const old = document.getElementById('niBcOverlay'); if(old) old.remove();
+  const ov = document.createElement('div'); ov.id = 'niBcOverlay';
+  ov.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9900; display:flex; align-items:center; justify-content:center; padding:20px;';
+  ov.onclick = (e)=>{ if(e.target === ov) ov.remove(); };
+  ov.innerHTML = `<div style="background:#fff; border-radius:18px; max-width:420px; width:100%; padding:22px; box-shadow:0 24px 60px rgba(0,0,0,.4); text-align:center;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong style="font-size:15px; color:#101010; text-align:left;">${esc(name||'Barcode')}</strong><button onclick="document.getElementById('niBcOverlay').remove()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; line-height:1;">×</button></div>
+    <div style="background:#fff; padding:14px 6px; border:1px solid #F0EDE6; border-radius:12px;"><svg id="niBcSvg" style="max-width:100%; height:auto;"></svg></div>
+    <div style="font-size:11.5px; color:#9CA3AF; margin-top:8px;">Imbas dengan scanner atau padan dengan sticker pada barang.</div>
+   </div>`;
+  document.body.appendChild(ov);
+  try {
+   if(typeof JsBarcode !== 'undefined'){ JsBarcode('#niBcSvg', String(barcode), { format:'CODE128', width:2.6, height:96, displayValue:true, fontSize:20, margin:8 }); }
+   else { const s = document.getElementById('niBcSvg'); if(s) s.outerHTML = `<div style="font-family:monospace; font-size:24px; font-weight:700; letter-spacing:2px; padding:10px;">${esc(barcode)}</div>`; }
+  } catch(e){ const s = document.getElementById('niBcSvg'); if(s) s.outerHTML = `<div style="font-family:monospace; font-size:24px; font-weight:700; padding:10px;">${esc(barcode)}</div>`; }
+ };
 
  // ---- Stock Locations (cache + load) ----
  window.__stockLocCache = window.__stockLocCache || {};
@@ -41704,6 +41722,7 @@ window.__rcvSaveDamage = async function(poId){
   body.innerHTML = items.map((it, i)=>{
    const prod = __niProd(it.sku); // p1_906 — gambar barang dlm edit modal
    const barcode = (prod && (prod.erp_barcode || prod.barcode)) ? String(prod.erp_barcode || prod.barcode).trim() : ''; // p1_907
+   const bcJs = esc(String(barcode||'')).replace(/'/g,''); const nameJs = esc(String(it.name||'')).replace(/'/g,''); // p1_909
    const stock = (prod && prod.stock != null) ? Number(prod.stock) : null; // p1_908 — stok sistem
    const reqQty = it.qty || 1;
    let stockHtml = '';
@@ -41718,7 +41737,7 @@ window.__rcvSaveDamage = async function(poId){
     : `<div style="width:40px; height:40px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:#C7C7C7;"><i data-lucide="package" style="width:17px;height:17px;"></i></div>`;
    return `<div style="display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid #F0EDE6; ${it.done ? 'opacity:.55;' : ''}">
      ${thumb}
-     <div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13.5px; color:#101010; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(it.name)}${it.done ? ' <span style="color:#2E6B2E; font-size:10.5px; font-weight:700;">· dah diambil</span>' : ''}</div><div style="font-size:11px; color:#9CA3AF;">${esc(it.sku||'—')}${barcode ? ` <span style="color:#C7C2B8;">·</span> <span style="display:inline-flex; align-items:center; gap:3px; color:#6B6B6B; font-family:monospace; font-weight:600;"><i data-lucide="barcode" style="width:12px;height:12px;"></i>${esc(barcode)}</span>` : ''}</div>${stockHtml ? `<div style="margin-top:3px;">${stockHtml}</div>` : ''}</div>
+     <div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13.5px; color:#101010; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(it.name)}${it.done ? ' <span style="color:#2E6B2E; font-size:10.5px; font-weight:700;">· dah diambil</span>' : ''}</div><div style="font-size:11px; color:#9CA3AF;">${esc(it.sku||'—')}${barcode ? ` <button onclick="window.__niShowBarcode('${bcJs}','${nameJs}')" title="Tap untuk barcode besar — boleh scan" style="display:inline-flex; align-items:center; gap:4px; background:#F6F1E9; border:1px solid #E7DCC8; color:#6B6B6B; font-family:monospace; font-weight:600; font-size:11px; padding:2px 8px; border-radius:7px; cursor:pointer; vertical-align:middle;"><i data-lucide="barcode" style="width:13px;height:13px;"></i>${esc(barcode)}<i data-lucide="maximize-2" style="width:10px;height:10px; opacity:.6;"></i></button>` : ''}</div>${stockHtml ? `<div style="margin-top:3px;">${stockHtml}</div>` : ''}</div>
      <input type="number" value="${it.qty}" min="1" onchange="window.__niEditItems[${i}].qty=parseInt(this.value)||1" style="width:58px; padding:7px; border:1px solid #E5E7EB; border-radius:8px; text-align:center; font-weight:700; flex:0 0 auto;">
      <button onclick="window.__niEditItems.splice(${i},1); window.__niEditRender();" title="Buang dari permintaan" style="background:#FDECEA; border:1px solid #F5C6C0; color:#B23A2E; width:34px; height:34px; border-radius:9px; cursor:pointer; font-weight:800; flex:0 0 auto;">×</button>
    </div>`;
@@ -41805,12 +41824,13 @@ window.__rcvSaveDamage = async function(poId){
      : `<div style="width:42px; height:42px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:#C7C7C7;"><i data-lucide="package" style="width:18px;height:18px;"></i></div>`;
     const skuJs = esc(String(it.sku||'')).replace(/'/g,'');
     const nameJs = esc(String(it.name||'')).replace(/'/g,'');
+    const bcJs = esc(String(barcode||'')).replace(/'/g,''); // p1_909
     return `<div style="display:flex; gap:10px; padding:9px 0; border-top:1px dashed #F0EDE6; ${it.done ? 'opacity:.5;' : ''}">
       <input type="checkbox" ${it.done ? 'checked' : ''} onchange="window.__notifyInvToggleItem(${n.id}, ${idx}, this.checked)" title="Tanda bila dah ambil dari store" style="width:20px; height:20px; accent-color:#CD7C32; flex:0 0 auto; margin-top:2px; cursor:pointer;">
       ${thumb}
       <div style="flex:1; min-width:0;">
        <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;"><div style="font-weight:700; font-size:13.5px; color:#101010; ${it.done ? 'text-decoration:line-through;' : ''}">${esc(it.name||'')}</div><div style="font-weight:800; color:#CD7C32; white-space:nowrap;">×${reqQty}</div></div>
-       <div style="font-size:11px; color:#9CA3AF; margin:1px 0 4px;">${esc(it.sku||'—')}${barcode ? ` <span style="color:#C7C2B8;">·</span> <span style="display:inline-flex; align-items:center; gap:3px; color:#6B6B6B; font-family:monospace; font-weight:600;"><i data-lucide="barcode" style="width:12px;height:12px;"></i>${esc(barcode)}</span>` : ''}</div>
+       <div style="font-size:11px; color:#9CA3AF; margin:1px 0 5px;">${esc(it.sku||'—')}${barcode ? ` <button onclick="window.__niShowBarcode('${bcJs}','${nameJs}')" title="Tap untuk barcode besar — boleh scan" style="display:inline-flex; align-items:center; gap:4px; background:#F6F1E9; border:1px solid #E7DCC8; color:#6B6B6B; font-family:monospace; font-weight:600; font-size:11px; padding:2px 8px; border-radius:7px; cursor:pointer; vertical-align:middle;"><i data-lucide="barcode" style="width:13px;height:13px;"></i>${esc(barcode)}<i data-lucide="maximize-2" style="width:10px;height:10px; opacity:.6;"></i></button>` : ''}</div>
        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:2px;">${stockHtml}${locHtml} <button onclick="window.__skuLocModal('${skuJs}', '${nameJs}')" style="background:none; border:none; color:#CD7C32; font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; margin-left:4px;">edit lokasi</button></div>
       </div>
     </div>`;
