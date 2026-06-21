@@ -41704,13 +41704,21 @@ window.__rcvSaveDamage = async function(poId){
   body.innerHTML = items.map((it, i)=>{
    const prod = __niProd(it.sku); // p1_906 — gambar barang dlm edit modal
    const barcode = (prod && (prod.erp_barcode || prod.barcode)) ? String(prod.erp_barcode || prod.barcode).trim() : ''; // p1_907
+   const stock = (prod && prod.stock != null) ? Number(prod.stock) : null; // p1_908 — stok sistem
+   const reqQty = it.qty || 1;
+   let stockHtml = '';
+   if(stock != null){
+    if(stock <= 0) stockHtml = `<span style="display:inline-flex; align-items:center; gap:3px; background:#FDECEA; border:1px solid #F5C6C0; color:#B23A2E; padding:1px 7px; border-radius:20px; font-size:10.5px; font-weight:700;"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Stok sistem 0</span>`;
+    else if(stock < reqQty) stockHtml = `<span style="background:#FFF3E0; border:1px solid #F0C98A; color:#8A5A12; padding:1px 7px; border-radius:20px; font-size:10.5px; font-weight:700;">Sistem cuma ${stock}</span>`;
+    else stockHtml = `<span style="background:#EEF6EE; border:1px solid #BFE0BF; color:#2E6B2E; padding:1px 7px; border-radius:20px; font-size:10.5px; font-weight:700;">Stok sistem ${stock}</span>`;
+   }
    const img = (prod && prod.images && prod.images[0]) ? prod.images[0] : '';
    const thumb = img
     ? `<img src="${esc(img)}" loading="lazy" style="width:40px; height:40px; border-radius:8px; object-fit:cover; border:1px solid #EEE; flex:0 0 auto;">`
     : `<div style="width:40px; height:40px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:#C7C7C7;"><i data-lucide="package" style="width:17px;height:17px;"></i></div>`;
    return `<div style="display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid #F0EDE6; ${it.done ? 'opacity:.55;' : ''}">
      ${thumb}
-     <div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13.5px; color:#101010; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(it.name)}${it.done ? ' <span style="color:#2E6B2E; font-size:10.5px; font-weight:700;">· dah diambil</span>' : ''}</div><div style="font-size:11px; color:#9CA3AF;">${esc(it.sku||'—')}${barcode ? ` <span style="color:#C7C2B8;">·</span> <span style="display:inline-flex; align-items:center; gap:3px; color:#6B6B6B; font-family:monospace; font-weight:600;"><i data-lucide="barcode" style="width:12px;height:12px;"></i>${esc(barcode)}</span>` : ''}</div></div>
+     <div style="flex:1; min-width:0;"><div style="font-weight:700; font-size:13.5px; color:#101010; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(it.name)}${it.done ? ' <span style="color:#2E6B2E; font-size:10.5px; font-weight:700;">· dah diambil</span>' : ''}</div><div style="font-size:11px; color:#9CA3AF;">${esc(it.sku||'—')}${barcode ? ` <span style="color:#C7C2B8;">·</span> <span style="display:inline-flex; align-items:center; gap:3px; color:#6B6B6B; font-family:monospace; font-weight:600;"><i data-lucide="barcode" style="width:12px;height:12px;"></i>${esc(barcode)}</span>` : ''}</div>${stockHtml ? `<div style="margin-top:3px;">${stockHtml}</div>` : ''}</div>
      <input type="number" value="${it.qty}" min="1" onchange="window.__niEditItems[${i}].qty=parseInt(this.value)||1" style="width:58px; padding:7px; border:1px solid #E5E7EB; border-radius:8px; text-align:center; font-weight:700; flex:0 0 auto;">
      <button onclick="window.__niEditItems.splice(${i},1); window.__niEditRender();" title="Buang dari permintaan" style="background:#FDECEA; border:1px solid #F5C6C0; color:#B23A2E; width:34px; height:34px; border-radius:9px; cursor:pointer; font-weight:800; flex:0 0 auto;">×</button>
    </div>`;
