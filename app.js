@@ -41546,6 +41546,8 @@ window.__rcvSaveDamage = async function(poId){
 (function(){
  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  const _toast = (m,t) => { try { if(typeof showToast === 'function') showToast(m,t); else if(typeof toast === 'function') toast(m,t); } catch(e){} };
+ // p1_898 — lookup produk master utk barcode / stok sistem / gambar (picker side)
+ const __niProd = (sku) => { try { return (typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts.find(p => p.sku === sku) : null; } catch(e){ return null; } };
 
  // ---- Stock Locations (cache + load) ----
  window.__stockLocCache = window.__stockLocCache || {};
@@ -41660,14 +41662,16 @@ window.__rcvSaveDamage = async function(poId){
  };
 
  // ---- Inventory side: page senarai permintaan ----
- window.renderNotifyInventory = async function(){
+ window.renderNotifyInventory = async function(useCache){
   const wrap = document.getElementById('notifyInvList'); if(!wrap) return;
   if(!window.__notifyInvData) wrap.innerHTML = '<div style="text-align:center; color:#9CA3AF; padding:30px;">Memuatkan…</div>';
-  try {
-   const { data, error } = await db.from('inventory_notifications').select('*').order('updated_at', { ascending:false });
-   if(error) throw error;
-   window.__notifyInvData = data || [];
-  } catch(e){ wrap.innerHTML = '<div style="color:#B23A2E; padding:20px;">Gagal muat: ' + esc(e.message) + '</div>'; return; }
+  if(!(useCache && window.__notifyInvData)){ // p1_898 — toggle item guna cache, elak kad melompat sebab updated_at
+   try {
+    const { data, error } = await db.from('inventory_notifications').select('*').order('updated_at', { ascending:false });
+    if(error) throw error;
+    window.__notifyInvData = data || [];
+   } catch(e){ wrap.innerHTML = '<div style="color:#B23A2E; padding:20px;">Gagal muat: ' + esc(e.message) + '</div>'; return; }
+  }
   const list = window.__notifyInvData;
   const skus = [];
   list.forEach(n => (n.items||[]).forEach(it => { if(it.sku && skus.indexOf(it.sku) < 0) skus.push(it.sku); }));
@@ -41679,29 +41683,66 @@ window.__rcvSaveDamage = async function(poId){
   }
   wrap.innerHTML = list.map(n => {
    const items = n.items || [];
-   const itemsHtml = items.map(it => {
+   const doneCount = items.filter(it => it.done).length; // p1_898
+   const allDone = items.length > 0 && doneCount === items.length;
+   const itemsHtml = items.map((it, idx) => {
     const locs = window.__stockLocCache[it.sku] || [];
     const locHtml = locs.length
      ? locs.map(l => `<span style="display:inline-flex; align-items:center; gap:4px; background:#FAF1E6; border:1px solid #E7C66A; color:#7A5410; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; margin:2px 4px 2px 0;"><i data-lucide="map-pin" style="width:11px;height:11px;"></i> ${esc(l.location)} · ${l.qty}</span>`).join('')
      : '<span style="font-size:11px; color:#B23A2E; font-weight:600;">Tiada lokasi</span>';
-    return `<div style="padding:8px 0; border-top:1px dashed #F0EDE6;">
-      <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;"><div style="font-weight:700; font-size:13.5px; color:#101010;">${esc(it.name||'')}</div><div style="font-weight:800; color:#CD7C32; white-space:nowrap;">×${it.qty||1}</div></div>
-      <div style="font-size:11px; color:#9CA3AF; margin:1px 0 4px;">${esc(it.sku||'—')}</div>
-      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:2px;">${locHtml} <button onclick="window.__skuLocModal('${esc(String(it.sku||'')).replace(/'/g,'')}', '${esc(String(it.name||'')).replace(/'/g,'')}')" style="background:none; border:none; color:#CD7C32; font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; margin-left:4px;">edit lokasi</button></div>
+    // p1_898 — barcode + stok sistem + gambar dari master (untuk picker)
+    const prod = __niProd(it.sku);
+    const barcode = (prod && (prod.erp_barcode || prod.barcode)) ? String(prod.erp_barcode || prod.barcode).trim() : '';
+    const reqQty = it.qty || 1;
+    const stock = (prod && prod.stock != null) ? Number(prod.stock) : null;
+    let stockHtml = '';
+    if(stock != null){
+     if(stock <= 0) stockHtml = `<span style="display:inline-flex; align-items:center; gap:3px; background:#FDECEA; border:1px solid #F5C6C0; color:#B23A2E; padding:2px 7px; border-radius:20px; font-size:10.5px; font-weight:700; margin:2px 4px 2px 0;"><i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> Stok sistem 0</span>`;
+     else if(stock < reqQty) stockHtml = `<span style="background:#FFF3E0; border:1px solid #F0C98A; color:#8A5A12; padding:2px 7px; border-radius:20px; font-size:10.5px; font-weight:700; margin:2px 4px 2px 0;">Sistem cuma ${stock}</span>`;
+     else stockHtml = `<span style="background:#EEF6EE; border:1px solid #BFE0BF; color:#2E6B2E; padding:2px 7px; border-radius:20px; font-size:10.5px; font-weight:700; margin:2px 4px 2px 0;">Stok sistem ${stock}</span>`;
+    }
+    const img = (prod && prod.images && prod.images[0]) ? prod.images[0] : '';
+    const thumb = img
+     ? `<img src="${esc(img)}" loading="lazy" style="width:42px; height:42px; border-radius:8px; object-fit:cover; border:1px solid #EEE; flex:0 0 auto;">`
+     : `<div style="width:42px; height:42px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex:0 0 auto; color:#C7C7C7;"><i data-lucide="package" style="width:18px;height:18px;"></i></div>`;
+    const skuJs = esc(String(it.sku||'')).replace(/'/g,'');
+    const nameJs = esc(String(it.name||'')).replace(/'/g,'');
+    return `<div style="display:flex; gap:10px; padding:9px 0; border-top:1px dashed #F0EDE6; ${it.done ? 'opacity:.5;' : ''}">
+      <input type="checkbox" ${it.done ? 'checked' : ''} onchange="window.__notifyInvToggleItem(${n.id}, ${idx}, this.checked)" title="Tanda bila dah ambil dari store" style="width:20px; height:20px; accent-color:#CD7C32; flex:0 0 auto; margin-top:2px; cursor:pointer;">
+      ${thumb}
+      <div style="flex:1; min-width:0;">
+       <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline;"><div style="font-weight:700; font-size:13.5px; color:#101010; ${it.done ? 'text-decoration:line-through;' : ''}">${esc(it.name||'')}</div><div style="font-weight:800; color:#CD7C32; white-space:nowrap;">×${reqQty}</div></div>
+       <div style="font-size:11px; color:#9CA3AF; margin:1px 0 4px;">${esc(it.sku||'—')}${barcode ? ` <span style="color:#C7C2B8;">·</span> <span style="display:inline-flex; align-items:center; gap:3px; color:#6B6B6B; font-family:monospace; font-weight:600;"><i data-lucide="barcode" style="width:12px;height:12px;"></i>${esc(barcode)}</span>` : ''}</div>
+       <div style="display:flex; flex-wrap:wrap; align-items:center; gap:2px;">${stockHtml}${locHtml} <button onclick="window.__skuLocModal('${skuJs}', '${nameJs}')" style="background:none; border:none; color:#CD7C32; font-size:11px; font-weight:700; cursor:pointer; text-decoration:underline; margin-left:4px;">edit lokasi</button></div>
+      </div>
     </div>`;
    }).join('');
    let when = '';
    try { when = new Date(n.updated_at).toLocaleString('ms-MY', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' }); } catch(e){}
-   return `<div style="background:#fff; border:1px solid #EAE6DE; border-radius:14px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
+   const progHtml = items.length ? `<span style="margin-left:6px; font-weight:700; color:${allDone ? '#2E6B2E' : '#CD7C32'};">· ${doneCount}/${items.length} diambil</span>` : '';
+   const doneBtn = allDone
+    ? `<button onclick="window.__notifyInvDone(${n.id})" style="background:#2E6B2E; color:#fff; border:none; padding:8px 14px; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;"><i data-lucide="check-check" style="width:14px;height:14px;"></i> Semua siap</button>`
+    : `<button onclick="window.__notifyInvDone(${n.id})" style="background:#101010; color:#fff; border:none; padding:8px 14px; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;"><i data-lucide="check" style="width:14px;height:14px;"></i> Selesai</button>`;
+   return `<div style="background:#fff; border:1px solid ${allDone ? '#BFE0BF' : '#EAE6DE'}; border-radius:14px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.04);">
      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-      <div><div style="font-weight:800; color:#101010; font-size:14px;"><i data-lucide="user" style="width:13px;height:13px;vertical-align:-1px;"></i> ${esc(n.staff_name||'Staff')}</div><div style="font-size:11px; color:#9CA3AF;">${when} · ${items.length} barang</div></div>
-      <button onclick="window.__notifyInvDone(${n.id})" style="background:#101010; color:#fff; border:none; padding:8px 14px; border-radius:9px; font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap;"><i data-lucide="check" style="width:14px;height:14px;"></i> Selesai</button>
+      <div><div style="font-weight:800; color:#101010; font-size:14px;"><i data-lucide="user" style="width:13px;height:13px;vertical-align:-1px;"></i> ${esc(n.staff_name||'Staff')}</div><div style="font-size:11px; color:#9CA3AF;">${when} · ${items.length} barang${progHtml}</div></div>
+      ${doneBtn}
      </div>
      <div style="margin-top:6px;">${itemsHtml}</div>
      ${n.note ? `<div style="margin-top:10px; background:#FFF8F0; border:1px solid #FCE3C0; border-radius:8px; padding:8px 10px; font-size:12px; color:#7A5410;"><strong>Nota:</strong> ${esc(n.note)}</div>` : ''}
    </div>`;
   }).join('');
   if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ };
+ // p1_898 — tick "Ambil" per barang: simpan state ke jsonb items, render guna cache (tak melompat)
+ window.__notifyInvToggleItem = async function(id, idx, checked){
+  const note = (window.__notifyInvData||[]).find(n => n.id === id);
+  if(!note || !Array.isArray(note.items) || !note.items[idx]) return;
+  note.items[idx].done = !!checked;
+  window.renderNotifyInventory(true); // optimistic, guna cache
+  try {
+   await db.from('inventory_notifications').update({ items: note.items }).eq('id', id);
+  } catch(e){ note.items[idx].done = !checked; window.renderNotifyInventory(true); _toast('Gagal kemaskini: ' + e.message, 'error'); }
  };
  window.__notifyInvDone = async function(id){
   if(!confirm('Tandakan permintaan ni SELESAI? Ia akan dibuang dari senarai.')) return;
