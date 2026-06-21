@@ -5262,6 +5262,96 @@ window.scAddRow = function(){
 window.scRemoveRow = function(i){ (window.__scRows||[]).splice(i,1); scRenderItems(); scCompute(); };
 window.scUpdateRow = function(i, field, val){ if(window.__scRows && window.__scRows[i]){ window.__scRows[i][field] = val; scCompute(); } };
 
+// p1_927 — Import Katalog (CSV): supplier bagi katalog dulu; parse + peta lajur + import jadi rows.
+// Parser ringkas: auto-detect pembatas (, ; tab), sokong field berquote ("a,b").
+window.__csvParse = function(text){
+ text = String(text||'').replace(/^﻿/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+ const firstLine = (text.split('\n')[0]||'');
+ const counts = { ',':(firstLine.match(/,/g)||[]).length, ';':(firstLine.match(/;/g)||[]).length, '\t':(firstLine.match(/\t/g)||[]).length };
+ let delim = ','; if(counts[';']>counts[delim]) delim=';'; if(counts['\t']>counts[delim]) delim='\t';
+ const rows=[]; let row=[]; let field=''; let inQ=false;
+ for(let i=0;i<text.length;i++){ const c=text[i];
+ if(inQ){ if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else inQ=false; } else field+=c; }
+ else { if(c==='"') inQ=true; else if(c===delim){ row.push(field); field=''; } else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; } else field+=c; }
+ }
+ if(field!==''||row.length){ row.push(field); rows.push(row); }
+ return rows.filter(r=> r.length && r.some(c=> String(c).trim()!==''));
+};
+
+window.__scCatalog = { headers:[], rows:[] };
+window.scCatalogPick = function(input){
+ const file = input && input.files && input.files[0]; if(!file) return;
+ const reader = new FileReader();
+ reader.onload = function(e){
+ try {
+ const parsed = window.__csvParse(e.target.result);
+ if(parsed.length < 2){ if(typeof showToast==='function') showToast('Fail kosong atau tiada data.','warn'); input.value=''; return; }
+ const headers = parsed[0].map(h=> String(h).trim());
+ const rows = parsed.slice(1);
+ window.__scCatalog = { headers, rows };
+ window.scCatalogOpen();
+ } catch(err){ if(typeof showToast==='function') showToast('Gagal baca CSV: '+(err.message||err),'error'); }
+ input.value='';
+ };
+ reader.onerror = function(){ if(typeof showToast==='function') showToast('Gagal buka fail.','error'); input.value=''; };
+ reader.readAsText(file);
+};
+
+window.__scGuessCol = function(headers, keys){
+ const low = headers.map(h=> h.toLowerCase());
+ for(const k of keys){ const i = low.findIndex(h=> h.includes(k)); if(i>=0) return i; }
+ return -1;
+};
+window.scCatalogOpen = function(){
+ const { headers } = window.__scCatalog;
+ const opts = (sel)=> '<option value="-1">— tiada —</option>' + headers.map((h,i)=>`<option value="${i}"${i===sel?' selected':''}>${hesc(h||('Lajur '+(i+1)))}</option>`).join('');
+ const gSku = window.__scGuessCol(headers, ['sku','code','kod','item no','article','model']);
+ const gName = window.__scGuessCol(headers, ['name','nama','product','description','desc','item','barang']);
+ const gRmb = window.__scGuessCol(headers, ['rmb','cny','¥','cost','kos','price','harga','unit price']);
+ const gQty = window.__scGuessCol(headers, ['qty','quantity','kuantiti','pcs','unit','bilangan']);
+ const set=(id,html,sel)=>{ const el=document.getElementById(id); if(el){ el.innerHTML=html; el.value=String(sel); } };
+ set('scMapSku', opts(gSku), gSku); set('scMapName', opts(gName), gName);
+ set('scMapRmb', opts(gRmb), gRmb); set('scMapQty', opts(gQty), gQty);
+ const modal=document.getElementById('scCatalogModal'); if(modal) modal.style.display='flex';
+ window.scCatalogPreview();
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+window.scCatalogClose = function(){ const m=document.getElementById('scCatalogModal'); if(m) m.style.display='none'; };
+
+window.__scCatalogMapped = function(){
+ const { rows } = window.__scCatalog;
+ const ci = (id)=> parseInt((document.getElementById(id)||{}).value, 10);
+ const si=ci('scMapSku'), ni=ci('scMapName'), ri=ci('scMapRmb'), qi=ci('scMapQty');
+ const num = (v)=>{ const n = parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?'':n; };
+ return (rows||[]).map(r=>({
+ sku: si>=0 ? String(r[si]==null?'':r[si]).trim() : '',
+ name: ni>=0 ? String(r[ni]==null?'':r[ni]).trim() : '',
+ rmb: ri>=0 ? num(r[ri]) : '',
+ qty: qi>=0 ? (num(r[qi])===''?'':parseInt(num(r[qi]),10)) : ''
+ })).filter(x=> x.sku || x.name || x.rmb!=='');
+};
+window.scCatalogPreview = function(){
+ const mapped = window.__scCatalogMapped();
+ const tb = document.getElementById('scCatalogPreviewBody'); if(!tb) return;
+ const c=document.getElementById('scCatalogCount'); if(c) c.textContent = '· '+mapped.length+' baris';
+ if(!mapped.length){ tb.innerHTML='<tr><td colspan="4" style="text-align:center; padding:16px; color:#9CA3AF;">Tiada baris padan — semak peta lajur.</td></tr>'; return; }
+ tb.innerHTML = mapped.slice(0,30).map(r=>`<tr><td style="font-family:monospace;">${hesc(r.sku||'-')}</td><td>${hesc((r.name||'').slice(0,60))}</td><td style="text-align:right;">${r.rmb!==''?r.rmb:'—'}</td><td style="text-align:right;">${r.qty!==''?r.qty:'—'}</td></tr>`).join('')
+ + (mapped.length>30?`<tr><td colspan="4" style="text-align:center; padding:8px; color:#9CA3AF;">… +${mapped.length-30} lagi</td></tr>`:'');
+};
+window.scCatalogImport = function(mode){
+ const mapped = window.__scCatalogMapped();
+ if(!mapped.length){ if(typeof showToast==='function') showToast('Tiada baris untuk import.','warn'); return; }
+ const newRows = mapped.map(r=>({ sku:r.sku||'', name:r.name||'', rmb:r.rmb!==''?r.rmb:'', qty:r.qty!==''?r.qty:'', received:'' }));
+ if(mode==='replace'){ window.__scRows = newRows; }
+ else {
+ const cur = (window.__scRows||[]).filter(r=> (r.sku||'').trim() || (r.name||'').trim() || r.rmb || r.qty);
+ window.__scRows = cur.concat(newRows);
+ }
+ window.scCatalogClose();
+ scRenderItems(); scCompute();
+ if(typeof showToast==='function') showToast(`${newRows.length} produk diimport dari katalog${mode==='replace'?' (ganti)':''}. Semak kos + isi qty.`,'success');
+};
+
 window.scRenderItems = function(){
  const tb = document.getElementById('scItemsBody'); if(!tb) return;
  const rows = window.__scRows || [];

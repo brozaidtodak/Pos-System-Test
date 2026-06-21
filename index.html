@@ -3878,8 +3878,12 @@
  <tbody id="scItemsBody"></tbody>
  </table>
  </div>
- <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
+ <div style="display:flex; gap:8px; flex-wrap:wrap;">
  <button onclick="scAddRow()" style="padding:7px 12px; font-size:12px; font-weight:600; background:#F3F4F6; color:#374151; border:1px solid #E5E7EB; border-radius:7px; cursor:pointer;"><i data-lucide="plus" style="width:13px;height:13px;vertical-align:-2px;"></i> Tambah Produk</button>
+ <button onclick="document.getElementById('scCatalogFile').click()" style="padding:7px 12px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:7px; cursor:pointer;"><i data-lucide="file-up" style="width:13px;height:13px;vertical-align:-2px;"></i> Import Katalog (CSV)</button>
+ <input type="file" id="scCatalogFile" accept=".csv,text/csv,.txt" style="display:none;" onchange="window.scCatalogPick(this)">
+ </div>
  <span id="scTotalQty" style="font-size:12px; color:#374151; font-weight:600;">Jumlah Qty: 0</span>
  </div>
  </div>
@@ -3935,6 +3939,34 @@
  </div>
 
  </div><!-- /scPaneCalc -->
+
+ <!-- p1_927 — Modal Import Katalog (CSV): peta lajur + preview sebelum import -->
+ <div id="scCatalogModal" style="display:none; position:fixed; inset:0; z-index:9500; background:rgba(16,16,16,.55); align-items:flex-start; justify-content:center; overflow:auto; padding:40px 16px;">
+ <div style="background:#fff; border-radius:16px; max-width:760px; width:100%; box-shadow:0 20px 60px -10px rgba(0,0,0,.4);">
+ <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid #ECECEC;">
+ <h3 style="margin:0; font-size:16px; display:flex; align-items:center; gap:8px;"><i data-lucide="file-up" style="width:18px;height:18px; color:var(--primary);"></i> Import Katalog</h3>
+ <button onclick="window.scCatalogClose()" style="background:none; border:none; font-size:22px; color:#9CA3AF; cursor:pointer; line-height:1;">&times;</button>
+ </div>
+ <div style="padding:18px 22px;">
+ <p style="font-size:12px; color:var(--text-muted); margin:0 0 14px;">Padankan lajur fail dengan medan order. Aku dah cuba teka — semak &amp; betulkan kalau perlu.</p>
+ <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px;">
+ <div><label class="small-lbl">Lajur SKU</label><select id="scMapSku" class="login-input" style="margin:0;" onchange="window.scCatalogPreview()"></select></div>
+ <div><label class="small-lbl">Lajur Nama</label><select id="scMapName" class="login-input" style="margin:0;" onchange="window.scCatalogPreview()"></select></div>
+ <div><label class="small-lbl">Lajur Kos RMB</label><select id="scMapRmb" class="login-input" style="margin:0;" onchange="window.scCatalogPreview()"></select></div>
+ <div><label class="small-lbl">Lajur Qty (pilihan)</label><select id="scMapQty" class="login-input" style="margin:0;" onchange="window.scCatalogPreview()"></select></div>
+ </div>
+ <div style="font-size:11px; color:#6B7280; margin-bottom:6px; font-weight:700;">Preview <span id="scCatalogCount"></span></div>
+ <div class="table-responsive" style="max-height:280px; overflow:auto; border:1px solid #ECECEC; border-radius:8px;">
+ <table class="data-table" style="font-size:11.5px;"><thead style="background:#FAFAFA; position:sticky; top:0;"><tr><th>SKU</th><th>Nama</th><th style="text-align:right;">Kos RMB</th><th style="text-align:right;">Qty</th></tr></thead><tbody id="scCatalogPreviewBody"></tbody></table>
+ </div>
+ </div>
+ <div style="display:flex; gap:10px; justify-content:flex-end; padding:16px 22px; border-top:1px solid #ECECEC; flex-wrap:wrap;">
+ <button onclick="window.scCatalogClose()" style="padding:9px 16px; font-size:13px; font-weight:600; background:#fff; color:#6B7280; border:1px solid #E5E7EB; border-radius:8px; cursor:pointer;">Batal</button>
+ <button onclick="window.scCatalogImport('append')" style="padding:9px 16px; font-size:13px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:8px; cursor:pointer;">Tambah ke senarai</button>
+ <button onclick="window.scCatalogImport('replace')" style="padding:9px 16px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer;">Ganti semua</button>
+ </div>
+ </div>
+ </div>
 
  <!-- ===== PANE: ARKIB (rekod order/shipment lalu) ===== -->
  <div id="scPaneArchive" style="display:none;">
@@ -8900,6 +8932,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_927', label:'PHASE-2 Calculator: IMPORT KATALOG (CSV) (Zaid: "sambung phase-2 calculator" → pilih Import Katalog dulu; konteks: supplier bagi katalog PDF/CSV jadi langkah PERTAMA flow, sebelum ni kena taip tiap baris manual dalam Kos Shipment). Butang "Import Katalog (CSV)" sebelah "Tambah Produk" → file picker (#scCatalogFile, accept .csv). window.__csvParse = parser ringkas tanpa lib: auto-detect pembatas (, ; tab ikut kekerapan baris header), sokong field berquote ("a,b" → koma dalam quote dikekalkan), buang BOM + baris kosong (diuji node 3 kes: koma+quote, semicolon+BOM, baris kosong — semua lulus). scCatalogPick guna FileReader → __scCatalog{headers,rows} → modal scCatalogModal. Modal: 4 dropdown peta lajur (SKU/Nama/Kos RMB/Qty) auto-teka via keyword (__scGuessCol: sku/code/kod/model · name/nama/product/desc · rmb/cny/cost/kos/price/harga · qty/quantity/pcs) + preview 30 baris live (scCatalogPreview) + kiraan baris. 2 mod import (scCatalogImport): "Tambah ke senarai" (append, skip baris kosong sedia ada) atau "Ganti semua" (replace) → isi __scRows {sku,name,rmb,qty} → scRenderItems+scCompute. Lepas import staf cuma semak kos + isi qty. Sambung terus ke pipeline sedia ada (kira landed → kira-awal → status → terima carton). Phase-1 calculator (p1_922-926) dah lengkap; ini mula Phase-2. app.js v872->873.', d:'done' },
  { id:'p1_926', label:'TERIMA CARTON + reconcile + LAMPU HIJAU JUAL dalam Calculator (Zaid: "sambung" — keping terakhir plan calculator: selesai "carton campur, tak tau barang mana sampai, qty tak siap, boleh jual ke belum"). Kad baru "Terima Carton & Lampu Hijau Jual" dalam tab Kos Shipment. ALTER cost_shipment_items + qty_received; load/save shipment kini bawa qty terima. Per SKU: Qty Order vs Qty Terima (input) → beza PADAN/KURANG/LEBIH (reconcile). Lampu hijau jual = 3 syarat auto-semak dari masterProducts: kos (cost_price>0) + qty (qty terima dimasukkan) + harga (price>0); bila tiga hijau → butang Publish (is_published=true) atau papar yang mana belum. __scReadiness/scRenderReceiving/scSetReceived. Butang: "Simpan Qty Terima" (persist), "Stock-in ikut Qty Terima" (scApplyBatchReceived — tambah stok guna qty SEBENAR bukan order + auto-stage arrived), "Publish semua yang hijau" (scPublishAllReady — bila SEMUA SKU ready+published, order auto jadi stage on_sale + cost_status final = tutup gelung dengan Status dashboard). scApplyCostPrice muktamad kini tanda cost_status final + stage costed. scRenderReceiving dipanggil tiap scCompute (live). Plan calculator (Log→Gabung→Status→Kira-awal→Terima carton) LENGKAP. app.js v871->872.', d:'done' },
  { id:'p1_925', label:'KIRA AWAL (provisional cost) dalam Calculator (Zaid: "sambung kira-awal provisional cost" — buang bottleneck "barang sampai baru pening kira"). Insight flow: masa dapat Invoice Shipment, Barang(PI)+SF%(PI)+Shipping(Invoice Shipment) dah diketahui (~95% kos), tinggal part-timer kecil + qty sebenar. Kad baru "Kira Awal — Kos Sementara" dalam tab Kos Shipment: (1) meter "% kos dikunci" (kira nilai komponen confirmed ÷ jumlah termasuk anggaran part-timer; hijau>=95/amber>=70/merah) + tick tiap komponen tunjuk sumber (Barang←PI, SF←PI, Shipping←Invoice Shipment, Part-timer←terima). (2) Anggar part-timer: input RM/unit (default 2, simpan localStorage calc_pt_per_unit_est) + butang isi #scParttimer = perUnit×totalQty. (3) Jumlah kos sementara + butang "Apply Kos Sementara" (scApplyProvisional): isi products_master.cost_price (tanda "kos sementara"), tag cost_shipments.cost_status=provisional + auto-stage ship_invoice, log ke Formula Log action=provisional. Lepas tu boleh set harga awal di tab Harga & Tier (auto-baca cost_price). Status dashboard: cost_status=provisional → flag PERLU TINDAKAN "Kos masih SEMENTARA, sahkan bila barang sampai" (__calcOrderStatus). ALTER cost_shipments + cost_status/cost_status_at/cost_status_by. scRenderProvisional dipanggil tiap scCompute (live). app.js v870->871.', d:'done' },
  { id:'p1_924', label:'STATUS ORDER + dashboard "tersangkut" dalam Calculator (Zaid: "sambung status order + dashboard tersangkut" — selesai punca utama: barang sampai tapi tak boleh jual sebab kos/qty/harga belum siap). Sub-tab ke-4 "Status Order" (calcStatusSection). Tiap cost_shipment = satu order procurement; ALTER cost_shipments + stage/stage_updated_at/stage_updated_by/eta_date (default po_draft). 11 peringkat ikut flow Zaid (CALC_STAGES): Katalog→PO Draf→PO Final→Proforma Invoice→SF Charge 5%→Invoice Shipment→Transit→Sampai Sebahagian→Sampai Penuh→Kos Siap→Boleh Jual. __calcOrderStatus kira tahap tersangkut: KRITIKAL=dah sampai (arrived/partial) tapi belum on_sale; AMARAN=kos siap belum publish, ATAU lewat ETA, ATAU tersekat >=14 hari di satu peringkat; SELESAI=on_sale. renderCalcStatus papar (1) panel TERSANGKUT atas (kritikal+amaran, butang "Buka kira kos"→scOpenArchived), (2) pipeline chips kiraan per peringkat, (3) jadual semua order: dropdown tukar peringkat inline (__calcStageUpdate), input ETA inline (__calcEtaUpdate), umur di peringkat (merah kalau >=14h), badge status. __calcShow handle view ke-4 (harga/kos/status/log). Warna status guna pengecualian fungsi (merah/amber/hijau) selaras brand-lock. app.js v869->870.', d:'done' },
@@ -14288,7 +14321,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=872"></script>
+ <script src="app.js?v=873"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
