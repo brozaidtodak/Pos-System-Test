@@ -41557,13 +41557,18 @@ window.__rcvSaveDamage = async function(poId){
   ov.onclick = (e)=>{ if(e.target === ov) ov.remove(); };
   ov.innerHTML = `<div style="background:#fff; border-radius:18px; max-width:420px; width:100%; padding:22px; box-shadow:0 24px 60px rgba(0,0,0,.4); text-align:center;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong style="font-size:15px; color:#101010; text-align:left;">${esc(name||'Barcode')}</strong><button onclick="document.getElementById('niBcOverlay').remove()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#999; line-height:1;">×</button></div>
-    <div style="background:#fff; padding:14px 6px; border:1px solid #F0EDE6; border-radius:12px;"><svg id="niBcSvg" style="max-width:100%; height:auto;"></svg></div>
+    <div style="background:#fff; padding:14px 6px; border:1px solid #F0EDE6; border-radius:12px; overflow:hidden;"><svg id="niBcSvg" style="width:100%; height:auto; display:block;"></svg></div>
     <div style="font-size:11.5px; color:#9CA3AF; margin-top:8px;">Imbas dengan scanner atau padan dengan sticker pada barang.</div>
    </div>`;
   document.body.appendChild(ov);
   try {
-   if(typeof JsBarcode !== 'undefined'){ JsBarcode('#niBcSvg', String(barcode), { format:'CODE128', width:2.6, height:96, displayValue:true, fontSize:20, margin:8 }); }
-   else { const s = document.getElementById('niBcSvg'); if(s) s.outerHTML = `<div style="font-family:monospace; font-size:24px; font-weight:700; letter-spacing:2px; padding:10px;">${esc(barcode)}</div>`; }
+   if(typeof JsBarcode !== 'undefined'){
+    JsBarcode('#niBcSvg', String(barcode), { format:'CODE128', width:3, height:90, displayValue:true, fontSize:20, margin:6 });
+    // JsBarcode set width/height px tetap → boleh terbabas dari kad. Tukar ke viewBox supaya responsive (auto-muat lebar kad, aspek terjaga).
+    const s = document.getElementById('niBcSvg');
+    const w = s && parseFloat(s.getAttribute('width')), h = s && parseFloat(s.getAttribute('height'));
+    if(s && w && h){ s.setAttribute('viewBox', '0 0 ' + w + ' ' + h); s.setAttribute('preserveAspectRatio', 'xMidYMid meet'); s.removeAttribute('width'); s.removeAttribute('height'); }
+   } else { const s = document.getElementById('niBcSvg'); if(s) s.outerHTML = `<div style="font-family:monospace; font-size:24px; font-weight:700; letter-spacing:2px; padding:10px;">${esc(barcode)}</div>`; }
   } catch(e){ const s = document.getElementById('niBcSvg'); if(s) s.outerHTML = `<div style="font-family:monospace; font-size:24px; font-weight:700; padding:10px;">${esc(barcode)}</div>`; }
  };
 
