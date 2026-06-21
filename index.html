@@ -1982,7 +1982,7 @@
  <i data-lucide="chevron-right" class="nav-chevron" style="width:14px; height:14px;"></i>
  </div>
  <div class="nav-children" data-nav-children="tools">
- <div class="menu-item" data-tab="nav_sys_calc" onclick="event.stopPropagation(); window.__calcShow('harga', this);" style="display:flex; align-items:center; gap:10px;">
+ <div class="menu-item" data-tab="nav_sys_calc" onclick="event.stopPropagation(); window.__calcShow('kos', this);" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="calculator" style="width:15px; height:15px;"></i> <span>Calculator</span>
  </div>
  <div class="menu-item" data-tab="nav_sys_pricehistory" onclick="event.stopPropagation(); switchHub(['priceHistorySection'], 'Price History', this); if(typeof renderPriceHistory==='function') renderPriceHistory();" style="display:flex; align-items:center; gap:10px;">
@@ -3829,9 +3829,9 @@
  <div id="shipmentCalcSection" class="tab-section" data-skip-title-sync style="display:none;">
  <div class="rp-wrap">
  <div class="calc-subnav">
- <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab calc-subtab--active" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
  <button class="calc-subtab" data-calc-view="status" onclick="window.__calcShow('status')"><i data-lucide="route" style="width:14px;height:14px;"></i> Status Order</button>
+ <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
  </div>
  <div class="rp-header"><div>
@@ -4008,9 +4008,9 @@
  <div id="calcStatusSection" class="tab-section" data-skip-title-sync style="display:none;">
  <div class="rp-wrap">
  <div class="calc-subnav">
- <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
  <button class="calc-subtab calc-subtab--active" data-calc-view="status" onclick="window.__calcShow('status')"><i data-lucide="route" style="width:14px;height:14px;"></i> Status Order</button>
+ <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
  </div>
  <div class="rp-header"><div>
@@ -4030,9 +4030,9 @@
  <div id="calcLogSection" class="tab-section" data-skip-title-sync style="display:none;">
  <div class="rp-wrap">
  <div class="calc-subnav">
- <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
  <button class="calc-subtab" data-calc-view="status" onclick="window.__calcShow('status')"><i data-lucide="route" style="width:14px;height:14px;"></i> Status Order</button>
+ <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab calc-subtab--active" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
  </div>
  <div class="rp-header"><div>
@@ -4067,9 +4067,9 @@
  <div id="floorPriceSection" class="tab-section" data-skip-title-sync style="display:none;">
  <div class="rp-wrap">
  <div class="calc-subnav">
- <button class="calc-subtab calc-subtab--active" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
  <button class="calc-subtab" data-calc-view="status" onclick="window.__calcShow('status')"><i data-lucide="route" style="width:14px;height:14px;"></i> Status Order</button>
+ <button class="calc-subtab calc-subtab--active" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
  </div>
  <div class="rp-header">
@@ -8933,6 +8933,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_929', label:'Susun semula sub-tab Calculator ikut aliran kerja (Zaid: "susun dari kiri landed shipment cost, order status, price & tier, log formula — nak susun semula untuk flow of work"). Tukar turutan butang calc-subtab dalam KEEMPAT-EMPAT section: Kos Shipment (Landed) → Status Order → Harga & Tier → Log Formula (dulu Harga dulu). Sidebar "Calculator" kini buka tab pertama (kos/Landed) bukan harga, supaya padan aliran. Tiap section kekal highlight butang sendiri. index.html sahaja (tiada app.js — logik __calcShow tak berubah).', d:'done' },
  { id:'p1_928', label:'Import Katalog AUTO (Zaid: "csv tu kau just automatically carikan data, susah nak pilih column, kalau macam ni tak relevan"). Buang langkah pilih lajur manual — import TERUS automatik. window.__scAutoDetect: (1) padan header ikut turutan + elak lajur yang dah diambil (fix: "unit" dibuang dari kata kunci qty sebab tersilap padan "Unit Price"; qty kini header-sahaja, pilihan); (2) kalau header tak jumpa, guna CORAK DATA — SKU=corak kod (BD168/NH101), Kos=lajur nombor nilai tertinggi, Nama=teks terpanjang bukan-nombor. Kalau yakin (jumpa SKU/Nama + Kos) → import terus tanpa modal + toast "X produk diimport auto (SKU=.. Nama=.. Kos=..)" + link kecil "lajur silap? betulkan" (buka modal sebagai fallback). Modal cuma auto-buka kalau TAK yakin (jarang). Diuji node 6 katalog (header standard/FOB China/tiada qty/header pelik Col1-3/semicolon+BM) — semua padan betul; fix bug TDZ (ex() baca var sebelum init). app.js v873->874.', d:'done' },
  { id:'p1_927', label:'PHASE-2 Calculator: IMPORT KATALOG (CSV) (Zaid: "sambung phase-2 calculator" → pilih Import Katalog dulu; konteks: supplier bagi katalog PDF/CSV jadi langkah PERTAMA flow, sebelum ni kena taip tiap baris manual dalam Kos Shipment). Butang "Import Katalog (CSV)" sebelah "Tambah Produk" → file picker (#scCatalogFile, accept .csv). window.__csvParse = parser ringkas tanpa lib: auto-detect pembatas (, ; tab ikut kekerapan baris header), sokong field berquote ("a,b" → koma dalam quote dikekalkan), buang BOM + baris kosong (diuji node 3 kes: koma+quote, semicolon+BOM, baris kosong — semua lulus). scCatalogPick guna FileReader → __scCatalog{headers,rows} → modal scCatalogModal. Modal: 4 dropdown peta lajur (SKU/Nama/Kos RMB/Qty) auto-teka via keyword (__scGuessCol: sku/code/kod/model · name/nama/product/desc · rmb/cny/cost/kos/price/harga · qty/quantity/pcs) + preview 30 baris live (scCatalogPreview) + kiraan baris. 2 mod import (scCatalogImport): "Tambah ke senarai" (append, skip baris kosong sedia ada) atau "Ganti semua" (replace) → isi __scRows {sku,name,rmb,qty} → scRenderItems+scCompute. Lepas import staf cuma semak kos + isi qty. Sambung terus ke pipeline sedia ada (kira landed → kira-awal → status → terima carton). Phase-1 calculator (p1_922-926) dah lengkap; ini mula Phase-2. app.js v872->873.', d:'done' },
  { id:'p1_926', label:'TERIMA CARTON + reconcile + LAMPU HIJAU JUAL dalam Calculator (Zaid: "sambung" — keping terakhir plan calculator: selesai "carton campur, tak tau barang mana sampai, qty tak siap, boleh jual ke belum"). Kad baru "Terima Carton & Lampu Hijau Jual" dalam tab Kos Shipment. ALTER cost_shipment_items + qty_received; load/save shipment kini bawa qty terima. Per SKU: Qty Order vs Qty Terima (input) → beza PADAN/KURANG/LEBIH (reconcile). Lampu hijau jual = 3 syarat auto-semak dari masterProducts: kos (cost_price>0) + qty (qty terima dimasukkan) + harga (price>0); bila tiga hijau → butang Publish (is_published=true) atau papar yang mana belum. __scReadiness/scRenderReceiving/scSetReceived. Butang: "Simpan Qty Terima" (persist), "Stock-in ikut Qty Terima" (scApplyBatchReceived — tambah stok guna qty SEBENAR bukan order + auto-stage arrived), "Publish semua yang hijau" (scPublishAllReady — bila SEMUA SKU ready+published, order auto jadi stage on_sale + cost_status final = tutup gelung dengan Status dashboard). scApplyCostPrice muktamad kini tanda cost_status final + stage costed. scRenderReceiving dipanggil tiap scCompute (live). Plan calculator (Log→Gabung→Status→Kira-awal→Terima carton) LENGKAP. app.js v871->872.', d:'done' },
