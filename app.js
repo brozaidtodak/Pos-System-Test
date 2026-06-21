@@ -11011,6 +11011,10 @@ window.__scsToggleSkuList = async function(sessionId) {
  else { badgeBg = '#F3F4F6'; badgeFg = '#6B7280'; badgeTxt = 'Belum Check'; badgeIcon = 'clock'; }
  // p1_459 — blind count: tap row opens popup for qty + catatan; system count hidden (no Sistem column)
  const productName = i.product_name || i.name || '';
+ // p1_913 — barcode bawah SKU (lookup masterProducts.erp_barcode), tappable → popup scan
+ const __scsBcProd = (typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts.find(p => p.sku === i.sku) : null;
+ const scsBc = (__scsBcProd && (__scsBcProd.erp_barcode || __scsBcProd.barcode)) ? String(__scsBcProd.erp_barcode || __scsBcProd.barcode).trim() : '';
+ const scsBcJs = scsBc.replace(/[\\']/g, ''); const scsNameJs = String(productName).replace(/[\\']/g, '');
  const thumbHtml = i.image_url
  ? `<img src="${escHtml(i.image_url)}" alt="${escHtml(i.sku || '')}" onclick="event.stopPropagation(); window.open('${escHtml(i.image_url).replace(/'/g, "\\'")}', '_blank')" style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #E5E7EB; cursor:zoom-in; display:block;" loading="lazy" onerror="this.style.display='none'">`
  : `<div style="width:40px; height:40px; border-radius:4px; background:#F3F4F6; border:1px solid #E5E7EB; display:flex; align-items:center; justify-content:center;"><i data-lucide="image-off" style="width:14px;height:14px; color:#9CA3AF;"></i></div>`;
@@ -11026,7 +11030,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  const trOpen = `<tr onclick="window.__scsOpenCountPopup(${i.id}, ${sessionId})" title="${reveal ? 'Tekan untuk semak / betulkan kiraan' : 'Tekan untuk isi kiraan fizikal'}" style="border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#FAF2E6'" onmouseout="this.style.background=''">`;
  return `${trOpen}
  <td data-label="Gambar" class="scs-cell-thumb" style="padding:6px 8px; width:48px;">${thumbHtml}</td>
- <td data-label="SKU" class="scs-cell-sku" style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(i.sku || '-')}</td>
+ <td data-label="SKU" class="scs-cell-sku" style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(i.sku || '-')}${scsBc ? `<div onclick="event.stopPropagation(); window.__niShowBarcode('${scsBcJs}','${scsNameJs}')" title="Tap untuk barcode besar — boleh scan" style="display:flex; align-items:center; gap:3px; margin-top:3px; color:#6B6B6B; font-weight:600; font-size:9.5px; cursor:pointer; letter-spacing:0; width:fit-content;"><i data-lucide="barcode" style="width:10px;height:10px;"></i>${escHtml(scsBc)}</div>` : ''}</td>
  <td data-label="Nama" class="scs-cell-name" style="padding:8px 10px; font-size:11.5px; color:#374151;">${escHtml(productName.slice(0, 60))}</td>
  <td data-label="Lokasi" style="padding:8px 10px; font-size:11px;">${i.location_bin ? `<span style="background:#F8EFD7; color:#7A5410; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escHtml(i.location_bin)}</span>` : '<span style="color:#D1D5DB;">—</span>'}</td>
  ${sistemCell}
