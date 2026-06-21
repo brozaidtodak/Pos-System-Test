@@ -17,8 +17,11 @@
     .layout {
         display: grid;
         grid-template-rows: auto 1fr auto;
+        /* p1_921 — 100dvh: footer (Jumlah Bayar) tak terpotong di Safari iPad (toolbar ambil ruang 100vh) */
         height: 100vh;
+        height: 100dvh;
         max-height: 100vh;
+        max-height: 100dvh;
     }
     header {
         background: linear-gradient(135deg, var(--primary), #A05F22);
@@ -215,9 +218,14 @@ const SHOP_KEY = 'complianceSettings_v1';
 
 function fmt(n) { return Number(n || 0).toFixed(2); }
 
+let __cdLastSig = null;
 function render() {
+    // p1_921 — skip re-render bila payload SAMA (poll 500ms dulu rebuild innerHTML tiap kali → <img> dicipta semula → berkelip)
+    const __raw = localStorage.getItem(STORAGE_KEY) || 'null';
+    if (__raw === __cdLastSig) return;
+    __cdLastSig = __raw;
     let payload;
-    try { payload = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { payload = null; }
+    try { payload = JSON.parse(__raw); } catch (e) { payload = null; }
 
     // Shop tagline from settings
     try {
