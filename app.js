@@ -4952,18 +4952,163 @@ window.__scBosAck = async function(id) {
 // p1_922 — Calculator gabungan: satu menu "Calculator", dua view (Harga & Tier / Kos Shipment).
 // Tukar view = tukar section yang switchHub papar (no DOM restructure). Sidebar item kekal highlight.
 window.__calcShow = function(view, menuEl){
- view = (view === 'kos') ? 'kos' : 'harga';
+ if(['kos','harga','log'].indexOf(view) === -1) view = 'harga';
  const menu = menuEl || document.querySelector('.menu-item[data-tab="nav_sys_calc"]');
  if(view === 'kos'){
  switchHub(['shipmentCalcSection'], 'Calculator', menu);
  if(typeof renderShipmentCalc === 'function') try{ renderShipmentCalc(); }catch(e){}
+ } else if(view === 'log'){
+ switchHub(['calcLogSection'], 'Calculator', menu);
+ if(typeof window.renderCalcLog === 'function') try{ window.renderCalcLog(); }catch(e){}
  } else {
  switchHub(['floorPriceSection'], 'Calculator', menu);
  if(typeof renderFloorPrice === 'function') try{ renderFloorPrice(); }catch(e){}
  }
- // Selaras butang sub-tab (kedua-dua salinan dalam dua section)
+ // Selaras butang sub-tab (semua salinan dalam tiap section)
  document.querySelectorAll('.calc-subtab').forEach(b => b.classList.toggle('calc-subtab--active', b.dataset.calcView === view));
  if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+
+// p1_923 — FORMULA LOG (rekod kekal tiap pengiraan + tarikh; table calc_formula_log).
+// Formula didefinisikan penuh dalam tiap rekod supaya boleh audit walaupun formula berubah satu hari.
+window.__CALC_FORMULA_LANDED = 'Landed v1 — Landed/unit = Barang(RMB×ex) + SF%(ikut NILAI) + Shipping(ikut NILAI) + Part-timer(ikut KUANTITI)';
+window.__CALC_FORMULA_PRICE  = 'Harga v1 — Cost Bersih = (RMB×ex) + Shipping + Hand% ; tier: RRP +30% · Kedai +60% lepas −20% · Marketplace +80% · Z\'s Proposal +35%';
+
+// Tulis satu rekod log (append-only). Fire-and-forget — tak block apply kalau gagal.
+window.__calcLogWrite = async function(entry){
+ try {
+ if(typeof db==='undefined'||!db) return;
+ const u = window.currentUser||{};
+ const payload = {
+ calc_type: entry.calc_type || 'landed',
+ action: entry.action || null,
+ formula_version: entry.formula_version || '',
+ ref_label: entry.ref_label || null,
+ supplier: entry.supplier || null,
+ source_docs: entry.source_docs || null,
+ inputs: entry.inputs || {},
+ results: entry.results || {},
+ summary: entry.summary || '',
+ created_by: u.name || 'System',
+ staff_id: (u.staff_id || u.id || null)
+ };
+ const { error } = await db.from('calc_formula_log').insert([payload]);
+ if(error) throw error;
+ // Kalau view Log sedang terbuka, segarkan
+ const sec = document.getElementById('calcLogSection');
+ if(sec && sec.style.display!=='none' && typeof window.renderCalcLog==='function') window.renderCalcLog();
+ } catch(e){ console.warn('calc_formula_log gagal:', e && e.message); }
+};
+
+// Snapshot pengiraan landed semasa (dari input shipment calc) untuk dilog.
+window.__calcLandedSnapshot = function(){
+ const P = window.__scParams ? window.__scParams() : null;
+ if(!P) return { ex:0, sfPct:0, shipping:0, parttimer:0, totalQty:0, totalValue:0, rows:[] };
+ const rows = (P.rows||[]).filter(r=> (r.sku||'').trim()).map(r=>{
+ const rmb=parseFloat(r.rmb)||0, qty=parseInt(r.qty,10)||0;
+ const goods=rmb*P.ex, sf=rmb*(P.sfPct/100)*P.ex, ship=P.shipPU(rmb), pt=P.ptPerUnit;
+ return { sku:(r.sku||'').trim(), name:(r.name||''), rmb, qty,
+ goods:+goods.toFixed(2), sf:+sf.toFixed(2), ship:+ship.toFixed(2), pt:+pt.toFixed(2),
+ landed:+(goods+sf+ship+pt).toFixed(2) };
+ });
+ return { ex:P.ex, sfPct:P.sfPct, shipping:P.shipping, parttimer:P.pt, totalQty:P.totalQty, totalValue:+(P.totalValue||0).toFixed(2), rows };
+};
+
+// Log pengiraan landed (dipanggil auto masa apply, atau manual butang).
+window.__calcLogLanded = function(action){
+ const snap = window.__calcLandedSnapshot();
+ if(!snap.rows.length){ if(action==='manual' && typeof showToast==='function') showToast('Tiada baris untuk dilog.','warn'); return; }
+ const totLanded = snap.rows.reduce((s,r)=> s + r.landed*r.qty, 0);
+ const ref = ((document.getElementById('scLabel')||{}).value||'').trim();
+ const sup = ((document.getElementById('scSupplier')||{}).value||'').trim();
+ window.__calcLogWrite({
+ calc_type:'landed', action:action||'manual',
+ formula_version: window.__CALC_FORMULA_LANDED,
+ ref_label: ref || null, supplier: sup || null,
+ source_docs: 'Barang ← PI · SF% ← PI · Shipping ← Invoice Shipment · Part-timer ← terima',
+ inputs: { ex:snap.ex, sf_pct:snap.sfPct, shipping:snap.shipping, parttimer:snap.parttimer, total_qty:snap.totalQty, total_value:snap.totalValue },
+ results: snap.rows,
+ summary: `Landed ${snap.rows.length} SKU · ex ${snap.ex} · SF ${snap.sfPct}% · ship RM${(+snap.shipping||0).toFixed(2)} · p/timer RM${(+snap.parttimer||0).toFixed(2)} · jumlah landed RM${totLanded.toFixed(2)}`
+ });
+ if(action==='manual' && typeof showToast==='function') showToast('Pengiraan disimpan ke Log Formula.','success');
+};
+
+// ===== VIEW: Log Formula =====
+window.__calcLogRows = [];
+window.__calcLogFilter = 'all';
+window.renderCalcLog = async function(){
+ const tb = document.getElementById('calcLogBody'); if(!tb) return;
+ if(typeof db==='undefined'||!db){ tb.innerHTML='<tr><td colspan="6" style="text-align:center; padding:20px; color:#B23A2E;">DB tak available.</td></tr>'; return; }
+ tb.innerHTML='<tr><td colspan="6" style="text-align:center; padding:20px; color:#9CA3AF;">Memuatkan…</td></tr>';
+ try {
+ const { data, error } = await db.from('calc_formula_log').select('*').order('created_at',{ascending:false}).limit(500);
+ if(error) throw error;
+ window.__calcLogRows = data||[];
+ window.__calcLogRender();
+ } catch(e){ tb.innerHTML='<tr><td colspan="6" style="text-align:center; padding:20px; color:#B23A2E;">Error: '+hesc(e.message||String(e))+'</td></tr>'; }
+};
+window.__calcLogSetFilter = function(f, btn){
+ window.__calcLogFilter = f;
+ document.querySelectorAll('.calclog-fbtn').forEach(b=> b.classList.remove('ps-tab--active'));
+ if(btn) btn.classList.add('ps-tab--active');
+ window.__calcLogRender();
+};
+window.__calcLogRender = function(){
+ const tb = document.getElementById('calcLogBody'); if(!tb) return;
+ const q = ((document.getElementById('calcLogSearch')||{}).value||'').trim().toLowerCase();
+ const f = window.__calcLogFilter || 'all';
+ let rows = window.__calcLogRows || [];
+ if(f!=='all') rows = rows.filter(r=> r.calc_type===f);
+ if(q) rows = rows.filter(r=> JSON.stringify([r.ref_label,r.supplier,r.summary,r.results]).toLowerCase().includes(q));
+ if(!rows.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center; padding:24px; color:#9CA3AF;">Tiada rekod log.</td></tr>'; const c=document.getElementById('calcLogCount'); if(c) c.textContent=''; return; }
+ const typeChip = (t)=> t==='price'
+ ? '<span style="font-size:10px; font-weight:700; background:#EDE3F0; color:#6D4C7A; padding:2px 8px; border-radius:20px;">HARGA</span>'
+ : '<span style="font-size:10px; font-weight:700; background:#F3EEE7; color:#7A4A1E; padding:2px 8px; border-radius:20px;">LANDED</span>';
+ tb.innerHTML = rows.map((r,i)=>{
+ const dt = r.created_at ? new Date(r.created_at).toLocaleString('en-MY',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+ const stripe = (i%2===0)?'#FFFFFF':'#FBF7F1';
+ return `<tr class="sc-row" onclick="window.__calcLogToggle(${r.id})" style="cursor:pointer; background:${stripe};" title="Klik untuk butiran formula + input + hasil">
+ <td style="white-space:nowrap;"><span id="clCaret_${r.id}" style="color:#CD7C32; font-size:10px;">&#9656;</span> ${hesc(dt)}</td>
+ <td>${typeChip(r.calc_type)}</td>
+ <td>${hesc(r.ref_label||'—')}${r.supplier?'<div style="font-size:10px; color:#9CA3AF;">'+hesc(r.supplier)+'</div>':''}</td>
+ <td style="font-size:12px;">${hesc(r.summary||'')}</td>
+ <td style="font-size:11px; color:#6B7280; white-space:nowrap;">${hesc(r.created_by||'—')}</td>
+ <td style="font-size:10px; color:#9CA3AF;">${hesc((r.action||'').replace('_',' '))}</td>
+ </tr>
+ <tr id="clDetail_${r.id}" style="display:none;"><td colspan="6" style="padding:0; background:#FCFAF7;"><div style="padding:14px 16px;">${window.__calcLogDetail(r)}</div></td></tr>`;
+ }).join('');
+ const c=document.getElementById('calcLogCount'); if(c) c.textContent = `${rows.length} rekod`;
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+window.__calcLogDetail = function(r){
+ const fmt=(n)=>'RM'+(Number(n)||0).toFixed(2);
+ let inp='';
+ try { const I=r.inputs||{}; inp = Object.keys(I).map(k=> `<span style="display:inline-block; margin:0 10px 4px 0; font-size:11.5px; color:#4B5563;"><strong>${hesc(k)}:</strong> ${hesc(String(I[k]))}</span>`).join(''); } catch(e){}
+ let res='';
+ try {
+ const R=r.results;
+ if(Array.isArray(R)){
+ res = `<table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-top:8px;">
+ <thead><tr style="background:#F3EEE7;"><th style="text-align:left; padding:6px;">SKU</th><th style="text-align:right; padding:6px;">RMB/u</th><th style="text-align:right; padding:6px;">Qty</th><th style="text-align:right; padding:6px;">Goods</th><th style="text-align:right; padding:6px;">SF</th><th style="text-align:right; padding:6px;">Ship</th><th style="text-align:right; padding:6px;">P/timer</th><th style="text-align:right; padding:6px;">Landed/u</th></tr></thead>
+ <tbody>${R.map(x=>`<tr><td style="font-family:monospace; padding:5px 6px;">${hesc(x.sku||'-')}</td><td style="text-align:right; padding:5px 6px;">${(Number(x.rmb)||0).toFixed(2)}</td><td style="text-align:right; padding:5px 6px;">${x.qty||0}</td><td style="text-align:right; padding:5px 6px;">${fmt(x.goods)}</td><td style="text-align:right; padding:5px 6px;">${fmt(x.sf)}</td><td style="text-align:right; padding:5px 6px;">${fmt(x.ship)}</td><td style="text-align:right; padding:5px 6px;">${fmt(x.pt)}</td><td style="text-align:right; padding:5px 6px; font-weight:700;">${fmt(x.landed)}</td></tr>`).join('')}</tbody></table>`;
+ } else if(R && typeof R==='object'){
+ res = `<div style="font-size:12px; margin-top:6px;">SKU <strong>${hesc(R.sku||'-')}</strong> · tier <strong>${hesc(R.tier||'-')}</strong> · harga <strong>${fmt(R.final_price)}</strong>${R.compare_at?` · compare ${fmt(R.compare_at)}`:''}</div>`;
+ }
+ } catch(e){}
+ return `<div style="font-size:12px; color:#7A4A1E; font-weight:700; margin-bottom:6px;">Formula</div>
+ <div style="font-size:12px; color:#374151; background:#fff; border:1px solid #ECECEC; border-radius:8px; padding:8px 10px; margin-bottom:10px;">${hesc(r.formula_version||'—')}</div>
+ ${r.source_docs?`<div style="font-size:11px; color:#6B7280; margin-bottom:10px;"><strong>Sumber:</strong> ${hesc(r.source_docs)}</div>`:''}
+ <div style="font-size:12px; color:#7A4A1E; font-weight:700; margin-bottom:4px;">Input</div>
+ <div style="margin-bottom:6px;">${inp||'<span style="color:#9CA3AF; font-size:11px;">—</span>'}</div>
+ <div style="font-size:12px; color:#7A4A1E; font-weight:700;">Hasil</div>
+ ${res||'<span style="color:#9CA3AF; font-size:11px;">—</span>'}`;
+};
+window.__calcLogToggle = function(id){
+ const dr=document.getElementById('clDetail_'+id); if(!dr) return;
+ const caret=document.getElementById('clCaret_'+id);
+ const open=(dr.style.display==='none'||dr.style.display==='');
+ dr.style.display = open ? 'table-row' : 'none';
+ if(caret) caret.innerHTML = open ? '&#9662;' : '&#9656;';
 };
 
 // p1_391 — Cost Calculator (Shipment landed-cost).
@@ -5131,6 +5276,7 @@ window.scApplyCostPrice = async function(){
  ok++;
  } catch(e){ errs.push(r.sku+': '+e.message); }
  }
+ if(ok>0 && typeof window.__calcLogLanded==='function') window.__calcLogLanded('apply_cost');
  if(typeof showToast==='function') showToast(`cost_price dikemaskini: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
 };
 
@@ -5150,6 +5296,7 @@ window.scApplyBatch = async function(){
  } catch(e){ errs.push(r.sku+': '+e.message); }
  }
  try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){}
+ if(ok>0 && typeof window.__calcLogLanded==='function') window.__calcLogLanded('apply_batch');
  if(typeof showToast==='function') showToast(`Stock-in batch: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
 };
 
@@ -5817,6 +5964,19 @@ window.__psApplySelected = async function() {
  // In-memory sync
  const idx = masterProducts.findIndex(p => (p.sku || '').toUpperCase() === sku.toUpperCase());
  if(idx >= 0) Object.assign(masterProducts[idx], payload);
+ // p1_923 — log pengiraan harga
+ if(typeof window.__calcLogWrite==='function'){
+ const exV=Number(ex)||0, rmbV=Number(rmb)||0, shipV=Number(ship)||0, handV=Number(hand)||0;
+ const costFinal = rmbV*exV + shipV + (rmbV*exV*handV/100);
+ window.__calcLogWrite({
+ calc_type:'price', action:'apply_price',
+ formula_version: window.__CALC_FORMULA_PRICE,
+ ref_label: sku,
+ inputs:{ rmb:rmbV, ex:exV, shipping:shipV, handling_pct:handV, cost_final:+costFinal.toFixed(2) },
+ results:{ sku, tier, final_price:Number(finalPrice), compare_at:Number(compareAt) },
+ summary:`Harga ${sku} · tier ${tier} · RM${Number(finalPrice).toFixed(2)} (cost bersih RM${costFinal.toFixed(2)})`
+ });
+ }
  if(typeof showToast === 'function') showToast(`${sku} updated · ${tier} tier applied (RM ${Number(finalPrice).toFixed(2)}).`, 'success');
  } catch(e) {
  if(typeof showToast === 'function') showToast('Apply gagal: ' + e.message, 'error');

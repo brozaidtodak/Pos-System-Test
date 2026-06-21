@@ -3831,6 +3831,7 @@
  <div class="calc-subnav">
  <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab calc-subtab--active" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
+ <button class="calc-subtab" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
  </div>
  <div class="rp-header"><div>
  <h2 class="rp-title" data-skip-title-sync><i data-lucide="container" style="width:22px; height:22px; color:var(--primary);"></i> Cost Calculator (Shipment)</h2>
@@ -3913,7 +3914,9 @@
  <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
  <button onclick="scApplyCostPrice()" style="padding:9px 18px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="tag" style="width:14px;height:14px;vertical-align:-2px;"></i> Apply ke cost_price</button>
  <button onclick="scApplyBatch()" style="padding:9px 18px; font-size:13px; font-weight:700; background:#101010; color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="package-plus" style="width:14px;height:14px;vertical-align:-2px;"></i> Rekod jadi kos batch (stock-in)</button>
+ <button onclick="window.__calcLogLanded('manual')" style="padding:9px 18px; font-size:13px; font-weight:700; background:#fff; color:#7A4A1E; border:1px solid #CD7C32; border-radius:8px; cursor:pointer;"><i data-lucide="history" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan ke Log Formula</button>
  </div>
+ <p style="font-size:11px; color:#9CA3AF; margin:8px 0 0;">Setiap "Apply" auto-rekod dalam Log Formula (formula + input + tarikh). Tekan "Simpan ke Log" kalau nak rekod pengiraan tanpa apply.</p>
  </div>
 
  </div><!-- /scPaneCalc -->
@@ -3952,6 +3955,42 @@
  </div>
  </div>
 
+ <!-- p1_923 — FORMULA LOG (rekod kekal tiap pengiraan Calculator) -->
+ <!-- ============================================== -->
+ <div id="calcLogSection" class="tab-section" data-skip-title-sync style="display:none;">
+ <div class="rp-wrap">
+ <div class="calc-subnav">
+ <button class="calc-subtab" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
+ <button class="calc-subtab" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
+ <button class="calc-subtab calc-subtab--active" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
+ </div>
+ <div class="rp-header"><div>
+ <h2 class="rp-title" data-skip-title-sync><i data-lucide="history" style="width:22px; height:22px; color:var(--primary);"></i> Log Formula</h2>
+ <p class="rp-subtitle">Rekod kekal tiap pengiraan kos &amp; harga — formula, input, hasil, siapa &amp; tarikh. Append-only (tak boleh diusik) untuk audit. Klik mana-mana baris untuk buka butiran.</p>
+ </div></div>
+
+ <div class="admin-card" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+ <input id="calcLogSearch" class="login-input" style="margin:0; flex:1; min-width:220px;" placeholder="Cari ref / supplier / SKU / ringkasan…" oninput="window.__calcLogRender()">
+ <div style="display:flex; gap:4px;">
+ <button class="ps-tab calclog-fbtn ps-tab--active" onclick="window.__calcLogSetFilter('all', this)">Semua</button>
+ <button class="ps-tab calclog-fbtn" onclick="window.__calcLogSetFilter('landed', this)">Landed</button>
+ <button class="ps-tab calclog-fbtn" onclick="window.__calcLogSetFilter('price', this)">Harga</button>
+ </div>
+ <button onclick="window.renderCalcLog()" style="padding:7px 12px; font-size:12px; font-weight:600; background:#F3F4F6; color:#374151; border:1px solid #E5E7EB; border-radius:7px; cursor:pointer;"><i data-lucide="refresh-cw" style="width:13px;height:13px;vertical-align:-2px;"></i> Segarkan</button>
+ <span id="calcLogCount" style="font-size:12px; color:#6B7280;"></span>
+ </div>
+
+ <div class="admin-card" style="padding:0; overflow:hidden;">
+ <div class="table-responsive">
+ <table class="data-table sc-arch" style="font-size:12px;">
+ <thead><tr><th>Tarikh / Masa</th><th>Jenis</th><th>Ref / Supplier</th><th>Ringkasan</th><th>Oleh</th><th>Tindakan</th></tr></thead>
+ <tbody id="calcLogBody"><tr><td colspan="6" style="text-align:center; padding:24px; color:#9CA3AF;">Memuatkan…</td></tr></tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ </div>
+
  <!-- p1_109 — FLOOR PRICE CALCULATOR (Zack workflow) -->
  <!-- ============================================== -->
  <div id="floorPriceSection" class="tab-section" data-skip-title-sync style="display:none;">
@@ -3959,6 +3998,7 @@
  <div class="calc-subnav">
  <button class="calc-subtab calc-subtab--active" data-calc-view="harga" onclick="window.__calcShow('harga')"><i data-lucide="tag" style="width:14px;height:14px;"></i> Harga &amp; Tier</button>
  <button class="calc-subtab" data-calc-view="kos" onclick="window.__calcShow('kos')"><i data-lucide="container" style="width:14px;height:14px;"></i> Kos Shipment (Landed)</button>
+ <button class="calc-subtab" data-calc-view="log" onclick="window.__calcShow('log')"><i data-lucide="history" style="width:14px;height:14px;"></i> Log Formula</button>
  </div>
  <div class="rp-header">
  <div>
@@ -8821,6 +8861,7 @@
  { id:'p1_629', label:'Sambungan terjemahan i18n (Zaid: "teruskan") — 33 entri lagi: nama feature sidebar (Product Master→Master Produk, Stock Check Sessions/History/Reports→Semakan Stok, Price Calculator→Kalkulator Harga, Reorder Suggest→Cadangan Restock, Channel Profitability→Keuntungan Saluran, Brand/Supplier Performance→Prestasi Jenama/Pembekal, Returns/Damage→Pulangan/Rosak, Marketing Data→Data Pemasaran) + label (Refresh→Muat Semula, Export CSV→Eksport CSV, Brand→Jenama, Publish/Unpublish→Terbit/Nyahterbit, Clock In/Out→Daftar Masuk/Keluar, Scan→Imbas, Apply→Guna, Custom→Tersuai, Reset→Set Semula, Progress→Kemajuan, DANGER ZONE→ZON BAHAYA, Velocity Analysis→Analisis Kelajuan). KEKAL: SKU/Status/RM/VIP/Walk-in/Online/Admin/HR/Edit/Subtotal/Deposit/HQ/B2B + teks brand landing + template vars. app.js v635->v636.', d:'done' },
  { id:'p1_630', label:'Auto-translate CONTENT memo bila UI=EN (Zaid: "bypass content memo direct translate je" — content data staf tulis BM tak ikut toggle bahasa). netlify/functions/translate.js (OpenAI gpt-4o-mini, server pegang OPENAI_API_KEY — kena set scope functions: builds/functions/post-processing/runtime) → POST /api/translate {texts[],target}. Client: window.__memoTx/__txEnsure/__txCache — translate title+body memo bila I18N.lang=en, cache localStorage (txCache_en_v1, hash djb2, translate sekali je per teks), re-render bila siap. Data BM asal TAK diubah (display-only). Wired: renderMemoBoard + __renderDashOverviewMemo + setLang re-render. Fallback selamat: kalau translate gagal, papar BM asal. app.js v636->v637.', d:'done' },
  { id:'p1_743', label:'FIX prestasi cashier (Ariff complain: refresh muat data lama, checkout processing lama, gambar lambat). PUNCA #3: startup tarik SEMUA 5,102 sales (~5MB items+metadata jsonb) tiap refresh. FIX: startup muat 1000 sales TERKINI je (laju), sejarah penuh dimuat di LATAR (setTimeout 4s, non-blocking, merge + re-render All Orders/Commission bila siap). FIX #2 checkout: deduct_stock_fifo per item dulu bersiri (for-await) → tukar SERENTAK (Promise.all) supaya troli banyak item tak beku atas wifi lambat. FIX #1 gambar: grid cashier render 300→200px (jana lebih laju). app.js v726->727.', d:'done' },
+ { id:'p1_923', label:'LOG FORMULA dalam Calculator (Zaid: "bila buat pengiraan kita create formula tu, aku nak ada formula log beserta tarikh" — rekod WAJIB ada). Sub-tab ke-3 "Log Formula" dalam Calculator (calcLogSection). DB table baru public.calc_formula_log (APPEND-ONLY: RLS select+insert sahaja, tiada update/delete = audit tak boleh diusik) — simpan calc_type/action/formula_version(definisi penuh)/ref_label/supplier/source_docs/inputs(jsonb)/results(jsonb)/summary/created_by/staff_id/created_at. AUTO-LOG tiap commit: scApplyCostPrice→apply_cost, scApplyBatch→apply_batch, __psApplySelected→apply_price; + butang manual "Simpan ke Log Formula" (window.__calcLogLanded(manual)) dalam blok Inventory Cost Recorded. Formula dikunci dalam tiap rekod (__CALC_FORMULA_LANDED v1 = Barang(RMB×ex)+SF%ikutNilai+ShippingIkutNilai+Part-timerIkutQty; __CALC_FORMULA_PRICE v1 = CostBersih=(RMB×ex)+Ship+Hand% · RRP+30%/Kedai+60%−20%/Marketplace+80%/Proposal+35%) supaya boleh audit walau formula berubah satu hari. source_docs catat asal angka (Barang←PI · SF←PI · Shipping←Invoice Shipment · Part-timer←terima) selaras flow procurement Zaid. View: renderCalcLog (fetch 500 terkini desc) + carian + tapis Semua/Landed/Harga + baris boleh expand tunjuk formula+input+breakdown per-SKU. __calcShow handle view ke-3 (harga/kos/log). app.js v868->869.', d:'done' },
  { id:'p1_922', label:'GABUNG Price Calculator + Cost Calculator (Shipment) jadi SATU menu "Calculator" (Zaid: "gabungkan price calculator dan shipment calculator = calculator"). Dulu 2 item sidebar berasingan dalam group Tools (nav_sys_pricecalc→floorPriceSection, nav_sys_costcalc→shipmentCalcSection). Sekarang 1 item "Calculator" (data-tab=nav_sys_calc) + sub-tab bar dalam KEDUA-DUA section: "Harga & Tier" | "Kos Shipment (Landed)". window.__calcShow(view) tukar view = switchHub papar section berkaitan + render (no DOM restructure, sifar risiko div-balance). Sidebar item kekal highlight (pass menu el ke switchHub). h2 tiap view kekal sendiri (data-skip-title-sync) tapi breadcrumb/pageTitle = "Calculator". Repoint 4 rujukan Pusat Amaran [data-tab=nav_sys_pricecalc]→nav_sys_calc. i18n nav_sys_pricecalc+nav_sys_costcalc → satu nav_sys_calc (Kalkulator/Calculator). Semua logik sedia ada (scCompute/__psComputeAll/tier/apply/arkib) tak disentuh. app.js v867->868.', d:'done' },
  { id:'p1_921', label:'FIX customer-display (Zaid Safari iPad): (1) GAMBAR BERKELIP — setInterval(render,500) rebuild listEl.innerHTML tiap 0.5s → <img> dicipta semula → kelip. FIX: __cdLastSig guard, skip render kalau raw payload SAMA (cuma render bila cart betul berubah). (2) PAGE TAK FIT/footer terpotong — .layout height:100vh; Safari iPad toolbar ambil ruang → footer Jumlah Bayar keluar skrin. FIX: height:100dvh (+ max-height:100dvh, fallback 100vh). customer-display.html sahaja, tiada app.js.', d:'done' },
  { id:'p1_920', label:'FIX checkout "Processing…" lambat (Ariff complain berulang; screenshot resit 3020KB). PUNCA: resit di-upload MENTAH (3MB) + AWAIT (timeout 20s) SEBELUM sale insert → wifi kedai = Processing tergantung 10-20s. FIX 2-lapis jangka panjang: (1) KOMPRES gambar masa snap — window.__compressImageFile (canvas resize maxDim 1600 + JPEG 0.72; skip PDF/HEIC; fallback asal kalau gagal/lebih besar) dipanggil dlm __proofPickFile → 3MB jadi ~300KB utk SEMUA checkout. (2) BACKGROUND upload — processNewCheckout tangkap __proofFileRef, sale commit SERTA-MERTA (tak await upload), resit upload async + UPDATE row via __proofUploadAttach (guna saleId sebenar; gagal=toast suruh re-upload Reports). __proofUploadToStorage terima param file. Buang await withTimeout upload (block lama). app.js v866->867.', d:'done' },
@@ -14205,7 +14246,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=868"></script>
+ <script src="app.js?v=869"></script>
 
 <!-- PRODUCT DETAILS PAGE MODAL (PDP) -->
 <div id="pdpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; overflow-y:auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
