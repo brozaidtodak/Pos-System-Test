@@ -5464,6 +5464,7 @@ window.scCompute = function(){
  }
  if(typeof window.scRenderProvisional==='function') window.scRenderProvisional();
  if(typeof window.scRenderReceiving==='function') window.scRenderReceiving();
+ if(typeof window.scRenderFx==='function') window.scRenderFx();
 };
 
 // p1_925 — KIRA AWAL (provisional cost): kira kos hampir penuh sebelum carton sampai.
@@ -5632,6 +5633,60 @@ window.scRenderDocs = function(){
  }
  host.innerHTML = `<div style="display:flex; gap:8px; flex-wrap:wrap;">${btns}</div>${list}`;
  if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+
+// p1_932 — FX UNTUNG/RUGI: banding kadar order vs kadar sebenar bayar ke bank.
+// rate_paid = kadar RMB→RM sebenar masa wire transfer; exchange_rate = kadar pakai masa kira kos.
+// Untung bila ratePaid < exchange_rate (MYR menguat, bayar kurang); Rugi bila sebaliknya.
+window.scRenderFx = function(){
+ const host = document.getElementById('scFxBody'); if(!host) return;
+ const ex = parseFloat((document.getElementById('scExchange')||{}).value) || 0;
+ const ratePaid = parseFloat((document.getElementById('scRatePaid')||{}).value) || 0;
+ const totalRmb = (window.__scRows||[]).reduce((sum,r)=> sum + (parseFloat(r.rmb)||0)*(parseInt(r.qty,10)||0), 0);
+ if(!ex || !totalRmb){
+  host.innerHTML = '<div style="font-size:12px; color:#9CA3AF;">' + (!ex ? 'Masuk kadar order (Exchange) dulu.' : 'Masuk produk + qty dulu.') + '</div>';
+  return;
+ }
+ if(!ratePaid){
+  host.innerHTML = '<div style="font-size:12px; color:#9CA3AF;">Masuk kadar sebenar dibayar ke bank untuk lihat untung/rugi FX.</div>';
+  return;
+ }
+ const fmt = n => 'RM' + (Number(n)||0).toFixed(2);
+ const fxDiff = (ex - ratePaid) * totalRmb;
+ const isUntung = fxDiff >= 0;
+ const diffPct = ex > 0 ? Math.abs((ratePaid - ex)/ex*100).toFixed(2) : '0.00';
+ const color = isUntung ? '#3C6438' : '#B23A2E';
+ const bg = isUntung ? '#E2EFE0' : '#FDECEA';
+ const label = isUntung ? 'UNTUNG FX' : 'RUGI FX';
+ host.innerHTML = `
+ <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:start;">
+  <div style="flex:1; min-width:240px;">
+   <table style="font-size:12px; width:100%; border-collapse:collapse;">
+    <tr><td style="padding:4px 0; color:#6B7280;">Jumlah nilai goods (RMB)</td><td style="text-align:right; font-weight:700;">¥${totalRmb.toFixed(2)}</td></tr>
+    <tr><td style="padding:4px 0; color:#6B7280;">Kadar kira (masa order)</td><td style="text-align:right;">RM${ex.toFixed(4)}/RMB</td></tr>
+    <tr><td style="padding:4px 0; color:#6B7280;">Kadar sebenar (bayar bank)</td><td style="text-align:right;">RM${ratePaid.toFixed(4)}/RMB</td></tr>
+    <tr style="border-top:1px solid #F0EAE2;"><td style="padding:6px 0 4px; color:#6B7280;">Kos dianggar (kira)</td><td style="text-align:right;">${fmt(totalRmb * ex)}</td></tr>
+    <tr><td style="padding:4px 0; color:#6B7280;">Kos sebenar (bayar)</td><td style="text-align:right;">${fmt(totalRmb * ratePaid)}</td></tr>
+   </table>
+  </div>
+  <div style="background:${bg}; border-radius:10px; padding:16px 20px; min-width:190px; text-align:center; flex:none;">
+   <div style="font-size:11px; font-weight:800; color:${color}; letter-spacing:.6px;">${label}</div>
+   <div style="font-size:26px; font-weight:900; color:${color}; margin:6px 0;">${isUntung ? '+' : ''}${fmt(fxDiff)}</div>
+   <div style="font-size:11.5px; color:${color}; font-weight:600;">${diffPct}% ${isUntung ? 'lebih jimat' : 'lebih bayar'}</div>
+   <div style="font-size:11px; color:#6B7280; margin-top:5px;">${isUntung ? 'MYR menguat — bayar kurang dari anggar' : 'MYR melemah — bayar lebih dari anggar'}</div>
+  </div>
+ </div>`;
+};
+
+window.scSaveFx = async function(){
+ if(!window.__scId){ if(typeof showToast==='function') showToast('Simpan shipment dulu sebelum simpan kadar FX.','warn'); return; }
+ if(typeof db==='undefined'||!db) return;
+ const ratePaid = parseFloat((document.getElementById('scRatePaid')||{}).value) || null;
+ try {
+  const { error } = await db.from('cost_shipments').update({ rate_paid: ratePaid }).eq('id', window.__scId);
+  if(error) throw error;
+  if(typeof showToast==='function') showToast('Kadar sebenar disimpan.','success');
+ } catch(e){ if(typeof showToast==='function') showToast('Simpan gagal: '+e.message,'error'); }
 };
 
 // p1_931 — BANDING HARGA SUPPLIER: kumpul kos RMB tiap SKU merentas semua shipment lalu,
@@ -5828,7 +5883,7 @@ window.__scLanded = function(){
 
 window.scNewShipment = function(){
  window.__scId = null;
- ['scLabel','scShipping','scParttimer','scSupplier','scOrderDate','scExchange'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+ ['scLabel','scShipping','scParttimer','scSupplier','scOrderDate','scExchange','scRatePaid'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
  const sf=document.getElementById('scSfPct'); if(sf) sf.value='5';
  const picker=document.getElementById('scShipmentPicker'); if(picker) picker.value='';
  window.__scRows = [{ sku:'', name:'', rmb:'', qty:'' }];
@@ -5862,6 +5917,7 @@ window.scLoadSelected = async function(){
  document.getElementById('scSfPct').value = s.sf_pct!=null?s.sf_pct:5;
  document.getElementById('scShipping').value = s.shipping_cost_rm!=null?s.shipping_cost_rm:'';
  document.getElementById('scParttimer').value = s.parttimer_cost_rm!=null?s.parttimer_cost_rm:'';
+ const rpEl=document.getElementById('scRatePaid'); if(rpEl) rpEl.value = s.rate_paid!=null?s.rate_paid:'';
  window.__scRows = (items||[]).map(it=>({ sku:it.sku||'', name:it.product_name||'', rmb:it.cost_rmb!=null?it.cost_rmb:'', qty:it.qty!=null?it.qty:'', received:it.qty_received!=null?it.qty_received:'' }));
  if(!window.__scRows.length) window.__scRows = [{sku:'',name:'',rmb:'',qty:''}];
  window.__scDocCache = (s && Array.isArray(s.docs)) ? s.docs : [];
@@ -5881,6 +5937,7 @@ window.scSaveShipment = async function(){
  sf_pct: parseFloat(document.getElementById('scSfPct').value)||0,
  shipping_cost_rm: parseFloat(document.getElementById('scShipping').value)||0,
  parttimer_cost_rm: parseFloat(document.getElementById('scParttimer').value)||0,
+ rate_paid: parseFloat((document.getElementById('scRatePaid')||{}).value)||null,
  updated_at: new Date().toISOString()
  };
  try {
