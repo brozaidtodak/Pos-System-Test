@@ -5547,6 +5547,93 @@ window.scApplyProvisional = async function(){
  if(typeof showToast==='function') showToast(`Kos sementara di-apply: ${ok}${errs.length?'. Ralat: '+errs[0]:''}. Set harga awal di tab Harga & Tier.`, errs.length?'warn':'success');
 };
 
+// p1_930 — LAMPIRAN DOKUMEN order (PI / Packing List / DO / Invoice Shipment) → bucket cost-docs, simpan dlm cost_shipments.docs jsonb.
+window.__scDocTypes = [
+ { key:'pi',    label:'Proforma Invoice' },
+ { key:'pack',  label:'Packing List' },
+ { key:'do',    label:'Delivery Order' },
+ { key:'ship',  label:'Invoice Shipment' },
+ { key:'other', label:'Lain-lain' }
+];
+window.__scDocLabel = function(k){ const t=(window.__scDocTypes||[]).find(x=>x.key===k); return t?t.label:(k||'Dokumen'); };
+window.__scDocs = function(){ const o=(window.__scArchive||[]); /* not used */ return Array.isArray(window.__scDocCache)?window.__scDocCache:[]; };
+
+window.scDocAdd = function(type){
+ if(!window.__scId){ if(typeof showToast==='function') showToast('Simpan shipment dulu sebelum lampir dokumen.','warn'); return; }
+ const inp=document.createElement('input'); inp.type='file'; inp.accept='application/pdf,image/*';
+ inp.onchange=function(){ const f=inp.files&&inp.files[0]; if(f) window.scDocUpload(type, f); };
+ inp.click();
+};
+window.scDocUpload = async function(type, f){
+ if(typeof db==='undefined'||!db) return;
+ if(!window.__scId){ if(typeof showToast==='function') showToast('Simpan shipment dulu.','warn'); return; }
+ try {
+ if(typeof showToast==='function') showToast('Memuat naik dokumen…','info');
+ const ext=(String(f.name||'').split('.').pop()||'bin').toLowerCase();
+ const fileName='shipment/'+window.__scId+'/'+type+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'.'+ext;
+ const up=await db.storage.from('cost-docs').upload(fileName, f, { cacheControl:'3600', upsert:false, contentType:f.type||'application/octet-stream' });
+ if(up.error) throw up.error;
+ const pub=db.storage.from('cost-docs').getPublicUrl(up.data.path);
+ // baca docs semasa dari DB (elak tindih), tambah, simpan
+ const { data: cur } = await db.from('cost_shipments').select('docs').eq('id', window.__scId).single();
+ const docs = (cur && Array.isArray(cur.docs)) ? cur.docs.slice() : [];
+ docs.push({ type, label:window.__scDocLabel(type), url:(pub&&pub.data&&pub.data.publicUrl)||'', path:up.data.path, name:f.name, mime:f.type||ext, uploaded_at:new Date().toISOString(), by:(window.currentUser||{}).name||'System' });
+ const { error } = await db.from('cost_shipments').update({ docs }).eq('id', window.__scId);
+ if(error) throw error;
+ window.__scDocCache = docs;
+ if(typeof showToast==='function') showToast(window.__scDocLabel(type)+' dilampir.','success');
+ window.scRenderDocs();
+ } catch(e){ if(typeof showToast==='function') showToast('Gagal upload: '+((e&&e.message)||e),'warn'); }
+};
+window.scDocRemove = async function(idx){
+ if(typeof db==='undefined'||!db||!window.__scId) return;
+ if(!confirm('Buang lampiran ni?')) return;
+ try {
+ const { data: cur } = await db.from('cost_shipments').select('docs').eq('id', window.__scId).single();
+ const docs = (cur && Array.isArray(cur.docs)) ? cur.docs.slice() : [];
+ const removed = docs.splice(idx,1)[0];
+ const { error } = await db.from('cost_shipments').update({ docs }).eq('id', window.__scId);
+ if(error) throw error;
+ if(removed && removed.path){ try{ await db.storage.from('cost-docs').remove([removed.path]); }catch(_){} }
+ window.__scDocCache = docs;
+ if(typeof showToast==='function') showToast('Lampiran dibuang.','success');
+ window.scRenderDocs();
+ } catch(e){ if(typeof showToast==='function') showToast('Gagal buang: '+((e&&e.message)||e),'warn'); }
+};
+window.scLoadDocs = async function(){
+ window.__scDocCache = [];
+ if(typeof db==='undefined'||!db||!window.__scId){ window.scRenderDocs(); return; }
+ try { const { data } = await db.from('cost_shipments').select('docs').eq('id', window.__scId).single(); window.__scDocCache = (data && Array.isArray(data.docs))?data.docs:[]; } catch(e){ window.__scDocCache=[]; }
+ window.scRenderDocs();
+};
+window.scRenderDocs = function(){
+ const host=document.getElementById('scDocsBody'); if(!host) return;
+ if(!window.__scId){ host.innerHTML='<div style="font-size:12px; color:#9CA3AF;">Simpan shipment dulu untuk lampir dokumen (PI, Packing List, DO, Invoice Shipment).</div>'; return; }
+ const docs = Array.isArray(window.__scDocCache)?window.__scDocCache:[];
+ const btns = (window.__scDocTypes||[]).map(t=>{
+ const n = docs.filter(d=>d.type===t.key).length;
+ return `<button onclick="window.scDocAdd('${t.key}')" style="padding:7px 12px; font-size:12px; font-weight:600; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:7px; cursor:pointer;"><i data-lucide="paperclip" style="width:13px;height:13px;vertical-align:-2px;"></i> ${hesc(t.label)}${n?` <span style="background:#CD7C32; color:#fff; border-radius:10px; padding:0 6px; font-size:10px;">${n}</span>`:''}</button>`;
+ }).join('');
+ let list;
+ if(!docs.length){ list='<div style="font-size:12px; color:#9CA3AF; padding:8px 0;">Belum ada lampiran. Tekan jenis dokumen di atas untuk upload (PDF atau gambar).</div>'; }
+ else {
+ list = '<div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">'+docs.map((d,i)=>{
+ const isPdf=(d.mime||'').indexOf('pdf')>=0 || /\.pdf$/i.test(d.name||'');
+ const dt = d.uploaded_at ? new Date(d.uploaded_at).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'2-digit'}) : '';
+ return `<div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#fff; border:1px solid #ECECEC; border-radius:8px;">
+ <i data-lucide="${isPdf?'file-text':'image'}" style="width:16px;height:16px; color:#CD7C32; flex:none;"></i>
+ <span style="font-size:11px; font-weight:700; color:#7A4A1E; background:#F3EEE7; padding:2px 8px; border-radius:12px; white-space:nowrap;">${hesc(d.label||window.__scDocLabel(d.type))}</span>
+ <a href="${hesc(d.url||'#')}" target="_blank" rel="noopener" style="font-size:12.5px; color:#101010; text-decoration:none; flex:1; min-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${hesc(d.name||'dokumen')}</a>
+ <span style="font-size:10px; color:#9CA3AF; white-space:nowrap;">${hesc(dt)} · ${hesc(d.by||'')}</span>
+ <a href="${hesc(d.url||'#')}" target="_blank" rel="noopener" style="font-size:11px; font-weight:600; color:#3C6438; text-decoration:none;">Buka</a>
+ <button onclick="window.scDocRemove(${i})" style="background:none; border:none; color:#B23A2E; cursor:pointer; font-size:16px; line-height:1;">&times;</button>
+ </div>`;
+ }).join('')+'</div>';
+ }
+ host.innerHTML = `<div style="display:flex; gap:8px; flex-wrap:wrap;">${btns}</div>${list}`;
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+
 // p1_926 — TERIMA CARTON + reconcile + lampu hijau jual.
 // Rekod qty SEBENAR sampai, banding vs qty order; per-SKU gate: kos + qty + harga lengkap → boleh publish.
 window.scSetReceived = function(i, val){ if(window.__scRows && window.__scRows[i]){ window.__scRows[i].received = (val===''?'':(parseInt(val,10)||0)); if(typeof window.scRenderReceiving==='function') window.scRenderReceiving(); } };
@@ -5664,7 +5751,9 @@ window.scNewShipment = function(){
  const sf=document.getElementById('scSfPct'); if(sf) sf.value='5';
  const picker=document.getElementById('scShipmentPicker'); if(picker) picker.value='';
  window.__scRows = [{ sku:'', name:'', rmb:'', qty:'' }];
+ window.__scDocCache = [];
  scRenderItems(); scCompute();
+ if(typeof window.scRenderDocs==='function') window.scRenderDocs();
 };
 
 window.scLoadList = async function(){
@@ -5694,7 +5783,9 @@ window.scLoadSelected = async function(){
  document.getElementById('scParttimer').value = s.parttimer_cost_rm!=null?s.parttimer_cost_rm:'';
  window.__scRows = (items||[]).map(it=>({ sku:it.sku||'', name:it.product_name||'', rmb:it.cost_rmb!=null?it.cost_rmb:'', qty:it.qty!=null?it.qty:'', received:it.qty_received!=null?it.qty_received:'' }));
  if(!window.__scRows.length) window.__scRows = [{sku:'',name:'',rmb:'',qty:''}];
+ window.__scDocCache = (s && Array.isArray(s.docs)) ? s.docs : [];
  scRenderItems(); scCompute();
+ if(typeof window.scRenderDocs==='function') window.scRenderDocs();
  } catch(e){ if(typeof showToast==='function') showToast('Load gagal: '+e.message,'error'); }
 };
 
@@ -5723,6 +5814,7 @@ window.scSaveShipment = async function(){
  }
  if(typeof showToast==='function') showToast('Shipment disimpan.','success');
  await scLoadList();
+ if(typeof window.scRenderDocs==='function') window.scRenderDocs();   // buka kad lampiran lepas ada __scId
  } catch(e){ if(typeof showToast==='function') showToast('Simpan gagal: '+e.message,'error'); }
 };
 
@@ -5926,6 +6018,7 @@ window.renderShipmentCalc = function(){
  if(!(window.__scRows||[]).length) scNewShipment();
  else { scRenderItems(); scCompute(); }
  scLoadList();
+ if(typeof window.scRenderDocs==='function') window.scRenderDocs();
  scSetTab('calc', document.getElementById('scTabCalcBtn'));
  if(typeof lucide!=='undefined') lucide.createIcons();
 };
