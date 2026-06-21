@@ -5147,6 +5147,7 @@ window.__calcOrderStatus = function(o){
  else if(stage==='costed'){ level='warn'; reasons.push('Kos dah siap tapi belum publish/jual'); }
  if(o.eta_date){ const eta = new Date(o.eta_date+'T00:00:00').getTime(); if(eta < now && idx < arrivedPartialIdx){ if(level==='ok') level='warn'; reasons.push('Lewat dari ETA ('+o.eta_date+')'); } }
  if(daysInStage!=null && daysInStage>=14){ if(level==='ok') level='warn'; reasons.push('Tersekat '+daysInStage+' hari di peringkat ni'); }
+ if(o.cost_status==='provisional'){ if(level==='ok') level='warn'; reasons.unshift('Kos masih SEMENTARA — sahkan kos muktamad bila barang sampai'); }
  if(level==='ok') reasons.push('Bergerak lancar');
  return { level, reasons, daysInStage, idx };
 };
@@ -5157,7 +5158,7 @@ window.renderCalcStatus = async function(){
  if(typeof db==='undefined'||!db){ host.innerHTML='<div style="padding:20px; color:#B23A2E;">DB tak available.</div>'; return; }
  host.innerHTML='<div style="padding:20px; color:#9CA3AF;">Memuatkan…</div>';
  try {
- const { data, error } = await db.from('cost_shipments').select('id,label,supplier,po_ref,order_date,eta_date,stage,stage_updated_at,stage_updated_by,updated_at').order('order_date',{ascending:false, nullsFirst:false}).order('updated_at',{ascending:false}).limit(500);
+ const { data, error } = await db.from('cost_shipments').select('id,label,supplier,po_ref,order_date,eta_date,stage,stage_updated_at,stage_updated_by,updated_at,cost_status').order('order_date',{ascending:false, nullsFirst:false}).order('updated_at',{ascending:false}).limit(500);
  if(error) throw error;
  window.__calcOrders = (data||[]).map(o=> Object.assign({}, o, { _st: window.__calcOrderStatus(o) }));
  window.__calcStatusRender();
@@ -5313,6 +5314,88 @@ window.scCompute = function(){
  return `<tr><td style="font-family:monospace; font-size:11px;">${hesc(r.sku||'-')}</td><td style="text-align:right;">${fmt(goods)}</td><td style="text-align:right;">${fmt(sf)}</td><td style="text-align:right;">${fmt(ship)}</td><td style="text-align:right;">${fmt(P.ptPerUnit)}</td><td style="text-align:right; font-weight:800; color:#101010;">${fmt(landed)}</td><td style="text-align:right;">${qty}</td></tr>`;
  }).join('');
  }
+ if(typeof window.scRenderProvisional==='function') window.scRenderProvisional();
+};
+
+// p1_925 — KIRA AWAL (provisional cost): kira kos hampir penuh sebelum carton sampai.
+// Masa dapat Invoice Shipment, Barang+SF+Shipping dah diketahui; part-timer kecil boleh dianggar.
+window.__scPtPerUnitEst = function(){ try{ const v=parseFloat(localStorage.getItem('calc_pt_per_unit_est')); return (!isNaN(v)&&v>=0)?v:2; }catch(e){ return 2; } };
+window.__scSetPtPerUnitEst = function(v){ try{ localStorage.setItem('calc_pt_per_unit_est', String(parseFloat(v)||0)); }catch(e){} };
+
+window.scEstimatePartTimer = function(){
+ const P = window.__scParams ? window.__scParams() : null; if(!P) return;
+ const per = window.__scPtPerUnitEst();
+ const est = +(per*(P.totalQty||0)).toFixed(2);
+ const el = document.getElementById('scParttimer'); if(el) el.value = est;
+ if(typeof showToast==='function') showToast('Part-timer dianggar: '+(P.totalQty||0)+' unit × RM'+per+' = RM'+est+' (boleh ubah).','success');
+ scCompute();
+};
+
+window.__scProvisional = function(){
+ const P = window.__scParams ? window.__scParams() : null; if(!P) return null;
+ let goodsTot=0, sfTot=0;
+ (P.rows||[]).forEach(r=>{ const rmb=parseFloat(r.rmb)||0, qty=parseInt(r.qty,10)||0; goodsTot += rmb*P.ex*qty; sfTot += rmb*(P.sfPct/100)*P.ex*qty; });
+ const shipTot = P.shipping||0;
+ const ptActual = P.pt||0;
+ const ptEst = ptActual>0 ? ptActual : +(window.__scPtPerUnitEst()*(P.totalQty||0)).toFixed(2);
+ const denom = goodsTot + sfTot + shipTot + ptEst;
+ const confirmed = (goodsTot>0?goodsTot:0) + (sfTot>0?sfTot:0) + (shipTot>0?shipTot:0) + (ptActual>0?ptActual:0);
+ const lockedPct = denom>0 ? Math.min(100, Math.round(confirmed/denom*100)) : 0;
+ return { goodsTot:+goodsTot.toFixed(2), sfTot:+sfTot.toFixed(2), shipTot:+shipTot.toFixed(2),
+ ptActual:+ptActual.toFixed(2), ptEst, ptIsEstimate:!(ptActual>0),
+ totalProvisional:+denom.toFixed(2), lockedPct, sfPct:P.sfPct,
+ comp:{ barang:goodsTot>0, sf:sfTot>0, shipping:shipTot>0, parttimer:ptActual>0 } };
+};
+
+window.scRenderProvisional = function(){
+ const host = document.getElementById('scProvisionalBody'); if(!host) return;
+ const pv = window.__scProvisional();
+ if(!pv || pv.totalProvisional<=0){ host.innerHTML='<div style="font-size:12px; color:#9CA3AF;">Masuk produk + kos RMB dulu untuk kira awal.</div>'; return; }
+ const fmt=(n)=>'RM'+(Number(n)||0).toFixed(2);
+ const tick=(ok,label,src)=> `<div style="display:flex; align-items:center; gap:7px; font-size:12px; padding:3px 0;">
+ <span style="width:16px;height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:${ok?'#E2EFE0':'#EEF1F4'}; flex:none;"><i data-lucide="${ok?'check':'minus'}" style="width:11px;height:11px; color:${ok?'#3C6438':'#9CA3AF'};"></i></span>
+ <span style="color:${ok?'#101010':'#9CA3AF'};">${label}</span> <span style="font-size:10px; color:#9CA3AF;">${src}</span></div>`;
+ const barColor = pv.lockedPct>=95 ? '#4E7C4A' : (pv.lockedPct>=70?'#C68A1A':'#B23A2E');
+ host.innerHTML = `
+ <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+ <div style="flex:1; min-width:220px;">
+ <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;"><span style="font-weight:700; color:#101010;">Kos dah dikunci</span><span style="font-weight:800; color:${barColor};">${pv.lockedPct}%</span></div>
+ <div style="height:9px; background:#EEF1F4; border-radius:20px; overflow:hidden;"><div style="height:100%; width:${pv.lockedPct}%; background:${barColor}; border-radius:20px;"></div></div>
+ <div style="font-size:11px; color:#6B7280; margin-top:6px;">${pv.lockedPct>=95?'Hampir penuh — boleh set harga jualan awal sekarang.':'Tinggal '+(pv.comp.parttimer?'':'part-timer + ')+'sahkan qty bila barang sampai.'}</div>
+ </div>
+ <div style="min-width:180px;">
+ ${tick(pv.comp.barang,'Barang (RMB×ex)','← PI')}
+ ${tick(pv.comp.sf,'SF % (ikut nilai)','← PI')}
+ ${tick(pv.comp.shipping,'Shipping','← Invoice Shipment')}
+ ${tick(pv.comp.parttimer,'Part-timer'+(pv.ptIsEstimate&&pv.ptEst>0?' (dianggar)':''),'← masa terima')}
+ </div>
+ </div>
+ <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:end; padding-top:10px; border-top:1px solid #F0EAE2;">
+ <div><div style="font-size:11px; color:#6B7280;">Jumlah kos sementara</div><div style="font-size:18px; font-weight:800; color:#101010;">${fmt(pv.totalProvisional)}</div></div>
+ <div style="display:flex; align-items:end; gap:6px;">
+ <div><label class="small-lbl">Anggar part-timer/unit (RM)</label><input id="scPtEstInput" type="number" step="0.5" value="${window.__scPtPerUnitEst()}" onchange="window.__scSetPtPerUnitEst(this.value)" style="width:120px; padding:6px 8px; border:1px solid #E5E7EB; border-radius:6px; font-size:12px;"></div>
+ <button onclick="scEstimatePartTimer()" style="padding:8px 12px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:7px; cursor:pointer; white-space:nowrap;">Anggar part-timer</button>
+ </div>
+ <button onclick="scApplyProvisional()" style="padding:9px 16px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer; white-space:nowrap;"><i data-lucide="flag" style="width:14px;height:14px;vertical-align:-2px;"></i> Apply Kos Sementara</button>
+ </div>
+ <div style="font-size:11px; color:#9CA3AF; margin-top:8px;">"Apply Kos Sementara" isi cost_price (kos kerja) + tanda order ini SEMENTARA. Lepas tu pergi tab Harga &amp; Tier set harga jualan awal. Bila carton sampai: masuk part-timer + qty sebenar, tekan "Apply ke cost_price" untuk muktamadkan.</div>`;
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+
+window.scApplyProvisional = async function(){
+ if(typeof db==='undefined'||!db) return;
+ const rows = window.__scLanded().filter(r=> r.sku && r.landed>0);
+ if(!rows.length){ if(typeof showToast==='function') showToast('Tiada baris dengan SKU + landed.','warn'); return; }
+ if(!confirm(`Apply KOS SEMENTARA untuk ${rows.length} produk?\n\ncost_price diisi + ditanda sementara. Sahkan semula bila barang sampai.`)) return;
+ const uName=(window.currentUser||{}).name||'System';
+ let ok=0; const errs=[];
+ for(const r of rows){ try{
+ const { error } = await db.from('products_master').update({ cost_price:r.landed, last_modified_by:uName+' (kos sementara)' }).eq('sku', r.sku);
+ if(error) throw error; const p=(masterProducts||[]).find(x=>x.sku===r.sku); if(p) p.cost_price=r.landed; ok++;
+ }catch(e){ errs.push(r.sku+': '+e.message); } }
+ if(window.__scId){ try{ await db.from('cost_shipments').update({ cost_status:'provisional', cost_status_at:new Date().toISOString(), cost_status_by:uName, stage:'ship_invoice', stage_updated_at:new Date().toISOString(), stage_updated_by:uName }).eq('id', window.__scId); }catch(e){} }
+ if(ok>0 && typeof window.__calcLogLanded==='function') window.__calcLogLanded('provisional');
+ if(typeof showToast==='function') showToast(`Kos sementara di-apply: ${ok}${errs.length?'. Ralat: '+errs[0]:''}. Set harga awal di tab Harga & Tier.`, errs.length?'warn':'success');
 };
 
 window.__scLanded = function(){
