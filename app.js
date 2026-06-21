@@ -5634,6 +5634,87 @@ window.scRenderDocs = function(){
  if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
 };
 
+// p1_931 — BANDING HARGA SUPPLIER: kumpul kos RMB tiap SKU merentas semua shipment lalu,
+// kumpul ikut supplier (ambil harga terkini per supplier), tunjuk mana paling murah.
+window.__scSupplierIdx = null;
+window.scLoadSupplierPrices = async function(){
+ if(typeof db==='undefined'||!db) return null;
+ try {
+ const { data: ships } = await db.from('cost_shipments').select('id,supplier,order_date,label,updated_at').limit(2000);
+ const { data: items } = await db.from('cost_shipment_items').select('shipment_id,sku,product_name,cost_rmb').limit(100000);
+ const shipMap={}; (ships||[]).forEach(s=>{ shipMap[s.id]=s; });
+ const idx={};
+ (items||[]).forEach(it=>{
+ const sku=(it.sku||'').trim().toUpperCase(); const rmb=parseFloat(it.cost_rmb)||0;
+ if(!sku || rmb<=0) return;
+ const s=shipMap[it.shipment_id]||{};
+ const supplier=(s.supplier||'').trim()||'(tak dinyatakan)';
+ const date=s.order_date||s.updated_at||null;
+ (idx[sku]=idx[sku]||{ name:'', entries:[] });
+ if(!idx[sku].name && it.product_name) idx[sku].name=it.product_name;
+ idx[sku].entries.push({ supplier, rmb, date, label:s.label||('Shipment #'+it.shipment_id) });
+ });
+ window.__scSupplierIdx=idx;
+ return idx;
+ } catch(e){ if(typeof showToast==='function') showToast('Gagal muat harga supplier: '+(e.message||e),'warn'); return null; }
+};
+// dedupe ikut supplier (ambil entry tarikh terkini), susun termurah dulu
+window.__scSupplierRows = function(sku){
+ const idx=window.__scSupplierIdx||{}; const rec=idx[(sku||'').trim().toUpperCase()]; if(!rec) return null;
+ const bySup={};
+ rec.entries.forEach(e=>{ const k=(e.supplier||'').trim().toLowerCase(); const cur=bySup[k];   // gabung nama sama (abai huruf besar/kecil)
+ const t=e.date?new Date(e.date).getTime():0; const ct=cur&&cur.date?new Date(cur.date).getTime():-1;
+ if(!cur || t>=ct) bySup[k]=e; });   // ambil harga terkini per supplier
+ const rows=Object.values(bySup).sort((a,b)=> a.rmb-b.rmb);
+ return { name:rec.name, rows };
+};
+window.scCompareCurrentOrder = async function(){
+ const skus=[...new Set((window.__scRows||[]).map(r=>(r.sku||'').trim().toUpperCase()).filter(Boolean))];
+ if(!skus.length){ if(typeof showToast==='function') showToast('Tiada SKU dalam order ni.','warn'); return; }
+ await window.scLoadSupplierPrices(); window.__scCompareRender(skus,'produk dalam order ni');
+};
+window.scCompareSearch = async function(){
+ const q=((document.getElementById('scCompareSearch')||{}).value||'').trim().toLowerCase();
+ if(!q){ const b=document.getElementById('scCompareBody'); if(b) b.innerHTML='<div style="font-size:12px; color:#9CA3AF;">Taip SKU atau nama produk untuk banding.</div>'; return; }
+ if(!window.__scSupplierIdx) await window.scLoadSupplierPrices();
+ const idx=window.__scSupplierIdx||{};
+ const skus=Object.keys(idx).filter(sku=> sku.toLowerCase().includes(q) || (idx[sku].name||'').toLowerCase().includes(q)).slice(0,40);
+ window.__scCompareRender(skus, q);
+};
+window.__scCompareRender = function(skus, label){
+ const host=document.getElementById('scCompareBody'); if(!host) return;
+ const fmt=(n)=>'¥'+(Number(n)||0).toFixed(2);
+ const multi=[], single=[];
+ skus.forEach(sku=>{ const r=window.__scSupplierRows(sku); if(!r) return; (r.rows.length>1?multi:single).push({sku,...r}); });
+ if(!multi.length && !single.length){ host.innerHTML='<div style="font-size:12px; color:#9CA3AF;">Tiada rekod harga untuk produk ni dalam shipment lalu.</div>'; return; }
+ let html='';
+ if(multi.length){
+ html += '<div style="font-size:12px; font-weight:700; color:#101010; margin:4px 0 8px;">Ada lebih satu supplier ('+multi.length+') — banding:</div>';
+ html += multi.map(m=>{
+ const cheapest=m.rows[0].rmb, dearest=m.rows[m.rows.length-1].rmb;
+ const saveAbs=dearest-cheapest; const savePct=dearest>0?Math.round(saveAbs/dearest*100):0;
+ const dt=(d)=> d?new Date(d).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'2-digit'}):'—';
+ return `<div style="border:1px solid #ECECEC; border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff;">
+ <div style="font-size:13px; font-weight:700; color:#101010;">${hesc(m.sku)}${m.name?' · <span style="font-weight:500; color:#6B7280;">'+hesc((m.name||'').slice(0,50))+'</span>':''}</div>
+ <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px;">
+ ${m.rows.map((e,i)=>`<div style="display:flex; align-items:center; gap:10px; font-size:12.5px;">
+ <span style="flex:1; min-width:120px; color:#101010;">${hesc(e.supplier)}</span>
+ <span style="font-weight:700; color:${i===0?'#3C6438':'#101010'};">${fmt(e.rmb)}</span>
+ <span style="font-size:10px; color:#9CA3AF; white-space:nowrap;">${dt(e.date)}</span>
+ ${i===0?'<span style="font-size:10px; font-weight:800; background:#E2EFE0; color:#3C6438; padding:2px 8px; border-radius:12px;">PALING MURAH</span>':'<span style="font-size:10px; color:#B23A2E;">+'+fmt(e.rmb-cheapest)+'</span>'}
+ </div>`).join('')}
+ </div>
+ ${saveAbs>0?`<div style="font-size:11px; color:#3C6438; margin-top:8px;">Jimat sehingga <strong>${fmt(saveAbs)}/unit (${savePct}%)</strong> kalau pilih ${hesc(m.rows[0].supplier)}.</div>`:''}
+ </div>`;
+ }).join('');
+ }
+ if(single.length){
+ html += '<div style="font-size:11.5px; color:#9CA3AF; margin:10px 0 6px;">1 supplier sahaja (tiada banding): '+single.map(s=>`${hesc(s.sku)} <span style="color:#7A4A1E;">${hesc(s.rows[0].supplier)}</span> ${fmt(s.rows[0].rmb)}`).join(' · ')+'</div>';
+ }
+ host.innerHTML=html;
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+
 // p1_926 — TERIMA CARTON + reconcile + lampu hijau jual.
 // Rekod qty SEBENAR sampai, banding vs qty order; per-SKU gate: kos + qty + harga lengkap → boleh publish.
 window.scSetReceived = function(i, val){ if(window.__scRows && window.__scRows[i]){ window.__scRows[i].received = (val===''?'':(parseInt(val,10)||0)); if(typeof window.scRenderReceiving==='function') window.scRenderReceiving(); } };
@@ -5663,7 +5744,7 @@ window.scRenderReceiving = function(){
  let vBadge='<span style="color:#9CA3AF; font-size:11px;">—</span>';
  if(v!=null){ if(v===0) vBadge='<span style="font-size:10px; font-weight:700; background:#E2EFE0; color:#3C6438; padding:2px 7px; border-radius:12px;">PADAN</span>';
  else if(v<0) vBadge='<span style="font-size:10px; font-weight:700; background:#FBEFD6; color:#9A6B12; padding:2px 7px; border-radius:12px;">KURANG '+Math.abs(v)+'</span>';
- else vBadge='<span style="font-size:10px; font-weight:700; background:#E2ECF5; color:#2E5A86; padding:2px 7px; border-radius:12px;">LEBIH '+v+'</span>'; }
+ else vBadge='<span style="font-size:10px; font-weight:700; background:#EEF1F4; color:#5B6573; padding:2px 7px; border-radius:12px;">LEBIH '+v+'</span>'; }
  let action;
  if(rd.published) action='<span style="font-size:10px; font-weight:800; background:#E2EFE0; color:#3C6438; padding:3px 9px; border-radius:20px;">LIVE</span>';
  else if(rd.ready) action=`<button onclick="window.scPublishSku('${hesc(rd.sku)}')" style="padding:4px 12px; font-size:11px; font-weight:700; background:#4E7C4A; color:#fff; border:none; border-radius:7px; cursor:pointer;">Publish</button>`;
