@@ -14091,8 +14091,10 @@ function renderPOS(searchTerm = "") {
  <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
  <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : (totalStock <= (window.__POS_LOW_STOCK || 3) ? ' style="color:#B45309; font-weight:700;"' : '')}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
- <button onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? `style="background:#FED7AA; color:#9A3412; border:1px solid #FB923C;" title="${(window.t?window.t('cs_oos_hint'):'Out of stock — backorder')}"` : ''}>${(window.t?window.t('cs_add_to_cart'):'Add to Cart')}</button>
- ${p.parent_sku && __multiParents.has(p.parent_sku) ? `<button class="sz-grid-btn" style="background:transparent;color:var(--primary);border:1.5px solid var(--primary);width:auto;min-height:36px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:0;margin-top:6px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;" onclick="event.stopPropagation(); window.__szGridOpen('${String(p.parent_sku).replace(/'/g,"\\'")}')" title="Buka grid saiz/warna ${p.parent_sku}"><i data-lucide="grid-2x2" style="width:11px;height:11px;"></i> Grid</button>` : ''}
+ <div style="display:flex;gap:6px;margin-top:auto;">
+ <button style="flex:1;${totalStock <= 0 ? 'background:#FED7AA;color:#9A3412;border:1px solid #FB923C;' : ''}" onclick="addToCart('${skuEsc}')" ${totalStock <= 0 ? `title="${(window.t?window.t('cs_oos_hint'):'Out of stock — backorder')}"` : ''}>${(window.t?window.t('cs_add_to_cart'):'Add to Cart')}</button>
+ ${p.parent_sku && __multiParents.has(p.parent_sku) ? `<button class="sz-grid-btn" style="background:#101010;color:#FAF6EF;border:none;width:44px;min-height:44px;padding:0;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" onclick="event.stopPropagation(); window.__szGridOpen('${String(p.parent_sku).replace(/'/g,"\\'")}')" title="Buka grid saiz/warna ${p.parent_sku}"><i data-lucide="layout-grid" style="width:18px;height:18px;"></i></button>` : ''}
+ </div>
  </div>
  `;
  });
