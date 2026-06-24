@@ -357,6 +357,15 @@ body.pos-mobile-mode .cart-section > div:last-child {
     border-top: 1px solid #E5E7EB;
     box-shadow: 0 -4px 12px rgba(0,0,0,0.04);
 }
+/* p1_951 — mobile: rapatkan footer sticky troli supaya senarai produk atas dapat ruang lebih (audit screenshot: hanya ~1.5 item nampak). Jarak sahaja, TIADA fungsi dibuang. */
+body.pos-mobile-mode .cart-section.drawer-open { top: 7vh; }
+body.pos-mobile-mode .cart-section > div:last-child {
+    padding: 13px 18px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+body.pos-mobile-mode .cart-section > div:last-child hr { margin: 9px 0; }
+body.pos-mobile-mode #cartProofRow { margin-bottom: 8px; }
+body.pos-mobile-mode .cart-section > div:last-child .checkout-btn { margin-top: 8px; padding-top: 14px; padding-bottom: 14px; }
 
 /* p1_240 — Main content padding-bottom revert ke 100px (cuma satu button Lihat Troli orange, BAYAR dah pindah ke dalam drawer) */
 body.pos-mobile-mode .main-content {
