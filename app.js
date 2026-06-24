@@ -9459,9 +9459,8 @@ async function initApp() {
  if (typeof showToast === 'function') showToast('Server Error: ' + e.message, 'error'); else alert('Server Error: ' + e.message);
  } finally {
  if (isFirstLoad && typeof hideLoading === 'function') hideLoading();
- // p1_956 — suntik butang salin-link pada sidebar + buka section ikut hash (#nav_xxx) selepas login.
+ // p1_956 — suntik butang salin-link pada sidebar (deep-link landing diuruskan dalam loginAs).
  try { if(typeof window.__injectNavShareLinks === 'function') window.__injectNavShareLinks(); } catch(e){}
- try { if(window.currentUser && typeof window.__navGoHash === 'function') setTimeout(window.__navGoHash, 80); } catch(e){}
  }
 }
 
@@ -16870,6 +16869,10 @@ function loginAs(user, opts) {
  window.__modeJumping = false;
  }
  setTimeout(() => {
+ // p1_957 — kalau dibuka via link section (#nav_xxx), mendarat di section tu, JANGAN default ke home/overview.
+ let __deep = false;
+ try { if(!window.__isPOSApp && typeof window.__navGoHash === 'function') __deep = window.__navGoHash(); } catch(e){}
+ if(!__deep){
  const homeBtn = document.querySelector(`.menu-item[data-tab="${homeTab}"]`);
  // p1_88: pick correct rail before clicking the home item
  if(typeof window.__tabToRail === 'function' && typeof window.setActiveRail === 'function') {
@@ -16880,6 +16883,7 @@ function loginAs(user, opts) {
  else {
  const overviewBtn = document.querySelector('.menu-item[data-tab="overview"]');
  if(overviewBtn) { if(typeof window.setActiveRail === 'function') window.setActiveRail('overview'); overviewBtn.click(); }
+ }
  }
  try { if(typeof window.refreshRailBadges === 'function') window.refreshRailBadges(); } catch(e){}
  // p1_440: in the mobile app, override the default landing — lock to Cashier only.
