@@ -41279,6 +41279,53 @@ window.__evAddItem = async function(eventId){
   if(skuEl)skuEl.focus();
  } catch(e){ showToast('Gagal tambah barang: '+(e.message||e),'warn'); }
 };
+// p1_955 — Tampal pukal: parse banyak baris "SKU qty" / "SKU,qty" / tab → map {sku:qty}
+window.__evBulkToggle = function(){
+ const w=document.getElementById('evBulkWrap'); if(!w) return;
+ w.style.display = (w.style.display==='none' ? 'block' : 'none');
+ const t=document.getElementById('evBulkText'); if(w.style.display==='block' && t) t.focus();
+};
+window.__evParseBulk = function(text){
+ const map={}, bad=[];
+ (text||'').split(/\r?\n/).forEach(line=>{
+  const ln=line.trim(); if(!ln) return;
+  const parts=ln.split(/[\s,\t]+/).filter(Boolean);
+  if(!parts.length) return;
+  const sku=parts[0].toUpperCase();
+  // SKU mesti ada huruf + sekurang2 2 aksara (langkau baris nombor/header)
+  if(sku.length<2 || !/[A-Z]/.test(sku) || /^(SKU|NO|QTY|PRODUCT|BARANG|ITEM)$/.test(sku)){ bad.push(ln); return; }
+  let qty=1;
+  for(let i=1;i<parts.length;i++){ const m=parts[i].match(/^[0-9]+$/); if(m){ qty=parseInt(m[0],10); break; } }
+  if(qty<=0) qty=1;
+  map[sku]=(map[sku]||0)+qty;
+ });
+ return { map, bad };
+};
+window.__evBulkAdd = async function(eventId){
+ const ta=document.getElementById('evBulkText');
+ const { map, bad } = window.__evParseBulk(ta ? ta.value : '');
+ const skus=Object.keys(map);
+ if(!skus.length){ showToast('Tiada barang dikesan. Format: SKU qty (satu baris satu barang).','warn'); return; }
+ const cache=window.__evItemsCache[eventId]||[];
+ const existing={}; cache.forEach(it=>{ existing[(it.sku||'').toUpperCase()]=it; });
+ let matched=0, unmatched=0; const inserts=[], updates=[];
+ skus.forEach(sku=>{
+  const qty=map[sku];
+  if(window.__bundleProd(sku)) matched++; else unmatched++;
+  if(existing[sku]){ updates.push([existing[sku].id, (Number(existing[sku].qty_needed)||0)+qty]); }
+  else { inserts.push({ event_id:eventId, sku:sku, qty_needed:qty, sort:cache.length+inserts.length }); }
+ });
+ try {
+  if(inserts.length){ const { error } = await db.from('event_items').insert(inserts); if(error) throw error; }
+  for(const u of updates){ const { error } = await db.from('event_items').update({qty_needed:u[1]}).eq('id',u[0]); if(error) throw error; }
+  await window.__evLoadItems(eventId);
+  if(ta) ta.value='';
+  window.renderEvents();
+  let msg=(inserts.length+updates.length)+' barang ditambah ('+matched+' padan katalog'+(unmatched?(', '+unmatched+' SKU tak dikenali — semak'):'')+')';
+  if(bad.length) msg+='. '+bad.length+' baris dilangkau.';
+  showToast(msg, (unmatched||bad.length) ? 'warn' : 'success');
+ } catch(e){ showToast('Gagal tambah pukal: '+(e.message||e),'warn'); }
+};
 window.__evItemQty = async function(itemId, eventId, v){
  const q=parseInt(v,10); const nq=(q>0?q:1);
  try { const { error } = await db.from('event_items').update({qty_needed:nq}).eq('id',itemId); if(error) throw error; const it=(window.__evItemsCache[eventId]||[]).find(x=>String(x.id)===String(itemId)); if(it) it.qty_needed=nq; window.renderEvents(); }
@@ -41437,6 +41484,16 @@ window.__evRenderDetail = function(sec){
       +'<div><label style="font-size:12px; color:#6B7280;">Pilih barang</label><input id="evItemSku" list="evSkuList" placeholder="Cari SKU / nama" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"><datalist id="evSkuList">'+dlOpts+'</datalist></div>'
       +'<div><label style="font-size:12px; color:#6B7280;">Qty perlu</label><input id="evItemQty" type="number" min="1" value="1" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
       +'<button onclick="window.__evAddItem(\''+ev.id+'\')" class="btn-brand-secondary" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;"><i data-lucide="plus" style="width:15px;height:15px;"></i> Tambah</button>'
+    +'</div>'
+    +'<div style="margin-top:12px; border-top:1px dashed #E5E7EB; padding-top:10px;">'
+      +'<a onclick="window.__evBulkToggle()" style="color:var(--primary,#CD7C32); cursor:pointer; font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="clipboard-paste" style="width:15px;height:15px;"></i> Tampal pukal (banyak sekali)</a>'
+      +'<div id="evBulkWrap" style="display:none; margin-top:10px;">'
+        +'<textarea id="evBulkText" rows="6" placeholder="Tampal di sini — satu barang satu baris:&#10;VD042 5&#10;OP012, 2&#10;BD130&#9;4&#10;&#10;Boleh copy terus dari Excel/Sheet (SKU & qty). Qty kosong = 1." style="width:100%; padding:10px; border:1px solid #D1D5DB; border-radius:8px; font-family:\'SF Mono\',Menlo,monospace; font-size:12.5px; line-height:1.5; box-sizing:border-box;"></textarea>'
+        +'<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">'
+          +'<button onclick="window.__evBulkAdd(\''+ev.id+'\')" class="btn-brand-primary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus-circle" style="width:15px;height:15px;"></i> Tambah Semua</button>'
+          +'<span style="font-size:11.5px; color:#9CA3AF;">SKU sama akan dijumlah. SKU tak dikenali tetap disimpan (semak nota).</span>'
+        +'</div>'
+      +'</div>'
     +'</div>'
   +'</div>'
   +'<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; font-size:13px;">'
