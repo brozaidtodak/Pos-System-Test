@@ -41161,6 +41161,302 @@ window.renderBundles = async function(){
 };
 
 /* ============================================================================
+ * p1_953 — EVENT (Inventory > Event). Rancang barang untuk event/expo:
+ *  - Pilih barang + qty perlu (boleh simpan jadi templat "kit event").
+ *  - Lihat stok event sedia ada = CUD (display) + CUR (rental) dari log
+ *    inventory_transactions ("Jadi Display (CUD)" / "Rental Company (CUR)"
+ *    tolak "Rental Pulang (CUR balik)").
+ *  - Lihat stok boleh jual (inventory_batches qty_remaining) sebagai sumber topup.
+ *  - Kira shortfall + flag: cukup / tarik dari stok jual / kena order.
+ * Table: public.events + public.event_items (RLS authenticated, p1_953).
+ * ==========================================================================*/
+window.__events = null;          // senarai events + templat (header sahaja)
+window.__evItemsCache = {};       // { [eventId]: [ {id,sku,qty_needed,available_manual,sort} ] }
+window.__evEditId = null;         // id event yang dibuka (null = paparan senarai)
+window.__evE = hesc;
+window.__EV_STATUS = { draft:'Draf', confirmed:'Sah', packed:'Dah Pack', done:'Selesai' };
+
+// stok event sedia ada per-SKU = CUD (display) + CUR (rental) bersih, dari inventory_transactions
+window.__evCudCur = function(){
+ const map = {};
+ const txns = (typeof inventoryTransactions !== 'undefined' && Array.isArray(inventoryTransactions)) ? inventoryTransactions : [];
+ txns.forEach(t=>{
+  if(!t || !t.sku) return;
+  const sku=(t.sku||'').toUpperCase();
+  const qc=Number(t.qty_change)||0;
+  const reason=(t.reason||'');
+  if(!map[sku]) map[sku]={cud:0,cur:0};
+  if(reason==='Jadi Display (CUD)') map[sku].cud += Math.abs(qc);
+  else if(reason==='Rental Company (CUR)') map[sku].cur += Math.abs(qc);
+  else if(reason==='Rental Pulang (CUR balik)') map[sku].cur -= Math.abs(qc);
+ });
+ Object.keys(map).forEach(k=>{ if(map[k].cur<0) map[k].cur=0; });
+ return map;
+};
+
+// kira satu item event vs stok
+window.__evCompute = function(item, cc){
+ const sku=(item.sku||'').toUpperCase();
+ const needed=Number(item.qty_needed)||0;
+ const cud=(cc[sku]&&cc[sku].cud)||0;
+ const cur=(cc[sku]&&cc[sku].cur)||0;
+ const auto=cud+cur;
+ const eventStock = (item.available_manual!=null && item.available_manual!=='') ? (Number(item.available_manual)||0) : auto;
+ const sellable = window.__bundleStockFor(sku);   // reuse: qty_remaining batches
+ const shortfall = Math.max(0, needed - eventStock);
+ const topupFromSellable = Math.min(shortfall, sellable);
+ const needOrder = Math.max(0, shortfall - sellable);
+ let status='ok';
+ if(shortfall>0) status = (needOrder>0 ? 'order' : 'topup');
+ return { needed, cud, cur, auto, eventStock, sellable, shortfall, topupFromSellable, needOrder, status, isManual:(item.available_manual!=null && item.available_manual!=='') };
+};
+window.__EV_STAT = {
+ ok:    { c:'#4E7C4A', bg:'#E4EFE2', t:'Cukup' },
+ topup: { c:'#9A6700', bg:'#FBF1D9', t:'Tarik dari stok jual' },
+ order: { c:'#B23A2E', bg:'#F4E4DF', t:'Kena order' }
+};
+
+window.__evLoad = async function(){
+ if(typeof db==='undefined'||!db){ window.__events = window.__events||[]; return window.__events; }
+ try { const { data } = await db.from('events').select('*').order('is_template',{ascending:true}).order('event_date',{ascending:true,nullsFirst:false}).order('created_at',{ascending:false}); window.__events = data||[]; }
+ catch(e){ window.__events = window.__events||[]; }
+ return window.__events;
+};
+window.__evLoadItems = async function(eventId){
+ if(typeof db==='undefined'||!db){ window.__evItemsCache[eventId]=window.__evItemsCache[eventId]||[]; return window.__evItemsCache[eventId]; }
+ try { const { data } = await db.from('event_items').select('*').eq('event_id',eventId).order('sort',{ascending:true}).order('created_at',{ascending:true}); window.__evItemsCache[eventId]=data||[]; }
+ catch(e){ window.__evItemsCache[eventId]=window.__evItemsCache[eventId]||[]; }
+ return window.__evItemsCache[eventId];
+};
+
+window.__evCreate = async function(){
+ const name=(document.getElementById('evNewName')?.value||'').trim();
+ const date=(document.getElementById('evNewDate')?.value||'')||null;
+ const loc=(document.getElementById('evNewLoc')?.value||'').trim()||null;
+ if(!name){ showToast('Bagi nama event dulu.','warn'); return; }
+ const staff=(window.currentUser&&(window.currentUser.name||window.currentUser.staff_id))||'';
+ try {
+  const { data, error } = await db.from('events').insert({ name, event_date:date, location:loc, status:'draft', created_by:staff }).select().single();
+  if(error) throw error;
+  showToast('Event dibuat.','success');
+  await window.__evLoad();
+  window.__evEditId = data.id; window.__evItemsCache[data.id]=[];
+  window.renderEvents();
+ } catch(e){ showToast('Gagal buat event: '+(e.message||e),'warn'); }
+};
+window.__evOpen = async function(id){
+ window.__evEditId = id;
+ if(!window.__evItemsCache[id]) await window.__evLoadItems(id);
+ window.renderEvents();
+ try { const s=document.getElementById('eventSection'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); } catch(e){}
+};
+window.__evBack = function(){ window.__evEditId=null; window.renderEvents(); };
+window.__evDelete = async function(id){
+ const ev=(window.__events||[]).find(x=>String(x.id)===String(id));
+ if(!confirm('Padam '+(ev&&ev.is_template?'templat':'event')+' ni? (stok TIDAK terjejas)')) return;
+ try { const { error } = await db.from('events').delete().eq('id',id); if(error) throw error; delete window.__evItemsCache[id]; if(String(window.__evEditId)===String(id)) window.__evEditId=null; showToast('Dipadam.','success'); await window.__evLoad(); window.renderEvents(); }
+ catch(e){ showToast('Gagal padam: '+(e.message||e),'warn'); }
+};
+window.__evUpdateHeader = async function(id, patch){
+ try { const { error } = await db.from('events').update(Object.assign({updated_at:new Date().toISOString()},patch)).eq('id',id); if(error) throw error; const ev=(window.__events||[]).find(x=>String(x.id)===String(id)); if(ev) Object.assign(ev,patch); }
+ catch(e){ showToast('Gagal simpan: '+(e.message||e),'warn'); }
+};
+window.__evAddItem = async function(eventId){
+ const skuEl=document.getElementById('evItemSku'), qtyEl=document.getElementById('evItemQty');
+ const sku=(skuEl?.value||'').trim().toUpperCase();
+ const qty=parseInt(qtyEl?.value||'1',10)||1;
+ if(!sku){ showToast('Pilih barang dulu.','warn'); return; }
+ if(!window.__bundleProd(sku)){ showToast('SKU "'+sku+'" takde dalam katalog.','warn'); return; }
+ if(qty<=0){ showToast('Qty mesti lebih 0.','warn'); return; }
+ const cache=window.__evItemsCache[eventId]||[];
+ const ex=cache.find(it=>(it.sku||'').toUpperCase()===sku);
+ try {
+  if(ex){ const nq=(Number(ex.qty_needed)||0)+qty; const { error } = await db.from('event_items').update({qty_needed:nq}).eq('id',ex.id); if(error) throw error; }
+  else { const { error } = await db.from('event_items').insert({ event_id:eventId, sku, qty_needed:qty, sort:cache.length }); if(error) throw error; }
+  await window.__evLoadItems(eventId);
+  if(skuEl)skuEl.value=''; if(qtyEl)qtyEl.value='1';
+  window.renderEvents();
+  if(skuEl)skuEl.focus();
+ } catch(e){ showToast('Gagal tambah barang: '+(e.message||e),'warn'); }
+};
+window.__evItemQty = async function(itemId, eventId, v){
+ const q=parseInt(v,10); const nq=(q>0?q:1);
+ try { const { error } = await db.from('event_items').update({qty_needed:nq}).eq('id',itemId); if(error) throw error; const it=(window.__evItemsCache[eventId]||[]).find(x=>String(x.id)===String(itemId)); if(it) it.qty_needed=nq; window.renderEvents(); }
+ catch(e){ showToast('Gagal update qty: '+(e.message||e),'warn'); }
+};
+window.__evItemAvail = async function(itemId, eventId, v){
+ const val = (v===''||v==null) ? null : (parseInt(v,10)>=0?parseInt(v,10):0);
+ try { const { error } = await db.from('event_items').update({available_manual:val}).eq('id',itemId); if(error) throw error; const it=(window.__evItemsCache[eventId]||[]).find(x=>String(x.id)===String(itemId)); if(it) it.available_manual=val; window.renderEvents(); }
+ catch(e){ showToast('Gagal update stok: '+(e.message||e),'warn'); }
+};
+window.__evItemRemove = async function(itemId, eventId){
+ try { const { error } = await db.from('event_items').delete().eq('id',itemId); if(error) throw error; await window.__evLoadItems(eventId); window.renderEvents(); }
+ catch(e){ showToast('Gagal buang: '+(e.message||e),'warn'); }
+};
+window.__evSaveAsTemplate = async function(eventId){
+ const ev=(window.__events||[]).find(x=>String(x.id)===String(eventId)); if(!ev) return;
+ const nm=prompt('Nama templat kit event:', (ev.name||'')+' (templat)'); if(!nm) return;
+ const items=window.__evItemsCache[eventId]||[];
+ const staff=(window.currentUser&&(window.currentUser.name||window.currentUser.staff_id))||'';
+ try {
+  const { data, error } = await db.from('events').insert({ name:nm.trim(), status:'draft', is_template:true, notes:ev.notes||null, created_by:staff }).select().single();
+  if(error) throw error;
+  if(items.length){ const rows=items.map((it,i)=>({event_id:data.id, sku:it.sku, qty_needed:it.qty_needed, available_manual:null, sort:i})); const { error:e2 } = await db.from('event_items').insert(rows); if(e2) throw e2; }
+  showToast('Disimpan jadi templat.','success');
+  await window.__evLoad(); window.renderEvents();
+ } catch(e){ showToast('Gagal simpan templat: '+(e.message||e),'warn'); }
+};
+window.__evFromTemplate = async function(templateId){
+ const tpl=(window.__events||[]).find(x=>String(x.id)===String(templateId)); if(!tpl) return;
+ if(!window.__evItemsCache[templateId]) await window.__evLoadItems(templateId);
+ const items=window.__evItemsCache[templateId]||[];
+ const nm=prompt('Nama event baru (dari templat "'+(tpl.name||'')+'"):', ''); if(!nm) return;
+ const staff=(window.currentUser&&(window.currentUser.name||window.currentUser.staff_id))||'';
+ try {
+  const { data, error } = await db.from('events').insert({ name:nm.trim(), status:'draft', is_template:false, created_by:staff }).select().single();
+  if(error) throw error;
+  if(items.length){ const rows=items.map((it,i)=>({event_id:data.id, sku:it.sku, qty_needed:it.qty_needed, available_manual:null, sort:i})); const { error:e2 } = await db.from('event_items').insert(rows); if(e2) throw e2; }
+  showToast('Event dibuat dari templat.','success');
+  await window.__evLoad(); window.__evEditId=data.id; await window.__evLoadItems(data.id);
+  window.renderEvents();
+ } catch(e){ showToast('Gagal: '+(e.message||e),'warn'); }
+};
+
+window.renderEvents = async function(){
+ const sec=document.getElementById('eventSection'); if(!sec) return;
+ if(window.__events===null) await window.__evLoad();
+ const E=window.__evE;
+ if(window.__evEditId){ window.__evRenderDetail(sec); }
+ else { window.__evRenderList(sec); }
+ if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+window.__evRenderList = function(sec){
+ const E=window.__evE;
+ const all=window.__events||[];
+ const events=all.filter(e=>!e.is_template);
+ const templates=all.filter(e=>e.is_template);
+ const prods=(Array.isArray(masterProducts)?masterProducts:[]);
+ // baris event
+ const evRows = events.length ? events.map(ev=>{
+  const items=window.__evItemsCache[ev.id];
+  const itemCount = items ? items.length : (ev.__item_count!=null?ev.__item_count:null);
+  const st=window.__EV_STATUS[ev.status]||ev.status||'';
+  const dt=ev.event_date ? new Date(ev.event_date).toLocaleDateString('en-MY',{day:'2-digit',month:'short',year:'numeric'}) : '<span style="color:#9CA3AF;">— tiada tarikh</span>';
+  return '<tr style="border-bottom:1px solid #E5E7EB; cursor:pointer;" onclick="window.__evOpen(\''+ev.id+'\')">'
+   +'<td style="padding:10px;"><div style="font-weight:700;">'+E(ev.name||'')+'</div>'+(ev.location?'<div style="color:#9CA3AF; font-size:11px;"><i data-lucide="map-pin" style="width:11px;height:11px;vertical-align:-1px;"></i> '+E(ev.location)+'</div>':'')+'</td>'
+   +'<td style="padding:10px; white-space:nowrap;">'+dt+'</td>'
+   +'<td style="padding:10px;"><span style="background:#F3F4F6; color:#374151; padding:2px 9px; border-radius:50px; font-size:11px; font-weight:700;">'+E(st)+'</span></td>'
+   +'<td style="padding:10px; text-align:right;">'+(itemCount!=null?(itemCount+' barang'):'<span style="color:#9CA3AF;">buka</span>')+'</td>'
+   +'<td style="padding:10px; white-space:nowrap; text-align:right;" onclick="event.stopPropagation();">'
+     +'<button onclick="window.__evOpen(\''+ev.id+'\')" title="Buka" style="background:none;border:0;cursor:pointer;color:var(--primary,#CD7C32); margin-right:6px;"><i data-lucide="arrow-right-circle" style="width:17px;height:17px;"></i></button>'
+     +'<button onclick="window.__evDelete(\''+ev.id+'\')" title="Padam" style="background:none;border:0;cursor:pointer;color:#B23A2E;"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>'
+   +'</td></tr>';
+ }).join('') : '<tr><td colspan="5" style="padding:22px; text-align:center; color:#6B7280;">Belum ada event. Buat event pertama guna borang di atas.</td></tr>';
+ // templat
+ const tplRows = templates.length ? templates.map(t=>
+   '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px; border:1px solid #E5E7EB; border-radius:10px; margin-bottom:8px;">'
+   +'<div style="font-weight:700; display:flex; align-items:center; gap:7px;"><i data-lucide="layout-template" style="width:15px;height:15px; color:var(--primary,#CD7C32);"></i> '+E(t.name||'')+'</div>'
+   +'<div style="display:flex; gap:6px;">'
+     +'<button onclick="window.__evFromTemplate(\''+t.id+'\')" class="btn-brand-secondary" style="padding:5px 12px; font-size:12px;"><i data-lucide="copy-plus" style="width:13px;height:13px;"></i> Guna</button>'
+     +'<button onclick="window.__evDelete(\''+t.id+'\')" title="Padam templat" style="background:none;border:1px solid #E5E7EB; border-radius:8px; padding:5px 8px; cursor:pointer;color:#B23A2E;"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>'
+   +'</div></div>'
+ ).join('') : '<div style="padding:12px; text-align:center; color:#9CA3AF; font-size:12.5px;">Belum ada templat. Buka satu event → "Simpan jadi templat" untuk guna semula.</div>';
+
+ sec.innerHTML = '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="calendar-check" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Event</h2>'
+  +'<p class="soft-note">Rancang barang untuk event / expo. Sistem tunjuk stok <strong>display (CUD)</strong> + <strong>rental (CUR)</strong> yang biasa dibawa ke event, dan flag kalau tak cukup — kena tarik dari stok jualan atau order baru.</p>'
+  +'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin:6px 0 16px;">'
+    +'<div class="stat-card"><div style="font-size:12px; color:#6B7280;">Jumlah Event</div><div style="font-size:22px; font-weight:900;">'+events.length+'</div></div>'
+    +'<div class="stat-card"><div style="font-size:12px; color:#6B7280;">Templat Kit</div><div style="font-size:22px; font-weight:900;">'+templates.length+'</div></div>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:16px; margin-bottom:16px;">'
+    +'<div style="font-weight:800; margin-bottom:10px;">Event Baru</div>'
+    +'<div style="display:grid; grid-template-columns:2fr 1fr 1.5fr auto; gap:10px; align-items:end;">'
+      +'<div><label style="font-size:12px; color:#6B7280;">Nama event</label><input id="evNewName" placeholder="cth: Outdoor Expo Putrajaya" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Tarikh</label><input id="evNewDate" type="date" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Lokasi (optional)</label><input id="evNewLoc" placeholder="cth: Dataran Putrajaya" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<button onclick="window.__evCreate()" class="btn-brand-primary" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;"><i data-lucide="plus" style="width:15px;height:15px;"></i> Buat</button>'
+    +'</div>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:0; overflow:hidden; margin-bottom:16px;">'
+    +'<table style="width:100%; border-collapse:collapse; font-size:13.5px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:9px 10px;">Event</th><th style="padding:9px 10px;">Tarikh</th><th style="padding:9px 10px;">Status</th><th style="padding:9px 10px; text-align:right;">Barang</th><th style="padding:9px 10px;"></th></tr></thead><tbody>'+evRows+'</tbody></table>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:14px 16px;">'
+    +'<div style="font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:7px;"><i data-lucide="layout-template" style="width:16px;height:16px;"></i> Templat Kit Event</div>'
+    +tplRows
+  +'</div>';
+};
+
+window.__evRenderDetail = function(sec){
+ const E=window.__evE;
+ const ev=(window.__events||[]).find(x=>String(x.id)===String(window.__evEditId));
+ if(!ev){ window.__evEditId=null; window.__evRenderList(sec); return; }
+ const items=window.__evItemsCache[ev.id]||[];
+ const prods=(Array.isArray(masterProducts)?masterProducts:[]);
+ const dlOpts=prods.slice(0,3000).map(p=>'<option value="'+E(p.sku)+'">'+E((p.name||'').slice(0,50))+'</option>').join('');
+ const cc=window.__evCudCur();
+ let nTopup=0, nOrder=0, nOk=0;
+ const rows = items.length ? items.map(it=>{
+  const p=window.__bundleProd(it.sku); const nm=p?(p.name||it.sku):it.sku;
+  const c=window.__evCompute(it, cc);
+  if(c.status==='ok') nOk++; else if(c.status==='topup') nTopup++; else nOrder++;
+  const stt=window.__EV_STAT[c.status];
+  const shortTxt = c.shortfall>0 ? ('<span style="font-weight:800; color:'+stt.c+';">'+c.shortfall+'</span>') : '<span style="color:#4E7C4A; font-weight:700;">0</span>';
+  return '<tr style="border-bottom:1px solid #EEE;">'
+   +'<td style="padding:8px 10px;">'+E(nm.slice(0,46))+'<div style="color:#9CA3AF; font-size:11px;">'+E(it.sku)+'</div></td>'
+   +'<td style="padding:8px 6px;"><input type="number" min="1" value="'+(Number(it.qty_needed)||1)+'" onchange="window.__evItemQty(\''+it.id+'\',\''+ev.id+'\',this.value)" style="width:64px; padding:6px; border:1px solid #D1D5DB; border-radius:7px; text-align:center;"></td>'
+   +'<td style="padding:8px 6px; text-align:center; color:#374151;" title="Display (CUD)">'+c.cud+'</td>'
+   +'<td style="padding:8px 6px; text-align:center; color:#374151;" title="Rental (CUR)">'+c.cur+'</td>'
+   +'<td style="padding:8px 6px;"><input type="number" min="0" value="'+(c.isManual?c.eventStock:'')+'" placeholder="'+c.auto+'" onchange="window.__evItemAvail(\''+it.id+'\',\''+ev.id+'\',this.value)" title="Stok event sedia ada. Kosong = auto (CUD+CUR='+c.auto+'). Isi nilai untuk override ikut kiraan fizikal." style="width:66px; padding:6px; border:1px solid '+(c.isManual?'#CD7C32':'#D1D5DB')+'; border-radius:7px; text-align:center;"></td>'
+   +'<td style="padding:8px 6px; text-align:center; color:'+(c.sellable>0?'#374151':'#B23A2E')+';">'+c.sellable+'</td>'
+   +'<td style="padding:8px 6px; text-align:center;">'+shortTxt+'</td>'
+   +'<td style="padding:8px 6px; text-align:center;"><span style="background:'+stt.bg+'; color:'+stt.c+'; padding:3px 9px; border-radius:50px; font-size:11px; font-weight:700; white-space:nowrap;">'+stt.t+(c.status==='order'?(' ('+c.needOrder+')'):(c.status==='topup'?(' ('+c.topupFromSellable+')'):''))+'</span></td>'
+   +'<td style="padding:8px 6px; text-align:center;"><button onclick="window.__evItemRemove(\''+it.id+'\',\''+ev.id+'\')" title="Buang" style="background:none;border:0;cursor:pointer;color:#B23A2E;"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button></td>'
+   +'</tr>';
+ }).join('') : '<tr><td colspan="9" style="padding:20px; text-align:center; color:#6B7280;">Belum ada barang. Pilih barang di atas, tekan Tambah.</td></tr>';
+
+ const statusSel = Object.keys(window.__EV_STATUS).map(k=>'<option value="'+k+'"'+(ev.status===k?' selected':'')+'>'+E(window.__EV_STATUS[k])+'</option>').join('');
+
+ sec.innerHTML = '<div style="display:flex; align-items:center; gap:10px; margin:20px 0 6px;">'
+   +'<button onclick="window.__evBack()" class="btn-brand-secondary" style="padding:7px 12px; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="arrow-left" style="width:15px;height:15px;"></i> Senarai</button>'
+   +(ev.is_template?'<span style="background:#FBF1D9; color:#9A6700; padding:3px 10px; border-radius:50px; font-size:12px; font-weight:700;">TEMPLAT</span>':'')
+  +'</div>'
+  +'<div class="admin-card" style="padding:16px; margin-bottom:14px;">'
+    +'<div style="display:grid; grid-template-columns:2fr 1fr 1.5fr 1fr; gap:10px; align-items:end;">'
+      +'<div><label style="font-size:12px; color:#6B7280;">Nama</label><input id="evHName" value="'+E(ev.name||'')+'" onchange="window.__evUpdateHeader(\''+ev.id+'\',{name:this.value.trim()})" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px; font-weight:700;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Tarikh</label><input id="evHDate" type="date" value="'+(ev.event_date||'')+'" onchange="window.__evUpdateHeader(\''+ev.id+'\',{event_date:this.value||null})" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Lokasi</label><input id="evHLoc" value="'+E(ev.location||'')+'" onchange="window.__evUpdateHeader(\''+ev.id+'\',{location:this.value.trim()||null})" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Status</label><select onchange="window.__evUpdateHeader(\''+ev.id+'\',{status:this.value})" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;">'+statusSel+'</select></div>'
+    +'</div>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:16px; margin-bottom:14px;">'
+    +'<div style="font-weight:800; margin-bottom:10px;">Tambah Barang</div>'
+    +'<div style="display:grid; grid-template-columns:2fr 1fr auto; gap:10px; align-items:end;">'
+      +'<div><label style="font-size:12px; color:#6B7280;">Pilih barang</label><input id="evItemSku" list="evSkuList" placeholder="Cari SKU / nama" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"><datalist id="evSkuList">'+dlOpts+'</datalist></div>'
+      +'<div><label style="font-size:12px; color:#6B7280;">Qty perlu</label><input id="evItemQty" type="number" min="1" value="1" style="width:100%; padding:9px; border:1px solid #D1D5DB; border-radius:8px;"></div>'
+      +'<button onclick="window.__evAddItem(\''+ev.id+'\')" class="btn-brand-secondary" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;"><i data-lucide="plus" style="width:15px;height:15px;"></i> Tambah</button>'
+    +'</div>'
+  +'</div>'
+  +'<div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; font-size:13px;">'
+    +'<span style="background:#E4EFE2; color:#4E7C4A; padding:5px 12px; border-radius:50px; font-weight:700;">Cukup: '+nOk+'</span>'
+    +'<span style="background:#FBF1D9; color:#9A6700; padding:5px 12px; border-radius:50px; font-weight:700;">Tarik stok jual: '+nTopup+'</span>'
+    +'<span style="background:#F4E4DF; color:#B23A2E; padding:5px 12px; border-radius:50px; font-weight:700;">Kena order: '+nOrder+'</span>'
+  +'</div>'
+  +'<div class="admin-card" style="padding:0; overflow-x:auto;">'
+    +'<table style="width:100%; border-collapse:collapse; font-size:13px; min-width:760px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;">'
+      +'<th style="padding:8px 10px;">Barang</th><th style="padding:8px 6px; text-align:center;">Perlu</th>'
+      +'<th style="padding:8px 6px; text-align:center;" title="Display di store">CUD</th><th style="padding:8px 6px; text-align:center;" title="Rental di store">CUR</th>'
+      +'<th style="padding:8px 6px; text-align:center;">Stok Event</th><th style="padding:8px 6px; text-align:center;" title="Stok boleh jual (sumber topup)">Boleh Jual</th>'
+      +'<th style="padding:8px 6px; text-align:center;">Kurang</th><th style="padding:8px 6px; text-align:center;">Status</th><th></th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+  +'</div>'
+  +'<div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">'
+    +(ev.is_template?'':'<button onclick="window.__evSaveAsTemplate(\''+ev.id+'\')" class="btn-brand-secondary" style="display:inline-flex; align-items:center; gap:6px;"><i data-lucide="layout-template" style="width:15px;height:15px;"></i> Simpan jadi templat</button>')
+    +'<button onclick="window.__evDelete(\''+ev.id+'\')" style="background:none; border:1px solid #E0B3A9; color:#B23A2E; border-radius:10px; padding:8px 14px; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="trash-2" style="width:15px;height:15px;"></i> Padam '+(ev.is_template?'templat':'event')+'</button>'
+  +'</div>';
+};
+
+/* ============================================================================
  * p1_581 — STOCK TRANSFER (Inventory > Transfer).
  * Log pergerakan stok antara lokasi fizikal (Bilik Stok / Kedai / Cyberjaya).
  * Catatan sahaja (audit "barang ni kat mana") — tak ubah jumlah stok keseluruhan
