@@ -98,9 +98,8 @@ window.__POS_APP_TABS = [
  { key:'orders',     icon:'receipt',        label:'Orders',  sections:['allOrdersSection'],     title:'All Orders',    render:'renderAllOrders' },
  { key:'commission', icon:'coins',          label:'Komisen', sections:['commissionSection'],     title:'My Commission', render:'renderPersonalCommission' },
  { key:'stock',      icon:'clipboard-check',label:'Stok',    sections:['checkSessionsSection'], title:'Stock Take',    render:'renderCheckSessions' },
- { key:'notify',     icon:'package-check',  label:'Notify',  sections:['notifyInvSection'],     title:'Notify Inventory', render:'renderNotifyInventory' },
- // p1_862 — Tanya AI jadi tab bottom bar (Zaid: ganti bubble terapung). special='ai' → buka chat, bukan tukar section.
- { key:'ai',         icon:'sparkles',       label:'Tanya AI', special:'ai',                     title:'Tanya AI' }
+ { key:'notify',     icon:'package-check',  label:'Notify',  sections:['notifyInvSection'],     title:'Notify Inventory', render:'renderNotifyInventory' }
+ // p1_952 — Tanya AI dialih dari bottom bar (kekal max 5 tab) ke TOP bar. Logik buka chat = window.__posAppOpenAI.
 ];
 // Top bar native: tajuk skrin semasa + butang logout.
 window.__injectPosAppTopBar = function(){
@@ -108,7 +107,8 @@ window.__injectPosAppTopBar = function(){
  const bar = document.createElement('div');
  bar.id = 'posAppTopBar';
  bar.innerHTML = '<span class="pat-title" id="posAppTitle">POS / Cashier</span>'
- + '<button class="pat-logout" onclick="window.__showWhatsNew && window.__showWhatsNew()" title="Apa Baru" aria-label="Apa Baru" style="position:relative; margin-right:8px;"><i data-lucide="sparkles" style="width:18px; height:18px;"></i><span id="whatsNewDotApp" style="display:none; position:absolute; top:5px; right:5px; width:8px; height:8px; border-radius:50%; background:#B23A2E; border:1.5px solid #101010;"></span></button>'
+ + '<button class="pat-logout" onclick="window.__posAppOpenAI && window.__posAppOpenAI()" title="Tanya AI" aria-label="Tanya AI" style="margin-right:8px;"><i data-lucide="sparkles" style="width:19px; height:19px;"></i></button>'
+ + '<button class="pat-logout" onclick="window.__showWhatsNew && window.__showWhatsNew()" title="Apa Baru" aria-label="Apa Baru" style="position:relative; margin-right:8px;"><i data-lucide="gift" style="width:18px; height:18px;"></i><span id="whatsNewDotApp" style="display:none; position:absolute; top:5px; right:5px; width:8px; height:8px; border-radius:50%; background:#B23A2E; border:1.5px solid #101010;"></span></button>'
  + '<button class="pat-logout" onclick="if(typeof handleLogout===\'function\')handleLogout()" title="Log Keluar" aria-label="Log Keluar"><i data-lucide="log-out" style="width:19px; height:19px;"></i></button>';
  document.body.appendChild(bar);
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
@@ -144,18 +144,18 @@ window.__togglePosSidebar = function(){
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
 // Navigasi tab: switchHub + render + highlight tab aktif + update tajuk + scroll atas.
-window.__posAppGo = function(key){
- const t = (window.__POS_APP_TABS || []).find(x => x.key === key); if(!t) return;
- // p1_862 — tab "Tanya AI": buka panel chat (bukan tukar section). Highlight kekal pada tab sebelum.
- if(t.special === 'ai'){
+// p1_952 — buka panel chat Tanya AI (dipanggil dari butang top bar, atau __posAppGo('ai') legacy).
+window.__posAppOpenAI = function(){
  try {
  if(typeof window.__saShow === 'function') window.__saShow(true); // pastikan widget aktif (FAB disorok di app, panel je nampak)
  const p = document.getElementById('saPanel');
  if(!window.__saOpen){ if(typeof window.__saToggle === 'function') window.__saToggle(); } // buka kalau belum buka
  else if(p){ const i = document.getElementById('saInput'); if(i) i.focus(); }
- } catch(e){ console.warn('posAppGo ai', e); }
- return;
- }
+ } catch(e){ console.warn('posAppOpenAI', e); }
+};
+window.__posAppGo = function(key){
+ if(key === 'ai'){ return window.__posAppOpenAI(); } // p1_952 — AI bukan tab lagi, dialih ke top bar
+ const t = (window.__POS_APP_TABS || []).find(x => x.key === key); if(!t) return;
  try {
  if(typeof switchHub === 'function') switchHub(t.sections, t.title);
  if(t.render && typeof window[t.render] === 'function') window[t.render]();
