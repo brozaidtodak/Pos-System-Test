@@ -14145,6 +14145,7 @@ function renderPOS(searchTerm = "") {
  : `<p class="price">${fmtPrice(priceNum)}</p>`;
 
  const isOOS = totalStock <= 0;
+ const __hasVideo = !!(p.metadata && typeof p.metadata === 'object' && p.metadata.video);  // p1_958
  const __addAction = p.parent_sku && __multiParents.has(p.parent_sku)
    ? `event.stopPropagation(); window.__szGridOpen('${String(p.parent_sku).replace(/'/g,"\\'")}');`
    : `addToCart('${skuEsc}');`;
@@ -14152,7 +14153,8 @@ function renderPOS(searchTerm = "") {
  <div class="product-card${isOOS ? ' is-oos' : ''}">
  ${isOOS ? `<span class="product-card__oos"><i data-lucide="x-circle" style="width:12px;height:12px;"></i> STOK HABIS</span>` : (totalStock <= (window.__POS_LOW_STOCK || 3) ? `<span class="product-card__low"><i data-lucide="alert-triangle" style="width:11px;height:11px;"></i> Stok rendah</span>` : '')}
  <div style="position:relative; border-radius:12px; overflow:hidden; margin-bottom:8px;">
- <img src="${window.__thumbUrl(thumb, 200)}" class="pos-zoom-trigger" loading="lazy" decoding="async" onclick="window.__imgZoomOpen('${String(thumb).replace(/'/g, "\\'")}','${skuEsc}')" title="Tap untuk zoom gambar penuh" onerror="window.__imgThumbErr(this, '${String(thumb).replace(/'/g, "\\'")}')">
+ <img src="${window.__thumbUrl(thumb, 200)}" class="pos-zoom-trigger" loading="lazy" decoding="async" onclick="window.posOpenMedia('${skuEsc}')" title="Tap untuk lihat gambar & video" onerror="window.__imgThumbErr(this, '${String(thumb).replace(/'/g, "\\'")}')">
+ ${__hasVideo ? `<span style="position:absolute; top:8px; left:8px; width:28px; height:28px; border-radius:50%; background:rgba(16,16,16,.62); color:#FAF6EF; display:flex; align-items:center; justify-content:center; z-index:2; pointer-events:none;" title="Ada video"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M8 5v14l11-7z"/></svg></span>` : ''}
  <button onclick="${__addAction}" title="${isOOS ? (window.t?window.t('cs_oos_hint'):'Out of stock') : (window.t?window.t('cs_add_to_cart'):'Add to cart')}" style="position:absolute; bottom:8px; right:8px; width:36px; height:36px; min-height:0; border-radius:50%; background:${isOOS ? '#FED7AA' : '#CD7C32'}; color:${isOOS ? '#9A3412' : '#FAF6EF'}; border:none; font-size:22px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,.28); z-index:2; padding:0; line-height:1;">+</button>
  </div>
  <div class="product-card__badges">
@@ -14162,7 +14164,7 @@ function renderPOS(searchTerm = "") {
  ${isOnSale ? `<span class="cat-badge" style="background:#0F172A; color:#FFFFFF;">-${offPct}%</span>` : ''}
  ${p.location_bin ? `<span class="cat-badge" style="background:#F8EFD7; color:#7A5410; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;" title="Lokasi gudang">${p.location_bin}</span>` : ''}
  </div>
- <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenProductDetail('${skuEsc}')" title="${safeName}">${cleanName}</h3>
+ <h3 class="product-card__title pos-detail-trigger" onclick="window.posOpenVariants('${skuEsc}')" title="Tap untuk lihat variant & media — ${safeName}">${cleanName}</h3>
  ${priceHtml}
  <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : (totalStock <= (window.__POS_LOW_STOCK || 3) ? ' style="color:#B45309; font-weight:700;"' : '')}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
  </div>
@@ -14256,6 +14258,210 @@ function renderPOS(searchTerm = "") {
  window.__imgZoomBtn = function(dir){ if(dir === 0) setScale(1); else setScale(scale * (dir > 0 ? 1.5 : 1/1.5)); };
  // ESC tutup (desktop)
  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && document.getElementById('imgZoomOverlay') && document.getElementById('imgZoomOverlay').style.display === 'flex') window.__imgZoomClose(); });
+})();
+
+// =============================================================
+// p1_958 — Cashier media gallery (gambar + video, swipe) + variant view ala Shedan Bunga.
+// Tap GAMBAR produk -> galeri penuh swipe (semua gambar + video produk tu).
+// Tap NAMA produk -> skrin variant (tiap variant ada gambar+video sendiri, tap nak masuk troli).
+// Video disimpan di products_master.metadata.video (per-variant). Guna semula __imgZoomOpen utk
+// butang zoom gambar. Brand-lock: bronze #CD7C32, hitam #101010, krim #FAF6EF, Poppins.
+// =============================================================
+(function(){
+ // ---- one-time CSS ----
+ if(!document.getElementById('posMediaCss')){
+  const st = document.createElement('style'); st.id = 'posMediaCss';
+  st.textContent = ''
+  + '.posMG{position:fixed;inset:0;z-index:10200;background:rgba(16,16,16,.95);display:none;font-family:Poppins,system-ui,sans-serif}'
+  + '.posMG.show{display:block}'
+  + '.posMG__track{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}'
+  + '.posMG__track::-webkit-scrollbar{display:none}'
+  + '.posMG__slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}'
+  + '.posMG__slide img,.posMG__slide video{max-width:100%;max-height:86vh;border-radius:14px;background:#000;object-fit:contain}'
+  + '.posMG__btn{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:none;background:rgba(250,246,239,.92);color:#101010;font-size:24px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;box-shadow:0 2px 12px rgba(0,0,0,.4)}'
+  + '.posMG__prev{left:14px}.posMG__next{right:14px}'
+  + '.posMG__close{position:absolute;top:14px;right:14px;top:max(14px,env(safe-area-inset-top));width:42px;height:42px;border-radius:50%;border:none;background:rgba(250,246,239,.92);color:#101010;font-size:24px;cursor:pointer;z-index:4;display:flex;align-items:center;justify-content:center}'
+  + '.posMG__zoom{position:absolute;top:14px;left:14px;top:max(14px,env(safe-area-inset-top));height:42px;padding:0 16px;border-radius:21px;border:none;background:rgba(250,246,239,.92);color:#101010;font-size:13px;font-weight:700;cursor:pointer;z-index:4;display:none;align-items:center;gap:6px}'
+  + '.posMG__dots{position:absolute;left:0;right:0;bottom:max(20px,env(safe-area-inset-bottom));display:flex;gap:7px;justify-content:center;z-index:3}'
+  + '.posMG__dots .d{width:8px;height:8px;border-radius:50%;background:rgba(250,246,239,.4)}'
+  + '.posMG__dots .d.on{background:#CD7C32;width:22px;border-radius:4px}'
+  + '.posMG__type{position:absolute;left:0;right:0;bottom:max(40px,calc(env(safe-area-inset-bottom) + 20px));text-align:center;color:rgba(250,246,239,.75);font-size:12px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;z-index:2}'
+  // variant view
+  + '.posVV{position:fixed;inset:0;z-index:10150;background:rgba(16,16,16,.55);display:none;align-items:flex-end;justify-content:center;font-family:Poppins,system-ui,sans-serif}'
+  + '.posVV.show{display:flex}'
+  + '@media(min-width:760px){.posVV{align-items:center}}'
+  + '.posVV__card{background:#FAF6EF;width:100%;max-width:760px;max-height:90vh;border-radius:20px 20px 0 0;overflow-y:auto;padding:0 0 calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.3)}'
+  + '@media(min-width:760px){.posVV__card{border-radius:20px}}'
+  + '.posVV__head{position:sticky;top:0;background:#FAF6EF;display:flex;align-items:center;gap:12px;padding:16px 18px 12px;border-bottom:1px solid #EADFD0;z-index:2}'
+  + '.posVV__back{width:38px;height:38px;border-radius:50%;border:none;background:#fff;color:#101010;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.1);flex-shrink:0}'
+  + '.posVV__ttl{font-size:16px;font-weight:700;color:#101010;line-height:1.2;flex:1;min-width:0}'
+  + '.posVV__ttl small{display:block;font-size:11px;font-weight:600;color:#9b8b76;margin-top:2px}'
+  + '.posVV__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:16px 18px}'
+  + '.posVV__tile{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);border:2px solid transparent;display:flex;flex-direction:column}'
+  + '.posVV__tile.inbill{border-color:#CD7C32}'
+  + '.posVV__media{position:relative;aspect-ratio:1/1;background:#F3ECE2;cursor:pointer}'
+  + '.posVV__media img{width:100%;height:100%;object-fit:cover;display:block}'
+  + '.posVV__media .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#CD7C32}'
+  + '.posVV__play{position:absolute;left:8px;top:8px;width:26px;height:26px;border-radius:50%;background:rgba(16,16,16,.6);color:#fff;display:flex;align-items:center;justify-content:center}'
+  + '.posVV__play svg{width:13px;height:13px}'
+  + '.posVV__zoomb{position:absolute;right:8px;top:8px;width:26px;height:26px;border-radius:50%;background:rgba(16,16,16,.45);color:#fff;display:flex;align-items:center;justify-content:center}'
+  + '.posVV__zoomb svg{width:13px;height:13px}'
+  + '.posVV__qb{position:absolute;right:8px;bottom:8px;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:#CD7C32;color:#FAF6EF;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}'
+  + '.posVV__body{padding:9px 10px 11px;cursor:pointer;text-align:left;border:none;background:none;width:100%;display:flex;flex-direction:column;gap:3px}'
+  + '.posVV__nm{font-size:13px;font-weight:700;color:#101010;line-height:1.25}'
+  + '.posVV__foot{display:flex;align-items:center;justify-content:space-between;margin-top:2px}'
+  + '.posVV__price{font-size:13px;font-weight:800;color:#CD7C32}'
+  + '.posVV__stk{font-size:10px;font-weight:700;color:#15803d}'
+  + '.posVV__stk.zero{color:#b91c1c}';
+  document.head.appendChild(st);
+ }
+
+ // ---- data helpers ----
+ const ESC = (s)=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+ function arr(){ return (typeof masterProducts!=='undefined'?masterProducts:[]); }
+ function findProd(sku){ return arr().find(x=>x.sku===sku); }
+ function pub(p){ return (typeof isPublished==='function') ? isPublished(p) : (p && p.is_published===true); }
+ function imagesOf(p){
+  let images=[];
+  if(Array.isArray(p.images)) images=p.images.filter(u=>u);
+  else if(typeof p.images==='string'){ try{ const a=JSON.parse(p.images); if(Array.isArray(a)) images=a.filter(u=>u); }catch(e){ if(p.images.indexOf('http')===0) images=[p.images]; } }
+  return images;
+ }
+ function videoOf(p){ return (p && p.metadata && typeof p.metadata==='object' && p.metadata.video) ? String(p.metadata.video) : ''; }
+ function mediaItems(p){
+  const items=[]; imagesOf(p).forEach(s=>{ if(s) items.push({type:'img',src:s}); });
+  const v=videoOf(p); if(v) items.push({type:'vid',src:v});
+  return items;
+ }
+ function stockOf(sku){ return (typeof inventoryBatches!=='undefined'?inventoryBatches:[]).filter(b=>b.sku===sku&&b.qty_remaining>0).reduce((s,b)=>s+(b.qty_remaining||0),0); }
+ function qtyInCart(sku){ try{ const c=(typeof cart!=='undefined'?cart:[]).find(x=>(x.sku||x.id)===sku); return c?(c.qty||c.quantity||0):0; }catch(e){ return 0; } }
+ function cleanNm(p){
+  let n=(p.name||'Untitled');
+  n=n.replace(/^[A-Z0-9-]+\s*[|_]\s*/i,'').trim();
+  if(/\s\|\s/.test(n)) n=n.split(/\s*\|\s*/)[0].trim();
+  n=n.replace(/\s*[_]\s*/g,' — ').replace(/\s{2,}/g,' ').trim();
+  return n||(p.name||'Untitled');
+ }
+ function variantsOf(p){
+  let vs=[];
+  if(p.parent_sku) vs=arr().filter(x=>x.parent_sku===p.parent_sku && pub(x));
+  if(vs.length<2 && p.sku && p.sku.indexOf('-')>-1){
+   const parts=p.sku.split('-');
+   if(parts.length>=2){ const pre=parts.slice(0,-1).join('-'); const f=arr().filter(x=>x.sku!==p.sku && pub(x) && x.sku.indexOf(pre+'-')===0); if(f.length) vs=[p,...f]; }
+  }
+  if(!vs.length) vs=[p];
+  return vs;
+ }
+ function vLabel(v,i){ return v.variant_size || v.variant_color || (v.sku?String(v.sku).split('-').pop():('Option '+(i+1))); }
+ function RM(n){ const v=parseFloat(n)||0; return (typeof formatRM==='function')?formatRM(v):('RM '+v.toFixed(2)); }
+
+ // ---- swipeable media gallery (gambar + video) ----
+ let mg=null, mgScrollT=null;
+ function buildMG(){
+  const el=document.createElement('div'); el.id='posMG'; el.className='posMG';
+  el.innerHTML=''
+   + '<button class="posMG__close" id="posMGClose" aria-label="Tutup">&times;</button>'
+   + '<button class="posMG__zoom" id="posMGZoom"><i data-lucide="zoom-in" style="width:15px;height:15px;"></i> Zoom</button>'
+   + '<div class="posMG__track" id="posMGTrack"></div>'
+   + '<button class="posMG__btn posMG__prev" id="posMGPrev" aria-label="Sebelum">&#8249;</button>'
+   + '<button class="posMG__btn posMG__next" id="posMGNext" aria-label="Seterus">&#8250;</button>'
+   + '<div class="posMG__type" id="posMGType"></div>'
+   + '<div class="posMG__dots" id="posMGDots"></div>';
+  document.body.appendChild(el);
+  const track=el.querySelector('#posMGTrack');
+  el.addEventListener('click',e=>{ if(e.target===el) closeMG(); });
+  el.querySelector('#posMGClose').addEventListener('click',closeMG);
+  el.querySelector('#posMGPrev').addEventListener('click',()=>{ const w=track.clientWidth; track.scrollTo({left:Math.max(0,track.scrollLeft-w),behavior:'smooth'}); });
+  el.querySelector('#posMGNext').addEventListener('click',()=>{ const w=track.clientWidth; track.scrollTo({left:track.scrollLeft+w,behavior:'smooth'}); });
+  el.querySelector('#posMGZoom').addEventListener('click',()=>{ const it=mgCurItem(); if(it && it.type==='img' && window.__imgZoomOpen) window.__imgZoomOpen(it.src,''); });
+  track.addEventListener('scroll',()=>{ mgUpdate(); clearTimeout(mgScrollT); mgScrollT=setTimeout(mgPlay,130); },{passive:true});
+  return el;
+ }
+ function mgCur(){ const t=document.getElementById('posMGTrack'); const w=t.clientWidth||1; return Math.round(t.scrollLeft/w); }
+ function mgCurItem(){ return (mg && mg.__items) ? mg.__items[mgCur()] : null; }
+ function mgUpdate(){
+  const i=mgCur(); const dots=document.getElementById('posMGDots');
+  if(dots) dots.querySelectorAll('.d').forEach((d,j)=>d.classList.toggle('on',j===i));
+  const it=mgCurItem();
+  const tp=document.getElementById('posMGType'); if(tp) tp.textContent=it?(it.type==='vid'?'Video':'Gambar'):'';
+  const z=document.getElementById('posMGZoom'); if(z) z.style.display=(it&&it.type==='img')?'flex':'none';
+ }
+ function mgPlay(){
+  const i=mgCur(); const track=document.getElementById('posMGTrack'); if(!track) return;
+  track.querySelectorAll('.posMG__slide').forEach((sl,j)=>{ const v=sl.querySelector('video'); if(!v) return; if(j===i){ const pr=v.play&&v.play(); if(pr&&pr.catch) pr.catch(()=>{}); } else { try{v.pause();}catch(e){} } });
+ }
+ function openMG(items,start){
+  items=(items||[]).filter(it=>it&&it.src); if(!items.length){ if(window.showToast) showToast('Tiada gambar/video','info'); return; }
+  if(!mg) mg=buildMG();
+  mg.__items=items;
+  const track=mg.querySelector('#posMGTrack');
+  track.innerHTML=items.map(it=> it.type==='vid'
+   ? '<div class="posMG__slide"><video src="'+ESC(it.src)+'#t=0.1" muted loop playsinline controls preload="metadata"></video></div>'
+   : '<div class="posMG__slide"><img src="'+ESC(it.src)+'" alt=""></div>').join('');
+  const multi=items.length>1;
+  mg.querySelector('#posMGDots').innerHTML=multi?items.map(()=>'<span class="d"></span>').join(''):'';
+  mg.querySelector('#posMGPrev').style.display=multi?'flex':'none';
+  mg.querySelector('#posMGNext').style.display=multi?'flex':'none';
+  mg.classList.add('show');
+  if(window.lucide&&lucide.createIcons) try{lucide.createIcons();}catch(e){}
+  requestAnimationFrame(()=>{ track.scrollLeft=(track.clientWidth||0)*(start||0); mgUpdate(); mgPlay(); });
+ }
+ function closeMG(){ if(!mg) return; mg.classList.remove('show'); mg.querySelectorAll('video').forEach(v=>{try{v.pause();}catch(e){}}); mg.querySelector('#posMGTrack').innerHTML=''; }
+
+ // tap GAMBAR produk -> galeri media produk tu (gambar + video)
+ window.posOpenMedia=function(sku){ const p=findProd(sku); if(!p){ if(window.__imgZoomOpen) return; return; } const items=mediaItems(p); if(!items.length){ if(window.__imgZoomOpen && imagesOf(p)[0]) return window.__imgZoomOpen(imagesOf(p)[0],sku); } openMG(items); };
+
+ // ---- variant view (ala Shedan Bunga) ----
+ let vv=null;
+ function buildVV(){
+  const el=document.createElement('div'); el.id='posVV'; el.className='posVV';
+  el.innerHTML='<div class="posVV__card"><div class="posVV__head"><button class="posVV__back" id="posVVBack" aria-label="Tutup"><i data-lucide="x" style="width:18px;height:18px;"></i></button><div class="posVV__ttl" id="posVVTtl"></div></div><div class="posVV__grid" id="posVVGrid"></div></div>';
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{ if(e.target===el) closeVV(); });
+  el.querySelector('#posVVBack').addEventListener('click',closeVV);
+  const grid=el.querySelector('#posVVGrid');
+  grid.addEventListener('click',e=>{
+   const tile=e.target.closest('[data-vsku]'); if(!tile) return; const vsku=tile.getAttribute('data-vsku');
+   if(e.target.closest('[data-vmedia]')){ window.posOpenMedia(vsku); return; }   // tap gambar -> media variant
+   if(typeof addToCart==='function'){ addToCart(vsku); renderVVGrid(); if(window.showToast) showToast('Ditambah ke troli','success'); }  // tap nama -> masuk troli
+  });
+  return el;
+ }
+ function tileHtml(v,i){
+  const imgs=imagesOf(v); const cover=(v.metadata&&v.metadata.cover_image)||imgs[0]||''; const hasVid=!!videoOf(v);
+  const stk=stockOf(v.sku); const inq=qtyInCart(v.sku);
+  const media=cover?'<img src="'+ESC((window.__thumbUrl?window.__thumbUrl(cover,260):cover))+'" alt="" loading="lazy">':'<div class="ph">'+ESC((cleanNm(v)||'?').slice(0,1))+'</div>';
+  const play=hasVid?'<span class="posVV__play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>':'';
+  const zoom=(cover||hasVid)?'<span class="posVV__zoomb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></span>':'';
+  const qb=inq?'<span class="posVV__qb">'+inq+'</span>':'';
+  const stkCls=stk<=0?'posVV__stk zero':'posVV__stk'; const stkTxt=stk<=0?'Stok habis':('Stok '+stk);
+  return '<div class="posVV__tile'+(inq?' inbill':'')+'" data-vsku="'+ESC(v.sku)+'">'
+   + '<div class="posVV__media" data-vmedia>'+qb+play+zoom+media+'</div>'
+   + '<button type="button" class="posVV__body"><span class="posVV__nm">'+ESC(vLabel(v,i))+'</span>'
+   + '<span class="posVV__foot"><span class="posVV__price">'+RM(v.price)+'</span><span class="'+stkCls+'">'+stkTxt+'</span></span></button>'
+   + '</div>';
+ }
+ let vvVariants=[];
+ function renderVVGrid(){ const grid=document.getElementById('posVVGrid'); if(!grid) return; grid.innerHTML=vvVariants.map((v,i)=>tileHtml(v,i)).join(''); if(window.lucide&&lucide.createIcons) try{lucide.createIcons();}catch(e){} }
+ // tap NAMA produk -> senarai variant (gambar + video setiap satu)
+ window.posOpenVariants=function(sku){
+  const p=findProd(sku); if(!p){ if(window.showToast) showToast('Produk tak dijumpai','warn'); return; }
+  vvVariants=variantsOf(p);
+  if(!vv) vv=buildVV();
+  const ttl=document.getElementById('posVVTtl');
+  const pname=(p.metadata&&p.metadata.product_name)||cleanNm(p);
+  if(ttl) ttl.innerHTML=ESC(pname)+'<small>'+vvVariants.length+(vvVariants.length>1?' variant — tap gambar lihat media, tap nama masuk troli':' — tap gambar lihat media, tap nama masuk troli')+'</small>';
+  renderVVGrid();
+  vv.classList.add('show');
+ };
+ function closeVV(){ if(vv) vv.classList.remove('show'); }
+
+ // ESC tutup
+ document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape') return;
+  if(mg&&mg.classList.contains('show')){ closeMG(); return; }
+  if(vv&&vv.classList.contains('show')){ closeVV(); }
+ });
 })();
 
 // =============================================================
@@ -25480,6 +25686,10 @@ window.openPdpModal = function(sku) {
  window.__pdpCoverUrl = (prod.metadata && prod.metadata.cover_image) || (imgs[0] || '');
  document.getElementById('pdpMediaUrls').value = imgs.join(',');
  renderPdpMediaGallery(imgs);
+ // p1_958 — Video produk (per-variant, metadata.video)
+ const __vurl = (prod.metadata && prod.metadata.video) || '';
+ const __vel = document.getElementById('pdpVideoUrl'); if(__vel) __vel.value = __vurl;
+ if(window.renderPdpVideoPreview) window.renderPdpVideoPreview(__vurl);
 
  // p1_228 — Description
  set('pdpDescription', prod.description);
@@ -26321,6 +26531,53 @@ window.removePdpMedia = function(idx) {
  renderPdpMediaGallery(urls);
 };
 
+// p1_958 — Video produk (per-variant): upload ke bucket product-images, simpan di metadata.video.
+// Tunjuk di Cashier bila tap gambar/nama produk (galeri swipe + skrin variant).
+window.renderPdpVideoPreview = function(url) {
+ const wrap = document.getElementById('pdpVideoPreview'); if(!wrap) return;
+ if(!url){ wrap.innerHTML = '<p style="font-size:12px; color:#9CA3AF; margin:0;">Tiada video.</p>'; return; }
+ wrap.innerHTML = '<div style="position:relative; display:inline-block; border-radius:10px; overflow:hidden; background:#000; max-width:220px;">'
+  + '<video src="' + String(url).replace(/"/g,'&quot;') + '#t=0.1" muted playsinline controls preload="metadata" style="display:block; max-width:220px; max-height:160px; border-radius:10px;"></video>'
+  + '<button type="button" onclick="window.removePdpVideo()" title="Buang video" style="position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; border:none; background:rgba(216,44,13,.92); color:#fff; cursor:pointer; font-size:16px; line-height:1; z-index:2;">&times;</button>'
+  + '</div>';
+};
+window.removePdpVideo = function() {
+ const el = document.getElementById('pdpVideoUrl'); if(el) el.value = '';
+ window.renderPdpVideoPreview('');
+};
+window.addPdpVideoUrl = function() {
+ const u = (prompt('Tampal URL video (mp4/webm/mov):') || '').trim();
+ if(!u) return;
+ if(!/^https?:\/\//i.test(u)){ if(window.showToast) showToast('URL mesti bermula http(s)://', 'warning'); return; }
+ const el = document.getElementById('pdpVideoUrl'); if(el) el.value = u;
+ window.renderPdpVideoPreview(u);
+ if(window.showToast) showToast('Video diset. Tekan Save untuk simpan.', 'success');
+};
+window.uploadPdpVideo = async function(input) {
+ const f = (input && input.files && input.files[0]) || null;
+ if(!f) return;
+ if(typeof db === 'undefined' || !db){ if(window.showToast) showToast('DB belum sedia.', 'error'); return; }
+ if(!f.type || !f.type.startsWith('video/')){ if(window.showToast) showToast('Bukan fail video: ' + f.name, 'warning'); if(input) input.value=''; return; }
+ if(f.size > 50 * 1024 * 1024){ if(window.showToast) showToast('Video terlalu besar (max 50MB): ' + f.name, 'warning'); if(input) input.value=''; return; }
+ const btn = document.getElementById('pdpVideoUploadBtn'); const orig = btn ? btn.innerHTML : '';
+ if(btn){ btn.disabled = true; btn.innerHTML = 'Memuat naik video...'; }
+ const sku = (document.getElementById('pdpOriginalSku')?.value || 'prod').replace(/[^A-Za-z0-9_-]/g, '') || 'prod';
+ try {
+  const ext = (f.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+  const fileName = 'product-videos/' + sku + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '.' + ext;
+  const { data, error } = await db.storage.from('product-images').upload(fileName, f, { cacheControl: '3600', upsert: false, contentType: f.type || 'video/mp4' });
+  if(error) throw error;
+  const { data: pub } = db.storage.from('product-images').getPublicUrl(data.path);
+  if(pub && pub.publicUrl){
+   const el = document.getElementById('pdpVideoUrl'); if(el) el.value = pub.publicUrl;
+   window.renderPdpVideoPreview(pub.publicUrl);
+   if(window.showToast) showToast('Video dimuat naik. Tekan Save untuk simpan.', 'success');
+  }
+ } catch(e){ console.error('upload video:', e); if(window.showToast) showToast('Gagal upload video: ' + e.message, 'error'); }
+ if(btn){ btn.disabled = false; btn.innerHTML = orig; }
+ if(input) input.value = '';
+};
+
 window.renderMetafields = function() {
  const container = document.getElementById('pdpMetafieldsContainer');
  // p1_158 — was innerHTML += in for-in loop (Safari OOM trigger)
@@ -26364,6 +26621,7 @@ window.savePdpData = async function() {
  collection: get('pdpCollection') || null,
  tags: tagsArr.length ? tagsArr : null,
  notes: get('pdpNotes') || null,
+ video: get('pdpVideoUrl') || null,  // p1_958 — video per-variant (tunjuk di Cashier)
  seo: {
  title: get('pdpSeoTitle') || null,
  description: get('pdpSeoDescription') || null,
