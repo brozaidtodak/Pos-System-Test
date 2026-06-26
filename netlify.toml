@@ -262,3 +262,11 @@
 # (2:30am MYT / 18:30 UTC). Cron tiada query → handler auto mode=import, since=15 hari lalu.
 [functions."returns-pull"]
   schedule = "30 18 * * *"
+
+# p1_975 — Service Worker mesti sentiasa revalidate supaya kemas kini SW sampai ke device
+# (elak SW tersangkut versi lama). Scope '/' supaya boleh kawal seluruh tapak.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
