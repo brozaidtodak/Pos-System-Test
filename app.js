@@ -778,7 +778,8 @@ window.__appSettingsDefaults = function() {
   security: { confidential_pin: '1999' },
   sales: { monthly_target: tgt },
   pricing: { tiktok_markup_mult: 2, floor_margin_pct: 35, rrp_markup_pct: 30 },
-  links: { shopee_store: 'https://shopee.com.my/10camp.os', tiktok_store: 'https://vt.tiktok.com/ZSxoAXDhd/' }
+  links: { shopee_store: 'https://shopee.com.my/10camp.os', tiktok_store: 'https://vt.tiktok.com/ZSxoAXDhd/' },
+  integrations: { tiktok_auto_create: true }
  };
 };
 window.__mergeDeep = function(a, b) { const o = Object.assign({}, a); for(const k in (b||{})) { o[k] = (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) ? window.__mergeDeep(a[k]||{}, b[k]) : b[k]; } return o; };
@@ -865,7 +866,8 @@ window.renderCustomization = function() {
   + '<p style="font-size:12px; color:#9CA3AF; margin:0 0 18px;">Tetapan yang kerap berubah. Edit, tekan Simpan — tersimpan ke server (semua peranti sama).</p>'
   + card('Kedai &amp; Hubungan','store', f('custName','Nama Kedai',s.shop.name) + f('custPhone','Telefon',s.shop.phone,'+60 11-...') + f('custWhatsapp','WhatsApp (no sahaja)',s.shop.whatsapp,'601133109547') + f('custEmail','Email',s.shop.email,'','email') + f('custAddress','Alamat',s.shop.address) + f('custHours','Waktu Operasi',s.shop.hours) + f('custFooter','Footer Resit',s.shop.footer))
   + card('Operasi','clock', f('custShiftA','Waktu Syif A',s.shifts.A) + f('custShiftB','Waktu Syif B',s.shifts.B) + f('custShiftC','Waktu Syif C',s.shifts.C) + f('custTarget','Sasaran Jualan Bulanan (RM)',s.sales.monthly_target,'0','number') + f('custPin','PIN Laporan Sulit',s.security.confidential_pin,'1999'))
-  + card('Harga &amp; Marketplace','tag', '<p style="font-size:11px; color:#9CA3AF; margin:-4px 0 12px;">Harga jual TikTok/Shopee diset PER-PRODUK di kad Variants — bukan global. Di sini cuma peraturan margin + link store.</p>' + f('custFloorMargin','Margin Lantai Default (%)',s.pricing.floor_margin_pct,'35','number') + f('custRrpMarkup','RRP Markup Default (%)',s.pricing.rrp_markup_pct,'30','number') + f('custShopeeStore','Link Store Shopee',s.links.shopee_store) + f('custTiktokStore','Link Store TikTok',s.links.tiktok_store))
+  + card('Harga &amp; Marketplace','tag', '<p style="font-size:11px; color:#9CA3AF; margin:-4px 0 12px;">Harga jual TikTok/Shopee diset PER-PRODUK di kad Variants — bukan global. Di sini cuma peraturan margin + link store.</p>' + f('custFloorMargin','Margin Lantai Default (%)',s.pricing.floor_margin_pct,'35','number') + f('custRrpMarkup','RRP Markup Default (%)',s.pricing.rrp_markup_pct,'30','number') + f('custShopeeStore','Link Store Shopee',s.links.shopee_store) + f('custTiktokStore','Link Store TikTok',s.links.tiktok_store)
+    + '<div style="margin-top:14px; padding-top:14px; border-top:1px solid #F3F4F6; display:flex; align-items:flex-start; gap:10px;"><input id="custTtAuto" type="checkbox" ' + ((s.integrations && s.integrations.tiktok_auto_create !== false) ? 'checked' : '') + ' style="width:16px; height:16px; margin-top:2px; accent-color:#101010;"><label for="custTtAuto" style="font-size:12.5px; color:#374151; font-weight:600; cursor:pointer;">Auto-hantar produk BARU ke TikTok (draf)<span style="display:block; font-weight:500; color:#9CA3AF; font-size:11px; margin-top:2px;">Bila staf daftar produk baru + Published, sistem cipta draf di TikTok Seller Centre automatik. Tutup kalau nak hantar manual sahaja.</span></label></div>')
   + '<div style="display:flex; gap:10px; align-items:center; margin-bottom:30px;"><button onclick="window.__custSave()" class="btn-brand-primary" style="padding:10px 22px; font-size:13px;"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan</button><span id="custSaveMsg" style="font-size:12px; color:#9CA3AF;"></span></div>';
  if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){}
 };
@@ -879,6 +881,7 @@ window.__custSave = async function() {
  s.security.confidential_pin=(g('custPin').trim())||'1999';
  s.pricing.floor_margin_pct=parseFloat(g('custFloorMargin'))||35; s.pricing.rrp_markup_pct=parseFloat(g('custRrpMarkup'))||30;
  s.links.shopee_store=g('custShopeeStore'); s.links.tiktok_store=g('custTiktokStore');
+ s.integrations=s.integrations||{}; s.integrations.tiktok_auto_create = !!((document.getElementById('custTtAuto')||{}).checked);
  window.__appSettings=s;
  const msg=document.getElementById('custSaveMsg'); if(msg) msg.textContent='Menyimpan…';
  const ok = await window.__saveAppSettings();
@@ -24927,7 +24930,7 @@ window.saveMasterProduct = async function() {
  // Cara B — auto-hantar produk BARU ke TikTok (draf). Hanya produk baru + published +
  // setting ON. Fire-and-forget: tak block simpan; toast sendiri bila siap/gagal.
  try {
-  const autoOn = (typeof window.__getSetting === 'function') ? window.__getSetting('tiktok_auto_create', true) : true;
+  const autoOn = (typeof window.__getSetting === 'function') ? window.__getSetting('integrations.tiktok_auto_create', true) : true;
   if(!isEdit && autoOn && cleaned.is_published === true){
    showToast('Menghantar "'+name+'" ke TikTok…', 'info');
    window.__tiktokPushProduct(parentKey, { toast:true });
