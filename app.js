@@ -22499,6 +22499,20 @@ window.__mpTiktokStock = async function(filter, forceReload){
  html += '<h2 class="section-title" data-skip-title-sync style="margin:0 0 4px;"><i data-lucide="refresh-cw" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;"></i>TikTok — Stock Sync</h2>';
  html += '<p style="font-size:12px; color:#9CA3AF; margin:0 0 14px;">Semua '+(d.total||0)+' produk di TikTok ikut status. Draf = belum disubmit/lulus, Live = tersiar untuk jual. Stok TikTok dibanding stok POS.</p>';
 
+ // enrich tiap produk dengan brand/kategori/nama POS (sekali) untuk search + filter koleksi
+ if(typeof masterProducts !== 'undefined' && !d.__enriched){
+  const posBy = {};
+  (masterProducts||[]).forEach(mp=>{ if(mp && mp.sku) posBy[String(mp.sku).toUpperCase()] = mp; });
+  (d.items||[]).forEach(it=>{
+   const ss = (it.skus||[]).map(s=>(s.seller_sku||'').toUpperCase()).filter(Boolean);
+   let pp=null; for(const s of ss){ if(posBy[s]){ pp=posBy[s]; break; } }
+   it.__brand = pp ? (pp.brand||'') : '';
+   it.__cat = pp ? (pp.category||'') : '';
+   it.__posName = pp ? (pp.name||'') : '';
+  });
+  d.__enriched = true;
+ }
+
  // status filter chips
  const chip = (key, label, n) => '<button onclick="window.__mpTiktokStock(\''+key+'\')" style="padding:6px 12px; border-radius:999px; border:1px solid '+(cur===key?'#101010':'#E5E7EB')+'; background:'+(cur===key?'#101010':'#FFF')+'; color:'+(cur===key?'#FFF':'#374151')+'; font-size:12px; font-weight:700; cursor:pointer;">'+label+(n!=null?' ('+n+')':'')+'</button>';
  html += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">';
@@ -22506,9 +22520,39 @@ window.__mpTiktokStock = async function(filter, forceReload){
  ['ACTIVATE','DRAFT','PENDING','FAILED','SELLER_DEACTIVATED','PLATFORM_DEACTIVATED','FREEZE'].forEach(st => { if(sc[st]) html += chip(st, (ST[st]||{}).l||st, sc[st]); });
  html += '</div>';
 
- // rows (1 per sku)
- html += '<p style="font-size:11.5px; color:#9CA3AF; margin:-6px 0 12px;"><i data-lucide="mouse-pointer-click" style="width:12px;height:12px;vertical-align:-2px;"></i> Tekan mana-mana baris untuk on/off sync atau edit produk.</p>';
- const items = (cur==='ALL') ? d.items : d.items.filter(x => x.status === cur);
+ // search + filter koleksi (brand)
+ const brands = Array.from(new Set((d.items||[]).map(it=>it.__brand).filter(Boolean))).sort();
+ const curCol = window.__ttCollection || '';
+ const curQ = window.__ttSearch || '';
+ html += '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">';
+ html += '<div style="position:relative; flex:1; min-width:200px;"><i data-lucide="search" style="width:15px;height:15px; position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#9CA3AF;"></i><input id="ttSearchInput" type="text" value="'+esc(curQ)+'" oninput="window.__ttSearch=this.value; window.__ttRenderRows();" placeholder="Cari nama atau SKU…" style="width:100%; box-sizing:border-box; padding:9px 11px 9px 32px; border:1px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:Poppins,sans-serif;"></div>';
+ html += '<select id="ttCollectionSel" onchange="window.__ttCollection=this.value; window.__ttRenderRows();" style="padding:9px 11px; border:1px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:Poppins,sans-serif; min-width:170px;"><option value="">Semua koleksi</option>'+brands.map(b=>'<option value="'+esc(b)+'"'+(b===curCol?' selected':'')+'>'+esc(b)+'</option>').join('')+'</select>';
+ html += '</div>';
+ html += '<p style="font-size:11.5px; color:#9CA3AF; margin:-4px 0 12px;"><i data-lucide="mouse-pointer-click" style="width:12px;height:12px;vertical-align:-2px;"></i> Tekan mana-mana baris untuk on/off sync, publish atau edit. <span id="ttCount" style="font-weight:600;"></span></p>';
+ // jadual — isi rows via __ttRenderRows (kekal fokus search masa taip)
+ const th = (t, align) => '<th style="padding:10px; text-align:'+(align||'left')+'; font-size:11px; color:#6B7280; text-transform:uppercase;">'+t+'</th>';
+ html += '<div style="border:1px solid #E5E7EB; border-radius:12px; overflow:hidden; background:#FFF;"><table style="width:100%; border-collapse:collapse;">'
+  + '<thead><tr style="background:#F9FAFB; border-bottom:1px solid #E5E7EB;">'+th('Produk')+th('SKU')+th('Status')+th('Stok TikTok','right')+th('Stok POS','right')+th('Sync','center')+'</tr></thead>'
+  + '<tbody id="ttRows"></tbody></table></div>';
+
+ body.innerHTML = html;
+ window.__ttRenderRows();
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+};
+// Render baris jadual sahaja (status + search + koleksi) — tak rebuild seluruh view, fokus search kekal.
+window.__ttRenderRows = function(){
+ const d = window.__ttStockData; if(!d) return;
+ const tb = document.getElementById('ttRows'); if(!tb) return;
+ const esc = (typeof hesc==='function') ? hesc : (x)=>String(x==null?'':x);
+ const ST = window.__TT_ST;
+ const badge = (st)=>{ const m=ST[st]||{l:st,c:'#6B7280',bg:'#F3F4F6'}; return '<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:10.5px; font-weight:700; color:'+m.c+'; background:'+m.bg+';">'+m.l+'</span>'; };
+ const cur = window.__ttCurFilter || 'ALL';
+ const q = (window.__ttSearch||'').toLowerCase().trim();
+ const col = window.__ttCollection || '';
+ let items = (d.items||[]);
+ if(cur!=='ALL') items = items.filter(x=>x.status===cur);
+ if(col) items = items.filter(x=>(x.__brand||'')===col);
+ if(q) items = items.filter(x=> ((x.title||'').toLowerCase().includes(q)) || ((x.__posName||'').toLowerCase().includes(q)) || (x.skus||[]).some(s=>(s.seller_sku||'').toLowerCase().includes(q)) );
  let rows = '';
  items.forEach(p => {
   const skus = (p.skus && p.skus.length) ? p.skus : [{seller_sku:'—', tiktok_qty:0, pos_qty:null}];
@@ -22525,14 +22569,9 @@ window.__mpTiktokStock = async function(filter, forceReload){
     + '</tr>';
   });
  });
- if(!rows) rows = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#9CA3AF;">Tiada produk untuk status ni.</td></tr>';
- const th = (t, align) => '<th style="padding:10px; text-align:'+(align||'left')+'; font-size:11px; color:#6B7280; text-transform:uppercase;">'+t+'</th>';
- html += '<div style="border:1px solid #E5E7EB; border-radius:12px; overflow:hidden; background:#FFF;"><table style="width:100%; border-collapse:collapse;">'
-  + '<thead><tr style="background:#F9FAFB; border-bottom:1px solid #E5E7EB;">'+th('Produk')+th('SKU')+th('Status')+th('Stok TikTok','right')+th('Stok POS','right')+th('Sync','center')+'</tr></thead>'
-  + '<tbody>'+rows+'</tbody></table></div>';
-
- body.innerHTML = html;
- if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
+ if(!rows) rows = '<tr><td colspan="6" style="padding:20px; text-align:center; color:#9CA3AF;">Tiada produk padan tapisan.</td></tr>';
+ tb.innerHTML = rows;
+ const cnt = document.getElementById('ttCount'); if(cnt) cnt.textContent = items.length + ' produk dipaparkan';
 };
 window.__mpTiktokPushStock = async function(){
  if(typeof showToast === 'function') showToast('Push stok ke TikTok…', 'info');
