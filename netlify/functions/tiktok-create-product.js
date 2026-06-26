@@ -193,6 +193,7 @@ exports.handler = async (event) => {
             title,
             description: desc,
             category_id,
+            category_version: 'v2', // shops are required to use V2 categories (err 12052217)
             main_images,
             package_weight: { value: w.toFixed(2), unit: 'KILOGRAM' },
             package_dimensions: dim,
