@@ -39,7 +39,7 @@ exports.handler = async (event) => {
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
 
     const params = event.queryStringParameters || {};
-    const mode = ['dryrun', 'push'].includes(params.mode) ? params.mode : 'peek';
+    const mode = ['dryrun', 'push', 'list'].includes(params.mode) ? params.mode : 'peek';
     const out = { mode };
 
     try {
@@ -57,6 +57,45 @@ exports.handler = async (event) => {
             out.total_count = res.data && res.data.total_count;
             out.products_in_page = products.length;
             out.raw_first_product = products[0] || null;
+            return json(200, out);
+        }
+
+        // LIST — ALL products across every status (so staff see DRAFT vs LIVE), with
+        // TikTok stock vs POS stock per SKU. Read-only (no push). Powers the Stock Sync view.
+        if (mode === 'list') {
+            const STATUSES = ['ACTIVATE', 'DRAFT', 'PENDING', 'FAILED', 'SELLER_DEACTIVATED', 'PLATFORM_DEACTIVATED', 'FREEZE'];
+            const posStock = await getPosStock();
+            const items = [];
+            const statusCount = {};
+            for (const st of STATUSES) {
+                let pageToken = '', guard = 0;
+                do {
+                    const q = { page_size: 50 };
+                    if (pageToken) q.page_token = pageToken;
+                    const res = await ttRequest('POST', `/product/${VERSION}/products/search`, {
+                        query: q, body: { status: st }, accessToken: tok.access_token, shopCipher
+                    });
+                    if (res.code !== 0) break; // status unsupported / empty → skip
+                    const products = (res.data && res.data.products) || [];
+                    for (const p of products) {
+                        const skus = (p.skus || []).map(s => {
+                            const sellerSku = (s.seller_sku || '').toUpperCase();
+                            const inv = (s.inventory || [])[0] || {};
+                            return {
+                                seller_sku: s.seller_sku || '',
+                                tiktok_qty: parseInt(inv.quantity, 10) || 0,
+                                pos_qty: (sellerSku in posStock) ? posStock[sellerSku] : null
+                            };
+                        });
+                        items.push({ product_id: String(p.id), title: p.title || '', status: st, skus });
+                        statusCount[st] = (statusCount[st] || 0) + 1;
+                    }
+                    pageToken = (res.data && res.data.next_page_token) || '';
+                } while (pageToken && ++guard < 60);
+            }
+            out.status_count = statusCount;
+            out.total = items.length;
+            out.items = items;
             return json(200, out);
         }
 
