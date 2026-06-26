@@ -85,13 +85,13 @@ function pickImages(p) {
 }
 
 // Upload one image (by URL) to TikTok → returns uri. Multipart: body excluded from signature.
-async function uploadImageByUrl(url, accessToken, shopCipher) {
+async function uploadImageByUrl(url, accessToken) {
     const imgRes = await fetch(url);
     if (!imgRes.ok) throw new Error(`fetch image ${imgRes.status}`);
     const buf = Buffer.from(await imgRes.arrayBuffer());
     const path = `/product/${V}/images/upload`;
+    // NOTE: image upload does NOT take shop_cipher (TikTok err 36009004 if present)
     const q = { app_key: tt.APP_KEY, timestamp: Math.floor(Date.now() / 1000).toString() };
-    if (shopCipher) q.shop_cipher = shopCipher;
     q.sign = tt.signRequest(path, q, '', true); // true = exclude body (multipart)
     const qs = Object.entries(q).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
     const fd = new FormData();
@@ -183,7 +183,7 @@ exports.handler = async (event) => {
 
         const main_images = [];
         for (const u of imgUrls) {
-            try { main_images.push({ uri: await uploadImageByUrl(u, tok.access_token, cipher) }); }
+            try { main_images.push({ uri: await uploadImageByUrl(u, tok.access_token) }); }
             catch (e) { errors.push('img: ' + e.message); }
         }
         if (!main_images.length) return { statusCode: 200, body: JSON.stringify({ ok: false, errors: ['no images uploaded'].concat(errors) }) };
