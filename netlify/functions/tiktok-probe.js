@@ -51,8 +51,9 @@ exports.handler = async (event) => {
 
     // 4) Category tree — meta always; full leaf dump only when ?dump=cats (heavy)
     await safe('categories_meta', async () => {
+        const cv = p.cv || 'v1';
         const r = await tt.ttRequest('GET', `/product/${V}/categories`, {
-            query: { category_version: 'v1' }, accessToken: at, shopCipher: cipher });
+            query: { category_version: cv }, accessToken: at, shopCipher: cipher });
         const cats = (r.data && r.data.categories) || [];
         const leaves = cats.filter(c => c.is_leaf);
         const meta = { code: r.code, message: r.message, total: cats.length, leaf_count: leaves.length };
