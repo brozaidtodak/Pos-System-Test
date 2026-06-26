@@ -22553,6 +22553,11 @@ window.__mpTtProductDetail = function(productId){
  const firstSku = (p.skus||[]).map(s=>s.seller_sku).filter(Boolean)[0] || '';
  const hasMappedSku = (p.skus||[]).some(s=>s.seller_sku);
  const sellerUrl = 'https://seller-my.tiktok.com/product/edit/'+p.product_id+'?shop_region=MY';
+ // Publish/Published state
+ let pubBtn = '';
+ if(p.status === 'ACTIVATE') pubBtn = '<span style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; background:#E4EFE2; color:#2F5A2C; font-weight:700; font-size:12.5px;"><i data-lucide="check-circle" style="width:15px;height:15px;"></i> Published</span>';
+ else if(p.status === 'PENDING') pubBtn = '<span style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; background:#E5ECF8; color:#3B5BA5; font-weight:700; font-size:12.5px;"><i data-lucide="clock" style="width:15px;height:15px;"></i> Sedang direview TikTok</span>';
+ else if(hasMappedSku) pubBtn = '<button onclick="window.__mpTtPublish(\''+p.product_id+'\')" class="btn-brand-primary" style="font-size:12.5px; padding:8px 14px;"><i data-lucide="rocket" style="width:14px;height:14px;vertical-align:-2px;"></i> Publish ke TikTok</button>';
  const skuRows = ((p.skus||[]).map(s=>{
   const mism = (s.pos_qty!=null && s.pos_qty!==s.tiktok_qty);
   return '<tr><td style="padding:6px 8px; font-family:Menlo,monospace; font-size:11.5px;">'+esc(s.seller_sku||'—')+'</td><td style="padding:6px 8px; text-align:right;">'+s.tiktok_qty+'</td><td style="padding:6px 8px; text-align:right; color:'+(mism?'#B23A2E':'#374151')+'; font-weight:'+(mism?'700':'400')+';">'+(s.pos_qty==null?'—':s.pos_qty)+(mism?' ⚠':'')+'</td></tr>';
@@ -22566,8 +22571,9 @@ window.__mpTtProductDetail = function(productId){
   + '<div style="margin-bottom:6px;">'+toggleBtn+'</div>'
   + '<div style="font-size:11px; color:#9CA3AF; margin-bottom:18px;">Bila ON, stok POS auto-tolak ke TikTok. Tutup kalau nak urus stok produk ni manual (cth listing khas/bundle).</div>'
   + '<div style="display:flex; gap:8px; flex-wrap:wrap;">'
+  + pubBtn
   + (hasMappedSku ? '<button onclick="var o=document.getElementById(\'ttDetailOverlay\'); if(o)o.remove(); window.openPdpModal && window.openPdpModal(\''+esc(String(firstSku).replace(/[^A-Za-z0-9_-]/g,''))+'\')" class="btn-brand-outline" style="font-size:12.5px; padding:8px 14px;"><i data-lucide="edit-3" style="width:14px;height:14px;vertical-align:-2px;"></i> Edit di POS</button>' : '')
-  + '<a href="'+sellerUrl+'" target="_blank" rel="noopener" class="btn-brand-primary" style="font-size:12.5px; padding:8px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Buka / lengkapkan di TikTok</a>'
+  + '<a href="'+sellerUrl+'" target="_blank" rel="noopener" class="btn-brand-outline" style="font-size:12.5px; padding:8px 14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Buka / lengkapkan di TikTok</a>'
   + '</div>';
  let ov = document.getElementById('ttDetailOverlay');
  if(!ov){ ov = document.createElement('div'); ov.id='ttDetailOverlay'; document.body.appendChild(ov); }
@@ -22598,6 +22604,30 @@ window.__mpTtToggleSync = async function(productId){
   window.__mpTiktokStock(window.__ttCurFilter); // refresh list indicator (guna data cache)
   window.__mpTtProductDetail(productId);          // refresh modal
  } catch(e){ if(typeof showToast==='function') showToast('Gagal set sync: '+e.message, 'error'); }
+};
+// Publish — terbitkan draf TikTok jadi listing (submit untuk semakan TikTok).
+window.__mpTtPublish = async function(productId){
+ const d = window.__ttStockData; const p = (d.items||[]).find(x=>x.product_id===productId); if(!p) return;
+ const sellerSku = (p.skus||[]).map(s=>s.seller_sku).filter(Boolean)[0];
+ if(!sellerSku){ if(typeof showToast==='function') showToast('Tiada SKU dipadan POS — lengkapkan & publish di TikTok Seller Centre.', 'warn'); return; }
+ const prod = (typeof masterProducts!=='undefined'?masterProducts:[]).find(mp=>String(mp.sku).toUpperCase()===String(sellerSku).toUpperCase());
+ const listingSku = prod ? (prod.parent_sku || prod.sku) : sellerSku;
+ if(typeof showToast==='function') showToast('Menerbitkan ke TikTok…', 'info');
+ try {
+  const r = await fetch('/api/tiktok-create-product', {
+   method:'POST', headers: window.__authHeaderSync({'Content-Type':'application/json'}),
+   body: JSON.stringify({ sku: listingSku, publish:true, product_id: productId })
+  });
+  const j = await r.json().catch(()=>({ok:false,error:'respons tak sah'}));
+  if(j.ok && j.published){
+   if(typeof showToast==='function') showToast('Berjaya dihantar — TikTok akan review, jadi Live bila lulus.', 'success');
+   p.status = 'PENDING';
+   window.__mpTiktokStock(window.__ttCurFilter);
+   window.__mpTtProductDetail(productId);
+  } else {
+   if(typeof showToast==='function') showToast('Publish gagal: '+(j.tiktok_msg||j.error||'requirement tak cukup — tekan "Buka/lengkapkan di TikTok"'), 'warn');
+  }
+ } catch(e){ if(typeof showToast==='function') showToast('Publish ralat: '+e.message, 'error'); }
 };
 window.__mpMapTiktok = async function() {
  if(typeof showToast === 'function') showToast('Triggering TikTok mapping...', 'info');
