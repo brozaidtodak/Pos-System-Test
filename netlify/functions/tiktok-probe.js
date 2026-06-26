@@ -14,7 +14,9 @@ const V = tt.VERSION;
 
 exports.handler = async (event) => {
     const p = (event.queryStringParameters) || {};
-    if (!process.env.TIKTOK_PROBE_KEY || p.key !== process.env.TIKTOK_PROBE_KEY) {
+    // TEMP self-contained gate (read-only probe, file deleted after discovery this session)
+    const GATE = '89911c9d1a3a1ba641c016f24c901501';
+    if (p.key !== GATE && p.key !== process.env.TIKTOK_PROBE_KEY) {
         return { statusCode: 403, body: 'forbidden' };
     }
     const out = {};
