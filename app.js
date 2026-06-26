@@ -227,6 +227,43 @@ window.__authHeaderSync = function(base) {
  return h;
 };
 
+// Cara B — hantar (auto-create) satu produk ke TikTok Seller Centre sebagai DRAF.
+// Guna auth staff (Authorization JWT via __authHeaderSync). Server: tiktok-create-product.
+window.__tiktokPushProduct = async function(sku, opts){
+ opts = opts || {};
+ if(!sku) return { ok:false, error:'no sku' };
+ try {
+  const res = await fetch('/api/tiktok-create-product', {
+   method:'POST',
+   headers: window.__authHeaderSync({ 'Content-Type':'application/json' }),
+   body: JSON.stringify({ sku: sku, force: !!opts.force })
+  });
+  const j = await res.json().catch(()=>({ ok:false, error:'respons tak sah' }));
+  if(opts.toast !== false && typeof showToast === 'function'){
+   if(j.ok && j.product_id) showToast('TikTok: draf produk dicipta ('+sku+')', 'success');
+   else if(j.already) showToast('TikTok: '+sku+' sudah ada di TikTok', 'info');
+   else showToast('TikTok gagal ('+sku+'): '+(j.tiktok_msg||j.error||(j.errors&&j.errors[0])||'tak diketahui'), 'warn');
+  }
+  return j;
+ } catch(e){
+  if(opts.toast !== false && typeof showToast === 'function') showToast('TikTok ralat: '+e.message, 'warn');
+  return { ok:false, error:String(e) };
+ }
+};
+
+// Butang manual dari senarai produk — hantar + kemas kini badge tempatan + render semula.
+window.__tiktokPushFromList = async function(sku){
+ if(!sku) return;
+ if(typeof showToast === 'function') showToast('Menghantar '+sku+' ke TikTok…', 'info');
+ const j = await window.__tiktokPushProduct(sku, { toast:true });
+ if(j && j.ok && j.product_id && typeof masterProducts !== 'undefined'){
+  (masterProducts||[]).forEach(p=>{
+   if(p.sku===sku || p.parent_sku===sku){ p.metadata = Object.assign({}, p.metadata||{}, { tiktok_product_id: j.product_id }); }
+  });
+  if(typeof renderProductDatabase === 'function') renderProductDatabase();
+ }
+};
+
 // p1_75: Auto-login on refresh — Supabase persists session in localStorage by default.
 // On boot, fetch active session; if user matches authUsers, loginAs silent
 // (skip welcome modal flash). Staff stays logged in across refresh.
@@ -24886,6 +24923,17 @@ window.saveMasterProduct = async function() {
  } catch(_){}
 
  showToast(`${isEdit ? 'Update' : 'Daftar'} "${name}" (${parentKey})${hasVariants ? ' · ' + __vrows.length + ' variant' : ''} berjaya!`, 'success');
+
+ // Cara B — auto-hantar produk BARU ke TikTok (draf). Hanya produk baru + published +
+ // setting ON. Fire-and-forget: tak block simpan; toast sendiri bila siap/gagal.
+ try {
+  const autoOn = (typeof window.__getSetting === 'function') ? window.__getSetting('tiktok_auto_create', true) : true;
+  if(!isEdit && autoOn && cleaned.is_published === true){
+   showToast('Menghantar "'+name+'" ke TikTok…', 'info');
+   window.__tiktokPushProduct(parentKey, { toast:true });
+  }
+ } catch(e){ console.warn('TikTok auto-create skip:', e); }
+
  window.clearMpForm();
  if(typeof window.refreshMpDatalists === 'function') window.refreshMpDatalists();
  // p1_409 — if opened from Products "+ Baru" modal, close it & refresh the product grid
@@ -36698,6 +36746,9 @@ window.renderProductDatabase = function() {
  <button class="btn btn--ghost btn--sm" onclick="event.stopPropagation(); window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')">Edit</button>
  <button class="btn btn--ghost btn--sm" style="padding:4px 8px; margin-left:4px; color:#25D366;" onclick="event.stopPropagation(); window.shareProductWA('${p.sku.replace(/'/g, "\\'")}')" title="Share ke WhatsApp"><i data-lucide="message-circle" style="width:13px; height:13px;"></i></button>
  <button class="btn btn--ghost btn--sm" style="padding:4px 8px; margin-left:4px;" onclick="event.stopPropagation(); window.shareProduct('${p.sku.replace(/'/g, "\\'")}')" title="Share (copy / native)"><i data-lucide="share-2" style="width:13px; height:13px;"></i></button>
+ ${(p.metadata && p.metadata.tiktok_product_id)
+   ? `<a class="btn btn--ghost btn--sm" style="padding:4px 8px; margin-left:4px; color:#101010;" href="https://seller-my.tiktok.com/product/edit/${p.metadata.tiktok_product_id}?shop_region=MY" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Buka di TikTok Seller Centre"><i data-lucide="external-link" style="width:13px; height:13px;"></i></a>`
+   : `<button class="btn btn--ghost btn--sm" style="padding:4px 8px; margin-left:4px; color:#101010;" onclick="event.stopPropagation(); window.__tiktokPushFromList('${(p.parent_sku||p.sku).replace(/'/g, "\\'")}')" title="Hantar ke TikTok (draf)"><i data-lucide="send" style="width:13px; height:13px;"></i></button>`}
  </td>
  </tr>
  `;

@@ -13,8 +13,8 @@
  *
  * Auth: requires header x-pos-key === TIKTOK_CREATE_KEY (env) OR same-origin POS call.
  */
-const crypto = require('crypto');
 const tt = require('./_tiktok');
+const { requireStaff } = require('./_auth'); // shared staff-JWT gate (same as other mutating fns)
 const V = tt.VERSION;
 const API_BASE = 'https://open-api.tiktokglobalshop.com';
 const SALES_WAREHOUSE = '7369471784624146184'; // 10 Camp default SALES_WAREHOUSE (probe)
@@ -106,12 +106,8 @@ async function uploadImageByUrl(url, accessToken) {
 
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'POST only' };
-    // TEMP test-phase gate (to be replaced with proper auth before auto-trigger goes live;
-    // creates DRAFT products only — deletable). env override wins if set.
-    const TEMP_GATE = 'temp_create_c5a1b6b503387ebc9d10';
-    const KEY = process.env.TIKTOK_CREATE_KEY || TEMP_GATE;
-    const hdrKey = (event.headers['x-pos-key'] || event.headers['X-Pos-Key'] || '');
-    if (hdrKey !== KEY) return { statusCode: 403, body: 'forbidden' };
+    const auth = await requireStaff(event);
+    if (!auth.ok) return auth.response;
 
     let body = {};
     try { body = JSON.parse(event.body || '{}'); } catch (e) { return { statusCode: 400, body: 'bad json' }; }
