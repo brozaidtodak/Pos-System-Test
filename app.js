@@ -22881,15 +22881,21 @@ window.__mpTtFormSubmit = async function(){
  if(errEl) errEl.style.display='none';
  try {
   const r = await fetch('/api/tiktok-create-product', { method:'POST', headers: window.__authHeaderSync({'Content-Type':'application/json'}), body: JSON.stringify(payload) });
-  const j = await r.json().catch(()=>({ok:false,error:'respons tak sah'}));
+  const txt = await r.text();
+  let j = {}; try { j = txt ? JSON.parse(txt) : {}; } catch(_){ j = {}; }
+  const restoreBtn = ()=>{ if(btn){ btn.disabled=false; btn.innerHTML='<i data-lucide="send" style="width:15px;height:15px;vertical-align:-2px;"></i> '+(opts.publish?'Terbitkan ke TikTok (Live)':'Hantar ke TikTok (Draf)'); if(window.lucide)try{lucide.createIcons();}catch(e){} } };
   if(j.ok && (j.product_id || j.published)){
    if(window.showToast) showToast(opts.publish ? 'Berjaya dihantar untuk semakan TikTok — jadi Live bila lulus.' : 'Draf dicipta di TikTok.', 'success');
    var o=document.getElementById('ttFormOverlay'); if(o)o.remove();
    var o2=document.getElementById('ttDetailOverlay'); if(o2)o2.remove();
    window.__mpTiktokStock(window.__ttCurFilter, true);
+  } else if(!txt){
+   // respons kosong = server timeout. Produk MUNGKIN dah tercipta — jangan hantar lagi membuta.
+   showErr('Server timeout. Produk mungkin DAH tercipta di TikTok — tutup, tekan "Muat semula", semak senarai Draf dulu sebelum cuba lagi (elak pendua).');
+   restoreBtn();
   } else {
    showErr('TikTok: '+(j.tiktok_msg||j.error||(j.errors&&j.errors[0])||'gagal — cuba lagi atau lengkapkan di Seller Centre'));
-   if(btn){ btn.disabled=false; btn.innerHTML='<i data-lucide="send" style="width:15px;height:15px;vertical-align:-2px;"></i> '+(opts.publish?'Terbitkan ke TikTok (Live)':'Hantar ke TikTok (Draf)'); if(window.lucide)try{lucide.createIcons();}catch(e){} }
+   restoreBtn();
   }
  } catch(e){ showErr('Ralat: '+e.message); if(btn){ btn.disabled=false; btn.textContent='Cuba lagi'; } }
 };

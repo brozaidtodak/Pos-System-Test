@@ -221,11 +221,13 @@ exports.handler = async (event) => {
         const tok = await tt.getValidToken();
         const cipher = await tt.ensureShopCipher(tok);
 
+        // PARALLEL image upload — elak timeout Netlify 10s (dulu N gambar berturut). Kekal urutan.
         const main_images = [];
-        for (const u of imgUrls) {
-            try { main_images.push({ uri: await uploadImageByUrl(u, tok.access_token) }); }
-            catch (e) { errors.push('img: ' + e.message); }
-        }
+        const upResults = await Promise.allSettled(imgUrls.map(u => uploadImageByUrl(u, tok.access_token)));
+        upResults.forEach((res, i) => {
+            if (res.status === 'fulfilled' && res.value) main_images.push({ uri: res.value });
+            else errors.push('img' + i + ': ' + String((res.reason && res.reason.message) || res.reason));
+        });
         if (!main_images.length) return { statusCode: 200, body: JSON.stringify({ ok: false, errors: ['no images uploaded'].concat(errors) }) };
 
         const payload = {
