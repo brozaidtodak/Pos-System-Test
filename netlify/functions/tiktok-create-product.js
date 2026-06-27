@@ -131,7 +131,7 @@ exports.handler = async (event) => {
         let skuRows = rows.filter(r => r.sku && r.sku !== sku);
         const hasVariants = skuRows.length > 0;
         if (!hasVariants) skuRows = [lead];
-        if (lead.metadata && lead.metadata.tiktok_product_id && !dry && !force && !publish)
+        if (lead.metadata && lead.metadata.tiktok_product_id && !dry && !force && !publish && !requirements)
             return { statusCode: 200, body: JSON.stringify({ ok: false, already: true, product_id: lead.metadata.tiktok_product_id }) };
 
         // 2) Title + category + description (borang prefill boleh override)
