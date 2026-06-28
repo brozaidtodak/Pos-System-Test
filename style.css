@@ -367,6 +367,27 @@ body.pos-mobile-mode .cart-section > div:last-child hr { margin: 9px 0; }
 body.pos-mobile-mode #cartProofRow { margin-bottom: 8px; }
 body.pos-mobile-mode .cart-section > div:last-child .checkout-btn { margin-top: 8px; padding-top: 14px; padding-bottom: 14px; }
 
+/* p1_987 — FIX item troli bawah terlindung footer (Zaid: "kenapa item bawah tak dapat view penuh?").
+   PUNCA: pada mobile troli = bottom-sheet (.cart-section scroll sendiri) + footer position:sticky,
+   TAPI #cartItems ada scroll DALAMAN sendiri (max-height calc(100vh-420px)). Dua scroll bersarang
+   berlanggar → tetingkap dalaman cartItems memanjang bawah footer sticky → item terakhir terpotong.
+   (Jadi lebih teruk lepas footer "Koordinasi Inventori" tambah tinggi.) FIX: layout flex betul —
+   badan (header+widget+items) jadi SATU kawasan scroll yang grow, footer flex tetap bawah; buang
+   cap dalaman cartItems. Footer SENTIASA bawah semua item, tiada tindih, tak kira footer berapa tinggi. */
+body.pos-mobile-mode .cart-section {
+    justify-content: flex-start; /* elak gotcha space-between+overflow potong bahagian atas */
+}
+body.pos-mobile-mode .cart-section > div:first-child {
+    flex: 1 0 auto;   /* grow isi ruang bila item sikit (tolak footer ke bawah); natural bila banyak */
+    min-height: 0;
+}
+body.pos-mobile-mode #cartItems {
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin-bottom: 10px;
+}
+
 /* p1_240 — Main content padding-bottom revert ke 100px (cuma satu button Lihat Troli orange, BAYAR dah pindah ke dalam drawer) */
 body.pos-mobile-mode .main-content {
     padding-bottom: 100px !important;
