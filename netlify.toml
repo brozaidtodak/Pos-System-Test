@@ -59,6 +59,14 @@
   status = 200
   force = true
 
+# p1_983 — REDIRECT YANG TERTINGGAL: borang "Hantar ke TikTok" panggil /api/tiktok-create-product
+# tapi tiada redirect → 404 → "server busy"/"failed" untuk Zack. Inilah punca sebenar (bukan timeout).
+[[redirects]]
+  from = "/api/tiktok-create-product"
+  to = "/.netlify/functions/tiktok-create-product"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/api/tiktok-stock-push"
   to = "/.netlify/functions/tiktok-stock-push"

@@ -108,9 +108,15 @@ exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'POST only' };
     const auth = await requireAuth(event);
     if (!auth.ok) return auth.response;
-
     let body = {};
     try { body = JSON.parse(event.body || '{}'); } catch (e) { return { statusCode: 400, body: 'bad json' }; }
+    return await runCreate(body);
+};
+
+// Core create/publish/requirements/dry logic. Reusable by the SYNC handler above AND the
+// BACKGROUND function (tiktok-create-product-background.js) so slow creates never hit the
+// ~10s sync cap — the background fn runs runCreate to completion + writeback, client polls DB.
+async function runCreate(body) {
     const { sku, title: titleOverride, category_id: catOverride, dry = false, force = false,
             publish = false, product_id: publishProductId = null, save_mode = 'AS_DRAFT',
             requirements = false,                 // mode=requirements → pulang field wajib kategori + prefill POS
@@ -282,21 +288,21 @@ exports.handler = async (event) => {
             return { statusCode: 200, headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({ ok: true, published: true, product_id: productId, title, category_id, errors }, null, 2) };
         }
-        // 7) Write tiktok_product_id back to each sku's metadata
+        // 7) Write tiktok_product_id back to each sku's metadata — PARALLEL (cepat, siap
+        //    sebelum had masa; client poll metadata ni untuk tahu create berjaya walau respons lambat).
         const skuIdBySeller = {};
         for (const s of (data.skus || [])) skuIdBySeller[s.seller_sku] = s.id;
-        for (const r of (force ? [] : skuRows)) {
+        await Promise.allSettled((force ? [] : skuRows).map(r => {
             const meta = Object.assign({}, r.metadata || {}, {
                 tiktok_product_id: productId,
                 tiktok_sku_id: skuIdBySeller[r.sku] || null,
                 tiktok_created_at: new Date().toISOString(),
                 tiktok_created_via: 'cara_b'
             });
-            try {
-                await tt.sb('PATCH', `/products_master?sku=eq.${encodeURIComponent(r.sku)}`,
-                    { metadata: meta }, { Prefer: 'return=minimal' });
-            } catch (e) { errors.push('writeback ' + r.sku + ': ' + e.message); }
-        }
+            return tt.sb('PATCH', `/products_master?sku=eq.${encodeURIComponent(r.sku)}`,
+                { metadata: meta }, { Prefer: 'return=minimal' })
+                .catch(e => { errors.push('writeback ' + r.sku + ': ' + e.message); });
+        }));
         return { statusCode: 200, headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ ok: true, product_id: productId, title, category_id,
                 sku_count: skus.length, errors }, null, 2) };
@@ -305,4 +311,5 @@ exports.handler = async (event) => {
         return { statusCode: 500, headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ ok: false, error: String((e && e.stack) || e), errors }) };
     }
-};
+}
+module.exports.runCreate = runCreate;
