@@ -22937,8 +22937,87 @@ window.renderConnections = function() {
 window.renderSegments = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
+// p1_991 — Halaman Members/CRM (dulu "Coming Soon"). Enjin loyalty (kumpul+tebus tier) dah ada
+// di Cashier (p1_561); ni paparan back-office: KPI ahli ikut tier + jadual boleh cari. Read-only.
 window.renderPointsMembership = function() {
+ var body = document.getElementById('pmBody');
+ if(!body) return;
+ var list = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
+ if(!list.length){
+  body.innerHTML = '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:22px;text-align:center;color:#6B7280;font-size:13px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));">Senarai pelanggan belum dimuat dalam sesi ni. Buka skrin <b>Cashier</b> atau <b>Orders</b> dahulu, kemudian buka semula halaman ni.</div>';
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+  return;
+ }
+ var DAY = 24*3600*1000, lastByPhone = {};
+ try {
+  var sh = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+  sh.forEach(function(s){ if(!s) return; var ph=s.customer_phone||(s.customer&&s.customer.phone); if(!ph) return; var t=new Date(s.created_at||s.timestamp||0).getTime(); if(!t) return; if(!lastByPhone[ph]||t>lastByPhone[ph]) lastByPhone[ph]=t; });
+ } catch(e){}
+ var tierOf = function(c){ return (typeof window.__custTier==='function') ? window.__custTier(c.total_spent) : {name:'Bronze',bg:'#F6E9D6',color:'#8A5A1E'}; };
+ var availOf = function(c){ return (typeof window.__custPointsAvail==='function') ? window.__custPointsAvail(c) : Math.max(0,(Number(c.points)||0)-(Number(c.points_redeemed)||0)); };
+ var lastMs = function(c){ if(c.last_order_at){var t=new Date(c.last_order_at).getTime(); if(t) return t;} return (c.phone&&lastByPhone[c.phone])?lastByPhone[c.phone]:null; };
+ var data = list.map(function(c){
+  var t = tierOf(c);
+  return { name:c.name||'(Tiada nama)', phone:c.phone||'', tierName:t.name, tierBg:t.bg, tierColor:t.color,
+   spent:Number(c.total_spent)||0, avail:availOf(c), orders:Number(c.total_orders)||0, last:lastMs(c) };
+ }).sort(function(a,b){ return b.spent - a.spent; });
+ window.__pmData = data;
+ var byTier = {}, totPts=0, totSpent=0, withPhone=0;
+ data.forEach(function(d){ byTier[d.tierName]=(byTier[d.tierName]||0)+1; totPts+=d.avail; totSpent+=d.spent; if(d.phone) withPhone++; });
+ var fmtRM = function(n){ return 'RM' + (Math.round(n)).toLocaleString('en-MY'); };
+ var kpi = function(label,val,sub,accent){
+  return '<div style="flex:1;min-width:118px;background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:13px 15px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));">'
+   +'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#6B7280;font-weight:700;">'+label+'</div>'
+   +'<div style="font-size:22px;font-weight:800;color:'+(accent||'#101010')+';margin-top:3px;">'+val+'</div>'
+   +(sub?'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'+sub+'</div>':'')+'</div>';
+ };
+ var strip = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
+  + kpi('Jumlah Ahli', data.length.toLocaleString('en-MY'), withPhone+' ada telefon')
+  + kpi('VIP', (byTier.VIP||0).toLocaleString('en-MY'), 'belanja RM3,000+', '#CD7C32')
+  + kpi('Silver', (byTier.Silver||0).toLocaleString('en-MY'), 'RM1,000+', '#374151')
+  + kpi('Bronze', (byTier.Bronze||0).toLocaleString('en-MY'), 'RM0+', '#8A5A1E')
+  + kpi('Mata Boleh Guna', totPts.toLocaleString('en-MY'), 'belum ditebus', '#B86A26')
+  + kpi('Jumlah Belanja', fmtRM(totSpent), 'seumur hidup')
+  + '</div>';
+ var search = '<div style="margin-bottom:10px;"><input id="pmSearch" oninput="window.__pmRender(this.value)" placeholder="Cari nama atau nombor telefon..." style="width:100%;max-width:340px;padding:9px 12px;border:1px solid #DDD;border-radius:8px;font-size:13px;font-family:inherit;" /></div>';
+ body.innerHTML = strip + search + '<div id="pmTableWrap"></div>';
+ window.__pmRender('');
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+window.__pmRender = function(q){
+ var wrap = document.getElementById('pmTableWrap'); if(!wrap) return;
+ var data = window.__pmData || [];
+ var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+ var fmtRM = function(n){ return 'RM' + (Math.round(n)).toLocaleString('en-MY'); };
+ q = (q||'').trim().toLowerCase();
+ var qd = q.replace(/[^0-9]/g,'');
+ var filtered = !q ? data : data.filter(function(d){
+  if(d.name.toLowerCase().indexOf(q)>=0) return true;
+  if(qd && d.phone.replace(/[^0-9]/g,'').indexOf(qd)>=0) return true;
+  return false;
+ });
+ var CAP = 200, now = Date.now();
+ var shown = filtered.slice(0, CAP);
+ var th = function(t,r){ return '<th style="text-align:'+(r?'right':'left')+';padding:9px 11px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#6B7280;font-weight:700;white-space:nowrap;">'+t+'</th>'; };
+ var rows = shown.map(function(d){
+  var days = d.last ? Math.floor((now-d.last)/86400000) : null;
+  var lastTxt = (days==null) ? '<span style="color:#bbb;">-</span>' : (days<=0?'Hari ni':(days+' hari lalu'));
+  var badge = '<span style="background:'+d.tierBg+';color:'+d.tierColor+';padding:2px 9px;border-radius:50px;font-size:10px;font-weight:800;">'+esc(d.tierName)+'</span>';
+  var td = function(v,r){ return '<td style="padding:9px 11px;border-bottom:1px solid #F1F1F1;font-size:13px;text-align:'+(r?'right':'left')+';white-space:nowrap;">'+v+'</td>'; };
+  return '<tr>'
+   + td('<span style="font-weight:700;color:#101010;">'+esc(d.name)+'</span>')
+   + td(esc(d.phone||'-'))
+   + td(badge)
+   + td('<span style="font-weight:700;">'+fmtRM(d.spent)+'</span>',true)
+   + td('<span style="font-weight:700;color:#B86A26;">'+d.avail.toLocaleString('en-MY')+'</span>',true)
+   + td(String(d.orders),true)
+   + td(lastTxt,true)
+   + '</tr>';
+ }).join('');
+ var note = '<div style="font-size:12px;color:#9CA3AF;margin:8px 2px 0;">Papar '+shown.length.toLocaleString('en-MY')+' daripada '+filtered.length.toLocaleString('en-MY')+' ahli'+(filtered.length>CAP?' (taip carian untuk cari ahli lain)':'')+'.</div>';
+ wrap.innerHTML = '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;overflow:auto;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));"><table style="width:100%;border-collapse:collapse;min-width:640px;"><thead><tr style="background:#FAFAFA;">'
+  + th('Nama')+th('Telefon')+th('Tier')+th('Belanja',1)+th('Mata Boleh Guna',1)+th('Order',1)+th('Beli Terakhir',1)
+  + '</tr></thead><tbody>'+(rows||'<tr><td colspan="7" style="padding:18px;text-align:center;color:#9CA3AF;font-size:13px;">Tiada ahli sepadan carian.</td></tr>')+'</tbody></table></div>' + note;
 };
 window.renderEngagement = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
