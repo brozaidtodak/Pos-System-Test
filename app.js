@@ -22937,53 +22937,11 @@ window.renderConnections = function() {
 window.renderSegments = function() {
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
-// p1_991 — Halaman Members/CRM (dulu "Coming Soon"). Enjin loyalty (kumpul+tebus tier) dah ada
-// di Cashier (p1_561); ni paparan back-office: KPI ahli ikut tier + jadual boleh cari. Read-only.
 window.renderPointsMembership = function() {
- var body = document.getElementById('pmBody');
- if(!body) return;
- var list = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData : [];
- if(!list.length){
-  body.innerHTML = '<div style="background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:22px;text-align:center;color:#6B7280;font-size:13px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));">Senarai pelanggan belum dimuat dalam sesi ni. Buka skrin <b>Cashier</b> atau <b>Orders</b> dahulu, kemudian buka semula halaman ni.</div>';
-  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
-  return;
- }
- var DAY = 24*3600*1000, lastByPhone = {};
- try {
-  var sh = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
-  sh.forEach(function(s){ if(!s) return; var ph=s.customer_phone||(s.customer&&s.customer.phone); if(!ph) return; var t=new Date(s.created_at||s.timestamp||0).getTime(); if(!t) return; if(!lastByPhone[ph]||t>lastByPhone[ph]) lastByPhone[ph]=t; });
- } catch(e){}
- var tierOf = function(c){ return (typeof window.__custTier==='function') ? window.__custTier(c.total_spent) : {name:'Bronze',bg:'#F6E9D6',color:'#8A5A1E'}; };
- var availOf = function(c){ return (typeof window.__custPointsAvail==='function') ? window.__custPointsAvail(c) : Math.max(0,(Number(c.points)||0)-(Number(c.points_redeemed)||0)); };
- var lastMs = function(c){ if(c.last_order_at){var t=new Date(c.last_order_at).getTime(); if(t) return t;} return (c.phone&&lastByPhone[c.phone])?lastByPhone[c.phone]:null; };
- var data = list.map(function(c){
-  var t = tierOf(c);
-  return { name:c.name||'(Tiada nama)', phone:c.phone||'', tierName:t.name, tierBg:t.bg, tierColor:t.color,
-   spent:Number(c.total_spent)||0, avail:availOf(c), orders:Number(c.total_orders)||0, last:lastMs(c) };
- }).sort(function(a,b){ return b.spent - a.spent; });
- window.__pmData = data;
- var byTier = {}, totPts=0, totSpent=0, withPhone=0;
- data.forEach(function(d){ byTier[d.tierName]=(byTier[d.tierName]||0)+1; totPts+=d.avail; totSpent+=d.spent; if(d.phone) withPhone++; });
- var fmtRM = function(n){ return 'RM' + (Math.round(n)).toLocaleString('en-MY'); };
- var kpi = function(label,val,sub,accent){
-  return '<div style="flex:1;min-width:118px;background:#fff;border:1px solid #ECECEC;border-radius:12px;padding:13px 15px;box-shadow:var(--shadow-sm,0 2px 4px rgba(0,0,0,.06));">'
-   +'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#6B7280;font-weight:700;">'+label+'</div>'
-   +'<div style="font-size:22px;font-weight:800;color:'+(accent||'#101010')+';margin-top:3px;">'+val+'</div>'
-   +(sub?'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'+sub+'</div>':'')+'</div>';
- };
- var strip = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
-  + kpi('Jumlah Ahli', data.length.toLocaleString('en-MY'), withPhone+' ada telefon')
-  + kpi('VIP', (byTier.VIP||0).toLocaleString('en-MY'), 'belanja RM3,000+', '#CD7C32')
-  + kpi('Silver', (byTier.Silver||0).toLocaleString('en-MY'), 'RM1,000+', '#374151')
-  + kpi('Bronze', (byTier.Bronze||0).toLocaleString('en-MY'), 'RM0+', '#8A5A1E')
-  + kpi('Mata Boleh Guna', totPts.toLocaleString('en-MY'), 'belum ditebus', '#B86A26')
-  + kpi('Jumlah Belanja', fmtRM(totSpent), 'seumur hidup')
-  + '</div>';
- var search = '<div style="margin-bottom:10px;"><input id="pmSearch" oninput="window.__pmRender(this.value)" placeholder="Cari nama atau nombor telefon..." style="width:100%;max-width:340px;padding:9px 12px;border:1px solid #DDD;border-radius:8px;font-size:13px;font-family:inherit;" /></div>';
- body.innerHTML = strip + search + '<div id="pmTableWrap"></div>';
- window.__pmRender('');
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
+// p1_992 — penghasil jadual ahli (dipanggil oleh renderPointsMembership sebenar di bawah).
+// Susun ikut belanja turun, cap papar 200 + carian nama/telefon untuk selebihnya. window.__pmData diset oleh pemanggil.
 window.__pmRender = function(q){
  var wrap = document.getElementById('pmTableWrap'); if(!wrap) return;
  var data = window.__pmData || [];
@@ -41954,6 +41912,19 @@ window.renderPointsMembership = function(){
  let totalPts = 0;
  custs.forEach(c=>{ const t = window.__custTier(c.total_spent); if(stat[t.key]){ stat[t.key].n++; stat[t.key].pts += (Number(c.points)||0); } totalPts += (Number(c.points)||0); });
 
+ // p1_992 — sediakan window.__pmData (senarai ahli) untuk jadual carian di bawah kad tier.
+ var __pmLastByPhone = {};
+ try {
+  var __sh = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+  __sh.forEach(function(s){ if(!s) return; var ph=s.customer_phone||(s.customer&&s.customer.phone); if(!ph) return; var t=new Date(s.created_at||s.timestamp||0).getTime(); if(!t) return; if(!__pmLastByPhone[ph]||t>__pmLastByPhone[ph]) __pmLastByPhone[ph]=t; });
+ } catch(e){}
+ window.__pmData = custs.map(function(c){
+  var t = window.__custTier(c.total_spent) || {name:'Bronze',bg:'#F6E9D6',color:'#8A5A1E'};
+  var avail = (typeof window.__custPointsAvail==='function') ? window.__custPointsAvail(c) : Math.max(0,(Number(c.points)||0)-(Number(c.points_redeemed)||0));
+  var last = null; if(c.last_order_at){ var lt=new Date(c.last_order_at).getTime(); if(lt) last=lt; } if(!last && c.phone && __pmLastByPhone[c.phone]) last=__pmLastByPhone[c.phone];
+  return { name:c.name||'(Tiada nama)', phone:c.phone||'', tierName:t.name, tierBg:t.bg, tierColor:t.color, spent:Number(c.total_spent)||0, avail:avail, orders:Number(c.total_orders)||0, last:last };
+ }).sort(function(a,b){ return b.spent - a.spent; });
+
  const tierCards = tiers.map(t=>{
   const rs = (redeems[t.key]||[]);
   const rlist = rs.map(r=>{
@@ -41990,7 +41961,12 @@ window.renderPointsMembership = function(){
    <div class="stat-card"><div style="font-size:12px; color:var(--text-muted,#6B7280);">Mata Terkumpul (semua)</div><div style="font-size:22px; font-weight:900;">${totalPts.toLocaleString()}</div></div>
   </div>
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px;">${tierCards}</div>
-  <p class="soft-note" style="margin-top:14px;">Nota: nilai tier &amp; kadar mata diselaraskan dalam kod supaya konsisten merentas Cashier, portal pelanggan, dan laporan. Nak ubah syarat/diskaun/redeem? Beritahu je, aku update.</p>`;
+  <p class="soft-note" style="margin-top:14px;">Nota: nilai tier &amp; kadar mata diselaraskan dalam kod supaya konsisten merentas Cashier, portal pelanggan, dan laporan. Nak ubah syarat/diskaun/redeem? Beritahu je, aku update.</p>
+  <h3 class="section-title" data-skip-title-sync style="margin-top:22px; font-size:17px;"><i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i> Senarai Ahli</h3>
+  <p class="soft-note" style="margin-top:2px;">Siapa ahli kau, tier, mata boleh guna, dan beli terakhir. Susun ikut belanja tertinggi. Cari nama atau telefon untuk ahli tertentu.</p>
+  <div style="margin:8px 0 10px;"><input id="pmSearch" oninput="window.__pmRender(this.value)" placeholder="Cari nama atau nombor telefon..." style="width:100%; max-width:340px; padding:9px 12px; border:1px solid #DDD; border-radius:8px; font-size:13px; font-family:inherit;" /></div>
+  <div id="pmTableWrap"></div>`;
+ if(typeof window.__pmRender === 'function') window.__pmRender('');
  if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
 };
 
