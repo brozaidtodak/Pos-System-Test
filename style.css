@@ -360,8 +360,9 @@ body.pos-mobile-mode .cart-section > div:last-child {
 /* p1_951 — mobile: rapatkan footer sticky troli supaya senarai produk atas dapat ruang lebih (audit screenshot: hanya ~1.5 item nampak). Jarak sahaja, TIADA fungsi dibuang. */
 body.pos-mobile-mode .cart-section.drawer-open { top: 7vh; }
 body.pos-mobile-mode .cart-section > div:last-child {
-    padding: 13px 18px;
-    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    padding: 11px 18px;
+    /* p1_994 — footer ringkas (Total+BAYAR je): kurangkan padding bawah berlebihan supaya kotak tak terlalu tinggi. */
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 body.pos-mobile-mode .cart-section > div:last-child hr { margin: 9px 0; }
 body.pos-mobile-mode #cartProofRow { margin-bottom: 8px; }
@@ -380,9 +381,10 @@ body.pos-mobile-mode .cart-section {
 body.pos-mobile-mode .cart-section > div:first-child {
     flex: 1 0 auto;   /* grow isi ruang bila item sikit (tolak footer ke bawah); natural bila banyak */
     min-height: 0;
-    /* p1_989 — ruang bawah = tinggi footer sticky (Total+BAYAR) supaya baris terakhir
-       (Jualan Ditahan / Kosongkan) boleh scroll ATAS footer, tak tertindih. */
-    padding-bottom: calc(150px + env(safe-area-inset-bottom));
+    /* p1_989/p1_994 — ruang bawah = tinggi footer sticky RINGKAS (Total+BAYAR ~92px) supaya baris
+       terakhir (Kosongkan Troli) boleh scroll clear ATAS footer, tak tertindih DAN tiada gap besar.
+       Dulu 150px (untuk footer lama "Koordinasi Inventori") = ruang kosong berlebihan. */
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 body.pos-mobile-mode #cartItems {
     max-height: none !important;
