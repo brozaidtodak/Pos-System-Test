@@ -8262,6 +8262,9 @@ window.__ppeCancelOrder = async function(){
  const { error } = await db.from('sales_history').update({ status: 'Cancelled', metadata: md }).eq('id', saleId);
  if(error) throw error;
  if(sale){ sale.status = 'Cancelled'; sale.metadata = md; }
+ // p1_993 (#3) — pulih loyalti (mata/belanja/order + mata ditebus). __restockSaleIfVoided idempotent:
+ // stok dah dipulang di atas (md.stock_restored) jadi ia takkan double-restock — cuma proses loyalti.
+ if(sale && typeof window.__restockSaleIfVoided === 'function'){ try { await window.__restockSaleIfVoided(sale, 'cancelled'); } catch(_){} }
  try { await db.from('audit_logs').insert([{ action_type: 'sale_cancel', actor_name: u.name || 'System', details: JSON.stringify({ sale_id: saleId, restocked: restock }), created_at: new Date().toISOString() }]); } catch(_){}
  window.__ppeState = null;
  if(typeof showToast === 'function') showToast('Order #' + saleId + ' dibatalkan' + (restock ? ' · stok dipulangkan' : ''), 'success');
@@ -8383,7 +8386,9 @@ window.__ppSaveEdit = async function() {
  payload.items = st.items.map(it => ({ sku: it.sku, name: it.name, price: it.price, quantity: it.quantity, isCustom: it.isCustom }));
  let md = st.meta; if(typeof md === 'string'){ try { md = JSON.parse(md); } catch(e){ md = {}; } } md = md || {};
  md.last_edit = { added, returned, edited_by: u.name || '?', edited_at: new Date().toISOString(), note: editNote || null };
- if(st.items.length > 0) md.stock_deducted = true;
+ // p1_993 (#4) — JANGAN paksa stock_deducted=true. Edit hanya laras DELTA stok; kalau order asal tak pernah
+ // tolak stok (cth marketplace, flag false/tiada), paksa true buatkan void kemudian pulang FULL qty = lebih-pulang.
+ // Kekalkan nilai asal md.stock_deducted (POS sale memang dah true dari masa jual).
  payload.metadata = md;
  }
  } catch(e){ console.warn('reconcile items gagal:', e); }
@@ -16169,6 +16174,9 @@ window.processNewCheckout = async function() {
 
  // p1_484/p1_554 — Auto-simpan pelanggan + mata, kira atas finalTotal (LEPAS diskaun).
  const earnedPoints = window.__pointsForSpend(finalTotal); // RM10 = 1 mata, atas harga lepas diskaun
+ // p1_993 (#1) — simpan keadaan pelanggan SEBELUM dikemas, supaya boleh undo kalau sale gagal disimpan.
+ var __custRollback = null;   // {type:'existing', id, prev:{points,total_spent,total_orders}} | {type:'new', id}
+ var __redeemRollback = null; // {id, prevPR} — pulih points_redeemed kalau sale gagal
  if(custNameText && custNameText !== 'Walk-In') {
  const custEmailText = ((document.getElementById("customerEmail") || {}).value || '').trim();
  const phoneNorm = (custPhoneText || '').replace(/[^0-9]/g, '');
@@ -16186,24 +16194,36 @@ window.processNewCheckout = async function() {
  if(custPhoneText) payload.phone = custPhoneText;
  if(custEmailText) payload.email = custEmailText;
  const { data: newCust } = await withTimeout(db.from('customers').insert([payload]).select().single(), 10000, 'simpan pelanggan baru');
- if(newCust && typeof customersData !== 'undefined' && Array.isArray(customersData)) { customersData.push(newCust); window.__pastCustomersCache = null; }
+ if(newCust && typeof customersData !== 'undefined' && Array.isArray(customersData)) { customersData.push(newCust); window.__pastCustomersCache = null; __custRollback = { type:'new', id: newCust.id }; }
  } else {
+ // p1_993 (#1) — tangkap keadaan ASAL sebelum kemas, untuk undo kalau sale gagal disimpan.
+ __custRollback = { type:'existing', id: existing.id, prev:{ points: existing.points, total_spent: existing.total_spent, total_orders: existing.total_orders } };
  // p1_554 — guna jumlah belanja seumur hidup (floor penuh) + update total_spent/total_orders (dulu cuma points incremental)
  const newSpent = Math.round(((Number(existing.total_spent) || 0) + finalTotal) * 100) / 100;
  const upd = { points: window.__pointsForSpend(newSpent), total_spent: newSpent, total_orders: (Number(existing.total_orders) || 0) + 1 };
  if(custPhoneText && !existing.phone) upd.phone = custPhoneText;
  if(custEmailText && !existing.email) upd.email = custEmailText;
- // p1_561 — kalau ada redeem guna mata (voucher/gift) utk customer ni, tolak mata (points_redeemed)
- if(window.__pendingRedeem && window.__pendingRedeem.cost > 0 && window.__pendingRedeem.customer_id === existing.id) {
- upd.points_redeemed = (Number(existing.points_redeemed) || 0) + window.__pendingRedeem.cost;
- }
+ // p1_993 (#5) — tolak points_redeemed DIPINDAH ke blok khas di bawah (tak lagi bergantung pada nama checkout).
  await withTimeout(db.from('customers').update(upd).eq('id', existing.id), 10000, 'kemas kini pelanggan');
  existing.points = upd.points; existing.total_spent = upd.total_spent; existing.total_orders = upd.total_orders;
- if(upd.points_redeemed != null) existing.points_redeemed = upd.points_redeemed;
  if(upd.phone) existing.phone = upd.phone; if(upd.email) existing.email = upd.email;
  window.__pastCustomersCache = null;
  }
  } catch(e) { console.warn('auto-simpan pelanggan gagal:', e.message); }
+ }
+ // p1_993 (#5) — Tolak mata ditebus berdasarkan customer_id redeem, TAK bergantung pada nama checkout
+ // (dulu ia dalam blok ber-gate nama; kalau nama kosong/Walk-In, voucher jalan tapi mata tak ditolak = bocor).
+ if(window.__pendingRedeem && window.__pendingRedeem.cost > 0 && window.__pendingRedeem.customer_id != null) {
+ const __rc = (typeof customersData !== 'undefined' && Array.isArray(customersData)) ? customersData.find(c => c.id === window.__pendingRedeem.customer_id) : null;
+ if(__rc) {
+ const __prevPR = Number(__rc.points_redeemed) || 0;
+ const __newPR = __prevPR + window.__pendingRedeem.cost;
+ try {
+ await withTimeout(db.from('customers').update({ points_redeemed: __newPR }).eq('id', __rc.id), 10000, 'tolak mata ditebus');
+ __rc.points_redeemed = __newPR; window.__pastCustomersCache = null;
+ __redeemRollback = { id: __rc.id, prevPR: __prevPR };
+ } catch(e){ console.warn('tolak points_redeemed gagal:', e.message); }
+ }
  }
 
  const saleMeta = {};
@@ -16408,6 +16428,13 @@ window.processNewCheckout = async function() {
  // p1_554 (#1) — kalau sale GAGAL disimpan tapi stok dah ditolak, pulihkan balik supaya stok tak rosak.
  if(!saleCommitted) {
  try {
+ // p1_993 (#2) — timeout boleh berlaku LEPAS server commit (sale + tolak stok dah jadi, cuma client tak dapat jawapan).
+ // Sahkan dulu sale betul-betul TAK tersimpan sebelum pulih stok/loyalti; kalau dah tersimpan, jangan rollback (elak stok melambung).
+ let __reallySaved = false;
+ try { const { data: __chk } = await withTimeout(db.from('sales_history').select('id').eq('client_txn_id', __txnId).limit(1), 8000, 'semak sale selepas ralat'); __reallySaved = !!(__chk && __chk.length); } catch(_){}
+ if(__reallySaved){
+ if (typeof showToast==='function') showToast('Jualan sebenarnya BERJAYA disimpan (sambungan terputus sahaja). Stok kekal — sila semak Orders.', 'warn');
+ } else {
  // p1_577 — pulihkan stok secara ATOMIK (restock_batch RPC = tambah balik tepat apa yg ditolak),
  // bukan set absolute (yg boleh tindih jualan serentak lain).
  for(const item of (cart || [])) {
@@ -16417,7 +16444,25 @@ window.processNewCheckout = async function() {
  await db.rpc('restock_batch', { p_batch_id: al.batch_id, p_qty: al.qty });
  }
  }
+ // p1_993 (#1/#5) — undo kemas kini mata/belanja pelanggan + mata ditebus (sale tak jadi disimpan).
+ if(__custRollback) { try {
+ if(__custRollback.type === 'existing') {
+ const p = __custRollback.prev;
+ await db.from('customers').update({ points: p.points, total_spent: p.total_spent, total_orders: p.total_orders }).eq('id', __custRollback.id);
+ const c = (Array.isArray(customersData) ? customersData.find(x=>x.id===__custRollback.id) : null); if(c){ c.points=p.points; c.total_spent=p.total_spent; c.total_orders=p.total_orders; }
+ } else if(__custRollback.type === 'new') {
+ await db.from('customers').delete().eq('id', __custRollback.id);
+ const i = Array.isArray(customersData) ? customersData.findIndex(x=>x.id===__custRollback.id) : -1; if(i>=0) customersData.splice(i,1);
+ }
+ window.__pastCustomersCache = null;
+ } catch(ce){ console.error('rollback pelanggan gagal:', ce); } }
+ if(__redeemRollback) { try {
+ await db.from('customers').update({ points_redeemed: __redeemRollback.prevPR }).eq('id', __redeemRollback.id);
+ const c = (Array.isArray(customersData) ? customersData.find(x=>x.id===__redeemRollback.id) : null); if(c) c.points_redeemed = __redeemRollback.prevPR;
+ window.__pastCustomersCache = null;
+ } catch(ce){ console.error('rollback mata ditebus gagal:', ce); } }
  if (typeof showToast==='function') showToast('Bayaran GAGAL disimpan — stok dipulihkan. Sila cuba lagi.', 'error');
+ }
  } catch(re) { console.error('rollback restock gagal:', re); if (typeof showToast==='function') showToast('Bayaran gagal + pemulihan stok bermasalah. Semak stok ' + (cart||[]).map(c=>c.sku).join(', '), 'error'); }
  } else {
  if (typeof showToast==='function') showToast('Ralat selepas bayaran disimpan (sale OK): ' + e.message, 'warn'); else alert('Error: ' + e.message);
@@ -31590,10 +31635,37 @@ window.__restockSaleIfVoided = async function(sale, newStatus, reason){
  if(!sale || typeof db === 'undefined' || !db) return;
  if(!(window.__DEAD_STATUSES || []).includes(String(newStatus||'').toLowerCase())) return;
  let md = sale.metadata; if(typeof md === 'string'){ try { md = JSON.parse(md); } catch(e){ md = {}; } } md = md || {};
- if(md.stock_restored) return; // dah dipulangkan sebelum ni
- if(!md.stock_deducted) return; // sale ni TAK pernah tolak stok (cth abandoned / order tak-deduct) → jangan tambah phantom stok
+ let __mdDirty = false;
+ // p1_993 (#3) — PULIH LOYALTI bila order jadi dead-status: tolak balik mata/belanja/order yang sale ni
+ // tambah, + pulih mata ditebus (points_redeemed) dari metadata.loyalty_redeem. Idempotent (md.loyalty_reversed).
+ if(!md.loyalty_reversed){
+ try {
+ const phoneNorm = (sale.customer_phone||'').replace(/[^0-9]/g,'');
+ const nm = (sale.customer_name||'').trim().toLowerCase();
+ const em = (sale.customer_email||'').trim().toLowerCase();
+ const hasId = phoneNorm || em || (nm && nm!=='walk-in');
+ if(hasId && Array.isArray(customersData)){
+ const cust = customersData.find(c =>
+ (phoneNorm && (c.phone||'').replace(/[^0-9]/g,'')===phoneNorm) ||
+ (em && (c.email||'').toLowerCase()===em) ||
+ (!phoneNorm && !em && (c.name||'').toLowerCase()===nm));
+ if(cust){
+ const amt = Number(sale.total != null ? sale.total : sale.total_amount) || 0;
+ const cost = (md.loyalty_redeem && Number(md.loyalty_redeem.points_cost)) || 0;
+ const newSpent = Math.max(0, Math.round(((Number(cust.total_spent)||0) - amt)*100)/100);
+ const upd = { total_spent: newSpent, points: window.__pointsForSpend(newSpent), total_orders: Math.max(0,(Number(cust.total_orders)||0)-1) };
+ if(cost>0) upd.points_redeemed = Math.max(0, (Number(cust.points_redeemed)||0) - cost);
+ await db.from('customers').update(upd).eq('id', cust.id);
+ Object.assign(cust, upd); window.__pastCustomersCache = null;
+ }
+ }
+ md.loyalty_reversed = true; md.loyalty_reversed_at = new Date().toISOString(); __mdDirty = true;
+ } catch(le){ console.warn('reverse loyalty gagal:', le); }
+ }
+ // ---- PULIH STOK (idempotent: md.stock_restored; skip sale yg tak pernah tolak stok) ----
+ if(!md.stock_restored && md.stock_deducted){
  let items = sale.items; if(typeof items === 'string'){ try { items = JSON.parse(items); } catch(e){ items = []; } }
- if(!Array.isArray(items)) return;
+ if(Array.isArray(items)){
  // H2 fix (p1_784) — kalau ada return SEPARA sebelum ni (md.restored_qty), tolak qty yang dah dipulang
  // supaya void cuma pulangkan BAKI yang belum return (bukan langkau, bukan double-restock).
  const alreadyRestored = (md.restored_qty && typeof md.restored_qty === 'object') ? md.restored_qty : {};
@@ -31611,11 +31683,10 @@ window.__restockSaleIfVoided = async function(sale, newStatus, reason){
  any = true;
  }
  }
- if(any){
- md.stock_restored = true; md.stock_restored_at = new Date().toISOString();
- await db.from('sales_history').update({ metadata: md }).eq('id', sale.id);
- sale.metadata = md;
+ if(any){ md.stock_restored = true; md.stock_restored_at = new Date().toISOString(); __mdDirty = true; }
  }
+ }
+ if(__mdDirty){ await db.from('sales_history').update({ metadata: md }).eq('id', sale.id); sale.metadata = md; }
  } catch(e){ console.error('restock-on-void gagal:', e); }
 };
 window.__aoBulkStatus = async function(){
@@ -36678,6 +36749,8 @@ window.cpConfirmSale = async function() {
  if(pm === 'Cash' && window.__cpCashRaw && window.__cpCashRaw !== ''){
  const recv = parseFloat(window.__cpCashRaw) || 0;
  const tot = parseFloat((document.getElementById('cpTotalDisplay') || {}).textContent) || 0;
+ // p1_993 (#6) — halang tutup jualan tunai kalau duit diterima KURANG dari jumlah (elak baki negatif).
+ if(recv + 0.009 < tot) return showToast('Tunai diterima (RM ' + recv.toFixed(2) + ') kurang dari jumlah (RM ' + tot.toFixed(2) + '). Masukkan jumlah cukup.', 'warn');
  window.__cpCashPayment = { received: recv, change: round2(recv - tot) };
  } else {
  window.__cpCashPayment = null;
