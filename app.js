@@ -22748,7 +22748,10 @@ window.__mpTiktokStock = async function(filter, forceReload){
   const groups = new Map();
   (masterProducts||[]).forEach(p=>{
    if(!p || !p.sku) return;
-   if(p.metadata && p.metadata.discontinued===true) return;
+   // p1_999 (Zack) — skip discontinued HANYA bila tiada stok tinggal. Produk yang ditanda discontinued
+   // (cth false-positive backfill-sales-2024 mcm ST101) TAPI masih ada stok = barang boleh jual yang
+   // belum di TikTok → patut nampak dalam "Belum di TikTok", bukan tersembunyi. (Dulu semua discontinued di-skip.)
+   if(p.metadata && p.metadata.discontinued===true && (stockMap[String(p.sku).toUpperCase()]||0) <= 0) return;
    if(p.metadata && p.metadata.tiktok_product_id) return;        // dah ada di TikTok (mapped)
    if(onTk.has(String(p.sku).toUpperCase())) return;             // SKU dah wujud di TikTok
    const key = (p.parent_sku && String(p.parent_sku).trim()) ? ('p:'+p.parent_sku) : ('s:'+p.sku);
