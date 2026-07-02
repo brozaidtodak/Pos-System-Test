@@ -40497,7 +40497,62 @@ window.renderReengage = function() {
     }
     // Re-render selected tier list if any
     if(window.__reCurrentTier) window.reSelectTier(window.__reCurrentTier, true);
+    // p1_1009 — refresh Email Win-Back panel
+    if(typeof window.__winbackPreview === 'function') window.__winbackPreview();
     if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+// =============================================================
+// p1_1009 — Email Win-Back engine UI (server: /api/winback via Resend)
+// =============================================================
+window.__winbackPreview = async function() {
+    const days = (document.getElementById('wbDays') || {}).value || '90';
+    const countEl = document.getElementById('wbCount');
+    const sampleEl = document.getElementById('wbSample');
+    const frame = document.getElementById('wbPreview');
+    if(countEl) countEl.textContent = '…';
+    try {
+        const r = await fetch('/api/winback?mode=preview&days=' + days, { headers: await window.__authHeaders() });
+        const j = await r.json();
+        if(!r.ok || j.error) { if(countEl) countEl.textContent = '!'; if(sampleEl) sampleEl.textContent = 'Ralat: ' + (j.error || r.status); return; }
+        if(countEl) countEl.textContent = (j.count || 0).toLocaleString();
+        if(frame && j.sample_html) frame.srcdoc = j.sample_html;
+        if(sampleEl) {
+            const rows = (j.sample || []).slice(0, 6).map(c => `<div style="padding:4px 0; border-bottom:1px solid #F1E9DB;"><b>${(c.name||'(tanpa nama)').slice(0,26)}</b><br><span style="color:#9CA3AF;">${c.email||''} · ${c.points||0} mata</span></div>`).join('');
+            sampleEl.innerHTML = rows || '<span style="color:#9CA3AF;">Tiada pelanggan lapsed dalam tempoh ini.</span>';
+        }
+    } catch(e) { if(countEl) countEl.textContent = '!'; if(sampleEl) sampleEl.textContent = 'Ralat rangkaian'; }
+};
+
+window.__winbackDry = async function() {
+    const days = (document.getElementById('wbDays') || {}).value || '90';
+    const resEl = document.getElementById('wbResult');
+    if(resEl) resEl.textContent = 'Menjalankan dry-run…';
+    try {
+        const r = await fetch('/api/winback?mode=send&dryrun=1&days=' + days, { headers: await window.__authHeaders() });
+        const j = await r.json();
+        if(!r.ok || j.error) { if(resEl) resEl.textContent = 'Ralat: ' + (j.error || r.status); return; }
+        if(resEl) resEl.innerHTML = `<b style="color:#166534;">Dry-run OK.</b> ${j.count} pelanggan akan terima email. <span style="color:#9CA3AF;">Tiada email dihantar.</span>`;
+    } catch(e) { if(resEl) resEl.textContent = 'Ralat rangkaian'; }
+};
+
+window.__winbackLive = async function() {
+    const days = (document.getElementById('wbDays') || {}).value || '90';
+    const cnt = (document.getElementById('wbCount') || {}).textContent || '?';
+    if(!confirm(`HANTAR EMAIL SEBENAR kepada ${cnt} pelanggan lapsed (${days} hari)?\n\nIni menghantar email betul via Resend. Tak boleh undo. Teruskan?`)) return;
+    if(!confirm('Sahkan sekali lagi: hantar kempen Win-Back LIVE sekarang?')) return;
+    const resEl = document.getElementById('wbResult');
+    const btn = document.getElementById('wbLiveBtn');
+    if(btn) btn.disabled = true;
+    if(resEl) resEl.textContent = 'Menghantar… (jangan tutup tab)';
+    try {
+        const r = await fetch('/api/winback?mode=send&dryrun=0&days=' + days, { headers: await window.__authHeaders() });
+        const j = await r.json();
+        if(!r.ok || j.error) { if(resEl) resEl.textContent = 'Ralat: ' + (j.error || r.status); if(btn) btn.disabled = false; return; }
+        if(j.skipped) { if(resEl) resEl.innerHTML = `<b style="color:#B45309;">Belum aktif:</b> ${j.reason}`; if(btn) btn.disabled = false; return; }
+        if(resEl) resEl.innerHTML = `<b style="color:#166534;">Selesai.</b> Dihantar ${j.sent}, gagal ${j.failed}${j.remaining ? `, baki ${j.remaining} (klik lagi untuk sambung)` : ''}.`;
+        if(btn) btn.disabled = false;
+    } catch(e) { if(resEl) resEl.textContent = 'Ralat rangkaian'; if(btn) btn.disabled = false; }
 };
 
 window.reSelectTier = function(tier, suppressScroll) {

@@ -12,6 +12,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/winback"
+  to = "/.netlify/functions/winback"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/staff-assistant"
   to = "/.netlify/functions/staff-assistant"
   status = 200

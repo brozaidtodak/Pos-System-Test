@@ -8596,6 +8596,46 @@
  </button>
  </div>
 
+ <!-- p1_1009 — Email Win-Back engine (server-side via Resend). Complements the WhatsApp tiers below. -->
+ <div id="winbackPanel" style="background:#fff; border:1px solid #EDE3D4; border-radius:14px; padding:18px 20px; margin-bottom:20px;">
+ <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+ <div style="display:flex; align-items:center; gap:10px;">
+ <i data-lucide="mail" style="width:18px; height:18px; color:#CD7C32;"></i>
+ <div>
+ <div style="font-weight:800; font-size:15px; color:#101010;">Email Win-Back</div>
+ <div style="font-size:12px; color:#6B7280;">Auto-email pelanggan lama (ada email, tak beli lama) → beli semula di Shopee / TikTok / WhatsApp.</div>
+ </div>
+ </div>
+ <div style="display:flex; align-items:center; gap:8px;">
+ <label style="font-size:12px; color:#6B7280;">Tak beli lebih</label>
+ <select id="wbDays" onchange="window.__winbackPreview()" style="padding:6px 8px; border:1px solid #E5DAC8; border-radius:8px; font-size:13px; background:#FAF6EF;">
+ <option value="60">60 hari</option>
+ <option value="90" selected>90 hari</option>
+ <option value="120">120 hari</option>
+ <option value="180">180 hari</option>
+ </select>
+ <button class="re-btn re-btn--ghost" onclick="window.__winbackPreview()"><i data-lucide="refresh-cw" style="width:13px; height:13px;"></i> <span>Semak</span></button>
+ </div>
+ </div>
+ <div id="wbStats" style="display:flex; gap:22px; flex-wrap:wrap; margin-bottom:14px;">
+ <div><div style="font-size:26px; font-weight:800; color:#CD7C32;" id="wbCount">—</div><div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:.4px;">Boleh dihantar</div></div>
+ </div>
+ <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
+ <div style="flex:1; min-width:280px;">
+ <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Contoh email</div>
+ <iframe id="wbPreview" style="width:100%; height:360px; border:1px solid #EDE3D4; border-radius:10px; background:#FAF6EF;"></iframe>
+ </div>
+ <div style="width:230px;">
+ <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Contoh sasaran</div>
+ <div id="wbSample" style="font-size:12px; color:#4A4238; line-height:1.5; margin-bottom:16px;">—</div>
+ <button id="wbDryBtn" onclick="window.__winbackDry()" class="re-btn re-btn--ghost" style="width:100%; margin-bottom:8px; justify-content:center;"><i data-lucide="flask-conical" style="width:14px; height:14px;"></i> <span>Dry-run (tak hantar)</span></button>
+ <button id="wbLiveBtn" onclick="window.__winbackLive()" class="re-btn" style="width:100%; justify-content:center; background:#CD7C32; color:#fff; border:none;"><i data-lucide="send" style="width:14px; height:14px;"></i> <span>Hantar LIVE</span></button>
+ <div style="font-size:11px; color:#9CA3AF; margin-top:8px; line-height:1.5;">Dry-run dulu untuk semak. Live hantar sebenar via email — perlu sahkan.</div>
+ <div id="wbResult" style="font-size:12px; color:#4A4238; margin-top:10px;"></div>
+ </div>
+ </div>
+ </div>
+
  <!-- 3 tier cards -->
  <div class="re-tiers" id="reTiers">
  <div class="re-tier re-tier--sleeping" data-tier="sleeping" onclick="window.reSelectTier('sleeping')">
@@ -8943,6 +8983,7 @@
  { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (283/283 · last 2026-06-05) — Marketplaces dashboard live (EasyStore + Shopee + TikTok). Real-time platform status: connected count, total mapped, per-platform last-sync timestamp + progress bar + action buttons. Data dari products_master.metadata. Function-first ship.',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
+ { id:'p1_1009', label:'MARKETING P1 #1 — Email Win-Back engine (re-engage pelanggan lapsed via email → beli semula di Shopee/TikTok/WhatsApp). Idea dilombong dari awesome-ecommerce-skills (win-back/lifecycle automation = jurang marketing terbesar). Model 10 CAMP: tiada checkout web, jadi email FUNNEL ke 3 channel. DB baru: winback_segment(p_days,p_limit) RPC (pelanggan ada email + pernah aktif + last order > N hari + tak opt-out + tak dimel dalam 30 hari, susun ikut total_spent), table winback_sends (log hantar) + marketing_optout (unsubscribe). Function netlify/functions/winback.js (requireAuth): mode=preview (kiraan + contoh + preview HTML), mode=send&dryrun=1 (DEFAULT, tak hantar), mode=send&dryrun=0 (LIVE via Resend, cap 300/run, log winback_sends, skip opted-out). winback-unsub.js PUBLIC (token HMAC guna INTERNAL_FN_SECRET → marketing_optout). Email template on-brand (Sunset Bronze/Tropical Black, butang Shopee/TikTok/WA + pautan unsubscribe). UI: panel "Email Win-Back" dalam page Engagement (reengageSection) — pelengkap tier WhatsApp sedia ada: selektor hari (60/90/120/180), kiraan boleh-hantar, preview email (iframe), contoh sasaran, butang Dry-run + Hantar LIVE (2x sahkan). 1,544 pelanggan lapsed (90 hari) boleh dicapai. TIADA email sebenar dihantar sehingga staf tekan Live + sahkan. app.js v996->v997.', d:'done' },
  { id:'p1_1', label:'Supabase schema + RLS', d:'done' },
  { id:'p1_2', label:'Audit log infrastructure', d:'done' },
  { id:'p1_3', label:'Role-based menu visibility', d:'done' },
@@ -14482,7 +14523,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=996"></script>
+ <script src="app.js?v=997"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>
