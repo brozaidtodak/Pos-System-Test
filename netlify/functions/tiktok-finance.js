@@ -20,6 +20,7 @@
  */
 
 const { VERSION, ttRequest, getValidToken, ensureShopCipher } = require('./_tiktok.js');
+const { requireAuth } = require('./_auth'); // H3 (audit 2026-07-01) — financials gate
 
 function json(status, body) {
     return { statusCode: status, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
@@ -81,6 +82,7 @@ function mapTxn(t) {
 }
 
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response; // H3 — staff/internal/scheduled only
     const params = event.queryStringParameters || {};
     const mode = ['rows', 'statement_rows', 'statements_full'].includes(params.mode) ? params.mode : 'peek';
     const toMs   = params.to   ? Date.parse(params.to)   : Date.now();

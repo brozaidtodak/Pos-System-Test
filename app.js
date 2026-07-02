@@ -8128,7 +8128,7 @@ window.__ppResendEmail = async function(saleId) {
  try {
  const res = await fetch('/api/send-receipt-email', {
  method: 'POST',
- headers: { 'Content-Type': 'application/json' },
+ headers: await window.__authHeaders({ 'Content-Type': 'application/json' }),
  body: JSON.stringify({ sale_id: saleId, force: true })
  });
  const data = await res.json();
@@ -16359,7 +16359,7 @@ window.processNewCheckout = async function() {
  try {
  fetch('/api/send-receipt-email', {
  method: 'POST',
- headers: { 'Content-Type': 'application/json' },
+ headers: window.__authHeaderSync({ 'Content-Type': 'application/json' }),
  body: JSON.stringify({ sale_id: insertedSaleId })
  }).then(r => r.json()).then(d => {
  if(d.success) console.log('[receipt-email] sent to', d.to, 'resend_id:', d.resend_id);
@@ -22953,7 +22953,7 @@ window.__mpTtFormSubmit = async function(){
 window.__mpMapTiktok = async function() {
  if(typeof showToast === 'function') showToast('Triggering TikTok mapping...', 'info');
  try {
- const r = await fetch('/api/tiktok-product-sync?mode=map&limit=40');
+ const r = await fetch('/api/tiktok-product-sync?mode=map&limit=40', { headers: await window.__authHeaders() });
  const d = await r.json();
  if(typeof showToast === 'function') showToast('TikTok map: ' + (d.write_count || 0) + ' new mappings', 'success');
  setTimeout(() => window.renderMarketplaces(), 800);
@@ -26318,25 +26318,12 @@ window.approveDiscrepancy = async function(reqId, sku, difference) {
  if(!confirm(`Luluskan pelarasan stok ${difference> 0 ? '+'+difference : difference} unit untuk ${sku}?`)) return;
  
  try {
- // Find batch to adjust
- if(difference> 0) {
- // Surplus, create a new inbound batch
- await db.from('inventory_batches').insert([{
- sku: sku, qty_received: difference, qty_remaining: difference, inbound_date: new Date().toISOString().split('T')[0]
- }]);
- } else {
- // Shortage, deduct from oldest batch (similar to outbound)
- let qtyToDeduct = Math.abs(difference);
- let relevantBatches = inventoryBatches.filter(b => b.sku === sku && b.qty_remaining> 0).sort((a,b) => new Date(a.inbound_date) - new Date(b.inbound_date));
- 
- for(let batch of relevantBatches) {
- if(qtyToDeduct <= 0) break;
- let deductAmount = Math.min(batch.qty_remaining, qtyToDeduct);
- await db.from('inventory_batches').update({ qty_remaining: batch.qty_remaining - deductAmount }).eq('id', batch.id);
- qtyToDeduct -= deductAmount;
- }
- }
- 
+ // H1 (audit 2026-07-01) — was a stale client-side SELECT-then-UPDATE loop (read inventoryBatches,
+ // write read-value-minus-delta back) = lost-update: if a cashier sold the SKU since page load,
+ // approving a shortage resurrected already-sold units. Route through the canonical helper instead:
+ // surplus → new batch, shortage → atomic deduct_stock_fifo RPC (server-side FOR UPDATE). Same fix as p1_789.
+ await window.__applyStockDelta(sku, difference, 'Audit Discrepancy Approved oleh ' + (currentUser ? currentUser.name : 'System'));
+
  await db.from('pending_requests').update({status: 'Approved'}).eq('id', reqId);
  
  await db.from('inventory_transactions').insert([{
@@ -32254,7 +32241,7 @@ window.__aoSendReceiptEmail = async function(saleId) {
    try { await db.from('sales_history').update({ customer_email: email }).eq('id', saleId); s.customer_email = email; } catch(e) { console.warn('simpan email gagal:', e.message); }
   }
   const res = await fetch('/api/send-receipt-email', {
-   method: 'POST', headers: { 'Content-Type': 'application/json' },
+   method: 'POST', headers: await window.__authHeaders({ 'Content-Type': 'application/json' }),
    body: JSON.stringify({ sale_id: saleId, preview: true })
   });
   const data = await res.json().catch(() => ({}));
@@ -32307,7 +32294,7 @@ window.__aoEmailSendNow = async function() {
  if(sendBtn) { sendBtn.disabled = true; sendBtn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px;vertical-align:-2px;"></i> Menghantar…'; if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} }
  try {
   const res = await fetch('/api/send-receipt-email', {
-   method: 'POST', headers: { 'Content-Type': 'application/json' },
+   method: 'POST', headers: await window.__authHeaders({ 'Content-Type': 'application/json' }),
    body: JSON.stringify({ sale_id: saleId, force: true })
   });
   const data = await res.json().catch(() => ({}));

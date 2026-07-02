@@ -44,14 +44,16 @@ async function sb(method, path, body, extraHeaders) {
     return t ? JSON.parse(t) : null;
 }
 async function fetchJson(url) {
-    const res = await fetch(url);
+    // H3/M20 — these internal endpoints (tiktok-finance, shopee-sync) are now auth-gated;
+    // authenticate as an internal server-to-server caller.
+    const res = await fetch(url, { headers: internalHeaders() });
     const t = await res.text();
     try { return JSON.parse(t); } catch (_) { throw new Error(`non-JSON from ${url.split('?')[0]} (HTTP ${res.status})`); }
 }
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const ymd = (d) => new Date(d).toISOString().slice(0, 10);
 
-const { requireAuth } = require('./_auth'); // p1_787 (C1)
+const { requireAuth, internalHeaders } = require('./_auth'); // p1_787 (C1) + H3/M20 caller auth
 exports.handler = async (event) => {
     const __a = await requireAuth(event); if (!__a.ok) return __a.response;
     const p = (event && event.queryStringParameters) || {};

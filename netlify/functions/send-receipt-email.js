@@ -21,6 +21,7 @@
  *   5. UPDATE sales_history.email_sent_at + email_status
  */
 
+const { requireStaff } = require('./_auth'); // H2 (audit 2026-07-01) — PII/email gate
 const RESEND_KEY = process.env.RESEND_API_KEY || '';
 const FROM_ADDR  = process.env.RECEIPT_FROM || '10 CAMP Receipts <admin@10camp.com>';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
@@ -201,9 +202,16 @@ function buildEmailHtml(sale, imgMap) {
 }
 
 exports.handler = async (event) => {
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
     if(event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
     if(event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: JSON.stringify({ error: 'POST only' }) };
+
+    // H2 (audit 2026-07-01) — this endpoint returns customer PII (name, email, full order) and can send
+    // real emails. Was fully public → anyone could enumerate sale_id to exfiltrate the customer list.
+    // Fail-closed staff gate: only a logged-in staff Supabase session may call it. All 4 browser callers
+    // send the staff JWT via __authHeaders/__authHeaderSync.
+    const __a = await requireStaff(event);
+    if(!__a.ok) return { ...__a.response, headers: { ...cors, ...(__a.response.headers || {}) } };
 
     let body;
     try { body = JSON.parse(event.body || '{}'); }

@@ -17,6 +17,7 @@
  */
 
 const crypto = require('crypto');
+const { requireAuth } = require('./_auth'); // M21 (audit 2026-07-01) — mutating service-role gate
 
 const API_BASE   = 'https://open-api.tiktokglobalshop.com';
 const TOKEN_BASE = 'https://auth.tiktok-shops.com/api/v2/token';
@@ -166,6 +167,7 @@ function ttSkuPrice(sku) {
 }
 
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response; // M21 — staff/internal/scheduled only
     if (!APP_KEY || !APP_SECRET) return json(500, { error: 'TIKTOK_APP_KEY / TIKTOK_APP_SECRET not set' });
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
 

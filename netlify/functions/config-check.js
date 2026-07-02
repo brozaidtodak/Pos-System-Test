@@ -17,6 +17,7 @@
  */
 const tt = require('./_tiktok');
 const sp = require('./_shopee');
+const { requireAuth } = require('./_auth'); // L10 (audit 2026-07-01) — config/env disclosure gate
 
 const EXPECTED_PROJECT = 'asehjdnfzoypbwfeazra'; // POS-System-Test — split-brain guard
 const json = (code, obj) => ({ statusCode: code, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(obj, null, 2) });
@@ -81,6 +82,7 @@ async function authChecks() {
 }
 
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response; // L10 — staff/internal/scheduled only
     const mode = (event && event.queryStringParameters && event.queryStringParameters.mode) || 'sync';
     const now = new Date().toISOString();
     let checks = [];

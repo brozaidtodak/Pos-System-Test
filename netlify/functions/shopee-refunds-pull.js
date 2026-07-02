@@ -17,6 +17,7 @@
  */
 
 const crypto = require('crypto');
+const { requireAuth } = require('./_auth'); // M20 (audit 2026-07-01) — mutating service-role gate
 
 const PARTNER_ID   = process.env.SHOPEE_PARTNER_ID || '';
 const PARTNER_KEY  = process.env.SHOPEE_PARTNER_KEY || '';
@@ -61,6 +62,7 @@ async function getValidToken() {
 function chunk(a, n) { const o = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
 
 exports.handler = async (event) => {
+    const __a = await requireAuth(event); if (!__a.ok) return __a.response; // M20 — staff/internal/scheduled only
     if (!PARTNER_ID || !PARTNER_KEY) return json(500, { error: 'SHOPEE creds not set' });
     if (!SERVICE_KEY) return json(500, { error: 'SUPABASE_SERVICE_KEY not set' });
     // Scheduled invocation (cron harian) tiada queryStringParameters → auto import 15 hari lalu.
