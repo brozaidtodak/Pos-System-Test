@@ -26077,7 +26077,7 @@ window.refreshMpDatalists = function() {
  // p1_226 — datalists for new metadata-backed fields
  const metas = masterProducts.map(p => (p.metadata && typeof p.metadata === 'object') ? p.metadata : {});
  fill('mpVendorList', [...new Set(metas.map(m => m.vendor).filter(Boolean))].sort());
- fill('mpCollectionList', [...new Set(metas.map(m => m.collection).filter(Boolean))].sort());
+ fill('mpCollectionList', [...new Set([...(window.__CAMP_COLLECTIONS||[]), ...metas.map(m => m.collection).filter(Boolean)])]); // p1_1000 — 8 koleksi canonical dulu
  fill('mpAllSkusList', masterProducts.map(p => p.sku).filter(Boolean).sort());
 };
 window.saveProductRegistration = async function() {
@@ -26631,7 +26631,7 @@ window.refreshPdpDatalists = function() {
  fill('pdpCategoryList', [...new Set(masterProducts.map(p => p.category).filter(Boolean))].sort());
  const metas = masterProducts.map(p => (p.metadata && typeof p.metadata === 'object') ? p.metadata : {});
  fill('pdpVendorList', [...new Set(metas.map(m => m.vendor).filter(Boolean))].sort());
- fill('pdpCollectionList', [...new Set(metas.map(m => m.collection).filter(Boolean))].sort());
+ fill('pdpCollectionList', [...new Set([...(window.__CAMP_COLLECTIONS||[]), ...metas.map(m => m.collection).filter(Boolean)])]); // p1_1000 — 8 koleksi canonical dulu
 };
 
 // p1_228 — Clean HTML for PDP description (same algo as warehouse form)
@@ -37116,9 +37116,44 @@ window.pdbSetStatus = function(status, btn) {
 };
 window.pdbClearFilters = function() {
  ['pdSearch','pdBrand','pdCategory'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+ window.__pdbCollectionFilter = ''; // p1_1000
  const allPill = document.querySelector('#pdbStatusPills .pdb-pill[data-status=""]');
  if(allPill) window.pdbSetStatus('', allPill);
  else window.renderProductDatabase();
+};
+
+// p1_1000 (Zack) — "Collection" = koleksi OVERALL (himpunan kategori) untuk kegunaan POS app.
+// 8 koleksi tetap. Keahlian: override per-SKU (metadata.collection) DIUTAMAKAN; kalau tiada,
+// auto-derive dari kategori produk (peta di bawah). Tiada tulisan DB — dikira masa render.
+window.__CAMP_COLLECTIONS = ['Shelter','Cookware','Storage','Lighting','Sleeping Gear','Camping Furniture','Fan','Accessories'];
+window.__CAT_TO_COLLECTION = {
+ // Shelter — khemah, dome, flysheet, tiang, pasak, groundsheet, tali/aksesori khemah
+ 'auto tent':'Shelter','manual tent':'Shelter','tent':'Shelter','air tent':'Shelter','auto dome':'Shelter','manual dome':'Shelter','semi dome':'Shelter','dome':'Shelter','changing tent':'Shelter','outter tent only':'Shelter','inner tent only':'Shelter','tent pole':'Shelter','pole cap':'Shelter','dome connector':'Shelter','ground sheet for tent':'Shelter','ground sheet for dome':'Shelter','ground sheet':'Shelter','flysheet hexagon (6)':'Shelter','flysheet twin peak':'Shelter','flysheet rectangle':'Shelter','flysheet octagon (8)':'Shelter','dome-flysheet extender':'Shelter','dome-room extender':'Shelter','door curtain':'Shelter','door mesh':'Shelter','pegs':'Shelter','pegs bags':'Shelter','pegs accessories':'Shelter','hammer':'Shelter','wind shield':'Shelter','wind rope with regulator':'Shelter','hanging rope':'Shelter','rope buckle':'Shelter','velco strap':'Shelter','fireproof cloth':'Shelter',
+ // Cookware — dapur, periuk, cerek, cawan, grill, alat masak
+ 'single stove':'Cookware','double stove':'Cookware','multifunction stove':'Cookware','stove':'Cookware','stove bag':'Cookware','grill':'Cookware','charcoal':'Cookware','pot sets':'Cookware','single pot':'Cookware','pots':'Cookware','pot hanging tripod':'Cookware','kettle':'Cookware','cup sets':'Cookware','single cup':'Cookware','cups':'Cookware','utensil':'Cookware','seasoning bottles':'Cookware','cutting board':'Cookware','plate':'Cookware','gas adapter':'Cookware',
+ // Storage — beg, kotak, rak, wagon, baldi, sangkut
+ 'multifunction bags':'Storage','folding boxes':'Storage','boxes':'Storage','tactical boxes':'Storage','tactical boxes accessories':'Storage','cooler boxes':'Storage','water bucket':'Storage','basket':'Storage','bags':'Storage','hiking bag':'Storage','tissue bags':'Storage','toiletery bags':'Storage','tote bage':'Storage','rubbish frame':'Storage','folding wagon':'Storage','wagons':'Storage','wagon tabletop':'Storage','rack':'Storage','rack accessories':'Storage','shelf':'Storage','portable hanger':'Storage','basic hooks':'Storage',
+ // Lighting — lampu, lantern, string light
+ 'hanging lamp':'Lighting','ground lamp':'Lighting','hand lamp':'Lighting','head lamp':'Lighting','lantern':'Lighting','string light':'Lighting','warning light':'Lighting','light standing pole':'Lighting','lamp accessories':'Lighting','lights with mosquito repellent':'Lighting',
+ // Sleeping Gear — sleeping bag, tilam, katil, bantal, tikar tidur, pump
+ 'sleeping bags':'Sleeping Gear','queen air mattress':'Sleeping Gear','single air mattress':'Sleeping Gear','king air mattress':'Sleeping Gear','camping cots':'Sleeping Gear','pillows':'Sleeping Gear','pillow case':'Sleeping Gear','blankets':'Sleeping Gear','floor mats':'Sleeping Gear','nap mats':'Sleeping Gear','hammock':'Sleeping Gear','pump':'Sleeping Gear',
+ // Camping Furniture — kerusi, meja, IGT, stool, sofa
+ 'high-back chair':'Camping Furniture','moon chair':'Camping Furniture','recliner chair':'Camping Furniture','basic chair':'Camping Furniture','chairs':'Camping Furniture','light-weight chair':'Camping Furniture','kermit folding chair':'Camping Furniture','double folding chair':'Camping Furniture','rocking chair':'Camping Furniture','folding stool':'Camping Furniture','egg roll table':'Camping Furniture','igt tables':'Camping Furniture','igt tables accessories':'Camping Furniture','mesh folding table':'Camping Furniture','tactical table':'Camping Furniture','tables':'Camping Furniture','table sets':'Camping Furniture','mini table':'Camping Furniture','portable light-weight table':'Camping Furniture','steel table':'Camping Furniture','steel table board':'Camping Furniture','kitchen table':'Camping Furniture','tablecloths':'Camping Furniture','inflatable sofa':'Camping Furniture',
+ // Fan — kipas
+ 'portable fan':'Fan','stand fan':'Fan','hanging fan':'Fan','hand held fan':'Fan','fan':'Fan','fan accessories':'Fan',
+ // Accessories — bendera, buckle, carabiner, first aid, screws, mat pintu, tuala
+ 'flags':'Accessories','magnetic buckles':'Accessories','carabiner':'Accessories','clip':'Accessories','first aid':'Accessories','sets survival tools':'Accessories','universal tactical screws':'Accessories','door mats':'Accessories','towel':'Accessories'
+};
+// Koleksi sesuatu produk: override metadata.collection (kalau canonical) > derive dari kategori > '' (tiada)
+window.__collectionOf = function(p){
+ if(!p) return '';
+ const ov = (p.metadata && p.metadata.collection) ? String(p.metadata.collection).trim() : '';
+ if(ov){
+  const hit = (window.__CAMP_COLLECTIONS||[]).find(c => c.toLowerCase() === ov.toLowerCase());
+  return hit || ov; // hormati override (canonical dinormalkan; free-text kekal apa adanya)
+ }
+ const cat = (p.category || '').trim().toLowerCase();
+ return (cat && window.__CAT_TO_COLLECTION[cat]) ? window.__CAT_TO_COLLECTION[cat] : '';
 };
 
 // p1_310 — Collections list (EasyStore-style): products grouped into Brands +
@@ -37151,6 +37186,19 @@ window.renderCollections = function() {
  const cats = groupBy('category');
  const noBrand = prods.filter(p => !(p.brand || '').trim()).length;
  const noCat = prods.filter(p => !(p.category || '').trim()).length;
+ // p1_1000 — "Collections" segment: 8 koleksi tetap (auto ikut kategori + override per-SKU).
+ const collMap = new Map();
+ (window.__CAMP_COLLECTIONS || []).forEach(c => collMap.set(c, { name: c, total: 0, live: 0, _L: new Set(), _LL: new Set() }));
+ for(const p of prods) {
+  const c = window.__collectionOf ? window.__collectionOf(p) : '';
+  if(!c) continue;
+  if(!collMap.has(c)) collMap.set(c, { name: c, total: 0, live: 0, _L: new Set(), _LL: new Set() });
+  const g = collMap.get(c); g.total++;
+  const lk = listingKey(p); g._L.add(lk);
+  if(pub(p)) { g.live++; g._LL.add(lk); }
+ }
+ const colls = Array.from(collMap.values()).map(g => ({ name: g.name, total: g.total, live: g.live, listings: g._L.size, liveListings: g._LL.size }));
+ const noColl = prods.filter(p => !(window.__collectionOf ? window.__collectionOf(p) : '')).length;
 
  const row = (type, g) =>
  `<div onclick="window.__collectionOpen('${type}','${hesc(g.name).replace(/'/g, "\\'")}')" style="display:flex; align-items:center; justify-content:space-between; padding:11px 14px 11px 34px; border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
@@ -37161,8 +37209,12 @@ window.renderCollections = function() {
  `<div style="display:flex; align-items:center; gap:9px; padding:12px 14px; background:#F9FAFB; border-bottom:1px solid #E5E7EB; font-weight:700; font-size:13px; color:#101010;"><i data-lucide="${icon}" style="width:16px;height:16px;color:#CD7C32;"></i>${title} <span style="font-weight:500; color:#9CA3AF; font-size:11.5px;">${sub}</span></div>`;
 
  let html = '';
- html += '<div style="display:flex; align-items:center; justify-content:space-between; margin:18px 0 14px;"><h2 class="section-title" data-skip-title-sync style="margin:0;"><i data-lucide="folder-tree" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i>Collections</h2><span style="font-size:12px; color:#6B7280;">' + prods.length + ' produk · ' + brands.length + ' brand · ' + cats.length + ' kategori</span></div>';
+ html += '<div style="display:flex; align-items:center; justify-content:space-between; margin:18px 0 14px;"><h2 class="section-title" data-skip-title-sync style="margin:0;"><i data-lucide="folder-tree" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i>Collections</h2><span style="font-size:12px; color:#6B7280;">' + prods.length + ' produk · ' + (window.__CAMP_COLLECTIONS||[]).length + ' koleksi · ' + brands.length + ' brand · ' + cats.length + ' kategori</span></div>';
  html += '<div style="border:1px solid #E5E7EB; border-radius:12px; overflow:hidden; background:#fff;">';
+ // Collections group (p1_1000) — koleksi overall untuk POS app, auto ikut kategori + override per-SKU
+ html += groupHeader('folder-tree', 'Collections', (window.__CAMP_COLLECTIONS||[]).length + ' koleksi · auto ikut kategori');
+ html += colls.map(g => row('collection', g)).join('');
+ if(noColl) html += `<div style="padding:9px 14px 9px 34px; border-bottom:1px solid #F3F4F6; font-size:12px; color:#9CA3AF;">${noColl} produk belum ada koleksi (set di editor produk → medan Collection)</div>`;
  // Brands group
  html += groupHeader('award', 'Brands', brands.length + ' brand');
  html += brands.map(g => row('brand', g)).join('');
@@ -37187,6 +37239,7 @@ window.__collectionOpen = function(type, value) {
  const sEl = document.getElementById('pdSearch'); if(sEl) sEl.value = '';
  const bEl = document.getElementById('pdBrand'); if(bEl) bEl.value = (type === 'brand') ? value : '';
  const cEl = document.getElementById('pdCategory'); if(cEl) cEl.value = (type === 'category') ? value : '';
+ window.__pdbCollectionFilter = (type === 'collection') ? value : ''; // p1_1000 — filter grid ikut koleksi
  // reset status filter ke "Semua" supaya koleksi tunjuk SEMUA produk di dalamnya
  const stEl = document.getElementById('pdStatus'); if(stEl) stEl.value = '';
  const allPill = document.querySelector('#pdbStatusPills .pdb-pill[data-status=""]');
@@ -37237,6 +37290,8 @@ window.renderProductDatabase = function() {
  let list = masterProducts.filter(p => {
  if(fBrand && p.brand !== fBrand) return false;
  if(fCat && p.category !== fCat) return false;
+ if(window.__pdbCollectionFilter && (window.__collectionOf ? window.__collectionOf(p) : '') !== window.__pdbCollectionFilter) return false; // p1_1000
+
  const stock = stockMap.get(p.sku) || 0;
  const reorder = parseInt(p.reorder_point) || 5;
  const disc = !!(p.metadata && p.metadata.discontinued === true);
@@ -37309,6 +37364,7 @@ window.renderProductDatabase = function() {
  if(q) chips.push({label: 'Search: "' + q + '"', clear: "document.getElementById('pdSearch').value=''; window.renderProductDatabase();"});
  if(fBrand) chips.push({label: 'Brand: ' + fBrand, clear: "document.getElementById('pdBrand').value=''; window.renderProductDatabase();"});
  if(fCat) chips.push({label: 'Category: ' + fCat, clear: "document.getElementById('pdCategory').value=''; window.renderProductDatabase();"});
+ if(window.__pdbCollectionFilter) chips.push({label: 'Collection: ' + window.__pdbCollectionFilter, clear: "window.__pdbCollectionFilter=''; window.renderProductDatabase();"});
  if(fStatus) {
    const map = { published:'Live', draft:'Draft', oos:'Out of Stock', low:'Low Stock', noimage:'No Image', discontinued:'Discontinued', not_tiktok:'Belum di TikTok' };
    const allPill = "document.querySelectorAll('#pdbStatusPills .pdb-pill').forEach(b=>b.classList.remove('pdb-pill--active'));document.querySelector('#pdbStatusPills .pdb-pill[data-status=\\\"\\\"]').classList.add('pdb-pill--active');document.getElementById('pdStatus').value='';window.renderProductDatabase();";
