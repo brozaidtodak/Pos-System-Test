@@ -352,9 +352,14 @@ exports.handler = async (event) => {
             if (exMeta.stock_restored) newMeta.stock_restored = true;
 
             if (live && !exMeta.stock_deducted && !exMeta.stock_restored) {
-                // #14 — order kini valid tapi belum pernah deduct → deduct sekarang
-                stockResult = await deductStockForItems(sb, row.items, { txnType: 'OUTBOUND_SALE' });
-                newMeta.stock_deducted = true;
+                // #14 — order kini valid tapi belum pernah deduct → deduct sekarang.
+                // M9 (audit 2026-07-01): pass orderRef so a retry can't double-deduct (p1_789 idempotency),
+                // and only set stock_deducted=true when the deduct was actually CLEAN — else leave the flag
+                // false so the next webhook/sync event retries (was: flag set unconditionally → silent oversell).
+                stockResult = await deductStockForItems(sb, row.items, { txnType: 'OUTBOUND_SALE', orderRef: 'shopee:' + orderSn });
+                const __clean = stockResult && (stockResult.already || !(stockResult.errors || []).some(x => x.sku !== '(ledger_drift)'));
+                if (__clean) newMeta.stock_deducted = true;
+                else console.error('shopee-webhook M9: deduct GAGAL utk', orderSn, '- stock_deducted kekal false untuk retry', stockResult && stockResult.errors);
             } else if (!live && exMeta.stock_deducted && !exMeta.stock_restored) {
                 // #4 — order yang pernah deduct kini cancelled/void → pulang stok (sekali)
                 stockResult = await restockForItems(sb, (Array.isArray(ex.items) && ex.items.length ? ex.items : row.items), { reason: 'Shopee order ' + orderSn + ' cancelled' });
@@ -366,8 +371,10 @@ exports.handler = async (event) => {
                 { status: row.status, total: row.total, total_amount: row.total, items: row.items, metadata: newMeta },
                 { Prefer: 'return=minimal' });
         } else {
-            // New order — tandai stock_deducted dalam metadata kalau live (untuk idempotency event akan datang).
-            if (live) row.metadata = Object.assign({}, row.metadata || {}, { stock_deducted: true });
+            // New order — M9 (audit 2026-07-01): do NOT pre-mark stock_deducted before the deduct runs.
+            // Insert first, deduct with an orderRef (idempotent, retry-safe), then set the flag ONLY on a
+            // clean deduct via PATCH. A failed deduct leaves the flag unset so the next event retries
+            // (was: flag committed true up-front + deductStockForItems errors swallowed → silent oversell).
             let didInsert = false;
             try {
                 await sb('POST', '/sales_history', row, { Prefer: 'return=minimal' });
@@ -378,7 +385,16 @@ exports.handler = async (event) => {
                 // duplicate → path lain dah insert+deduct; skip
             }
             if (didInsert && live) {
-                stockResult = await deductStockForItems(sb, row.items, { txnType: 'OUTBOUND_SALE' });
+                stockResult = await deductStockForItems(sb, row.items, { txnType: 'OUTBOUND_SALE', orderRef: 'shopee:' + orderSn });
+                const __clean = stockResult && (stockResult.already || !(stockResult.errors || []).some(x => x.sku !== '(ledger_drift)'));
+                if (__clean) {
+                    await sb('PATCH',
+                        `/sales_history?metadata->>shopee_order_sn=eq.${encodeURIComponent(orderSn)}`,
+                        { metadata: Object.assign({}, row.metadata || {}, { stock_deducted: true }) },
+                        { Prefer: 'return=minimal' });
+                } else {
+                    console.error('shopee-webhook M9: deduct GAGAL utk order baru', orderSn, '- stock_deducted tak diset, retry pada event seterusnya', stockResult && stockResult.errors);
+                }
             }
         }
 

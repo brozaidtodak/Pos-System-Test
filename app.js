@@ -10393,7 +10393,10 @@ function ffOnlineOrders() {
  const t = new Date(s.created_at || s.timestamp || 0).getTime();
  if (isNaN(t) || t < cutoff) return false;
  const st = (s.status || '').toLowerCase();
- if (st === 'voided' || st === 'cancelled' || st === 'refund') return false;
+ // M3 (audit 2026-07-01) — was exact 'refund' but refunds set status 'Refunded' (→'refunded'),
+ // so refunded online orders stayed in the packing queue = staff re-ship refunded goods.
+ // Use includes() like the sibling filter at line ~10014.
+ if (st.includes('void') || st.includes('cancel') || st.includes('refund')) return false;
  return true;
  });
 }
@@ -16115,6 +16118,10 @@ window.processNewCheckout = async function() {
 
  // p1_236 — track backorder items (sold lebih dari batches available — for OOS allow flow)
  const backorderItems = [];
+ // M8 (audit 2026-07-01) — items whose FIFO deduct genuinely FAILED (RPC error/timeout, not OOS).
+ // Kept separate from backorder so a transient DB blip is never silently sold as "backorder" with
+ // stock left un-decremented. Retried once below; anything still failing is surfaced + audited.
+ const deductFailed = [];
  // Kira total (sync) + kumpul item bukan-custom utk deduct
  const __realItems = [];
  for (const item of cart) {
@@ -16125,28 +16132,43 @@ window.processNewCheckout = async function() {
  }
  // p1_744 — ATOMIK FIFO deduct via RPC (FOR UPDATE) — TAPI jalan SERENTAK (Promise.all), bukan bersiri.
  // Dulu for-await satu-satu = troli 5 item × wifi lambat = checkout beku lama. Sekarang semua serentak.
- await Promise.all(__realItems.map(item =>
- withTimeout(db.rpc('deduct_stock_fifo', { p_sku: item.sku, p_qty: item.quantity }), 15000, 'deduct stok ' + item.sku)
- .then(({ data: __alloc, error: __allocErr }) => {
- if(__allocErr) {
- console.error('deduct_stock_fifo gagal', item.sku, __allocErr);
- backorderItems.push({ sku: item.sku, name: item.name, qty_short: item.quantity, qty_total: item.quantity });
- return;
- }
+ // M8 — one deduct attempt + one retry (transient errors/timeouts often clear on retry). Only a
+ // clean RPC result (no error) is trusted; a genuine shortfall (short>0) is backorder, but an
+ // error/timeout after the retry is a FAILED deduction (stock NOT touched), never a silent backorder.
+ const __deductOne = async (item) => {
+ for(let attempt = 0; attempt < 2; attempt++) {
+ try {
+ const { data: __alloc, error: __allocErr } = await withTimeout(
+ db.rpc('deduct_stock_fifo', { p_sku: item.sku, p_qty: item.quantity }),
+ 15000, 'deduct stok ' + item.sku + (attempt ? ' (retry)' : ''));
+ if(__allocErr) { if(attempt === 0) continue; throw __allocErr; }
  ((__alloc && __alloc.allocated) ? __alloc.allocated : []).forEach(a => {
  transactionsPayload.push({ sku: item.sku, batch_id: a.batch_id, transaction_type: 'OUTBOUND_SALE', qty_change: -a.qty });
  item.batch_alloc.push({ batch_id: a.batch_id, qty: a.qty });
  });
  const __short = (__alloc && __alloc.short) || 0;
  if(__short > 0) backorderItems.push({ sku: item.sku, name: item.name, qty_short: __short, qty_total: item.quantity });
- })
- .catch(e => { console.error('deduct timeout/gagal', item.sku, e); backorderItems.push({ sku: item.sku, name: item.name, qty_short: item.quantity, qty_total: item.quantity }); })
- ));
+ return;
+ } catch(e) {
+ if(attempt === 0) continue; // retry once
+ console.error('deduct_stock_fifo GAGAL (bukan OOS) selepas retry', item.sku, e);
+ deductFailed.push({ sku: item.sku, name: item.name, qty: item.quantity, err: String((e && e.message) || e) });
+ return;
+ }
+ }
+ };
+ await Promise.all(__realItems.map(__deductOne));
  // p1_236 — Expose backorder list ke saleMeta for sales_history.metadata transparency
  if(backorderItems.length > 0) {
  window.__lastBackorderItems = backorderItems;
  if(typeof showToast === 'function') showToast(`AMARAN: ${backorderItems.length} item dijual backorder (stok kurang). Detail simpan dalam sale metadata.`, 'warn');
  } else { window.__lastBackorderItems = null; }
+ // M8 — deduction genuinely failed (connection/error, NOT out of stock). Stock was NOT decremented;
+ // surface loudly + persist to metadata so it can be reconciled/retried instead of silently oversold.
+ if(deductFailed.length > 0) {
+ window.__lastDeductFailed = deductFailed;
+ if(typeof showToast === 'function') showToast(`AMARAN PENTING: ${deductFailed.length} item GAGAL tolak stok (ralat sambungan, BUKAN kehabisan). Stok TAK ditolak — semak & selaras manual (Inventory History).`, 'error');
+ } else { window.__lastDeductFailed = null; }
 
  if(transactionsPayload.length> 0) await withTimeout(db.from('inventory_transactions').insert(transactionsPayload), 15000, 'rekod transaksi stok');
 
@@ -16261,6 +16283,12 @@ window.processNewCheckout = async function() {
  saleMeta.backorder = true;
  saleMeta.backorder_items = window.__lastBackorderItems;
  window.__lastBackorderItems = null;
+ }
+ // M8 — audit trail for deductions that errored out (stock not decremented, needs manual reconcile)
+ if(window.__lastDeductFailed && window.__lastDeductFailed.length > 0) {
+ saleMeta.deduct_failed = true;
+ saleMeta.deduct_failed_items = window.__lastDeductFailed;
+ window.__lastDeductFailed = null;
  }
  // 2026-06-25 — rekod konteks B2B (audit + reporting): customer, item harga rundingan, jimat vs retail
  if(window.posCustomer && window.posCustomer.is_b2b) {
@@ -21632,6 +21660,11 @@ window.renderSalesGraph = function(mode = window.currentGraphMode) {
  let tEndKey = 0;
 
  if (mode === '7days') {
+ // M18 (audit 2026-07-01) — buckets keyed by "day month" only (no year); with no timestamp
+ // filter below, a sale from the same date in a PRIOR YEAR ("01 Jul 2025") landed in the current
+ // "01 Jul" bucket and inflated the chart. Bound the window to the actual last 7 days.
+ let s7 = new Date(); s7.setDate(s7.getDate() - 6); s7.setHours(0,0,0,0); tStartKey = s7.getTime();
+ let e7 = new Date(); e7.setHours(23,59,59,999); tEndKey = e7.getTime();
  for(let i=6; i>=0; i--) {
  let d = new Date();
  d.setDate(d.getDate() - i);
@@ -21680,6 +21713,7 @@ window.renderSalesGraph = function(mode = window.currentGraphMode) {
  // Logical Filters
  if (mode === 'thisyear' && sDate.getFullYear() !== now.getFullYear()) return;
  if (mode === 'thismonth' && (sDate.getMonth() !== now.getMonth() || sDate.getFullYear() !== now.getFullYear())) return;
+ if (mode === '7days' && (sDate.getTime() < tStartKey || sDate.getTime()> tEndKey)) return; // M18 — bound to real last-7-days window
  if (mode === 'custom') {
  if (sDate.getTime() < tStartKey || sDate.getTime()> tEndKey) return;
  }
@@ -24763,6 +24797,16 @@ window.saveAndPreviewQuotationParams = async function(docType, docTitle, isViewO
  if (!isViewOnly) {
  let isNew = !currentQuoteRef;
  if(isNew) {
+ // M16 (audit 2026-07-01) — nextQuoteIdNum reset to 1001 on every reload and was never seeded
+ // from the DB, so a new quote after reload minted QT-1001 again → collided with a saved quote
+ // (same id "QT-1001-v1", insert/versioning breaks). Seed from the highest existing QT-#### first.
+ try {
+   const maxExisting = (window.quotationsLog || []).reduce((mx, q) => {
+     const m = /QT-(\d+)/.exec(String((q && q.ref) || ''));
+     return m ? Math.max(mx, parseInt(m[1], 10)) : mx;
+   }, 0);
+   if(maxExisting + 1 > nextQuoteIdNum) nextQuoteIdNum = maxExisting + 1;
+ } catch(e){}
  currentQuoteRef = "QT-" + nextQuoteIdNum++;
  currentQuoteVersion = 1;
  } else {
@@ -27910,6 +27954,7 @@ window.renderPickingListUI = function(isSorted = false) {
  });
  
  html += '</div>';
+ container.innerHTML = html; // M17 (audit 2026-07-01) — built HTML was never written to the DOM → staff saw a blank picking list
 };
 
 // ===== p1_698 — Barcode Generator: preset saiz (global) + customization (drag susun + font per elemen + show/hide) =====
@@ -30248,7 +30293,7 @@ function __computeProductSales() {
  const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
  (s.items || []).forEach(it => {
  const sku = (it.sku || '').toUpperCase();
- const qty = parseFloat(it.qty) || 0;
+ const qty = window.__aoItemQty(it); // M12/M13 (audit) — walk-in lines store `quantity` not `qty`
  const price = parseFloat(it.price) || 0;
  const st = stats.get(sku);
  if(!st || qty <= 0) return;
@@ -30263,7 +30308,7 @@ function __computeProductSales() {
  if(s.total>= 0) return;
  (s.items || []).forEach(it => {
  const sku = (it.sku || '').toUpperCase();
- const qty = parseFloat(it.qty) || 0;
+ const qty = window.__aoItemQty(it); // M12/M13 (audit) — walk-in lines store `quantity` not `qty`
  const st = stats.get(sku);
  if(st && qty> 0) {
  st.totalSold = Math.max(0, st.totalSold - qty);
@@ -34309,7 +34354,7 @@ window.renderManagerDashboard = function() {
  const skuQty = {}; const skuRev = {};
  positives.forEach(s => (s.items||[]).forEach(it => {
  const sku = (it.sku || 'NO_SKU').toUpperCase();
- const qty = parseInt(it.qty || 1);
+ const qty = window.__aoItemQty(it) || 1; // M12 (audit) — walk-in lines store `quantity` not `qty`
  skuQty[sku] = (skuQty[sku] || 0) + qty;
  skuRev[sku] = (skuRev[sku] || 0) + qty * (parseFloat(it.price)||0);
  }));
@@ -35193,7 +35238,7 @@ window.openVelocityAnalysis = function() {
  const dt = s.created_at ? new Date(s.created_at).getTime() : 0;
  (s.items || []).forEach(it => {
  const sku = (it.sku||'').toUpperCase();
- const qty = parseFloat(it.qty) || 0;
+ const qty = window.__aoItemQty(it); // M12/M13 (audit) — walk-in lines store `quantity` not `qty`
  const st = skuStats.get(sku);
  if(!st || qty <= 0) return;
  st.lifetime += qty;
@@ -35206,7 +35251,7 @@ window.openVelocityAnalysis = function() {
  (s.items || []).forEach(it => {
  const sku = (it.sku||'').toUpperCase();
  const st = skuStats.get(sku);
- if(st) st.lifetime = Math.max(0, st.lifetime - (parseFloat(it.qty)||0));
+ if(st) st.lifetime = Math.max(0, st.lifetime - window.__aoItemQty(it)); // M13 (audit) — qty|quantity
  });
  });
 
@@ -42081,7 +42126,8 @@ window.__scIssue = async function(sign){
  const staff = (window.currentUser && (window.currentUser.name||window.currentUser.staff_id)) || '';
  try {
   if(typeof db==='undefined'||!db){ showToast('Tiada sambungan DB.','error'); return; }
-  await db.from('store_credit_ledger').insert([{ customer_key:key, customer_name:name, amount:amt, reason:reason||(sign<0?'Guna kredit':'Beri kredit'), created_by:staff }]);
+  const { error:scErr } = await db.from('store_credit_ledger').insert([{ customer_key:key, customer_name:name, amount:amt, reason:reason||(sign<0?'Guna kredit':'Beri kredit'), created_by:staff }]);
+  if(scErr) throw scErr; // M6 (audit) — supabase-js returns {error}, doesn't throw; unchecked = fake "success", credit never saved
   showToast(`${sign<0?'Guna':'Beri'} kredit RM${Math.abs(amt).toFixed(2)} — ${name||phone}.`,'success');
   if(amtEl)amtEl.value=''; if(reasonEl)reasonEl.value='';
   await window.__scLoad(); window.renderStoreCredit();
@@ -42963,7 +43009,8 @@ window.__stSubmit = async function(){
  const staff=(window.currentUser&&(window.currentUser.name||window.currentUser.staff_id))||'';
  try {
   if(typeof db==='undefined'||!db){ showToast('Tiada sambungan DB.','error'); return; }
-  await db.from('stock_transfers').insert([{ sku, product_name:prod?prod.name:'', qty, from_loc:from, to_loc:to, note, created_by:staff }]);
+  const { error:stErr } = await db.from('stock_transfers').insert([{ sku, product_name:prod?prod.name:'', qty, from_loc:from, to_loc:to, note, created_by:staff }]);
+  if(stErr) throw stErr; // L8 (audit) — unchecked insert = false "saved" audit trail on RLS/constraint failure
   showToast(`Rekod pindah: ${qty} × ${sku} (${from} → ${to}).`,'success');
   if(qtyEl)qtyEl.value=''; if(noteEl)noteEl.value=''; if(skuEl)skuEl.value='';
   await window.__stLoad(); window.renderStockTransfer();
@@ -44386,7 +44433,8 @@ window.__rcvSaveDamage = async function(poId){
    const total = hitems.reduce((s, it) => s + it.price * it.quantity, 0);
    const g = (id) => { const e = document.getElementById(id); return e ? (e.value || '').trim() : ''; };
    const customer = { name: g('customerName'), phone: g('customerPhone'), email: g('customerEmail') };
-   await db.from('held_sales').insert({ staff_id, staff_name, items: hitems, customer, notify_id: notifyId || null, status: 'waiting', total });
+   const { error:parkErr } = await db.from('held_sales').insert({ staff_id, staff_name, items: hitems, customer, notify_id: notifyId || null, status: 'waiting', total });
+   if(parkErr) throw parkErr; // M7 (audit) — must confirm save BEFORE clearing the cart, else a silent DB error loses the whole in-progress sale
    if(typeof window.clearCart === 'function') window.clearCart(); else { cart = []; if(typeof renderCart === 'function') renderCart(); }
    return true;
   } catch(e){ _toast('Jualan tak dapat ditahan (' + e.message + ') — cart dikekalkan.', 'warn'); return false; }
