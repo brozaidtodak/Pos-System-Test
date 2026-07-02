@@ -37125,12 +37125,41 @@ window.pdbClearFilters = function() {
 // p1_1000 (Zack) — "Collection" = koleksi OVERALL (himpunan kategori) untuk kegunaan POS app.
 // 8 koleksi tetap. Keahlian: override per-SKU (metadata.collection) DIUTAMAKAN; kalau tiada,
 // auto-derive dari kategori produk (peta di bawah). Tiada tulisan DB — dikira masa render.
-window.__CAMP_COLLECTIONS = ['Shelter','Cookware','Storage','Lighting','Sleeping Gear','Camping Furniture','Fan','Accessories'];
+// p1_1001 — senarai koleksi BOLEH EDIT (disimpan dalam app_settings key 'collections'); Zack boleh
+// tambah/buang sendiri. Fallback ke default kalau belum diset. __CAMP_COLLECTIONS = alias hidup (getter).
+window.__CAMP_COLLECTIONS_DEFAULT = ['Shelter','Cookware','Storage','Lighting','Sleeping Gear','Camping Furniture','Fan','Accessories','Apparel','Test'];
+window.__getCollections = function(){
+ try { const c = (typeof window.__getSetting === 'function') ? window.__getSetting('collections', null) : null; if(Array.isArray(c) && c.length) return c.slice(); } catch(e){}
+ return window.__CAMP_COLLECTIONS_DEFAULT.slice();
+};
+try { Object.defineProperty(window, '__CAMP_COLLECTIONS', { configurable:true, get(){ return window.__getCollections(); } }); }
+catch(e){ window.__CAMP_COLLECTIONS = window.__CAMP_COLLECTIONS_DEFAULT.slice(); }
+// Tambah/buang koleksi (mgmt) — simpan ke app_settings, semua peranti sama.
+window.__collAdd = async function(){
+ const el = document.getElementById('collNewName'); if(!el) return;
+ const name = (el.value||'').trim(); if(!name) return;
+ const list = window.__getCollections();
+ if(list.some(c => c.toLowerCase() === name.toLowerCase())){ if(window.showToast) showToast('Koleksi dah wujud.','warn'); return; }
+ const s = window.__appSettings || (window.__appSettingsDefaults ? window.__appSettingsDefaults() : {});
+ s.collections = [...list, name]; window.__appSettings = s; el.value='';
+ if(window.__saveAppSettings) await window.__saveAppSettings();
+ if(window.showToast) showToast('Koleksi "'+name+'" ditambah.','success');
+ if(window.renderCollections) window.renderCollections();
+};
+window.__collRemove = async function(name){
+ if(!name) return;
+ if(!confirm('Buang koleksi "'+name+'"? Produk yang di-assign koleksi ni jadi "tiada koleksi" (data produk tak dipadam).')) return;
+ const s = window.__appSettings || (window.__appSettingsDefaults ? window.__appSettingsDefaults() : {});
+ s.collections = window.__getCollections().filter(c => c !== name); window.__appSettings = s;
+ if(window.__saveAppSettings) await window.__saveAppSettings();
+ if(window.showToast) showToast('Koleksi "'+name+'" dibuang.','success');
+ if(window.renderCollections) window.renderCollections();
+};
 window.__CAT_TO_COLLECTION = {
  // Shelter — khemah, dome, flysheet, tiang, pasak, groundsheet, tali/aksesori khemah
- 'auto tent':'Shelter','manual tent':'Shelter','tent':'Shelter','air tent':'Shelter','auto dome':'Shelter','manual dome':'Shelter','semi dome':'Shelter','dome':'Shelter','changing tent':'Shelter','outter tent only':'Shelter','inner tent only':'Shelter','tent pole':'Shelter','pole cap':'Shelter','dome connector':'Shelter','ground sheet for tent':'Shelter','ground sheet for dome':'Shelter','ground sheet':'Shelter','flysheet hexagon (6)':'Shelter','flysheet twin peak':'Shelter','flysheet rectangle':'Shelter','flysheet octagon (8)':'Shelter','dome-flysheet extender':'Shelter','dome-room extender':'Shelter','door curtain':'Shelter','door mesh':'Shelter','pegs':'Shelter','pegs bags':'Shelter','pegs accessories':'Shelter','hammer':'Shelter','wind shield':'Shelter','wind rope with regulator':'Shelter','hanging rope':'Shelter','rope buckle':'Shelter','velco strap':'Shelter','fireproof cloth':'Shelter',
+ 'auto tent':'Shelter','manual tent':'Shelter','tent':'Shelter','air tent':'Shelter','auto dome':'Shelter','manual dome':'Shelter','semi dome':'Shelter','dome':'Shelter','changing tent':'Shelter','outter tent only':'Shelter','inner tent only':'Shelter','tent pole':'Shelter','pole cap':'Shelter','dome connector':'Shelter','ground sheet for tent':'Shelter','ground sheet for dome':'Shelter','ground sheet':'Shelter','flysheet hexagon (6)':'Shelter','flysheet twin peak':'Shelter','flysheet rectangle':'Shelter','flysheet octagon (8)':'Shelter','dome-flysheet extender':'Shelter','dome-room extender':'Shelter','door curtain':'Shelter','door mesh':'Shelter','pegs':'Shelter','pegs bags':'Shelter','pegs accessories':'Shelter','hammer':'Shelter','wind rope with regulator':'Shelter','hanging rope':'Shelter','rope buckle':'Shelter','velco strap':'Shelter','fireproof cloth':'Shelter',
  // Cookware — dapur, periuk, cerek, cawan, grill, alat masak
- 'single stove':'Cookware','double stove':'Cookware','multifunction stove':'Cookware','stove':'Cookware','stove bag':'Cookware','grill':'Cookware','charcoal':'Cookware','pot sets':'Cookware','single pot':'Cookware','pots':'Cookware','pot hanging tripod':'Cookware','kettle':'Cookware','cup sets':'Cookware','single cup':'Cookware','cups':'Cookware','utensil':'Cookware','seasoning bottles':'Cookware','cutting board':'Cookware','plate':'Cookware','gas adapter':'Cookware',
+ 'single stove':'Cookware','double stove':'Cookware','multifunction stove':'Cookware','stove':'Cookware','stove bag':'Cookware','grill':'Cookware','charcoal':'Cookware','wind shield':'Cookware','pot sets':'Cookware','single pot':'Cookware','pots':'Cookware','pot hanging tripod':'Cookware','kettle':'Cookware','cup sets':'Cookware','single cup':'Cookware','cups':'Cookware','utensil':'Cookware','seasoning bottles':'Cookware','cutting board':'Cookware','plate':'Cookware','gas adapter':'Cookware',
  // Storage — beg, kotak, rak, wagon, baldi, sangkut
  'multifunction bags':'Storage','folding boxes':'Storage','boxes':'Storage','tactical boxes':'Storage','tactical boxes accessories':'Storage','cooler boxes':'Storage','water bucket':'Storage','basket':'Storage','bags':'Storage','hiking bag':'Storage','tissue bags':'Storage','toiletery bags':'Storage','tote bage':'Storage','rubbish frame':'Storage','folding wagon':'Storage','wagons':'Storage','wagon tabletop':'Storage','rack':'Storage','rack accessories':'Storage','shelf':'Storage','portable hanger':'Storage','basic hooks':'Storage',
  // Lighting — lampu, lantern, string light
@@ -37225,6 +37254,19 @@ window.renderCollections = function() {
  if(noCat) html += `<div style="padding:9px 14px 9px 34px; font-size:12px; color:#9CA3AF;">${noCat} produk tiada kategori</div>`;
  html += '</div>';
  html += '<div style="margin-top:14px; font-size:12px; color:#9CA3AF;">Tekan mana-mana koleksi untuk lihat produk di dalamnya. Nombor = <b>listing</b> (varian dah dicantum, sama macam grid Produk) <b>/</b> jumlah unit-SKU.</div>';
+ // p1_1001 — Urus Koleksi (mgmt sahaja): tambah/buang koleksi custom. Keahlian produk: auto ikut
+ // kategori ATAU set terus di editor produk (medan Collection, by SKU).
+ const __cu = window.currentUser;
+ const canManage = __cu && (__cu.role === 'mgmt' || (window.isBoss && window.isBoss(__cu)));
+ if(canManage){
+  const clist = window.__getCollections();
+  html += '<div class="admin-card" style="padding:16px; margin-top:16px;">';
+  html += '<div style="font-weight:800; font-size:13.5px; margin-bottom:10px;"><i data-lucide="folder-plus" style="width:15px;height:15px;vertical-align:-2px;"></i> Urus Koleksi</div>';
+  html += '<p style="font-size:11.5px; color:#9CA3AF; margin:0 0 12px;">Tambah koleksi ikut keperluan. Produk masuk koleksi secara auto ikut kategori, atau set terus di editor produk (medan Collection — by SKU).</p>';
+  html += '<div style="display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px;">' + clist.map(c => `<span style="display:inline-flex; align-items:center; gap:6px; background:#F3EEE7; color:#7A4A1E; border:1px solid #E8D9C7; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600;">${hesc(c)}<button onclick="window.__collRemove('${hesc(c).replace(/'/g, "\\'")}')" title="Buang" style="border:none; background:none; color:#B23A2E; cursor:pointer; font-size:15px; line-height:1; padding:0;">&times;</button></span>`).join('') + '</div>';
+  html += '<div style="display:flex; gap:8px;"><input id="collNewName" type="text" placeholder="Nama koleksi baru…" onkeydown="if(event.key===\'Enter\'){event.preventDefault(); window.__collAdd();}" style="flex:1; padding:8px 11px; border:1px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:Poppins,sans-serif;"><button onclick="window.__collAdd()" class="btn-brand-primary" style="font-size:13px; padding:8px 16px; white-space:nowrap;">Tambah</button></div>';
+  html += '</div>';
+ }
  body.innerHTML = html;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
