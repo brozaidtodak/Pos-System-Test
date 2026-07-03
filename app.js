@@ -33,8 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
  // Elak kelip landing. Web/desktop kekal ikut hash sahaja.
  if(!restored && !window.currentUser && typeof handleLogin === 'function' && (window.__isPOSApp || __h === 'staff' || __isSec)) handleLogin();
  } catch(e){}
- // p1_1012 — boot selesai (POS/skrin-kunci dah dipapar) → padam splash supaya tiada kelip landing.
- try { if(typeof window.__endAppBoot === 'function') window.__endAppBoot(); } catch(e){}
+ // p1_1013 — kalau TAK login: skrin kunci/landing dah siap, takde data awan nak tunggu → padam splash sekarang.
+ // Kalau login: BIAR initApp (via loginAs) padam splash bila SEMUA data awan habis (cashier baru muncul, tiada separuh-load).
+ if(!restored) { try { if(typeof window.__endAppBoot === 'function') window.__endAppBoot(); } catch(e){} }
  })();
  // p1_956 — paste a section link while already logged in → navigate live.
  window.addEventListener('hashchange', function(){ try { if(window.currentUser && typeof window.__navGoHash === 'function') window.__navGoHash(); } catch(e){} });
@@ -9397,6 +9398,9 @@ let __initAppCount = 0;
 async function initApp() {
  __initAppCount++;
  const isFirstLoad = __initAppCount === 1;
+ // p1_1013 — splash boot kekal SAMPAI data staf (authed) habis dimuat, baru tunjuk cashier.
+ // Rakam status auth masa MULA (elak race: run anon boot yg mula sebelum login jangan padam splash awal).
+ const __wasAuthedAtStart = !!window.currentUser;
  if (isFirstLoad && typeof showLoading === 'function') showLoading('Memuatkan data dari awan...');
  try {
  console.log("Loading Cloud Omnichannel Data...");
@@ -9576,6 +9580,9 @@ async function initApp() {
  if (isFirstLoad && typeof hideLoading === 'function') hideLoading();
  // p1_956 — suntik butang salin-link pada sidebar (deep-link landing diuruskan dalam loginAs).
  try { if(typeof window.__injectNavShareLinks === 'function') window.__injectNavShareLinks(); } catch(e){}
+ // p1_1013 — data staf (authed) dah habis dimuat + cashier dah render → padam splash boot.
+ // Hanya run yg bermula dalam keadaan login (bukan run anon boot) yg padam — elak splash hilang awal.
+ try { if(__wasAuthedAtStart && typeof window.__endAppBoot === 'function') window.__endAppBoot(); } catch(e){}
  }
 }
 
