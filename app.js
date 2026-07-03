@@ -16925,7 +16925,7 @@ window.__setPinSubmit = async function(){
 
 // PIN dots visual feedback
 window.__pinUpdateDots = function(value) {
- const dots = document.querySelectorAll('#pinDotsDisplay.pin-dot');
+ const dots = document.querySelectorAll('#pinDotsDisplay .pin-dot');
  const len = (value || '').length;
  dots.forEach((d, i) => d.classList.toggle('is-filled', i < len));
 };
