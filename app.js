@@ -8927,12 +8927,12 @@ window.toggleMobileCartSheet = function() {
 // Web POS (buka di laptop/browser = "back office") kekal PENUH all-time. Auto ikut
 // window.__isPOSApp (true HANYA dalam wrap Capacitor / view.html?posapp=1). Staff nak
 // sejarah lebih lama → buka POS di laptop.
-window.__APP_DATA_MONTHS = 3;
+window.__APP_DATA_MONTHS = 2; // p1_1028 — turun 3→2 bulan: app mobile lebih ringan/pantas (Zaid). Web POS kekal penuh.
 window.__isAppDataCapped = function(){ return !!window.__isPOSApp; };
 window.__appDataCutoffISO = function(months){
  // Snap ke AWAL BULAN, undur N bulan → papar bulan PENUH (bukan potong tengah bulan).
- // Cth hari ni 3 Julai, N=3: 1 Julai → undur 3 → 1 April 00:00 = nampak April, Mei, Jun, Julai penuh.
- const m = (months || window.__APP_DATA_MONTHS || 3);
+ // Cth hari ni 4 Julai, N=2: 1 Julai → undur 2 → 1 Mei 00:00 = nampak Mei, Jun, Julai penuh.
+ const m = (months || window.__APP_DATA_MONTHS || 2);
  const d = new Date();
  d.setDate(1);
  d.setMonth(d.getMonth() - m);
@@ -8999,7 +8999,7 @@ async function initApp() {
  window.__deferStaffLoadRunning = true;
  (async () => {
  try { const { data: mktp } = await db.from('marketplace_promotions').select('*').eq('active', true).limit(500); window.__mktPromos = mktp || []; } catch(e){ window.__mktPromos = window.__mktPromos || []; }
- try { let __itq = db.from('inventory_transactions').select('*').order('created_at', {ascending: false}); __itq = window.__isAppDataCapped() ? __itq.gte('created_at', window.__appDataCutoffISO()) : __itq.limit(100000); const { data: txns } = await __itq; if(txns) inventoryTransactions = txns; } catch(e){} // p1_1021 — app mobile: 3 bulan; web: penuh
+ try { let __itq = db.from('inventory_transactions').select('*').order('created_at', {ascending: false}); __itq = window.__isAppDataCapped() ? __itq.gte('created_at', window.__appDataCutoffISO()) : __itq.limit(100000); const { data: txns } = await __itq; if(txns) inventoryTransactions = txns; } catch(e){} // p1_1021 — app mobile: 2 bulan; web: penuh
  try { if(typeof loadSuppliers === 'function') await loadSuppliers(); } catch(e){ console.warn('loadSuppliers:', e); }
  try { if(typeof loadPosV2 === 'function') await loadPosV2(); } catch(e){ console.warn('loadPosV2:', e); }
  try { if(typeof loadReservations === 'function') await loadReservations(); } catch(e){ console.warn('loadReservations:', e); }
@@ -9015,7 +9015,7 @@ async function initApp() {
  if(window.currentUser){
  const [quotesRes, sales, custs, finRes, b2bplRes] = await Promise.all([
  db.from('quotations_log').select('*').order('created_at', {ascending: false}).then(r=>r).catch(()=>({data:null})),
- (window.__isAppDataCapped()  // p1_1021 — app mobile: 3 bulan terakhir sahaja (ringan). Web POS: 1000 terkini + sejarah penuh di latar.
+ (window.__isAppDataCapped()  // p1_1021 — app mobile: 2 bulan terakhir sahaja (ringan). Web POS: 1000 terkini + sejarah penuh di latar.
    ? db.from('sales_history').select('*').gte('created_at', window.__appDataCutoffISO()).order('created_at', {ascending: false})
    : db.from('sales_history').select('*').order('created_at', {ascending: false}).limit(1000)
  ).then(r=>r.data||[]).catch(()=>[]),  // p1_743 — startup: 1000 sales TERKINI sahaja (laju ~1MB); sejarah penuh dimuat di latar (bawah)
@@ -9039,7 +9039,7 @@ async function initApp() {
  if(typeof window.__aoUpdateOrderBadge === 'function') { try { window.__aoUpdateOrderBadge(); } catch(e){} }
  // p1_743 — muat SEJARAH JUALAN PENUH di latar (non-blocking) selepas UI cashier siap. Startup cuma
  // ambil 1000 terkini supaya laju; baki sejarah (utk All Orders lama / report) menyusul ~4s kemudian.
- // p1_1021 — app mobile: LANGKAU muat all-time (dah cukup 3 bulan); web POS je muat penuh.
+ // p1_1021 — app mobile: LANGKAU muat all-time (dah cukup 2 bulan); web POS je muat penuh.
  if(window.currentUser && !window.__fullSalesLoaded && !window.__isAppDataCapped()){
  setTimeout(function(){
  window.__aoFetchAllSales().then(function(all){
