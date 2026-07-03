@@ -37,7 +37,7 @@
  <link rel="stylesheet" href="style.css?v=71">
  <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
  <link rel="dns-prefetch" href="https://images.weserv.nl">
- <link rel="stylesheet" href="design-tokens.css?v=157">
+ <link rel="stylesheet" href="design-tokens.css?v=158">
  <!-- Supabase Core — p1_976: vendored (self-host) supaya tak bergantung CDN luar +
       di-cache oleh Service Worker. Elak "Auth tidak tersedia" bila CDN jsdelivr lambat/blocked.
       Fallback ke CDN HANYA kalau fail tempatan gagal define global supabase. -->
@@ -3279,6 +3279,8 @@
  <!-- p1_879 — satu butang "Buka Shift" (ganti Laci Duit). Duit Keluar + Pulangan + Tutup Kira kini DALAM hub shift. -->
  <button onclick="window.openCashDrawerHub()" class="btn-secondary" id="btnCashDrawer" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 18px; background:#101010; border:1.5px solid #101010; color:#FAF6EF; font-weight:700;" title="Buka shift — kira cash dalam box. Duit Keluar, Pulangan & Tutup Kira semua di sini."><i data-lucide="sunrise" style="width:14px;height:14px;vertical-align:-2px;"></i> Buka Shift</button>
  <button onclick="window.togglePosLayoutMode()" class="btn-secondary" id="btnPosLayoutToggle" style="margin:0; flex-shrink:0; border-radius:30px; padding:14px 20px;" data-i18n="cs_small_screen">Skrin Kecil</button>
+ <!-- p1_1014 — Lipat panel atas (KPI + butang) untuk lebih ruang produk. Search kekal (barcode scan perlu focus). -->
+ <button onclick="window.__posToggleTop()" id="btnPosTopToggle" title="Lipat panel atas — lebih ruang produk"><i data-lucide="chevrons-down-up" style="width:16px;height:16px;"></i></button>
  </div>
  <!-- p1_130 — Quick-Sell pills (top 5-8 most-sold last 30d) -->
  <div id="quickSellWrap" style="display:none; margin-bottom:12px;">
@@ -9011,6 +9013,7 @@
  { id:'p1', num:'PHASE 1', name:'Stabilize + Foundation', status:'done', goal:'Auth · Reports · Marketplace · Analytics', eta:'Q2 2026 · Shipped (283/283 · last 2026-06-05) — Marketplaces dashboard live (EasyStore + Shopee + TikTok). Real-time platform status: connected count, total mapped, per-platform last-sync timestamp + progress bar + action buttons. Data dari products_master.metadata. Function-first ship.',
  desc:'Pindahkan data dari localStorage ke Supabase supaya multi-device + multi-staff. Wire up audit log betul-betul. Lock down role-based access.',
  deliverables:[
+ { id:'p1_1014', label:'CASHIER: LIPAT PANEL ATAS untuk lebih ruang produk (Zaid tunjuk screenshot card atas [KPI+search+Katalog/Custom/Buka Shift], "boleh tak card ni boleh simpan dekat atas" → pilih "boleh lipat/collapse"). Butang toggle #btnPosTopToggle dalam baris search (sentiasa nampak). Bila lipat: kelas #posSection.pos-top-collapsed sorok #posTodayKpi (KPI strip) + butang aksi (Katalog/Custom Sale/Buka Shift/Skrin Kecil) + quickSell/brandPills — TAPI search bar KEKAL nampak (barcode scan perlu input fokus, jadi tak sorok terus). Butang tukar ikon: chevrons-down-up (buka) ↔ chevrons-up-down + "Menu" (bila lipat, untuk buka balik). Keadaan disimpan localStorage pos_top_collapsed, dipakai setiap render Cashier via __posApplyTopState (dipanggil hujung __renderCashierKPI). __posToggleTop toggle + simpan. Universal (web + app). app.js v1004->v1005, design-tokens v157->158.', d:'done' },
  { id:'p1_1013', label:'SPLASH KEKAL SAMPAI DATA HABIS LOAD (Zaid: "splash tu lebih menarik, tak perlu memuatkan data dari awan lagi — display first tu sampai habis load then baru tunjuk cashier"). Sambungan p1_1012: dulu splash fade sebaik boot decide (sebelum data authed siap = cashier separuh-load). Sekarang splash KEKAL sampai SEMUA data awan staf habis dimuat, baru reveal cashier. Cara: initApp rakam __wasAuthedAtStart masa mula (elak race — run anon boot yg mula sebelum login TAK padam splash awal); dalam finally initApp, hanya run yg bermula authed panggil __endAppBoot() (= data staf penuh siap: products/batches/txns/suppliers/PO/sales/customers/finance/roster). Boot IIFE: kalau TAK login → padam splash terus (skrin kunci siap, takde data tunggu); kalau login → biar initApp yg padam bila habis. Failsafe inline dinaik 12s→15s (data besar atas wifi kedai). app.js v1003->v1004.', d:'done' },
  { id:'p1_1012', label:'BUANG KELIP LANDING masa app boot (Zaid: "sebelum memuatkan data dari awan still keluar landing page dalam beberapa saat, nak buang terus"). Punca: shopAppLayout (landing customer) = paparan default; masa app tunggu __restoreSession + muat data Supabase (async, beberapa saat) ia kelip dulu. FIX = BOOT SPLASH brand: #posBootSplash (position:fixed z-9999, radial-gradient Tropical Black + wordmark "10 CAMP · KAUNTER POS" + spinner + "Memuatkan…") tutup skrin dari SAAT PERTAMA. Skrip inline sinkron di atas <body> tanda <html class=pos-app-boot> (CSS render-blocking dari design-tokens tunjuk splash) SEBELUM landing sempat paint — hanya bila app mode (TenCampPOSApp / ?posapp=1). Boot IIFE: lepas __restoreSession selesai → kalau login, loginAs dah tunjuk POS; kalau TAK login + app mode → handleLogin() (skrin kunci, bukan landing); kemudian __endAppBoot() fade+buang splash. Failsafe 12s dalam skrip inline (elak tersangkut). Web/desktop tak terjejas (splash tak pernah tunjuk). app.js v1002->v1003, design-tokens v156->157.', d:'done' },
  { id:'p1_1011', label:'APP LOCK SCREEN — logout dalam app POS tak lagi hempas ke storefront customer (Zaid: "kalau logout apps keluar macam ni [landing customer], aku tak suka, buat lebih apps feature"). Dulu handleLogout tunjuk shopAppLayout (kedai online customer) — pelik untuk app kaunter. Sekarang bila window.__isPOSApp: logout/Tukar Staf → SKRIN KUNCI brand-gelap (#pinLoginOverlay.is-app-lock radial-gradient Tropical Black) + header #pinLockHeader = wordmark "10 CAMP · KAUNTER POS" + JAM HIDUP (update 15s, __lockClockStart/Tick/Stop) + tarikh BM + salam ikut masa + pad PIN. Butang tutup (×) disorok (skrin kunci tak boleh dismiss). Web/desktop kekal modal biasa. handleLogout app mode sorok kedua-dua layout + panggil handleLogin() akhir. app.js v999->v1000, design-tokens v155->156.', d:'done' },
@@ -14555,7 +14558,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1004"></script>
+ <script src="app.js?v=1005"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

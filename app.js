@@ -14119,6 +14119,28 @@ window.__renderCashierKPI = function(){
  + '<div class="pos-kpi__card pos-kpi__card--comm" onclick="window.__posAppGo ? window.__posAppGo(\'commission\') : (window.switchHub && switchHub([\'commissionSection\'],\'My Commission\'), window.renderPersonalCommission && window.renderPersonalCommission())" title="Lihat komisen penuh"><div class="pos-kpi__lbl">Komisen Aku</div><div class="pos-kpi__val">' + val(myComm) + '</div><div class="pos-kpi__sub">' + rate + '%</div></div>'
  + '<button class="pos-kpi__eye" onclick="event.stopPropagation(); window.__toggleKpiHide();" aria-label="' + (hidden ? 'Tunjuk angka jualan' : 'Sembunyi angka jualan') + '" title="' + (hidden ? 'Tunjuk angka' : 'Sembunyi angka') + '"><i data-lucide="' + (hidden ? 'eye-off' : 'eye') + '" style="width:16px;height:16px;"></i></button>';
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ // p1_1014 — pakai keadaan lipat panel atas (simpan localStorage) setiap kali render Cashier.
+ try { if(typeof window.__posApplyTopState === 'function') window.__posApplyTopState(); } catch(e){}
+};
+// p1_1014 — Lipat/buka panel atas Cashier (KPI + butang aksi) untuk lebih ruang produk.
+// Search bar KEKAL nampak (barcode scan perlu input fokus). Keadaan disimpan localStorage.
+window.__posApplyTopState = function(){
+ const sec = document.getElementById('posSection'); if(!sec) return;
+ let collapsed = false; try { collapsed = localStorage.getItem('pos_top_collapsed') === '1'; } catch(e){}
+ sec.classList.toggle('pos-top-collapsed', collapsed);
+ const btn = document.getElementById('btnPosTopToggle');
+ if(btn){
+  btn.innerHTML = collapsed
+   ? '<i data-lucide="chevrons-up-down" style="width:16px;height:16px;"></i><span>Menu</span>'
+   : '<i data-lucide="chevrons-down-up" style="width:16px;height:16px;"></i>';
+  btn.title = collapsed ? 'Buka panel atas (KPI + butang)' : 'Lipat panel atas — lebih ruang produk';
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ }
+};
+window.__posToggleTop = function(){
+ let collapsed = false; try { collapsed = localStorage.getItem('pos_top_collapsed') === '1'; } catch(e){}
+ try { localStorage.setItem('pos_top_collapsed', collapsed ? '0' : '1'); } catch(e){}
+ window.__posApplyTopState();
 };
 // p1_867 — toggle sembunyi/tunjuk angka KPI (privasi di kaunter)
 window.__toggleKpiHide = function(){
