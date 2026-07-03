@@ -58,6 +58,9 @@ Satu control-plane untuk seluruh operasi 10 CAMP: katalog, inventori, procuremen
 Login staf (email/password kali pertama → PIN pada peranti sama; __detectUserByPin)
   → initApp(staff): baca BASE table penuh (products_master, inventory_batches, inventory_transactions,
     suppliers, PO, reservations, promo) + app_settings + marketplace_promotions
+       · boot perf: 2 muatan wajib (produk+stok) SELARI; muatan bukan-kritikal (txn inventori, suppliers,
+         PO, reservations, promo, marketplace_promotions) DITUNDA ke latar selepas render
+       · web (laptop/browser) = data PENUH all-time — sumber sejarah lengkap (app mobile dihadkan, lihat §3)
   → Modul:
      • Product Master  → CRUD katalog → auto-push draf ke TikTok (+ Shopee) bila produk baru/edit
      • Inventory       → batches (FIFO), Analytics (health/turnover/aging), Receiving, Cycle Count, Locations
@@ -81,6 +84,7 @@ Login staf (email/password kali pertama → PIN pada peranti sama; __detectUserB
   - Operasi stok/returns idempoten — persist flag SEBELUM/selari kerja fizikal; guna kunci idempotensi, elak double-apply bila retry.
   - Jangan guna `Date.now()` sebagai primary key (collision) — guna default DB/UUID.
 - **Jangan padam sejarah produk:** buang produk = padam baris katalog SAHAJA; jualan/returns/history kekal.
+- **Data window:** Back office di **laptop / web** = **penuh all-time** — tempat rujuk sejarah lama (Orders, transaksi, report). App mobile dihadkan ~3 bulan penuh (lihat §3.3). Bezakan guna `window.__isPOSApp`.
 - **Marketplace:** harga POS = harga kedai (base terendah); Shopee/TikTok LEBIH tinggi (cover fee). Stok sync 2-hala; harga auto-push ON.
 - **Brand-lock + no-emoji** untuk SEMUA skrin back office (3 warna + Poppins + logo rasmi + corak 10 Camp).
 - **Confidential:** Laporan Sulit + kos/margin/komisen kunci PIN; role gate `mgmt` + PIN. (Nota: RLS server = sempadan sebenar, bukan gate klien.)
@@ -90,7 +94,7 @@ Login staf (email/password kali pertama → PIN pada peranti sama; __detectUserB
 ## 3. POS APPS (Cashier — jualan, web + mobile Capacitor)
 
 ### 3.1 Objective
-Point-of-sale untuk **walk-in** + fulfillment omnichannel. Laju, tahan-offline, dengan **duit / stok / loyalti tepat**. Skrin staf jual; mobile shell (Android/iOS) untuk peranti kedai.
+Point-of-sale untuk **walk-in** + fulfillment omnichannel. Laju, tahan-offline, dengan **duit / stok / loyalti tepat**. Skrin staf jual; mobile shell (Android/iOS) untuk peranti kedai. App mobile **ringan** — muat **3 bulan penuh** terakhir sahaja; sejarah lebih lama → buka POS di laptop (back office).
 
 ### 3.2 Pipeline
 ```
@@ -120,6 +124,8 @@ Login staf → Cashier (POS/Kaunter)
   - Refund penuh → status Refunded + loyalti dipulih; separa → loyalti dipulih berkadar.
 - **B2B:** harga tier ikut qty (min_qty) — dinilai semula bila qty berubah. Diskaun manual + harga B2B mesti selaras dengan yang dicaj (jangan caj lebih dari yang dipapar).
 - **Offline caveat:** stok/resit ikut masa sync; cold-start perlu app dah dimuat. Elak jual offline masa stok kritikal.
+- **Data window (app mobile):** papar **3 bulan penuh** terakhir (cutoff snap ke awal bulan; cth Julai → April–Julai) supaya ringan — app tak tarik semua ~5,400 sales + txn inventori lama. Nak sejarah lebih lama → buka POS di **laptop (back office)** = all-time. Pelanggan TIDAK dihadkan (bukan date-based; cashier perlu lookup mana-mana pelanggan).
+- **Boot laju (lepas PIN):** kaunter render dulu; muatan bukan-kritikal (transaksi inventori, PO, reservations, promo, marketplace_promotions) ditunda ke latar; welcome modal dipendekkan.
 - **Mobile:** Capacitor shell (iOS installed; Android internal testing). Kill & buka semula app untuk muat versi baru.
 - **Brand-lock + no-emoji.**
 

@@ -245,6 +245,10 @@
       <pre class="flow">Login staf (email/password kali pertama → PIN peranti sama; __detectUserByPin)
   <span class="a">→</span> initApp(staff): baca BASE table penuh (products_master, inventory_batches,
      inventory_transactions, suppliers, PO, reservations) + app_settings
+       · boot perf: produk+stok dimuat SELARI; muatan bukan-kritikal (txn inventori, PO,
+         reservations, promo, marketplace_promotions) DITUNDA ke latar selepas cashier render
+       · web (laptop/browser) = data PENUH all-time — ini sumber sejarah lengkap
+         (app mobile dihadkan 3 bulan, lihat 03)
   <span class="a">→</span> operasi ikut modul → Supabase (RLS) + Netlify service-role functions (gated _auth)
   <span class="a">→</span> Marketplace: harga POS = harga kedai (base terendah); Shopee/TikTok LEBIH tinggi (cover fee)
   <span class="a">→</span> Deploy: git push → Netlify</pre>
@@ -258,6 +262,7 @@
         <li><b>Roadmap rule (keras):</b> tiap perubahan update <code>ROADMAP_DATA</code> (index.html), commit sama.</li>
         <li><b>Data integrity:</b> semua tulisan duit/stok — semak <code>{error}</code> + idempoten; jangan guna <code>Date.now()</code> sebagai PK.</li>
         <li><b>Jangan padam sejarah produk:</b> buang produk = padam baris katalog SAHAJA; jualan/returns kekal.</li>
+        <li><b>Data window:</b> Back office di <b>laptop / web</b> = <b>penuh all-time</b> — tempat rujuk sejarah lama (Orders, transaksi, report). App mobile dihadkan 3 bulan (lihat 03).</li>
         <li><b>Brand-lock + no-emoji</b> untuk SEMUA skrin (3 warna + Poppins + logo rasmi).</li>
       </ul>
     </div>
@@ -270,7 +275,7 @@
 
     <div class="block">
       <span class="label">Objective</span>
-      <div class="objective">Point-of-sale untuk <b>walk-in</b> + fulfillment omnichannel. Laju, tahan-offline, dengan <b>duit / stok / loyalti tepat</b>. Skrin staf jual; mobile shell (Android/iOS) untuk peranti kedai.</div>
+      <div class="objective">Point-of-sale untuk <b>walk-in</b> + fulfillment omnichannel. Laju, tahan-offline, dengan <b>duit / stok / loyalti tepat</b>. Skrin staf jual; mobile shell (Android/iOS) untuk peranti kedai. App mobile <b>ringan</b> — muat <b>3 bulan penuh</b> terakhir sahaja; sejarah lebih lama → buka POS di laptop (back office).</div>
     </div>
 
     <div class="block">
@@ -297,6 +302,8 @@
         <li>Refund penuh → status Refunded + loyalti dipulih; separa → loyalti dipulih berkadar.</li>
         <li><b>B2B:</b> harga tier ikut qty (min_qty) — yang dicaj mesti sama dengan yang dipapar.</li>
         <li><b>Offline caveat:</b> stok/resit ikut masa sync; elak jual offline masa stok kritikal.</li>
+        <li><b>Data window (app mobile):</b> papar <b>3 bulan penuh</b> terakhir (auto ikut peranti) supaya ringan — cth Julai: April–Julai. Nak lebih lama → buka POS di <b>laptop (back office)</b> = all-time. Pelanggan TIDAK dihadkan (lookup mana-mana).</li>
+        <li><b>Boot laju:</b> lepas PIN, kaunter render dulu; data bukan-kritikal (transaksi/PO/reservation/promo) muat di latar.</li>
         <li><b>Mobile:</b> Capacitor shell. Kill &amp; buka semula app untuk muat versi baru.</li>
       </ul>
     </div>
@@ -385,6 +392,7 @@
           <li><b>Commission + Laporan Sulit</b><span>Kira komisen + laporan berkunci PIN</span></li>
           <li><b>HR / Roster + CRM</b><span>Syif, cuti, approval; loyalty, tier VIP, B2B price</span></li>
           <li><b>Mobile app</b><span>iOS installed; Capacitor shell (Android internal testing)</span></li>
+          <li><b>Boot laju + app ringan</b><span>Lepas PIN: fetch selari + muatan berat ke latar; app mobile hadkan data 3 bulan penuh (web = all-time)</span></li>
           <li><b>Security + Audit</b><span>Auth gates + INTERNAL_FN_SECRET + RLS; audit 3-permukaan dibetulkan</span></li>
           <li><b>10cc financial centre</b><span>Accounting/HR/finance + settlements (Shopee+TikTok)</span></li>
           <li><b>Backup harian</b><span>Supabase → local + Google Drive (launchd)</span></li>
