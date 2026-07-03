@@ -171,10 +171,8 @@
  <span class="pin-dot pin-dot--optional"></span>
  <span class="pin-dot pin-dot--optional"></span>
  </div>
- <!-- input jadi store nilai sahaja; readonly supaya keyboard iPad tak muncul — guna keypad bawah -->
- <input id="pinLoginInput" type="password" inputmode="none" readonly maxlength="8" autocomplete="off"
- onkeydown="if(event.key==='Enter') submitPinLogin()"
- style="position:absolute; opacity:0; width:1px; height:1px; pointer-events:none;" />
+ <!-- input = store nilai sahaja (type=hidden: tiada keyboard iPad + tiada eye-toggle auto). Nilai dari keypad. -->
+ <input id="pinLoginInput" type="hidden" autocomplete="off" />
  <select id="pinLoginStaff" style="display:none;"></select>
  <div id="pinLoginError" style="font-size:12.5px; min-height:20px; margin-bottom:10px; text-align:center;"></div>
  <!-- Keypad numerik sentuh-mesra -->
@@ -14548,7 +14546,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1001"></script>
+ <script src="app.js?v=1002"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>
