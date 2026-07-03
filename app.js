@@ -37397,6 +37397,8 @@ window.__BRAND_LOGO_FILES = {
 };
 window.__brandLogoUrl = function(name){
  const k = String(name == null ? '' : name).toLowerCase().replace(/[^a-z0-9]/g, '');
+ // p1_1016 — "10 Camp Official Store" guna logo rasmi 10 CAMP (folder logo, bukan brands-in-store).
+ if(k === '10campofficialstore' || k === '10camp' || k === '10campofficial') return '/assets/brand/logo/10camp-logo-color.png';
  const f = window.__BRAND_LOGO_FILES[k];
  return f ? ('/assets/brand/brands-in-store/' + f) : '';
 };
