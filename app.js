@@ -8116,6 +8116,12 @@ async function initApp() {
  // p1_1032 — cashier dah didedah awal (produk+stok); segar semula bila sales/customers masuk
  // supaya banner Sasaran Jualan + VIP lookup betul (bukan 0 sekejap).
  try { if(typeof renderPOS === 'function') renderPOS(); } catch(e){}
+ // p1_1061 — kalau user tengah DUDUK di page Points & Membership masa customers sampai
+ // (buka pantas lepas login), render semula supaya senarai ahli tak tersangkut "0 ahli".
+ try {
+ const __pmSec = document.getElementById('pointsMembershipSection');
+ if(__pmSec && __pmSec.style.display !== 'none' && typeof window.renderPointsMembership === 'function') window.renderPointsMembership();
+ } catch(e){}
  }
  // p3_10/p1_324: refresh fulfillment KPIs + sidebar badge once orders loaded
  if(typeof window.renderFulfillment === 'function') { try { window.renderFulfillment(); } catch(e){} }
@@ -22107,6 +22113,11 @@ window.renderPointsMembership = function() {
 window.__pmRender = function(q){
  var wrap = document.getElementById('pmTableWrap'); if(!wrap) return;
  var data = window.__pmData || [];
+ // p1_1061 — data belum sampai (tengah retry): tunjuk "memuatkan", bukan jadual kosong yang mengelirukan
+ if(!data.length && window.__pmRetryN > 0 && window.currentUser){
+ wrap.innerHTML = '<div style="padding:22px; text-align:center; color:#9CA3AF; font-size:13px;">Memuatkan senarai ahli&hellip;</div>';
+ return;
+ }
  var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
  var fmtRM = function(n){ return 'RM' + (Math.round(n)).toLocaleString('en-MY'); };
  q = (q||'').trim().toLowerCase();
@@ -41548,6 +41559,18 @@ window.renderPointsMembership = function(){
  const redeems = window.LOYALTY_REDEEMS || {};
  const custs = Array.isArray(customersData) ? customersData : [];
  const rate = window.POINTS_RM_PER_POINT || 10;
+ // p1_1061 — buka page SEBELUM customers habis dimuat (fetch 3k+ rows ambil beberapa saat lepas
+ // login) → dulu tersangkut "0 ahli" sampai user klik menu semula. Kini: retry sendiri setiap 1.5s
+ // (max 8 kali) selagi kosong tapi user dah login; berhenti bila data sampai / user tinggalkan page.
+ if(!custs.length && window.currentUser){
+ window.__pmRetryN = (window.__pmRetryN || 0) + 1;
+ if(window.__pmRetryN <= 8){
+ clearTimeout(window.__pmRetryT);
+ window.__pmRetryT = setTimeout(function(){
+ if(sec.style.display !== 'none') window.renderPointsMembership();
+ }, 1500);
+ }
+ } else { window.__pmRetryN = 0; }
  // Kira bil customer + mata terkumpul per tier
  const stat = {}; tiers.forEach(t=> stat[t.key]={n:0, pts:0});
  let totalPts = 0;
