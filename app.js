@@ -2778,7 +2778,7 @@ window.__ensureMarketing = function(){
 window.__ensureBackofficeDash = function(){
  if(window.__bodLoaded) return Promise.resolve();
  return window.__bodLoading || (window.__bodLoading = new Promise(function(res,rej){
-  var s=document.createElement('script'); s.src='backoffice-dash.js?v=4'; // p1_1056
+  var s=document.createElement('script'); s.src='backoffice-dash.js?v=5'; // p1_1057
   s.onload=function(){ window.__bodLoaded=true; res(); };
   s.onerror=function(){ window.__bodLoading=null; rej(new Error('backoffice-dash.js gagal muat')); };
   document.head.appendChild(s);
@@ -10078,7 +10078,7 @@ window.__scsPreviewReport = async function(sessionId) {
    <div style="border:1px solid #F0F0F0; border-radius:10px; overflow:hidden; margin-bottom:16px;">
     <table style="width:100%; border-collapse:collapse; font-size:12px;">
      <thead><tr style="background:#FAFAFA; font-size:10px; color:#6B7280; text-transform:uppercase;"><th style="text-align:left; padding:7px 10px;">SKU</th><th style="text-align:left; padding:7px 10px;">Nama</th><th style="text-align:right; padding:7px 10px;">Sistem</th><th style="text-align:right; padding:7px 10px;">Dikira</th><th style="text-align:right; padding:7px 10px;">Selisih</th></tr></thead>
-     <tbody>${topVar.length ? topVar.map(i => { const v = Number(i.variance); return `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11px;">${esc(i.sku)}</td><td style="padding:7px 10px; font-size:11.5px;">${nameOf(i)}</td><td style="padding:7px 10px; text-align:right; color:#6B7280;">${i.system_qty != null ? i.system_qty : '-'}</td><td style="padding:7px 10px; text-align:right; font-weight:700;">${i.counted_qty}</td><td style="padding:7px 10px; text-align:right; font-weight:800; color:${v > 0 ? '#7A5410' : '#7C2A20'};">${v > 0 ? '+' + v : v}</td></tr>`; }).join('') : '<tr><td colspan="5" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada selisih — semua tepat ✓</td></tr>'}</tbody>
+     <tbody>${topVar.length ? topVar.map(i => { const v = Number(i.variance); return `<tr style="border-top:1px solid #F3F4F6;"><td style="padding:7px 10px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11px;"><div style="display:flex;align-items:center;gap:7px;">${window.__skuThumbHtml ? window.__skuThumbHtml(i.sku, 26) : ''}${esc(i.sku)}</div></td><td style="padding:7px 10px; font-size:11.5px;">${nameOf(i)}</td><td style="padding:7px 10px; text-align:right; color:#6B7280;">${i.system_qty != null ? i.system_qty : '-'}</td><td style="padding:7px 10px; text-align:right; font-weight:700;">${i.counted_qty}</td><td style="padding:7px 10px; text-align:right; font-weight:800; color:${v > 0 ? '#7A5410' : '#7C2A20'};">${v > 0 ? '+' + v : v}</td></tr>`; }).join('') : '<tr><td colspan="5" style="text-align:center; padding:14px; color:#9CA3AF;">Tiada selisih — semua tepat ✓</td></tr>'}</tbody>
     </table>
    </div>
 
@@ -10182,7 +10182,7 @@ window.__scsPublishRender = function() {
   const diffTxt = diff === 0 ? 'sama' : (diff > 0 ? '+' + diff : '' + diff);
   return `<tr style="border-bottom:1px solid #F3F4F6;">
    <td style="padding:6px 8px; text-align:center;"><input type="checkbox" data-scs-pub-idx="${idx}" ${checked} style="width:16px;height:16px; cursor:pointer;"></td>
-   <td style="padding:6px 8px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;">${esc(i.sku)}</td>
+   <td style="padding:6px 8px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;"><div style="display:flex;align-items:center;gap:7px;">${window.__skuThumbHtml ? window.__skuThumbHtml(i.sku, 28) : ''}${esc(i.sku)}</div></td>
    <td style="padding:6px 8px; font-size:11.5px;">${esc((i.product_name || i.name || '').slice(0, 40))}</td>
    <td style="padding:6px 8px; text-align:right; font-size:12px; color:#6B7280;">${live}</td>
    <td style="padding:6px 8px; text-align:right; font-size:12px; font-weight:700;">${counted}${(setTo !== counted) ? `<div style="font-size:9px; color:#7c4a1a; font-weight:700;">final ${setTo}</div>` : ''}</td>
@@ -27018,6 +27018,7 @@ window.renderPickingListUI = function(isSorted = false) {
  html += `
  <div style="background:white; border:1px solid #D1D5DB; border-radius:8px; padding:15px; display:flex; align-items:center; gap:15px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
  ${stepNum}
+ ${window.__skuThumbHtml ? window.__skuThumbHtml(item.sku, 44) : ''}
  <div style="flex:1;">
  <p style="margin:0; font-weight:bold; font-size:14px;">${item.sku}</p>
  <p style="margin:0; font-size:12px; color:#666;">${item.name}</p>
@@ -28468,7 +28469,7 @@ window.openReceivePOModal = async function(poId) {
  const barcode = prod?.erp_barcode || '';
  return `
  <tr id="grnRow_${idx}" data-sku="${it.sku}" data-barcode="${barcode}">
- <td><strong>${it.sku}</strong>${barcode ? '<br><span style="font-size:10px; color:#9CA3AF;"> ' + barcode + '</span>' : ''}<br><span style="font-size:10px; color:#666;">${(prod?.name || '').slice(0,40)}</span></td>
+ <td><div style="display:flex;align-items:flex-start;gap:8px;">${window.__skuThumbHtml ? window.__skuThumbHtml(it.sku, 32) : ''}<div><strong>${it.sku}</strong>${barcode ? '<br><span style="font-size:10px; color:#9CA3AF;"> ' + barcode + '</span>' : ''}<br><span style="font-size:10px; color:#666;">${(prod?.name || '').slice(0,40)}</span></div></div></td>
  <td style="text-align:center;">${it.qty_ordered}</td>
  <td style="text-align:center;">${it.qty_received}</td>
  <td><input type="number" id="grnQty_${idx}" data-itemid="${it.id}" data-sku="${it.sku}" min="0" max="${remaining}" value="${remaining}" class="login-input" style="margin:0; padding:4px; width:70px; text-align:center;"></td>

@@ -1102,7 +1102,7 @@ window.__ihApply = function() {
    : '<span style="display:inline-flex; align-items:center; gap:4px; background:#F4E4DF; color:#7C2A20; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:800;"><i data-lucide="arrow-up-from-line" style="width:11px;height:11px;"></i> OUTPUT</span>';
   return `<tr style="border-bottom:1px solid #F3F4F6;">
    <td style="padding:7px 9px; text-align:center; font-weight:800; font-size:12px; color:#9CA3AF;">${r.seq || ''}</td>
-   <td style="padding:7px 9px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;">${esc(r.sku)}</td>
+   <td style="padding:7px 9px; font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:11.5px;"><div style="display:flex;align-items:center;gap:7px;">${window.__skuThumbHtml ? window.__skuThumbHtml(r.sku, 28) : ''}${esc(r.sku)}</div></td>
    <td style="padding:7px 9px; font-size:11.5px; max-width:260px;">${esc((r.product||'').slice(0,60))}</td>
    <td style="padding:7px 9px; text-align:center;">${dirBadge}</td>
    <td style="padding:7px 9px; text-align:right; font-weight:800; font-size:13px; color:${r.dir==='INPUT'?'#345E43':'#7C2A20'};">${r.dir==='INPUT'?'+':'−'}${r.units}</td>
