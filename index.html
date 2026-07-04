@@ -1899,7 +1899,8 @@
  </div>
  <div class="menu-list">
  <!-- p1_271 — NEW SIDEBAR LAYOUT (Zaid: 8 top items + 3 bottom items, Shopify-style). Old items below kekal hidden for back-compat. -->
- <div class="menu-item" data-tab="nav_home" onclick="switchHub(['homeSection','managerDashboardSection'], 'Home', this); if(typeof renderDashboard==='function') renderDashboard(); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
+ <!-- p1_1050 — Home = Hari Ini: buka homeSection SAHAJA (dashboard berat pindah sidebar ANALISIS > Dashboard) -->
+ <div class="menu-item" data-tab="nav_home" onclick="switchHub(['homeSection'], 'Home', this); if(typeof renderDashboard==='function') renderDashboard(); if(window.__ovTab) window.__ovTab('main', {force:true});" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:2px;">
  <i data-lucide="home" style="width:18px; height:18px;"></i> <span>Home</span>
  </div>
  <!-- p1_747 — Jadual Tugas (Duty Roster) disurface ke sidebar aktif. Dulu cuma di HR legacy tersembunyi (data-group=hr). Roster sengaja kekal di POS (ops harian) walau HR pindah 10cc (p1_68). Edit oleh Bos+Aliff (CMP008) via butang "Mod Pengurusan Roster" dalam seksyen. -->
@@ -2157,6 +2158,10 @@
  <i data-lucide="chevron-right" class="nav-chevron" style="width:14px; height:14px;"></i>
  </div>
  <div class="nav-children" data-nav-children="analytics">
+ <!-- p1_1050 — Dashboard penuh (dulu tab Analytics dlm Home; pindah sini = rumah betul, render hanya bila dibuka) -->
+ <div class="menu-item" data-tab="nav_dashboard" onclick="event.stopPropagation(); switchHub(['managerDashboardSection'], 'Dashboard', this); if(typeof renderManagerDashboard==='function') renderManagerDashboard();" style="display:flex; align-items:center; gap:10px;">
+ <i data-lucide="layout-dashboard" style="width:15px; height:15px;"></i> <span>Dashboard</span>
+ </div>
  <div class="menu-item" data-tab="nav_an_sales" onclick="event.stopPropagation(); switchHub(['analyticsSection'], 'Sales', this); if(window.__anSwitchTab) window.__anSwitchTab('sales'); if(typeof renderAnalytics==='function') renderAnalytics();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="trending-up" style="width:15px; height:15px;"></i> <span>Sales</span>
  </div>
@@ -2199,7 +2204,7 @@
 
  <!-- p1_271 — LEGACY MENU items below hidden via CSS rule .sidebar-legacy-hidden -->
  <div class="sidebar-legacy-hidden" style="display:none;">
- <div class="menu-item mgmt-only" data-tab="overview" onclick="switchHub(['homeSection','managerDashboardSection'], 'Overview', this); if(typeof renderDashboard==='function') renderDashboard(); if(typeof renderManagerDashboard==='function') renderManagerDashboard(); if(window.__ovTab) window.__ovTab(window.__ovActive||'main', {force:true});" style="display:flex; align-items:center; gap:8px;">
+ <div class="menu-item mgmt-only" data-tab="overview" onclick="switchHub(['homeSection'], 'Overview', this); if(typeof renderDashboard==='function') renderDashboard(); if(window.__ovTab) window.__ovTab(window.__ovActive||'main', {force:true});" style="display:flex; align-items:center; gap:8px;">
  <i data-lucide="layout-dashboard" style="width:18px; height:18px;"></i> <span data-i18n="sb_overview">Overview</span>
  </div>
  <!-- MEMO BOARD — visible in all modes (p1_19) -->
@@ -2859,10 +2864,10 @@
  #homeSection .ov-tab-badge{font-size:10px; font-weight:800; color:#fff; background:#B23A2E; border-radius:50px; padding:1px 6px; min-width:16px; text-align:center; line-height:1.4;}
  </style>
  <div class="ov-tabbar" data-ov-tabbar>
-  <button class="ov-tab ov-tab-on" data-ov-tab="main" onclick="window.__ovTab && window.__ovTab('main')"><i data-lucide="layout-dashboard" style="width:14px; height:14px;"></i> Main</button>
+  <!-- p1_1050 — Home = Hari Ini: 2 tab sahaja. Tab Sales dibuang (pendua Analytics);
+       Analytics pindah ke sidebar ANALISIS > Dashboard (kandungan sama, rumah betul). -->
+  <button class="ov-tab ov-tab-on" data-ov-tab="main" onclick="window.__ovTab && window.__ovTab('main')"><i data-lucide="layout-dashboard" style="width:14px; height:14px;"></i> Utama</button>
   <button class="ov-tab" data-ov-tab="aim" onclick="window.__ovTab && window.__ovTab('aim')" title="Pusat Amaran — isu bisnes ikut department"><i data-lucide="bell-ring" style="width:14px; height:14px;"></i> Amaran <span id="ovAimBadge" class="ov-tab-badge" style="display:none;">0</span></button>
-  <button class="ov-tab" data-ov-tab="sales" onclick="window.__ovTab && window.__ovTab('sales')"><i data-lucide="trending-up" style="width:14px; height:14px;"></i> Sales</button>
-  <button class="ov-tab" data-ov-tab="analytics" onclick="window.__ovTab && window.__ovTab('analytics')"><i data-lucide="bar-chart-3" style="width:14px; height:14px;"></i> Analytics</button>
  </div>
  <!-- p1_95: Memo + Jadual moved here (was inside managerDashboardSection) — top placement so staff lihat dulu masa landing -->
  <div class="dash-section-eyebrow" style="font-size:11px; font-weight:700; color:var(--neutral-500); text-transform:uppercase; letter-spacing:0.8px; margin:0 0 var(--space-2);" data-i18n="dash_overview_section_title">Overview Hari Ni</div>
@@ -13495,7 +13500,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1032"></script>
+ <script src="app.js?v=1033"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

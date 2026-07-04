@@ -32645,7 +32645,9 @@ window.__rescanIntegration = async function(){
 try { window.__ovActive = localStorage.getItem('ov_active_tab') || 'main'; } catch(e){ window.__ovActive = 'main'; }
 // Pure show/hide — safe to call from any render path (idempotent, no recursion, no heavy work).
 window.__ovApplyPanes = function(name){
- const valid = ['main','aim','sales','analytics'];
+ // p1_1050 — Home = Hari Ini: 2 pane sahaja. 'sales' dibuang (pendua); 'analytics' pindah
+ // ke sidebar ANALISIS > Dashboard (nav_dashboard). Nilai lama tersimpan (__ovActive) jatuh ke 'main'.
+ const valid = ['main','aim'];
  if(valid.indexOf(name)<0) name = 'main';
  const wrap = document.querySelector('#homeSection .dash-wrap');
  if(wrap){
@@ -32663,9 +32665,9 @@ window.__ovApplyPanes = function(name){
    else ch.style.display = 'none';
   });
  }
- // Analytics lives in a sibling section (managerDashboardSection), shown by switchHub.
- const mgr = document.getElementById('managerDashboardSection');
- if(mgr) mgr.style.display = (name === 'analytics') ? '' : 'none';
+ // p1_1050 — managerDashboardSection kini diurus SEPENUHNYA oleh switchHub (sidebar
+ // ANALISIS > Dashboard). Jangan sentuh display dia di sini — fungsi ni fire pada realtime
+ // update; kalau kita set 'none' sini, Dashboard akan LENYAP depan mata user masa dia tengok.
  // active button state
  document.querySelectorAll('[data-ov-tab]').forEach(function(b){
   b.classList.toggle('ov-tab-on', b.getAttribute('data-ov-tab') === name);
@@ -32673,17 +32675,14 @@ window.__ovApplyPanes = function(name){
 };
 window.__ovTab = function(name, opts){
  opts = opts || {};
- const valid = ['main','aim','sales','analytics'];
+ const valid = ['main','aim']; // p1_1050 — Home = Hari Ini: sales/analytics dibuang (lihat __ovApplyPanes)
  if(valid.indexOf(name)<0) name = 'main';
  const changed = (name !== window.__ovActive) || opts.force;
  window.__ovActive = name;
  try { localStorage.setItem('ov_active_tab', name); } catch(e){}
  window.__ovApplyPanes(name);
- // Charts created while their canvas is display:none render 0-size — force a redraw on switch.
  if(changed){
   if(name === 'main' && typeof window.__renderDashOverview === 'function') try { window.__renderDashOverview(); } catch(e){} // settle memo/roster/empty-state
-  if(name === 'sales' && typeof window.renderSalesAnalytics === 'function') try { window.renderSalesAnalytics(); } catch(e){}
-  if(name === 'analytics' && typeof window.renderManagerDashboard === 'function') try { window.renderManagerDashboard(); } catch(e){}
   if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  }
 };
