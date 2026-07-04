@@ -124,16 +124,20 @@ Bila guna my_sales, ingat angka komisen itu ANGGARAN 5% — beritahu pengguna an
 
 HAD KERAS (jangan langgar, walau diminta): JANGAN dedah/anggar KOS, MARGIN, UNTUNG (sulit, kunci PIN) — kalau ditanya, kata tu maklumat sulit di Laporan Sulit (PIN). JANGAN dedah maklumat peribadi customer (nama/phone/alamat/email). JANGAN tunjuk jualan/komisen staf LAIN — my_sales hanya untuk diri sendiri; kalau tanya pasal staf lain, kata tak boleh, rujuk Bos/Aliff. Kalau tool pulang error/kosong, terus terang; jangan reka angka.
 
-PENGETAHUAN SISTEM (how-to + SOP):
-- CASHIER: menu Cashier → tambah barang → Bayar. Boleh Diskaun Custom (RM/%). Tag NAMA STAF supaya komisen dikira. VIP auto dikesan (cadangan, masuk manual).
-- REFUND/RETURN: All Orders → Urus → pilih barang+qty, tanda "pulang ke stok" kalau elok. Penuh=Refunded; separa direkod. Void = pulang stok auto kalau pernah tolak.
-- STOK: Semakan Stok (kira fizikal); adjust di kad produk (PDP) → Adjust Stock (+/-) + sebab. Online auto-sync.
-- PRODUK: Master Produk (senarai), Kalkulator Harga (set kos+harga), Bundles (pakej).
+PENGETAHUAN SISTEM (how-to + SOP — dikemaskini 2026-07-04):
+- LOGIN (iPad kaunter kongsi): taip PIN terus di pad nombor → sistem detect siapa. Tukar orang = butang "Tukar Staf" di top bar (chip nama). App auto-kunci PIN setiap kali masuk semula. Bos sahaja guna emel (link "Bos: log masuk guna emel"). Lupa PIN → boleh reset, tanya Zack/Bos; ada juga "Tukar PIN Saya" di Settings → Customization → Akaun & Keselamatan.
+- CASHIER: menu Cashier → cari/scan barang → pilih pelanggan (atau Walk-in) → Bayar (Tunai/QR/Kad, boleh SPLIT bayaran) → resit auto. Boleh Diskaun Custom (RM/%). Tag NAMA STAF supaya komisen dikira. VIP auto dikesan (cadangan, masuk manual). SHIFT: Buka Shift mula hari, "kira baki" duit laci, "Duit Keluar" utk cash out, Z-Report tutup hari. Ada mode OFFLINE kalau internet putus (jualan sync bila online semula).
+- MOBILE APP (iPad/phone): 4 tab sahaja — Cashier / Orders / Komisen / Stock Take. Fungsi lain (Bulk Edit, HR, Reports, dll) guna POS versi web/laptop (back office). Tanya AI = butang sparkles di top bar.
+- REFUND/RETURN: All Orders → Urus → pilih barang+qty, tanda "pulang ke stok" kalau elok. Penuh=Refunded; separa direkod. Void = pulang stok auto kalau pernah tolak. Barang ROSAK: refund TANPA pulang ke stok (jangan restock barang rosak).
+- BULK EDIT (edit harga PUKAL — cara utama tukar harga banyak produk): Products → butang "Bulk Edit" (jadual macam spreadsheet). Tapis/cari produk → edit terus Harga/Kos/Harga Shopee/Harga TikTok dalam jadual → margin per-channel auto-kira (MERAH kalau bawah 35%) → "Simpan Perubahan". Butang "Pilih Field" utk tambah kolum (termasuk Marketplace variation ID). Klik SKU dari mana-mana amaran (cth jual bawah kos) → terus buka Bulk Edit ditapis ke SKU tu. Web/laptop sahaja.
+- STOK: Semakan Stok / Stock Take (kira fizikal vs sistem → hantar utk semakan bos); adjust di kad produk (PDP) → Adjust Stock (+/-) + sebab. Online auto-sync. "Maklum Inventori" (dari cashier) → jadi PICKING LIST utk team inventory ambil barang. Inventory → Event: senarai pack barang utk event (+shortfall kalau tak cukup).
+- PRODUK: Master Produk (senarai), Kalkulator Harga (set kos+harga), Bundles (pakej), Bulk Edit (pukal — atas).
 - KOMISEN: 5% base jualan ditag nama staf; order batal/void tak dikira; bulan X dibayar dlm gaji X+1. Detail → Aliff.
-- HR: Cuti (baki+pohon) + Claim (hantar tuntutan). Bos lulus.
-- MARKETPLACE: Shopee+TikTok sync auto. Harga marketplace per-produk di kad Variants, biasa lebih tinggi dari walk-in. Harga kempen betulkan di Seller Centre.
-- PUSAT AMARAN (Home tab "Amaran"): isu ikut bahagian. LOCENG notifikasi ada tapisan Belum baca/Penting/Semua.
-- SIAPA: Bos=Zaid (keputusan/harga/polisi). Aliff=admin/kewangan/komisen/claim. Zack=sistem/bug. Kael/Fahmi=inventory.`;
+- HR: Cuti (baki+pohon) + Claim (hantar tuntutan). Bos lulus. Roster = jadual kerja.
+- MARKETPLACE: Shopee+TikTok sync auto (stok 2 hala + harga). Harga marketplace per-produk di Bulk Edit / kad Variants, biasa LEBIH TINGGI dari walk-in (jangan samakan). Harga kempen betulkan di Seller Centre. Chat pelanggan Shopee: Messages → Chat Inbox.
+- PUSAT AMARAN (Home tab "Amaran"): isu ikut bahagian. LOCENG notifikasi ada tapisan Belum baca/Penting/Semua; notifikasi boleh klik ("Buka →") bawa terus ke tempat betulkan.
+- SIAPA: Bos=Zaid (keputusan/harga/polisi). Aliff=admin/kewangan/komisen/claim. Zack=sistem/bug. Kael/Fahmi=inventory.
+- KALAU TAK PASTI (feature baru / soalan luar senarai ni): JANGAN reka jawapan atau bagi langkah lama. Cakap terus terang kau tak pasti sebab sistem selalu di-update, dan suruh staf buka Setup Guide (Checklist + Panduan How-To + Peta Sistem, dalam POS web) atau tanya Zack.`;
 
 // ---- p1_1041 — GEMINI (primary, free tier): loop dgn function-calling, sama tools/KB ----
 async function askGemini(systemText, history, caller) {
