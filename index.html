@@ -1157,15 +1157,25 @@
  <button class="lp-icon-btn" onclick="document.getElementById('lpSearchInput')?.focus()" data-i18n-aria="lp_aria_search" aria-label="Search products">
  <i data-lucide="search" style="width:18px;height:18px;"></i>
  </button>
- <button id="btnCustomerPortal" class="lp-icon-btn" onclick="document.getElementById('customerLoginGate').style.display='flex'" data-i18n-aria="lp_aria_vip" aria-label="VIP customer login" title="VIP Login">
+ <!-- p1_1058 — SATU butang Log Masuk + dropdown (Zaid): Customer → Loyalty Portal (loyalty.html,
+      OTP email, mata/tier) · Staf → PIN. Gantikan 2 butang lama (VIP phone-gate + Staff Login);
+      customerLoginGate lama kekal dorman dlm HTML. -->
+ <span style="position:relative; display:inline-flex;">
+ <button id="btnCustomerPortal" class="lp-icon-btn" onclick="window.__lpLoginMenuToggle && window.__lpLoginMenuToggle(event)" aria-label="Log Masuk" title="Log Masuk">
  <i data-lucide="user" style="width:18px;height:18px;"></i>
  </button>
+ <div id="lpLoginMenu" style="display:none; position:absolute; top:calc(100% + 10px); right:0; background:#FFF; border:1px solid #ECE6DE; border-radius:14px; box-shadow:0 12px 34px rgba(16,16,16,0.14); min-width:250px; z-index:6000; overflow:hidden; text-align:left;">
+ <button onclick="window.location.href='loyalty.html'" style="display:block; width:100%; padding:13px 16px; background:none; border:none; border-bottom:1px solid #F3F0EA; cursor:pointer; text-align:left; font-family:Poppins,sans-serif;">
+ <span style="display:flex; align-items:center; gap:10px;"><i data-lucide="gift" style="width:17px;height:17px;color:#CD7C32;"></i><span><strong style="font-size:13.5px; color:#101010;">Customer Login</strong><br><span style="font-size:11px; color:#8A8578;">10 CAMP Rewards — semak mata &amp; tier</span></span></span>
+ </button>
+ <button onclick="document.getElementById('lpLoginMenu').style.display='none'; handleLogin()" style="display:block; width:100%; padding:13px 16px; background:none; border:none; cursor:pointer; text-align:left; font-family:Poppins,sans-serif;">
+ <span style="display:flex; align-items:center; gap:10px;"><i data-lucide="lock" style="width:17px;height:17px;color:#101010;"></i><span><strong style="font-size:13.5px; color:#101010;">Staff Login</strong><br><span style="font-size:11px; color:#8A8578;">PIN staf / emel Bos</span></span></span>
+ </button>
+ </div>
+ </span>
  <button id="btnPublicCartCount" class="lp-icon-btn lp-cart-btn" onclick="togglePublicCart()" data-i18n-aria="lp_aria_cart" aria-label="Open shopping cart">
  <i data-lucide="shopping-bag" style="width:18px;height:18px;"></i>
  <span id="lpCartBadge" class="lp-cart-badge" style="display:none;">0</span>
- </button>
- <button onclick="handleLogin()" class="lp-staff-btn" aria-label="Internal Mode staff login" data-i18n="lp_btn_staff_login">
- Staff Login
  </button>
  </div>
  </div>
@@ -1959,10 +1969,9 @@
  <div class="menu-item" data-tab="nav_store_credit" onclick="event.stopPropagation(); switchHub(['storeCreditSection'], 'Store Credit', this); if(typeof renderStoreCredit==='function') renderStoreCredit();" style="display:flex; align-items:center; gap:10px;">
  <i data-lucide="wallet" style="width:15px; height:15px;"></i> <span>Store Credit</span>
  </div>
- <!-- p1_575 — Loyalty Portal customer (buka loyalty.html di tab baru) -->
- <div class="menu-item" onclick="event.stopPropagation(); window.open('/loyalty.html','_blank','noopener')" title="Portal ganjaran customer (tier/mata) — buka tab baru" style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="gift" style="width:15px; height:15px;"></i> <span>Loyalty Portal</span> <i data-lucide="external-link" style="width:11px; height:11px; opacity:.5;"></i>
- </div>
+ <!-- p1_1058 — Loyalty Portal DIBUANG dari sidebar (Zaid: "letak pada tempat yang salah") —
+      portal = benda CUSTOMER, kini di landing page: butang Log Masuk → dropdown → Customer Login
+      → loyalty.html. Staf tak perlu link ni dlm back office. -->
  </div>
  <div class="nav-section-label">Katalog &amp; Stok</div>
  <!-- p1_280 — Products parent (collapsible) -->
@@ -13494,7 +13503,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1040"></script>
+ <script src="app.js?v=1041"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

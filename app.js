@@ -15529,6 +15529,23 @@ let currentUser = null;
 let currentUserRole = null;
 let currentPublicCustomer = null;
 
+// p1_1058 — dropdown "Log Masuk" di landing (SATU butang, 2 pilihan): Customer → Loyalty Portal
+// (loyalty.html) · Staf → PIN overlay. Tutup bila klik luar.
+window.__lpLoginMenuToggle = function(e) {
+ try { if(e) e.stopPropagation(); } catch(_){}
+ const m = document.getElementById('lpLoginMenu');
+ if(!m) return;
+ const open = m.style.display !== 'none';
+ m.style.display = open ? 'none' : 'block';
+ if(!open && window.lucide && lucide.createIcons) { try { lucide.createIcons(); } catch(_){} }
+};
+document.addEventListener('click', function(e) {
+ try {
+ const m = document.getElementById('lpLoginMenu');
+ if(m && m.style.display !== 'none' && !m.contains(e.target)) m.style.display = 'none';
+ } catch(_){}
+});
+
 window.handleCustomerLogin = async function() {
  const phone = document.getElementById("customerLoginPhone").value.trim();
  if(!phone) return alert("Sila masukkan nombor telefon yang sah.");
