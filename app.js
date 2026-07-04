@@ -56,6 +56,14 @@ if(window.__isPOSApp){ document.addEventListener('DOMContentLoaded', function(){
 } catch(e){} }); }
 // p1_1012 — tamatkan splash boot (buang kelip landing customer masa app mula muat data awan).
 // Dipanggil lepas boot tentukan POS (login) atau skrin kunci. Idempotent.
+// p1_1033 — tunjuk SEMULA splash branded "Memuatkan…" (guna semula splash pertama, elak spinner
+// generik kedua "Memuatkan data dari awan"). Dipakai selepas PIN masa muat produk+stok.
+window.__showAppBoot = function() {
+ try {
+  const sp = document.getElementById('posBootSplash');
+  if(sp) { sp.style.display = 'flex'; sp.style.opacity = '1'; }
+ } catch(e){}
+};
 window.__endAppBoot = function() {
  try {
   document.documentElement.classList.remove('pos-app-boot');
@@ -8983,7 +8991,12 @@ async function initApp() {
  // p1_1013 — splash boot kekal SAMPAI data staf (authed) habis dimuat, baru tunjuk cashier.
  // Rakam status auth masa MULA (elak race: run anon boot yg mula sebelum login jangan padam splash awal).
  const __wasAuthedAtStart = !!window.currentUser;
- if (isFirstLoad && typeof showLoading === 'function') showLoading('Memuatkan data dari awan...');
+ // p1_1033 — App: guna SEMULA splash branded "Memuatkan…" (elak spinner kedua "Memuatkan data dari awan").
+ // Web/desktop (tiada splash branded) kekal guna spinner overlay.
+ if (isFirstLoad) {
+  if (window.__isPOSApp) { try { window.__showAppBoot && window.__showAppBoot(); } catch(e){} }
+  else if (typeof showLoading === 'function') showLoading('Memuatkan data dari awan...');
+ }
  try {
  console.log("Loading Cloud Omnichannel Data...");
  // p1_308 — explicit high .limit() so PostgREST's default 1000-row cap doesn't
