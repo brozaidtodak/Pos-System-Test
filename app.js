@@ -25646,21 +25646,83 @@ window.renderPdpSiblingVariants = function(prod) {
  });
  const totalStock = sibs.reduce((s,v)=>s+(stockBySku[v.sku]||0),0);
  const th = (t) => `<th style="padding:6px 8px; text-align:left; white-space:nowrap;">${t}</th>`;
- wrap.innerHTML = `
- <div style="border:1px solid #E5E7EB; border-radius:8px; overflow:hidden;">
- <div style="background:#F9FAFB; padding:8px 10px; font-size:12px; font-weight:700; color:#374151; display:flex; justify-content:space-between; align-items:center; gap:8px;">
- <span>${isSingle ? 'Produk · Stok: ' + totalStock : sibs.length + ' Variants · Jumlah stok: ' + totalStock}</span>
- <div style="display:flex; gap:6px; align-items:center;">${isSingle ? '' : `<button type="button" onclick="window.pdpEditOptions('${escJs(prod.parent_sku || prod.sku)}')" style="font-size:12px; padding:6px 12px; background:#fff; color:#CD7C32; border:1px solid #CD7C32; border-radius:6px; cursor:pointer; font-weight:700;"><i data-lucide="pencil" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit options</button>`}<button type="button" onclick="window.__pdpSaveVariants('${escJs(prod.parent_sku || prod.sku)}')" class="btn-brand-primary" style="font-size:12px; padding:6px 12px;"><i data-lucide="save" style="width:13px;height:13px;vertical-align:-2px;"></i> ${isSingle ? 'Simpan' : 'Simpan Variants'}</button></div>
- </div>
+
+ // p5_2 — Matrix view (saiz × warna): urus stok apparel/khemah sekali pandang.
+ // rows = saiz, cols = warna; tiap sel = stok variant tu (warna-kod ikut paras stok),
+ // klik sel buka variant. Toggle Senarai/Matrix; hanya untuk produk bervariant.
+ window.__pdpMatrixProdSku = prod.sku;
+ const view = (!isSingle && window.__pdpVariantView === 'matrix') ? 'matrix' : 'list';
+ const listBodyHtml = `
  <div style="overflow-x:auto;">
  <table style="width:100%; border-collapse:collapse; font-size:12px; min-width:1040px;">
  <thead><tr style="background:#FAFAFA; color:#9CA3AF; font-size:10px; text-transform:uppercase;">
  ${th('Gambar')}${th('Variant')}${th('SKU')}${th('Stok')}${th('Harga')}${th('Compare')}${th('Cost')}${th('Shopee')}${th('TikTok')}${th('Barcode')}${th('P(cm)')}${th('L(cm)')}${th('T(cm)')}${th('Berat')}${th('Aktif')}
  </tr></thead><tbody>${rows}</tbody></table>
  </div>
- <div style="padding:6px 10px; font-size:10.5px; color:#9CA3AF;">Edit terus dalam jadual (termasuk URL Gambar — boleh banyak, pisah koma; pertama = cover), tekan "Simpan Variants". Tukar Stok = auto adjustment (audit trail). Harga auto-push ke marketplace.</div>
+ <div style="padding:6px 10px; font-size:10.5px; color:#9CA3AF;">Edit terus dalam jadual (termasuk URL Gambar — boleh banyak, pisah koma; pertama = cover), tekan "Simpan Variants". Tukar Stok = auto adjustment (audit trail). Harga auto-push ke marketplace.</div>`;
+
+ const buildMatrix = () => {
+   const norm = (s) => String(s == null ? '' : s).trim();
+   const colors = [...new Set(sibs.map(v => norm(v.variant_color)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+   const sizesM = [...new Set(sibs.map(v => norm(v.variant_size)).filter(Boolean))]
+     .sort((a,b)=>((sizeOrder[a.toUpperCase()]||99)-(sizeOrder[b.toUpperCase()]||99)) || a.localeCompare(b));
+   const hasColor = colors.length > 0, hasSize = sizesM.length > 0;
+   if(!hasColor && !hasSize) return listBodyHtml; // takde paksi variant → fallback senarai
+   let rowKeys, colKeys, rowField, colField, rowHdr;
+   if(hasSize && hasColor){ rowKeys=sizesM; colKeys=colors; rowField='variant_size'; colField='variant_color'; rowHdr='Saiz'; }
+   else if(hasColor){ rowKeys=['']; colKeys=colors; rowField=null; colField='variant_color'; rowHdr='Warna'; }
+   else { rowKeys=['']; colKeys=sizesM; rowField=null; colField='variant_size'; rowHdr='Saiz'; }
+   const findV = (rk,ck) => sibs.find(v => (!rowField || norm(v[rowField])===rk) && norm(v[colField])===ck);
+   const cellFor = (v) => {
+     if(!v) return `<td style="text-align:center; padding:10px 6px; border:1px solid #F1F1F1; color:#D1D5DB; background:#FCFCFC;">—</td>`;
+     const stk = stockBySku[v.sku] || 0;
+     const rp = parseFloat(v.reorder_point) || 5;
+     const st = stk<=0 ? ['#FEF2F2','#B91C1C'] : (stk<=rp ? ['#FFFBEB','#B45309'] : ['#F0FDF4','#15803D']);
+     const pr = parseFloat(v.price||0);
+     return `<td onclick="window.openPdpModal('${escJs(v.sku)}')" title="${esc(v.sku)} — klik untuk buka variant" style="cursor:pointer; text-align:center; padding:8px 6px; border:1px solid #F1F1F1; background:${st[0]};"><div style="font-weight:800; font-size:15px; color:${st[1]};">${stk}</div><div style="font-size:9px; color:#9CA3AF;">RM ${pr%1===0?pr:pr.toFixed(2)}</div></td>`;
+   };
+   const colTot = {}; colKeys.forEach(ck => colTot[ck]=0);
+   let bodyRows = '';
+   rowKeys.forEach(rk => {
+     let rowTot = 0, tds = '';
+     colKeys.forEach(ck => { const v = findV(rk,ck); rowTot += v ? (stockBySku[v.sku]||0) : 0; if(v) colTot[ck] += (stockBySku[v.sku]||0); tds += cellFor(v); });
+     const rh = rowField ? `<th style="text-align:left; padding:8px 12px; background:#FAFAFA; font-size:12px; font-weight:800; color:#374151; white-space:nowrap;">${esc(rk)||'—'}</th>` : '';
+     bodyRows += `<tr>${rh}${tds}<td style="text-align:center; padding:8px 12px; font-weight:800; color:#111827; background:#FAFAFA;">${rowTot}</td></tr>`;
+   });
+   const colHead = colKeys.map(ck => `<th style="text-align:center; padding:8px 12px; font-size:12px; font-weight:700; color:#374151; white-space:nowrap;">${esc(ck)}</th>`).join('');
+   const firstHdr = rowField ? `<th style="text-align:left; padding:8px 12px; background:#F9FAFB; font-size:10px; text-transform:uppercase; color:#9CA3AF;">${esc(rowHdr)}</th>` : '';
+   const colTotCells = colKeys.map(ck => `<td style="text-align:center; padding:8px 12px; font-weight:800; color:#111827; background:#F3F4F6;">${colTot[ck]}</td>`).join('');
+   const legend = (bg,bd,txt) => `<span style="display:inline-flex; align-items:center; gap:4px;"><i style="width:10px;height:10px;border-radius:2px;background:${bg};border:1px solid ${bd};display:inline-block;"></i> ${txt}</span>`;
+   return `<div style="overflow-x:auto; padding:12px;">
+   <table style="border-collapse:collapse; font-size:12px; margin:0 auto;">
+   <thead><tr>${firstHdr}${colHead}<th style="text-align:center; padding:8px 12px; font-size:10px; text-transform:uppercase; color:#9CA3AF;">Jumlah</th></tr></thead>
+   <tbody>${bodyRows}<tr>${rowField?`<th style="background:#F3F4F6; padding:8px 12px; text-align:left; font-size:11px; font-weight:700; color:#6B7280;">Jumlah</th>`:''}${colTotCells}<td style="text-align:center; padding:8px 12px; font-weight:800; color:#fff; background:#101010;">${totalStock}</td></tr></tbody>
+   </table>
+   </div>
+   <div style="padding:0 12px 10px; font-size:10.5px; color:#9CA3AF; display:flex; gap:14px; flex-wrap:wrap; align-items:center;"><span>Klik sel untuk buka & urus variant tu.</span>${legend('#F0FDF4','#BBF7D0','Ada stok')}${legend('#FFFBEB','#FDE68A','Rendah')}${legend('#FEF2F2','#FECACA','Habis')}</div>`;
+ };
+
+ const bodyHtml = view === 'matrix' ? buildMatrix() : listBodyHtml;
+ const toggleBtn = isSingle ? '' : `<div style="display:inline-flex; border:1px solid #E5E7EB; border-radius:7px; overflow:hidden;"><button type="button" onclick="window.pdpSetVariantView('list')" style="border:none; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; background:${view==='list'?'#101010':'#fff'}; color:${view==='list'?'#fff':'#374151'};">Senarai</button><button type="button" onclick="window.pdpSetVariantView('matrix')" style="border:none; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; background:${view==='matrix'?'#101010':'#fff'}; color:${view==='matrix'?'#fff':'#374151'};">Matrix</button></div>`;
+ const editOptBtn = isSingle ? '' : `<button type="button" onclick="window.pdpEditOptions('${escJs(prod.parent_sku || prod.sku)}')" style="font-size:12px; padding:6px 12px; background:#fff; color:#CD7C32; border:1px solid #CD7C32; border-radius:6px; cursor:pointer; font-weight:700;"><i data-lucide="pencil" style="width:13px;height:13px;vertical-align:-2px;"></i> Edit options</button>`;
+ const saveBtn = (view === 'matrix') ? '' : `<button type="button" onclick="window.__pdpSaveVariants('${escJs(prod.parent_sku || prod.sku)}')" class="btn-brand-primary" style="font-size:12px; padding:6px 12px;"><i data-lucide="save" style="width:13px;height:13px;vertical-align:-2px;"></i> ${isSingle ? 'Simpan' : 'Simpan Variants'}</button>`;
+ wrap.innerHTML = `
+ <div style="border:1px solid #E5E7EB; border-radius:8px; overflow:hidden;">
+ <div style="background:#F9FAFB; padding:8px 10px; font-size:12px; font-weight:700; color:#374151; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+ <span>${isSingle ? 'Produk · Stok: ' + totalStock : sibs.length + ' Variants · Jumlah stok: ' + totalStock}</span>
+ <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">${toggleBtn}${editOptBtn}${saveBtn}</div>
+ </div>
+ ${bodyHtml}
  </div>`;
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+};
+
+// p5_2 — tukar antara paparan Senarai (edit) & Matrix (saiz × warna, urus stok sekali pandang).
+window.pdpSetVariantView = function(v) {
+ window.__pdpVariantView = (v === 'matrix') ? 'matrix' : 'list';
+ const sku = window.__pdpMatrixProdSku;
+ const prod = (typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts.find(p => p.sku === sku) : null;
+ if(prod && window.renderPdpSiblingVariants) window.renderPdpSiblingVariants(prod);
 };
 
 // p1_303 — save all variant edits (stock + price/cost/dims/enabled) inline
