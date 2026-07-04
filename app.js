@@ -3112,7 +3112,7 @@ window.renderChatInbox = function() {
  // p1_730 — TikTok: guna tiktok-chat fn; handle 105005 (scope belum aktif) dengan mesej boleh-tindak
  if(window.__chatChannel === 'tiktok') { window.__chatLoadTiktok(list); return; }
  list.innerHTML = '<p style="color:#9CA3AF; padding:18px;">Memuatkan perbualan…</p>';
- fetch('/.netlify/functions/shopee-chat?mode=conversations&page_size=50').then(r=>r.json()).then(r => {
+ fetch('/.netlify/functions/shopee-chat?mode=conversations&page_size=50', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
   if(r.error) { list.innerHTML = '<p style="color:#B23A2E; padding:18px;">Shopee: '+esc(r.error)+'</p>'; return; }
   const convs = (r.response && r.response.conversations) || [];
   if(!convs.length) { list.innerHTML = '<p style="color:#9CA3AF; padding:18px;">Tiada perbualan.</p>'; return; }
@@ -3134,13 +3134,20 @@ window.__chatOpen = function(cid, buyerId, name) {
  if(window.__chatChannel === 'tiktok') { return window.__chatOpenTiktok(cid, buyerId, name); }
  const thread = document.getElementById('chatThread'); if(!thread) return;
  const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
+ // p1_1046 — simpan konteks perbualan semasa utk butang Hantar (reply)
+ window.__chatCur = { cid: cid, buyerId: buyerId, name: name };
  thread.innerHTML = '<p style="color:#9CA3AF; margin:auto;">Memuatkan mesej…</p>';
- fetch('/.netlify/functions/shopee-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=50').then(r=>r.json()).then(r => {
+ // p1_1046 — kotak balas (Fasa 2): sticky bawah thread; hanya bila ada buyerId (to_id Shopee)
+ const composer = buyerId ? `<div style="position:sticky; bottom:0; background:#FAFAFA; padding:10px 0 2px; margin-top:10px; border-top:1px solid #E5E7EB; display:flex; gap:8px;">
+   <input id="chatReplyInput" type="text" maxlength="1000" placeholder="Balas ${esc(name||'pembeli')}…" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.__chatSend();}" style="flex:1; padding:10px 13px; border:1px solid #E5E7EB; border-radius:10px; font-size:13px; font-family:Poppins,sans-serif; background:#fff;">
+   <button id="chatReplyBtn" onclick="window.__chatSend()" style="padding:10px 18px; border:none; border-radius:10px; background:#CD7C32; color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:Poppins,sans-serif; white-space:nowrap;">Hantar</button>
+  </div>` : '';
+ fetch('/.netlify/functions/shopee-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=50', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
   if(r.error) { thread.innerHTML = '<p style="color:#B23A2E;">Shopee: '+esc(r.error)+'</p>'; return; }
   let msgs = (r.response && r.response.messages) || [];
   msgs = msgs.slice().reverse(); // papar lama→baru
   const head = `<div style="font-weight:800; padding-bottom:10px; border-bottom:1px solid #E5E7EB; margin-bottom:12px; position:sticky; top:0; background:#FAFAFA;">${esc(name||'Pembeli')} <span style="font-size:11px; color:#9CA3AF; font-weight:600;">· Shopee</span></div>`;
-  if(!msgs.length) { thread.innerHTML = head + '<p style="color:#9CA3AF; margin:auto;">Tiada mesej.</p>'; return; }
+  if(!msgs.length) { thread.innerHTML = head + '<p style="color:#9CA3AF; margin:auto;">Tiada mesej.</p>' + composer; return; }
   thread.innerHTML = head + msgs.map(m => {
    const fromBuyer = String(m.from_id) === String(buyerId);
    const txt = (m.content && (m.content.text != null ? m.content.text : null));
@@ -3155,9 +3162,39 @@ window.__chatOpen = function(cid, buyerId, name) {
      <div style="background:${bg}; color:${col}; ${brd} padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.4; word-break:break-word;">${body}</div>
      <div style="font-size:10px; color:#9CA3AF; margin-top:2px; text-align:${fromBuyer?'left':'right'};">${t}</div>
     </div>`;
-  }).join('');
+  }).join('') + composer;
   thread.scrollTop = thread.scrollHeight;
  }).catch(e => { thread.innerHTML = '<p style="color:#B23A2E;">Error: '+esc(e.message)+'</p>'; });
+};
+
+// p1_1046 — Chat Inbox Fasa 2: HANTAR balasan Shopee terus dari POS. Guna konteks __chatCur
+// (diset oleh __chatOpen). Selepas berjaya → refetch thread (mesej sendiri muncul kanan bronze).
+window.__chatSend = function() {
+ const cur = window.__chatCur || {};
+ const inp = document.getElementById('chatReplyInput');
+ const btn = document.getElementById('chatReplyBtn');
+ if(!inp) return;
+ const msg = (inp.value || '').trim();
+ if(!msg) return;
+ if(!cur.buyerId) { if(typeof showToast === 'function') showToast('Tak jumpa ID pembeli untuk balas.', 'warn'); return; }
+ if(btn) { btn.disabled = true; btn.textContent = 'Menghantar…'; btn.style.opacity = '0.6'; }
+ fetch('/.netlify/functions/shopee-chat?mode=send', {
+  method: 'POST',
+  headers: window.__authHeaderSync({ 'Content-Type': 'application/json' }),
+  body: JSON.stringify({ to_id: cur.buyerId, message: msg })
+ }).then(r=>r.json()).then(r => {
+  if(r && r.error) {
+   if(typeof showToast === 'function') showToast('Shopee: gagal hantar — ' + String(r.error).slice(0,120), 'error');
+   if(btn) { btn.disabled = false; btn.textContent = 'Hantar'; btn.style.opacity = '1'; }
+   return;
+  }
+  if(typeof showToast === 'function') showToast('Balasan dihantar ke ' + (cur.name || 'pembeli') + '.', 'success');
+  // refetch thread — mesej baru muncul; composer dirender semula (input kosong)
+  window.__chatOpen(cur.cid, cur.buyerId, cur.name);
+ }).catch(e => {
+  if(typeof showToast === 'function') showToast('Gagal hantar: ' + e.message, 'error');
+  if(btn) { btn.disabled = false; btn.textContent = 'Hantar'; btn.style.opacity = '1'; }
+ });
 };
 
 // p1_730 — TikTok chat loader (Customer Service IM API via tiktok-chat fn).
@@ -3175,7 +3212,7 @@ window.__chatTiktokScopeMsg = function() {
 window.__chatLoadTiktok = function(list) {
  const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
  list.innerHTML = '<p style="color:#9CA3AF; padding:18px;">Memuatkan perbualan TikTok…</p>';
- fetch('/.netlify/functions/tiktok-chat?mode=conversations&page_size=50').then(r=>r.json()).then(r => {
+ fetch('/.netlify/functions/tiktok-chat?mode=conversations&page_size=50', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
   // Scope belum aktif / ralat kebenaran
   if(r && (r.code === 105005 || (r.error && /105005|scope|denied/i.test(String(r.error))))) { list.innerHTML = window.__chatTiktokScopeMsg(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
   if(r && r.error) { list.innerHTML = '<p style="color:#B23A2E; padding:18px;">TikTok: '+esc(r.error)+'</p>'; return; }
@@ -3204,7 +3241,7 @@ window.__chatOpenTiktok = function(cid, buyerId, name) {
  const thread = document.getElementById('chatThread'); if(!thread) return;
  const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
  thread.innerHTML = '<p style="color:#9CA3AF; margin:auto;">Memuatkan mesej…</p>';
- fetch('/.netlify/functions/tiktok-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=50').then(r=>r.json()).then(r => {
+ fetch('/.netlify/functions/tiktok-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=50', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
   if(r && (r.code === 105005 || (r.error && /105005|scope|denied/i.test(String(r.error))))) { thread.innerHTML = window.__chatTiktokScopeMsg(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
   if(r && r.error) { thread.innerHTML = '<p style="color:#B23A2E;">TikTok: '+esc(r.error)+'</p>'; return; }
   let msgs = (r.data && r.data.messages) || (r.response && r.response.messages) || [];

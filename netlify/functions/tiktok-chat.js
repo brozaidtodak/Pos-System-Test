@@ -11,12 +11,16 @@
  * Public URL: /.netlify/functions/tiktok-chat
  */
 const { VERSION, ttRequest, getValidToken, ensureShopCipher } = require('./_tiktok');
+const { requireAuth } = require('./_auth');
 
 function json(code, obj) {
     return { statusCode: code, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(obj, null, 2) };
 }
 
 exports.handler = async (event) => {
+    // p1_1046 — SECURITY: gate requireAuth (sebelum ni terbuka; chat customer = PII)
+    const auth = await requireAuth(event);
+    if (!auth.ok) return auth.response;
     const p = (event && event.queryStringParameters) || {};
     const mode = p.mode || 'conversations';
     try {
