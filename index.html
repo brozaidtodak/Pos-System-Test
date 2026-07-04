@@ -3258,7 +3258,10 @@
  </div>
  <hr style="border:0; border-top:1px dashed #ccc; margin:15px 0;">
  <span id="totalPrice" style="display:none;">0.00</span>
- <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:var(--primary); padding:16px 22px; margin:0; border-radius:50px; box-shadow:0 4px 18px rgba(205,124,50,0.35); transition:0.2s; display:flex; justify-content:space-between; align-items:center; font-size:15px;" disabled="" data-i18n="cs_pay_now" title="Pintasan: F9 / Shortcut: F9"><span>BAYAR SEKARANG</span><span style="font-size:18px; font-weight:900; letter-spacing:-0.5px;">RM <span id="bayarBtnTotal">0.00</span></span></button>
+ <!-- p1_1045 — data-i18n MESTI di span label, BUKAN di <button>: applyI18N buat textContent=val
+      pada elemen data-i18n → kalau di button, anak span "RM <bayarBtnTotal>" DIPADAM tiap kali i18n
+      jalan (sejak p1_947 letak total dlm butang) → total tak pernah nampak (aduan Ariff). -->
+ <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:var(--primary); padding:16px 22px; margin:0; border-radius:50px; box-shadow:0 4px 18px rgba(205,124,50,0.35); transition:0.2s; display:flex; justify-content:space-between; align-items:center; font-size:15px;" disabled="" title="Pintasan: F9 / Shortcut: F9"><span data-i18n="cs_pay_now">BAYAR SEKARANG</span><span style="font-size:18px; font-weight:900; letter-spacing:-0.5px;">RM <span id="bayarBtnTotal">0.00</span></span></button>
  <!-- p1_131 — Keyboard shortcut hints visible (hidden in mobile app) -->
  <div class="pos-desktop-kbd-hints" style="display:flex; justify-content:center; gap:14px; margin-top:10px; font-size:10px; color:#9CA3AF;">
  <span><kbd style="background:#F3F4F6; padding:1px 5px; border-radius:3px; font-family:monospace; font-size:10px;">F9</kbd> Bayar</span>
@@ -13491,7 +13494,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1027"></script>
+ <script src="app.js?v=1028"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

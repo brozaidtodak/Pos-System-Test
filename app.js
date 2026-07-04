@@ -14746,6 +14746,37 @@ window.__custSalesAgg = function(name, phone, email) {
  return { spent: Math.round(spent * 100) / 100, orders };
 };
 
+// p1_1045 — refresh ringan selepas jualan (ganti full initApp yang bekukan iPad lama).
+// (1) SERTA-MERTA: tolak qty_remaining in-memori guna alokasi batch dari deduct_stock_fifo
+//     (soldItems[].batch_alloc = {batch_id, qty}) — tiada network, stok kaunter terus tepat.
+// (2) LATAR: reconcile penuh jadual inventory_batches sahaja dari awan (bukan 8 jadual initApp),
+//     ganti global + render semula. Gagal senyap — paparan stok pulih pada boot seterusnya.
+window.__postSaleRefresh = async function(soldItems) {
+ try {
+  const byBatch = {};
+  (soldItems || []).forEach(it => (it && it.batch_alloc || []).forEach(a => {
+   if(a && a.batch_id != null) byBatch[a.batch_id] = (byBatch[a.batch_id] || 0) + (Number(a.qty) || 0);
+  }));
+  if(Object.keys(byBatch).length && typeof inventoryBatches !== 'undefined' && Array.isArray(inventoryBatches)) {
+   inventoryBatches.forEach(b => {
+    if(b && byBatch[b.id]) b.qty_remaining = Math.max(0, (Number(b.qty_remaining) || 0) - byBatch[b.id]);
+   });
+  }
+ } catch(e){}
+ try { if(typeof renderPOS === 'function') renderPOS(); } catch(e){}
+ try { if(typeof renderPublicStorefront === 'function') renderPublicStorefront(); } catch(e){}
+ // (2) reconcile awan — satu jadual sahaja, di latar
+ try {
+  if(window.currentUser && typeof db !== 'undefined' && db) {
+   const { data } = await db.from('inventory_batches').select('*').order('inbound_date', { ascending: true }).limit(100000);
+   if(data && data.length) {
+    inventoryBatches = data;
+    try { if(typeof renderPOS === 'function') renderPOS(); } catch(e){}
+   }
+  }
+ } catch(e){ console.warn('post-sale batch reconcile gagal (non-blocking):', e); }
+};
+
 window.processNewCheckout = async function() {
  if(cart.length === 0) { if (typeof showToast==='function') showToast('Troli kosong — scan barang dulu','warning'); else alert('Empty Cart!'); return; }
  const btn = document.getElementById("checkoutBtn");
@@ -15161,13 +15192,14 @@ window.processNewCheckout = async function() {
  });
  document.getElementById('checkoutPaymentModal').style.display = 'none';
  renderCart();
- // p1_671 — JANGAN block penyelesaian checkout pada full-reload initApp. initApp muat semula
- // banyak jadual besar (products_master/inventory_batches/inventory_transactions/semua jualan/
- // pelanggan, limit 100k) — atas wifi kedai ia boleh lambat/hang → butang stuck "Processing…"
- // walaupun jualan DAH disimpan (sale committed di atas). Refresh di BACKGROUND supaya cashier
- // boleh teruskan jualan seterusnya serta-merta; data UI kemas-kini bila reload selesai.
- try { Promise.resolve(initApp()).catch(e => console.warn('post-sale initApp refresh gagal (non-blocking):', e)); }
- catch(e) { console.warn('post-sale initApp refresh gagal (non-blocking):', e); }
+ // p1_1045 — GANTI post-sale full initApp dgn refresh SASARAN (aduan Ariff: iPad browser beku
+ // lepas tiap jualan — "Selesai" macam tak jalan, checkout seterusnya stuck loading). Punca:
+ // initApp reload ~8 jadual besar + render SEMUA skrin atas main thread, tiap kali jualan.
+ // Yang berubah lepas jualan cuma STOK (salesHistory dah unshift in-memori p1_559, KPI/Sasaran
+ // dah refresh atas). Jadi: (1) tolak stok in-memori serta-merta dari alokasi batch yang kita
+ // DAH tahu (tiada network), (2) reconcile inventory_batches dari awan di latar (SATU jadual).
+ try { window.__postSaleRefresh(__realItems); }
+ catch(e) { console.warn('post-sale refresh gagal (non-blocking):', e); }
  window.__currentTxnId = null; window.__txnSig = null; // p1_674 — jualan berjaya → cap habis, jualan seterusnya dapat cap baru
  try { localStorage.removeItem('pos_txn_id'); localStorage.removeItem('pos_txn_sig'); } catch(_){}
  __checkoutOk = true; // p1_672 — sampai sini = jualan berjaya disimpan + UI direset
