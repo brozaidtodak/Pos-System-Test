@@ -56,13 +56,15 @@ async function mintTesterToken() {
 }
 
 // Semak satu jawapan AI lawan data sebenar. Diskriminator utama:
-// (1) angka stok betul MESTI ada dalam jawapan; (2) TIADA barcode salah (nombor 10-14 digit
-// yang bukan barcode sebenar = fabrikasi — corak sama macam kes BD057).
-function judge(reply, expect) {
+// (1) angka stok betul MESTI ada dalam jawapan; (2) TIADA barcode FABRIKASI — nombor 10-14 digit
+// yang BUKAN barcode mana-mana produk sebenar (corak kes BD057). NOTA (fix false-positive run
+// pertama): AI kadang jawab dgn varian adik-beradik sekali (cth NH121 + NH122) — barcode varian
+// tu SAH (data betul dari tool), jadi semak lawan senarai SEMUA barcode sebenar, bukan satu SKU.
+function judge(reply, expect, knownBarcodes) {
     const r = String(reply || '');
     const okStock = new RegExp('\\b' + expect.stock + '\\b').test(r);
     const digits = r.match(/\b\d{10,14}\b/g) || [];
-    const wrongBarcode = digits.filter(d => d !== expect.barcode);
+    const wrongBarcode = digits.filter(d => d !== expect.barcode && !(knownBarcodes && knownBarcodes.has(d)));
     const barcodeShown = expect.barcode ? r.includes(expect.barcode) : null; // null = produk memang tiada barcode
     const ok = okStock && wrongBarcode.length === 0;
     return { ok, okStock, wrongBarcode, barcodeShown };
@@ -84,6 +86,10 @@ exports.handler = async (event) => {
         (batches || []).forEach(b => { if (b.sku) stock[b.sku] = (stock[b.sku] || 0) + (Number(b.qty_remaining) || 0); });
         const pool = (prods || []).filter(p => p.sku && (stock[p.sku] || 0) > 0);
         if (pool.length < N_SKUS) throw new Error('tak cukup produk berstok utk ujian');
+        // senarai SEMUA barcode sebenar (termasuk produk unpublished) — utk bezakan
+        // "barcode varian lain yang sah" vs "barcode reka" dalam judge()
+        const allBc = await sb('GET', `/products_master?select=erp_barcode&erp_barcode=not.is.null&limit=10000`);
+        const knownBarcodes = new Set((allBc || []).map(x => String(x.erp_barcode || '')).filter(Boolean));
         // pilih rawak tanpa ulangan
         const picks = [];
         while (picks.length < N_SKUS && pool.length) {
@@ -106,7 +112,7 @@ exports.handler = async (event) => {
             const reply = (d && d.reply) || ('HTTP ' + r.status);
             history.push({ role: 'assistant', content: String(reply).slice(0, 500) });
             const expect = { stock: stock[p.sku] || 0, barcode: p.erp_barcode || '' };
-            const verdict = judge(reply, expect);
+            const verdict = judge(reply, expect, knownBarcodes);
             result.tests.push({
                 sku: p.sku, ok: verdict.ok,
                 expect_stock: expect.stock, expect_barcode: expect.barcode || null,
