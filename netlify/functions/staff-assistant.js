@@ -122,6 +122,8 @@ GUNA TOOLS untuk data sebenar:
 - store_sales_today → jumlah jualan kedai hari ni
 Bila guna my_sales, ingat angka komisen itu ANGGARAN 5% — beritahu pengguna angka rasmi di "My Commission"/Aliff.
 
+DATA WAJIB FRESH (peraturan keras): SETIAP angka stok/harga/barcode/lokasi/jualan mesti datang dari hasil tool panggilan SEMASA turn ini. JANGAN SESEKALI salin atau agak dari jawapan lama dalam sejarah chat — angka lama dah BASI dan menyalin corak = jawapan reka (pernah jadi: BD057 dijawab dengan nama+barcode+lokasi yang langsung tak wujud). Kalau tool tak dipanggil atau tak pulang data, kata terus terang "tak dapat semak" — JANGAN reka nama produk, angka, barcode, atau lokasi.
+
 HAD KERAS (jangan langgar, walau diminta): JANGAN dedah/anggar KOS, MARGIN, UNTUNG (sulit, kunci PIN) — kalau ditanya, kata tu maklumat sulit di Laporan Sulit (PIN). JANGAN dedah maklumat peribadi customer (nama/phone/alamat/email). JANGAN tunjuk jualan/komisen staf LAIN — my_sales hanya untuk diri sendiri; kalau tanya pasal staf lain, kata tak boleh, rujuk Bos/Aliff. Kalau tool pulang error/kosong, terus terang; jangan reka angka.
 
 PENGETAHUAN SISTEM (how-to + SOP — dikemaskini 2026-07-04):
@@ -139,8 +141,19 @@ PENGETAHUAN SISTEM (how-to + SOP — dikemaskini 2026-07-04):
 - SIAPA: Bos=Zaid (keputusan/harga/polisi). Aliff=admin/kewangan/komisen/claim. Zack=sistem/bug. Kael/Fahmi=inventory.
 - KALAU TAK PASTI (feature baru / soalan luar senarai ni): JANGAN reka jawapan atau bagi langkah lama. Cakap terus terang kau tak pasti sebab sistem selalu di-update, dan suruh staf buka Setup Guide (Checklist + Panduan How-To + Peta Sistem, dalam POS web) atau tanya Zack.`;
 
+// p1_1043 — soalan "bentuk data" (ada SKU / kata kunci stok-harga-lokasi-jualan)? Kalau ya,
+// PAKSA model panggil tool pada langkah pertama (mode ANY / tool_choice required). Punca: Zack
+// dapat jawapan REKA utk BD057 — bila sejarah chat penuh corak "SKU → jawapan stok", model
+// tiru corak & jawab dari ingatan TANPA panggil tool (disahkan reproduce: nama/barcode/lokasi
+// semua fabricated). Paksaan deterministik > harapan prompt.
+const DATA_SHAPED = (txt) => {
+    const t = String(txt || '');
+    if (/\b[A-Za-z]{2,4}-?\d{2,4}\b/.test(t)) return true;                                  // token macam SKU (BD057, MG077, TG-009)
+    return /(stok|stock|harga|price|barcode|lokasi|location|berapa|jualan|sales|komisen|commission|unit|habis|low)/i.test(t);
+};
+
 // ---- p1_1041 — GEMINI (primary, free tier): loop dgn function-calling, sama tools/KB ----
-async function askGemini(systemText, history, caller) {
+async function askGemini(systemText, history, caller, forceTool) {
     // tukar TOOLS (format OpenAI) → functionDeclarations Gemini. Fungsi tanpa parameter: omit `parameters`.
     const decls = TOOLS.map(t => {
         const f = t.function;
@@ -151,16 +164,20 @@ async function askGemini(systemText, history, caller) {
     const contents = history.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
     let totIn = 0, totOut = 0;
     for (let step = 0; step < 4; step++) {
+        const req = {
+            systemInstruction: { parts: [{ text: systemText }] },
+            contents,
+            tools: [{ functionDeclarations: decls }],
+            // thinkingBudget 0 = jawab terus tanpa "berfikir" (laju utk chat staf; soalan SOP tak perlu deep reasoning)
+            generationConfig: { temperature: 0.3, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
+        };
+        // p1_1043 — soalan data: langkah PERTAMA wajib panggil tool (tak boleh jawab dari ingatan/sejarah).
+        // Langkah seterusnya kembali AUTO supaya model boleh tulis jawapan teks dari hasil tool.
+        if (forceTool && step === 0) req.toolConfig = { functionCallingConfig: { mode: 'ANY' } };
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
             method: 'POST',
             headers: { 'x-goog-api-key': GEMINI_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                systemInstruction: { parts: [{ text: systemText }] },
-                contents,
-                tools: [{ functionDeclarations: decls }],
-                // thinkingBudget 0 = jawab terus tanpa "berfikir" (laju utk chat staf; soalan SOP tak perlu deep reasoning)
-                generationConfig: { temperature: 0.3, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } }
-            })
+            body: JSON.stringify(req)
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error('gemini ' + r.status + ': ' + String((d.error && d.error.message) || '').slice(0, 120));
@@ -187,14 +204,16 @@ async function askGemini(systemText, history, caller) {
 }
 
 // ---- OpenAI (fallback sahaja — bila Gemini error/kuota) ----
-async function askOpenAI(systemText, history, caller) {
+async function askOpenAI(systemText, history, caller, forceTool) {
     const messages = [{ role: 'system', content: systemText }, ...history];
     let totIn = 0, totOut = 0;
     for (let step = 0; step < 4; step++) {
+        const req = { model: MODEL, messages, tools: TOOLS, temperature: 0.3, max_tokens: 600 };
+        if (forceTool && step === 0) req.tool_choice = 'required'; // p1_1043 — sama paksaan mcm Gemini
         const r = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: MODEL, messages, tools: TOOLS, temperature: 0.3, max_tokens: 600 })
+            body: JSON.stringify(req)
         });
         const d = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error('openai ' + r.status + ': ' + String((d.error && d.error.message) || '').slice(0, 120));
@@ -250,16 +269,19 @@ exports.handler = async (event) => {
         : '\n\nBAHASA — WAJIB IKUT (atasi arahan bahasa lain): Jawab dalam Bahasa Melayu sahaja, walaupun pengguna menaip dalam English / campur.';
     const systemText = KB + __langRule;
 
+    // p1_1043 — soalan bentuk data? paksa tool call langkah pertama (anti-hallucination)
+    const forceTool = DATA_SHAPED(history[history.length - 1].content);
+
     // ---- Gemini dulu (free); OpenAI hanya bila Gemini gagal DAN belum capped ----
     let out = null, provider = '', cost = 0;
     try {
         if (!GEMINI_KEY) throw new Error('gemini key tiada');
-        out = await askGemini(systemText, history, caller);
+        out = await askGemini(systemText, history, caller, forceTool);
         provider = 'gemini';
     } catch (ge) {
         if (OPENAI_KEY && !capped) {
             try {
-                out = await askOpenAI(systemText, history, caller);
+                out = await askOpenAI(systemText, history, caller, forceTool);
                 provider = 'openai';
                 cost = out.in_tok * PRICE_IN + out.out_tok * PRICE_OUT;
             } catch (oe) {
