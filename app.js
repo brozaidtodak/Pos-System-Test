@@ -8440,6 +8440,31 @@ window.renderDashboard = function() {
  }
  } catch(e) { console.warn('dash target:', e); }
 
+ // p1_1053 — PECAHAN CHANNEL (ganti sparkline trajectory — hiasan tanpa nombor). Guna channelFreq
+ // yang DAH dikira utk tempoh dipilih. Label mesra + warna platform yang dibenarkan brand
+ // (Shopee #EE4D2D / TikTok hitam / walk-in bronze — rule "never sweep Shopee/WA colors").
+ try {
+ const chBox = document.getElementById('dashChannelRows');
+ if (chBox) {
+ const LABEL = { 'POS Cashier': 'Walk-in', 'TikTok Shop': 'TikTok', 'Shopee': 'Shopee' };
+ const COLOR = { 'POS Cashier': '#CD7C32', 'TikTok Shop': '#101010', 'Shopee': '#EE4D2D' };
+ const rows = Object.entries(channelFreq).sort((a, b) => b[1] - a[1]).slice(0, 4);
+ const maxV = rows.length ? rows[0][1] : 0;
+ chBox.innerHTML = !rows.length
+ ? '<div class="sub">Tiada jualan dlm tempoh ni</div>'
+ : rows.map(([ch, v]) => {
+ const w = maxV > 0 ? Math.max(4, Math.round(v / maxV * 100)) : 0;
+ const nm = LABEL[ch] || ch;
+ const cl = COLOR[ch] || '#9CA3AF';
+ return '<div style="display:flex; align-items:center; gap:8px; font-size:11.5px;">'
+ + '<span style="width:52px; flex:none; font-weight:700; color:#374151; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + nm + '</span>'
+ + '<span style="flex:1; height:7px; background:rgba(16,16,16,0.06); border-radius:99px; overflow:hidden;"><span style="display:block; height:100%; width:' + w + '%; background:' + cl + '; border-radius:99px;"></span></span>'
+ + '<span style="flex:none; font-weight:700; color:#101010;">RM ' + fmtMoney(v) + '</span>'
+ + '</div>';
+ }).join('');
+ }
+ } catch(e) { console.warn('dash channel:', e); }
+
  // p1_78 fix #8: helper — set badge value + hide parent .dash-alert when 0
  // (alerts with 0 count are noise; collapse them so Bos focuses on actionable items)
  const __setAlert = (id, val) => {
@@ -8500,9 +8525,9 @@ window.renderDashboard = function() {
  </tr>`).join('');
  }
 
- // 6. Sales Trajectory (hero sparkline) + full Sales Analytics block (p1_439/p1_440)
- if(typeof window.renderSalesTrajectory === 'function') window.renderSalesTrajectory();
- if(typeof window.renderSalesAnalytics === 'function') window.renderSalesAnalytics();
+ // p1_1053 — panggilan renderSalesTrajectory + renderSalesAnalytics DIBUANG dari sini:
+ // sparkline diganti Pecahan Channel (atas), dan pane Sales disorok kekal sejak p1_1050 —
+ // render ke elemen tersembunyi = bazir kitaran. Fungsi kekal wujud (dorman, ada guard).
 
  // Freshness timestamp
  const stamp = document.getElementById('dashFreshStamp');
@@ -37773,6 +37798,7 @@ window.I18N = {
  hs_draft_lbl: { bm: 'Produk Draf', en: 'Draft Products' },
  hs_draft_name: { bm: 'Belum Terbit', en: 'Not published' },
  hs_target_month: { bm: 'Sasaran Bulan', en: 'Monthly Target' },
+ hs_channel_split: { bm: 'Channel', en: 'Channel' }, // p1_1053
  hs_top_selling: { bm: 'Top 10 Paling Laku', en: 'Top 10 Best Selling' },
  hs_top_selling_hint: { bm: 'klik baris → katalog', en: 'click row → catalog' },
  hs_snapshot: { bm: 'Ringkasan', en: 'Snapshot' },
