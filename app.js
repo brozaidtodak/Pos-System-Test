@@ -8351,17 +8351,94 @@ window.renderDashboard = function() {
  const aovEl = document.getElementById("dashAOV");
  if (aovEl) aovEl.textContent = 'RM ' + fmtMoney(aov);
 
- // Top Channel + share %
- let tChannel = "—"; let tVal = -1; let totalChVal = 0;
- for (let k in channelFreq) { totalChVal += channelFreq[k]; if(channelFreq[k]> tVal) { tChannel = k; tVal = channelFreq[k]; } }
- document.getElementById("dashTopChannel").textContent = tChannel;
- const shareEl = document.getElementById("dashTopChannelShare");
- if (shareEl) {
- if (totalChVal> 0 && tVal> 0) {
- const pct = Math.round((tVal / totalChVal) * 100);
- shareEl.textContent = pct + '% of revenue · RM ' + fmtMoney(tVal);
- } else { shareEl.textContent = 'No sales in range'; }
+ // p1_1052 — DELTA PINTAR (isi dashSalesDelta yang selama ni "—" kekal — div dijanjikan tapi
+ // TIADA siapa pernah tulis). Banding tempoh semasa vs tempoh setara sebelum:
+ // today/yesterday → HARI SAMA MINGGU LEPAS (retail ada rentak mingguan — Sabtu vs Sabtu, adil);
+ // today di-cap pada jam sama (hari separuh vs hari penuh = tak adil). 7d/30d/custom → tetingkap
+ // sama panjang sebelum. mtd → bulan lepas setakat hari sama. all → tiada banding.
+ try {
+ const deltaEl = document.getElementById('dashSalesDelta');
+ if (deltaEl) {
+ const r = window.__dashRange || 'today';
+ let pStart = null, pEnd = null, pLabel = '';
+ const D = 86400000;
+ if (r === 'today' || r === 'yesterday') {
+ pStart = new Date(range.start.getTime() - 7 * D);
+ pEnd = new Date(Math.min(range.end.getTime(), Date.now()) - 7 * D); // today: cap jam sama minggu lepas
+ try { pLabel = 'vs ' + pStart.toLocaleDateString('ms-MY', { weekday: 'long' }) + ' lepas'; } catch(e){ pLabel = 'vs minggu lepas'; }
+ } else if (r === '7d' || r === '30d' || r === 'custom') {
+ if (range.start && range.end) {
+ const span = range.end.getTime() - range.start.getTime();
+ pEnd = new Date(range.start.getTime() - 1);
+ pStart = new Date(range.start.getTime() - span);
+ pLabel = 'vs tempoh sebelum';
  }
+ } else if (r === 'mtd') {
+ const now = new Date();
+ const prevDays = new Date(now.getFullYear(), now.getMonth(), 0).getDate(); // hari dlm bulan lepas
+ pStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+ pEnd = new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), prevDays), now.getHours(), now.getMinutes());
+ pLabel = 'vs bulan lepas (setakat sama)';
+ }
+ if (pStart && pEnd) {
+ let prevTotal = 0;
+ salesHistory.forEach(s => {
+ if (!s || s.is_test) return;
+ const st = (s.status || '').toLowerCase();
+ if (st.includes('void') || st.includes('cancel') || st.includes('refund')) return;
+ const sd = new Date(s.created_at);
+ if (sd >= pStart && sd <= pEnd) prevTotal += Number(s.total || s.total_amount || 0);
+ });
+ if (prevTotal > 0) {
+ const dp = ((totalSales - prevTotal) / prevTotal) * 100;
+ const up = dp >= 0;
+ deltaEl.innerHTML = '<span style="font-weight:800; color:' + (up ? '#8FD19E' : '#F3A08C') + ';">' + (up ? '▲' : '▼') + ' ' + (up ? '+' : '') + dp.toFixed(0) + '%</span> <span style="opacity:.85;">' + pLabel + '</span>';
+ } else {
+ deltaEl.textContent = 'tiada data banding (' + pLabel.replace('vs ', '') + ')';
+ }
+ } else {
+ deltaEl.textContent = '';
+ }
+ }
+ } catch(e) { console.warn('dash delta:', e); }
+
+ // p1_1052 — SASARAN BULAN (ganti Top Channel — maklumat mati "POS Cashier ~50%" tiap hari;
+ // channel split penuh masih ada dlm Dashboard donut). Guna sasaran bulanan sedia ada
+ // (dashMonthlyTarget_v1, sumber sama dgn banner cashier p1_559) + jualan SEBENAR bulan ini.
+ try {
+ const pctEl = document.getElementById('dashTargetHomePct');
+ const subEl2 = document.getElementById('dashTargetHomeSub');
+ const fillEl = document.getElementById('dashTargetHomeFill');
+ if (pctEl && subEl2) {
+ let tgt = 0; try { tgt = parseFloat(localStorage.getItem('dashMonthlyTarget_v1')) || 0; } catch(e){}
+ if (!tgt && window.__getSetting) tgt = Number(window.__getSetting('sales.monthly_target', 0)) || 0;
+ if (tgt > 0) {
+ const now = new Date();
+ const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+ let mSales = 0;
+ salesHistory.forEach(s => {
+ if (!s || s.is_test) return;
+ const st = (s.status || '').toLowerCase();
+ if (st.includes('void') || st.includes('cancel') || st.includes('refund')) return;
+ const sd = new Date(s.created_at);
+ if (sd >= mStart) mSales += Number(s.total || s.total_amount || 0);
+ });
+ const pct = Math.min(999, Math.round(mSales / tgt * 100));
+ const baki = Math.max(0, tgt - mSales);
+ const daysInM = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+ const daysLeft = Math.max(1, daysInM - now.getDate() + 1);
+ pctEl.textContent = pct + '%';
+ if (fillEl) fillEl.style.width = Math.min(100, pct) + '%';
+ subEl2.textContent = baki > 0
+ ? ('RM ' + fmtMoney(baki) + ' lagi · RM ' + fmtMoney(baki / daysLeft) + '/hari (' + daysLeft + ' hari)')
+ : 'Sasaran CAPAI! RM ' + fmtMoney(mSales - tgt) + ' lebihan';
+ } else {
+ pctEl.textContent = '—';
+ subEl2.textContent = 'Sasaran belum diset — Settings › Customization';
+ if (fillEl) fillEl.style.width = '0%';
+ }
+ }
+ } catch(e) { console.warn('dash target:', e); }
 
  // p1_78 fix #8: helper — set badge value + hide parent .dash-alert when 0
  // (alerts with 0 count are noise; collapse them so Bos focuses on actionable items)
@@ -37695,6 +37772,7 @@ window.I18N = {
  hs_processing_name: { bm: 'Sedang Berjalan', en: 'In progress' },
  hs_draft_lbl: { bm: 'Produk Draf', en: 'Draft Products' },
  hs_draft_name: { bm: 'Belum Terbit', en: 'Not published' },
+ hs_target_month: { bm: 'Sasaran Bulan', en: 'Monthly Target' },
  hs_top_selling: { bm: 'Top 10 Paling Laku', en: 'Top 10 Best Selling' },
  hs_top_selling_hint: { bm: 'klik baris → katalog', en: 'click row → catalog' },
  hs_snapshot: { bm: 'Ringkasan', en: 'Snapshot' },
