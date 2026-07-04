@@ -8329,10 +8329,15 @@ window.renderDashboard = function() {
  const itemsList = typeof sale.items === 'string' ? JSON.parse(sale.items) : sale.items;
  if(Array.isArray(itemsList)) {
  itemsList.forEach(item => {
- let sKey = item.sku;
+ let sKey = item.sku || item.name || '??';
  if(!itemCounts[sKey]) itemCounts[sKey] = { name: item.name, qty: 0, revenue: 0 };
- itemCounts[sKey].qty += Number(item.quantity);
- itemCounts[sKey].revenue = round2(itemCounts[sKey].revenue + Number(item.price) * Number(item.quantity));
+ // p1_1051 — item POS guna `quantity`, item marketplace (TikTok/Shopee) guna `qty`.
+ // Dulu baca `quantity` sahaja → Number(undefined) = NaN meracuni SKU tu KEKAL ("NaN sold",
+ // RM pelik) + sort ranking jadi karut (NaN tak boleh dibanding). Corak normalize sama
+ // macam 15+ tempat lain dlm codebase (cth skuTally line ~2041).
+ const __q = Number(item.quantity != null ? item.quantity : item.qty) || 0;
+ itemCounts[sKey].qty += __q;
+ itemCounts[sKey].revenue = round2(itemCounts[sKey].revenue + (Number(item.price) || 0) * __q);
  });
  }
  });
