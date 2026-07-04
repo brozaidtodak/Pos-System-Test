@@ -64,6 +64,11 @@ exports.handler = async (event) => {
   let staff_id, pin, action;
   try { const b = JSON.parse(event.body || '{}'); staff_id = String(b.staff_id || '').trim(); pin = String(b.pin || '').trim(); action = String(b.action || '').trim(); } catch (_) { return json(400, { error: 'bad body' }); }
 
+  // ── PING (Fasa 5) — pra-panas kontena Lambda. Klien tembak ini sebaik pad PIN muncul supaya
+  //    bila staf habis taip PIN, panggilan upgrade sebenar di bawah jalan atas kontena PANAS
+  //    (buang lag cold-start ~1-2s selepas PIN). Balas serta-merta, TIADA kerja DB. ──
+  if (action === 'ping') return json(200, { ok: true, warm: true });
+
   // ── SET PIN — staf yang dah login (email) tetapkan/tukar PIN sendiri. Perlu JWT staf. ──
   if (action === 'set_pin') {
     if (!/^\d{4,8}$/.test(pin)) return json(400, { error: 'invalid_pin_format' });

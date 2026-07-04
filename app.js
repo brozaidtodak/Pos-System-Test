@@ -15398,6 +15398,9 @@ function handleLogin() {
   window.__lockClockStop();
  }
  overlay.style.display = 'flex';
+ // Fasa 5 — pad PIN dah muncul: pra-panas staff-auth sekarang supaya kontena panas menjelang staf
+ // habis taip PIN (~2-3s) → tiada lag lepas PIN.
+ try { window.__prewarmAuth && window.__prewarmAuth(); } catch(e){}
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  // Show global lockout msg if device is locked
  const gl = __pinGetGlobalLockout();
@@ -15583,6 +15586,19 @@ window.__upgradeToAuthSession = async function(staff_id, pin){
  } catch(e){ console.warn('[auth] upgrade err', e); return false; }
 };
 
+// Fasa 5 — pra-panas fungsi staff-auth (Lambda) supaya upgrade sesi lepas PIN jalan atas kontena
+// PANAS = tiada lag cold-start ~1-2s selepas taip PIN. Fire-and-forget, dinyah-lantun (debounce 15s)
+// supaya tak spam. Ditembak bila pad PIN muncul + bila digit pertama ditekan (jaga-jaga kontena sejuk
+// semasa skrin kunci melahu). Gagal senyap — tak pernah sekat login.
+window.__prewarmAuth = function(){
+ try {
+  const now = Date.now();
+  if(window.__lastAuthPrewarm && (now - window.__lastAuthPrewarm) < 15000) return; // debounce
+  window.__lastAuthPrewarm = now;
+  fetch('/.netlify/functions/staff-auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'ping' }), keepalive:true }).catch(function(){});
+ } catch(e){}
+};
+
 // p1_1010 — keypad numerik on-screen (iPad kongsi, tiada keyboard OS). Kemas kini nilai + dots + auto-submit.
 window.__pinKey = function(k) {
  const inp = document.getElementById('pinLoginInput');
@@ -15590,7 +15606,7 @@ window.__pinKey = function(k) {
  let v = inp.value || '';
  if(k === 'del') v = v.slice(0, -1);
  else if(k === 'clear') v = '';
- else if(/^\d$/.test(k)) { if(v.length < 8) v += k; }
+ else if(/^\d$/.test(k)) { if(v.length < 8) v += k; if(v.length === 1) { try { window.__prewarmAuth && window.__prewarmAuth(); } catch(e){} } }
  inp.value = v;
  if(typeof window.__pinUpdateDots === 'function') window.__pinUpdateDots(v);
  const err = document.getElementById('pinLoginError');
