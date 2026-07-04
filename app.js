@@ -170,7 +170,11 @@ window.__injectPosAppTopBar = function(){
  bar.id = 'posAppTopBar';
  bar.innerHTML = '<span class="pat-title" id="posAppTitle">POS / Cashier</span>'
  + '<button class="pat-who" id="posAppWho" onclick="window.__switchStaff && window.__switchStaff()" title="Tukar Staf" style="flex:0 0 auto; background:rgba(205,124,50,.18); border:0; color:#FAF6EF; font-family:inherit; font-weight:700; font-size:12.5px; padding:6px 11px; border-radius:20px; margin-right:8px; cursor:pointer; display:none; align-items:center; gap:6px; max-width:120px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;"></button>'
- // p1_1029 — Tanya AI + Apa Baru dibuang dari mobile top bar (back to basics). Kedua-dua kekal di back office.
+ // p1_1029 — Apa Baru dibuang dari mobile top bar (back to basics; kekal di back office).
+ // p1_1040 — Tanya AI DIPULIHKAN atas permintaan Zack. Kos boot = ~0: butang ni je (200 bait);
+ // otak AI di server (staff-assistant.js), panel HTML dah sedia dlm index.html, TIADA fetch
+ // sehingga staf hantar soalan. Concern "app berat" tak terpakai — feature ni memang ringan.
+ + '<button class="pat-logout" onclick="window.__posAppOpenAI && window.__posAppOpenAI()" title="Tanya AI" aria-label="Tanya AI" style="margin-right:8px;"><i data-lucide="sparkles" style="width:19px; height:19px;"></i></button>'
  + '<button class="pat-logout" onclick="window.__switchStaff && window.__switchStaff()" title="Tukar Staf" aria-label="Tukar Staf" style="margin-right:8px;"><i data-lucide="user-round-cog" style="width:19px; height:19px;"></i></button>'
  + '<button class="pat-logout" onclick="if(typeof handleLogout===\'function\')handleLogout()" title="Log Keluar" aria-label="Log Keluar"><i data-lucide="log-out" style="width:19px; height:19px;"></i></button>';
  document.body.appendChild(bar);
