@@ -45,7 +45,7 @@ window.renderReturnsLog = async function() {
  reasonTally[r.reason || 'other'] = (reasonTally[r.reason || 'other'] || 0) + 1;
  const sku = (r.sku || '').toUpperCase();
  if(sku) {
- if(!skuTally[sku]) skuTally[sku] = { sku, name: r.product_name || sku, qty: 0, costImpact: 0, entries: 0, supplier: r.supplier || '' };
+ if(!skuTally[sku]) skuTally[sku] = { sku, name: r.product_name || sku, qty: 0, costImpact: 0, entries: 0, supplier: r.supplier || (window.__skuSupplierOf ? window.__skuSupplierOf(sku) : '') || '' }; // p1_1054 — fallback PO utk entri lama tanpa supplier
  skuTally[sku].qty += Number(r.qty) || 0;
  skuTally[sku].costImpact += (Number(r.cost_impact) || 0) * (Number(r.qty) || 0);
  skuTally[sku].entries++;
@@ -136,7 +136,10 @@ window.__rlSubmit = async function() {
  let supplier = '';
  try {
  const p = (masterProducts || []).find(x => (x.sku || '').toUpperCase() === sku);
- if(p) { prodName = p.name || ''; supplier = p.supplier_name || p.supplier || ''; }
+ if(p) { prodName = p.name || ''; }
+ // p1_1054 — supplier diterbit dari PO (p.supplier_name/p.supplier TAK WUJUD dlm products_master
+ // — sebab tu semua entri lama "Supplier: —"). __skuSupplierOf = peta SKU→supplier dari PO terkini.
+ supplier = (window.__skuSupplierOf ? window.__skuSupplierOf(sku) : '') || '';
  } catch(e){}
  const payload = {
  sku,

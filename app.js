@@ -2778,7 +2778,7 @@ window.__ensureMarketing = function(){
 window.__ensureBackofficeDash = function(){
  if(window.__bodLoaded) return Promise.resolve();
  return window.__bodLoading || (window.__bodLoading = new Promise(function(res,rej){
-  var s=document.createElement('script'); s.src='backoffice-dash.js?v=1';
+  var s=document.createElement('script'); s.src='backoffice-dash.js?v=2'; // p1_1054
   s.onload=function(){ window.__bodLoaded=true; res(); };
   s.onerror=function(){ window.__bodLoading=null; rej(new Error('backoffice-dash.js gagal muat')); };
   document.head.appendChild(s);
@@ -6777,7 +6777,7 @@ window.__ppeCancelOrder = async function(){
  }
  if(restocked.length){
  // M10 — deterministic external_id (no Date.now()) so a re-run dedups instead of writing phantom rows.
- const rows = restocked.map((r, i) => ({ source: 'pos', external_id: 'pos_cancel_' + saleId + '_' + (r.sku || 'item') + '_' + i, sku: r.sku, qty: r.quantity, type: 'cancel', reason: 'Order dibatalkan', cost_impact: 0, reported_at: new Date().toISOString(), notes: 'Batal order #' + saleId + ' oleh ' + (u.name || '?') }));
+ const rows = restocked.map((r, i) => ({ source: 'pos', external_id: 'pos_cancel_' + saleId + '_' + (r.sku || 'item') + '_' + i, sku: r.sku, qty: r.quantity, type: 'cancel', reason: 'Order dibatalkan', cost_impact: 0, supplier: (window.__skuSupplierOf ? window.__skuSupplierOf(r.sku) : '') || null, reported_at: new Date().toISOString(), notes: 'Batal order #' + saleId + ' oleh ' + (u.name || '?') }));
  try { await db.from('returns_log').insert(rows); } catch(e){ console.warn('returns_log cancel gagal:', e); }
  }
  md.cancelled_by = u.name || '?'; md.cancelled_at = new Date().toISOString();
@@ -6928,7 +6928,7 @@ window.__ppSaveEdit = async function() {
  for(const r of __editRecon.returned){ if(!r.isCustom && typeof window.__applyStockDelta === 'function'){ try { await window.__applyStockDelta(r.sku, r.qty, 'Edit order #' + saleId + ': pulang ' + r.qty); } catch(e){ console.warn('restock return gagal', r.sku, e); } } }
  const rets = __editRecon.returned.filter(r => !r.isCustom);
  if(rets.length){
- const rows = rets.map((r, i) => ({ source: 'pos', external_id: 'pos_edit_' + saleId + '_' + (r.sku || 'item') + '_' + i, sku: r.sku, qty: r.qty, type: 'edit_return', reason: 'Edit order', cost_impact: 0, reported_at: new Date().toISOString(), notes: 'Edit order #' + saleId + ' oleh ' + (u.name || '?') + (editNote ? ' · ' + editNote : '') }));
+ const rows = rets.map((r, i) => ({ source: 'pos', external_id: 'pos_edit_' + saleId + '_' + (r.sku || 'item') + '_' + i, sku: r.sku, qty: r.qty, type: 'edit_return', reason: 'Edit order', cost_impact: 0, supplier: (window.__skuSupplierOf ? window.__skuSupplierOf(r.sku) : '') || null, reported_at: new Date().toISOString(), notes: 'Edit order #' + saleId + ' oleh ' + (u.name || '?') + (editNote ? ' · ' + editNote : '') }));
  try { await db.from('returns_log').insert(rows); } catch(e){ console.warn('returns_log edit gagal:', e); }
  }
  if(__editRecon.st){ __editRecon.st.orig = __editRecon.st.items.map(it => ({ sku: it.sku, name: it.name, price: it.price, quantity: it.quantity, isCustom: it.isCustom })); }
@@ -9360,6 +9360,7 @@ window.__returnRefundConfirm = async function(){
  source: 'pos', external_id: 'pos_return_' + sale.id + '_' + (r.sku || 'item') + '_' + Date.now(),
  sku: r.sku, qty: r.qty, type: type, reason: reason,
  cost_impact: restock ? 0 : (costMap[String(r.sku || '').toUpperCase()] || 0),
+ supplier: (window.__skuSupplierOf ? window.__skuSupplierOf(r.sku) : '') || null, // p1_1054
  reported_at: nowIso,
  notes: 'Order #' + sale.id + ' · ' + type + (amount > 0 ? ' · refund RM' + amount.toFixed(2) : '') + (note ? ' · ' + note : '') + ' · oleh ' + staff
  }));
@@ -28292,11 +28293,42 @@ window.loadPosV2 = async function() {
 ]);
  purchaseOrdersV2 = poRes.data || [];
  purchaseOrderItemsV2 = itemRes.data || [];
+ window.__skuSupCache = null; // p1_1054 — data PO baru → bina semula peta SKU→supplier
  } catch(e) {
  console.error('loadPosV2:', e);
  purchaseOrdersV2 = []; purchaseOrderItemsV2 = [];
  }
  if(typeof renderPoSection === 'function') renderPoSection();
+};
+
+// p1_1054 — Supplier untuk satu SKU, diterbit dari PURCHASE ORDERS (PO terkini yang ada SKU tu).
+// Kenapa bukan preferred_supplier_id? Field tu KOSONG untuk semua 823 produk; PO = rekod sebenar
+// siapa bekalkan apa (liputan 88% SKU returns_log). Dipakai oleh Returns log (auto-isi supplier
+// supaya "Top Problematic SKU + supplier QC" betul-betul berfungsi). Cache dibina sekali; kosong
+// TAK dicache (data PO mungkin belum dimuat masa boot — defer block).
+window.__skuSupplierOf = function(sku) {
+ try {
+ if(!sku) return '';
+ if(!window.__skuSupCache) {
+ const pos = (typeof purchaseOrdersV2 !== 'undefined' && Array.isArray(purchaseOrdersV2)) ? purchaseOrdersV2 : [];
+ const items = (typeof purchaseOrderItemsV2 !== 'undefined' && Array.isArray(purchaseOrderItemsV2)) ? purchaseOrderItemsV2 : [];
+ if(!pos.length || !items.length) return ''; // belum dimuat — jangan cache kosong
+ const byId = {};
+ pos.forEach(p => { if(p && p.id != null) byId[p.id] = p; });
+ const best = {};
+ items.forEach(it => {
+ const po = it && byId[it.po_id]; if(!po) return;
+ const nm = String(po.supplier_name || po.supplier || '').trim(); if(!nm) return;
+ const k = String(it.sku || '').toUpperCase(); if(!k) return;
+ const t = new Date(po.created_at || 0).getTime();
+ if(!best[k] || t > best[k].t) best[k] = { t: t, name: nm };
+ });
+ const m = {};
+ Object.keys(best).forEach(k => { m[k] = best[k].name; });
+ window.__skuSupCache = m;
+ }
+ return window.__skuSupCache[String(sku).toUpperCase()] || '';
+ } catch(e) { return ''; }
 };
 
 // Override submitPurchaseOrder to use DB tables
