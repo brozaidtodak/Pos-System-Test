@@ -68,7 +68,7 @@ window.renderReturnsLog = async function() {
  <thead><tr><th>SKU</th><th>Nama / Supplier</th><th style="text-align:right;">Entries</th><th style="text-align:right;">Units</th><th style="text-align:right;">Cost Impact</th></tr></thead>
  <tbody>${problems.map(p => `
  <tr style="background:rgba(254,226,226,.3);">
- <td><strong>${escAttr(p.sku)}</strong></td>
+ <td><div style="display:flex; align-items:center; gap:8px;">${window.__skuThumbHtml ? window.__skuThumbHtml(p.sku) : ''}<strong>${escAttr(p.sku)}</strong></div></td>
  <td style="font-size:12px;">${escAttr(p.name).slice(0, 50)}<br><span style="color:#6B7280; font-size:11px;">Supplier: ${escAttr(p.supplier) || '—'}</span></td>
  <td style="text-align:right;">${p.entries}</td>
  <td style="text-align:right; color:#B23A2E; font-weight:700;">${p.qty}</td>
@@ -89,7 +89,7 @@ window.renderReturnsLog = async function() {
  const typeLabel = { return:'Return', damaged:'Rosak', missing:'Hilang', expired:'Expired', cancel:'Batal/Refund' }[r.type] || r.type;
  return `<tr>
  <td style="font-size:11px; color:#6B7280;">${new Date(r.reported_at).toLocaleString('en-MY', { dateStyle:'short', timeStyle:'short' })}</td>
- <td><strong>${escAttr(r.sku)}</strong></td>
+ <td><div style="display:flex; align-items:center; gap:8px;">${window.__skuThumbHtml ? window.__skuThumbHtml(r.sku, 30) : ''}<strong>${escAttr(r.sku)}</strong></div></td>
  <td><span style="display:inline-block; padding:2px 8px; border-radius:50px; background:${typeColor}20; color:${typeColor}; font-size:10px; font-weight:700;">${typeLabel}</span></td>
  <td style="font-size:12px;">${escAttr((r.reason || '').slice(0, 30))}</td>
  <td style="text-align:right; font-weight:700;">${r.qty}</td>
@@ -800,7 +800,7 @@ window.__rsApplyFilter = function() {
  const rowBg = r.isOutOfStock ? 'background:#F4E4DF;' : (r.isUrgent ? 'background:#FAF0EE;' : '');
  const locPill = r.location_bin ? `<span style="background:#F8EFD7; color:#7A5410; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;">${escAttr(r.location_bin)}</span>` : '<span style="color:#D1D5DB; font-size:11px;">—</span>';
  return `<tr style="${rowBg}">
- <td><strong>${escAttr(r.sku)}</strong></td>
+ <td><div style="display:flex; align-items:center; gap:8px;">${window.__skuThumbHtml ? window.__skuThumbHtml(r.sku) : ''}<strong>${escAttr(r.sku)}</strong></div></td>
  <td style="font-size:12px;"><strong>${escAttr(r.brand)}</strong><br><span style="color:#6B7280;">${escAttr(r.name).slice(0, 60)}</span></td>
  <td>${locPill}</td>
  <td style="text-align:right; color:${r.isOutOfStock ? '#7C2A20' : '#374151'}; font-weight:${r.isOutOfStock ? 700 : 400};">${r.currentStock}</td>

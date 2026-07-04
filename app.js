@@ -2778,7 +2778,7 @@ window.__ensureMarketing = function(){
 window.__ensureBackofficeDash = function(){
  if(window.__bodLoaded) return Promise.resolve();
  return window.__bodLoading || (window.__bodLoading = new Promise(function(res,rej){
-  var s=document.createElement('script'); s.src='backoffice-dash.js?v=3'; // p1_1055
+  var s=document.createElement('script'); s.src='backoffice-dash.js?v=4'; // p1_1056
   s.onload=function(){ window.__bodLoaded=true; res(); };
   s.onerror=function(){ window.__bodLoading=null; rej(new Error('backoffice-dash.js gagal muat')); };
   document.head.appendChild(s);
@@ -8330,7 +8330,7 @@ window.renderDashboard = function() {
  if(Array.isArray(itemsList)) {
  itemsList.forEach(item => {
  let sKey = item.sku || item.name || '??';
- if(!itemCounts[sKey]) itemCounts[sKey] = { name: item.name, qty: 0, revenue: 0 };
+ if(!itemCounts[sKey]) itemCounts[sKey] = { sku: item.sku || '', name: item.name, qty: 0, revenue: 0 }; // p1_1056 — simpan sku utk thumbnail
  // p1_1051 — item POS guna `quantity`, item marketplace (TikTok/Shopee) guna `qty`.
  // Dulu baca `quantity` sahaja → Number(undefined) = NaN meracuni SKU tu KEKAL ("NaN sold",
  // RM pelik) + sort ranking jadi karut (NaN tak boleh dibanding). Corak normalize sama
@@ -8519,7 +8519,7 @@ window.renderDashboard = function() {
  // p1_158 — was innerHTML += in loop (O(n²) DOM reflow per push, crashed Safari).
  tbodyLines.innerHTML = topArr.map((o, i) => `<tr style="cursor:pointer;" onclick="window.__dashGoto('inv_database')">
  <td style="width:24px; font-weight:bold; color:#888;">#${i+1}</td>
- <td><strong>${o.name}</strong></td>
+ <td><div style="display:flex; align-items:center; gap:9px;">${window.__skuThumbHtml ? window.__skuThumbHtml(o.sku, 38) : ''}<strong>${o.name}</strong></div></td>
  <td style="color:#101010; font-weight:700;">${o.qty} sold</td>
  <td style="text-align:right; font-weight:600;">RM ${fmtMoney(o.revenue)}</td>
  </tr>`).join('');
@@ -12850,6 +12850,23 @@ window.__toggleKpiHide = function(){
 };
 // p1_570 — Thumbnail via proxy percuma images.weserv.nl (Supabase resize tak aktif — free plan).
 // Gambar grid kecik dari ~140KB → ~15KB (webp 300px) = load laju + scroll smooth atas phone/data.
+// p1_1056 — THUMBNAIL SERAGAM utk mana-mana senarai SKU (Zaid: "masukkan thumbnail dekat semua
+// tempat yang ada senarai SKU termasuk returns"). Cari cover produk dari masterProducts, pulang
+// <img> kecil (lazy, sudut bulat, onerror sorok) atau kotak placeholder kalau tiada gambar.
+// Guna: Returns (2 jadual), Reorder Suggest, Top 10 Home, Stock Levels — tambah lagi ikut keperluan.
+window.__skuThumbHtml = function(sku, px) {
+ try {
+ px = px || 34;
+ const k = String(sku || '').toUpperCase();
+ const p = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts))
+ ? masterProducts.find(x => x && String(x.sku || '').toUpperCase() === k) : null;
+ const c = p ? ((window.__coverOf && window.__coverOf(p)) || (Array.isArray(p.images) && p.images[0]) || '') : '';
+ if (!c) return '<span style="display:inline-block; width:' + px + 'px; height:' + px + 'px; border-radius:7px; background:#F3F0EA; border:1px solid #ECE6DE; vertical-align:middle; flex:none;"></span>';
+ const u = (window.__thumbUrl ? window.__thumbUrl(c, 100) : c);
+ return '<img src="' + String(u).replace(/"/g, '&quot;') + '" loading="lazy" decoding="async" onerror="this.style.visibility=\'hidden\'" style="width:' + px + 'px; height:' + px + 'px; object-fit:cover; border-radius:7px; border:1px solid #ECE6DE; background:#fff; vertical-align:middle; flex:none; display:inline-block;">';
+ } catch(e) { return ''; }
+};
+
 window.__thumbUrl = function(url, w){
  try {
  if(!url || typeof url !== 'string') return url;
@@ -43228,7 +43245,7 @@ window.__slTable = function(){
   tb.innerHTML = shown.map(function(r){
     var availCol = r.avail<=0 ? '#B23A2E' : (r.avail<5 ? '#CE9420' : '#101010');
     return '<tr style="border-bottom:1px solid #F1F1F1;">'
-      + '<td style="padding:9px 11px;font-weight:700;">'+esc(r.sku)+'</td>'
+      + '<td style="padding:9px 11px;font-weight:700;"><div style="display:flex;align-items:center;gap:8px;">'+(window.__skuThumbHtml ? window.__skuThumbHtml(r.sku, 30) : '')+esc(r.sku)+'</div></td>'
       + '<td style="padding:9px 11px;color:#374151;">'+esc(r.name.length>46?r.name.slice(0,46)+'…':r.name)+'</td>'
       + '<td style="padding:9px 11px;text-align:right;">'+r.onhand+'</td>'
       + '<td style="padding:9px 11px;text-align:right;color:'+(r.reserved>0?'#CE9420':'#9CA3AF')+';font-weight:'+(r.reserved>0?'700':'400')+';">'+r.reserved+'</td>'
