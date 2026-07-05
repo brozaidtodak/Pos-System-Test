@@ -3177,7 +3177,9 @@ a:focus-visible {
  border-bottom: 1px solid var(--neutral-100);
  vertical-align: middle;
 }
-.pd-table.pd-row-img {
+/* p1_1070 — FIX: selector asal ".pd-table.pd-row-img" (TIADA space = elemen dgn dua-dua kelas,
+   tak wujud) → rule saiz tak pernah terpakai → gambar list view Products keluar SAIZ ASAL gergasi. */
+.pd-row-img {
  width: 44px; height: 44px;
  border-radius: var(--radius-sm);
  object-fit: cover;

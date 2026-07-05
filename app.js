@@ -36820,7 +36820,7 @@ window.renderProductDatabase = function() {
  const pub = isPublished(p);
  return `
  <tr onclick="window.openPdpModal('${p.sku.replace(/'/g, "\\'")}')" tabindex="0" role="button">
- <td>${img ? `<img src="${img}" class="pd-row-img" loading="lazy" alt="">` : '<div class="pd-row-img" style="display:flex;align-items:center;justify-content:center;color:var(--neutral-400);"></div>'}</td>
+ <td>${img ? `<img src="${window.__thumbUrl ? window.__thumbUrl(img, 100) : img}" class="pd-row-img" loading="lazy" decoding="async" alt="">` : '<div class="pd-row-img" style="display:flex;align-items:center;justify-content:center;color:var(--neutral-400);"></div>'}</td>
  <td><span class="pd-row-name">${hesc((window.__productNameOf(p)||'').slice(0, 70))}${isGrp ? ` <span style="background:#101010; color:#fff; padding:1px 5px; border-radius:3px; font-size:9px; font-weight:800;">${p.__vcount} variants</span>` : ''}</span><span class="pd-row-meta">${hesc(isGrp ? (p.parent_sku||p.sku) : p.sku)}${(!isGrp && p.erp_barcode) ? ' · '+hesc(p.erp_barcode) : ''}</span></td>
  <td>${p.brand || '—'}</td>
  <td>${p.category || '—'}</td>
