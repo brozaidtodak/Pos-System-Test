@@ -54,6 +54,14 @@ function html(statusCode, body) {
 exports.handler = async (event) => {
     const q = event.queryStringParameters || {};
 
+    // p1_1074 — Chrome prefetch/prerender boleh "curi" auth_code (single-use!)
+    // sebelum navigasi sebenar user sampai. Tolak request prefetch awal-awal.
+    const hdrs = event.headers || {};
+    const purpose = String(hdrs['sec-purpose'] || hdrs['purpose'] || hdrs['x-purpose'] || '').toLowerCase();
+    if (purpose.includes('prefetch') || purpose.includes('prerender')) {
+        return { statusCode: 204, headers: { 'Cache-Control': 'no-store' }, body: '' };
+    }
+
     // 1. Seller rejected, or no code returned
     if (q.error || !q.code || q.code === 'null') {
         return html(400, page(
@@ -83,7 +91,9 @@ exports.handler = async (event) => {
         const json = await res.json();
 
         if (json.code !== 0 || !json.data || !json.data.access_token) {
-            return html(502, page('Token Exchange Gagal',
+            // p1_1074: status 400 BUKAN 502 — Cloudflare ganti response 502 dgn
+            // page "Bad Gateway" dia sendiri, sorokkan mesej sebenar dari user.
+            return html(400, page('Token Exchange Gagal',
                 `TikTok tolak permintaan: ${json.message || 'ralat tidak diketahui'} `
                 + `(code ${json.code}). auth_code mungkin dah luput (30 min) atau dah guna. `
                 + `Cuba authorize semula untuk kod baru.`, false));
@@ -117,7 +127,7 @@ exports.handler = async (event) => {
 
         if (!sbRes.ok) {
             const errText = await sbRes.text();
-            return html(502, page('Token Dapat, Tapi Gagal Simpan',
+            return html(400, page('Token Dapat, Tapi Gagal Simpan',
                 `Access token diterima dari TikTok tapi gagal simpan ke Supabase: `
                 + `${sbRes.status} ${errText.slice(0, 200)}`, false));
         }
