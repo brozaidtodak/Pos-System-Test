@@ -26,17 +26,19 @@ exports.handler = async (event) => {
     try {
         const tok = await getValidToken();
         const cipher = await ensureShopCipher(tok);
+        // TikTok validation: page_size mesti 1-20 (36009004 kalau lebih) — clamp server-side
+        const pageSize = Math.min(20, Math.max(1, Number(p.page_size) || 20));
         if (mode === 'messages') {
             if (!p.conversation_id) return json(400, { error: 'conversation_id required' });
             const r = await ttRequest('GET', `/customer_service/${VERSION}/conversations/${encodeURIComponent(p.conversation_id)}/messages`, {
-                query: { page_size: Number(p.page_size) || 20 },
+                query: { page_size: pageSize },
                 accessToken: tok.access_token, shopCipher: cipher
             });
             return json(200, r);
         }
         // default: conversations (probe)
         const r = await ttRequest('GET', `/customer_service/${VERSION}/conversations`, {
-            query: { page_size: Number(p.page_size) || 20 },
+            query: { page_size: pageSize },
             accessToken: tok.access_token, shopCipher: cipher
         });
         return json(200, r);

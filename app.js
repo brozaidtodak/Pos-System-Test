@@ -3282,7 +3282,7 @@ window.__chatTiktokScopeMsg = function() {
 window.__chatLoadTiktok = function(list) {
  const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
  list.innerHTML = '<p style="color:#9CA3AF; padding:18px;">Memuatkan perbualan TikTok…</p>';
- fetch('/.netlify/functions/tiktok-chat?mode=conversations&page_size=50', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
+ fetch('/.netlify/functions/tiktok-chat?mode=conversations&page_size=20', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
   // Scope belum aktif / ralat kebenaran
   if(r && (r.code === 105005 || (r.error && /105005|scope|denied/i.test(String(r.error))))) { list.innerHTML = window.__chatTiktokScopeMsg(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
   if(r && r.error) { list.innerHTML = '<p style="color:#B23A2E; padding:18px;">TikTok: '+esc(r.error)+'</p>'; return; }
@@ -3311,7 +3311,7 @@ window.__chatOpenTiktok = function(cid, buyerId, name) {
  const thread = document.getElementById('chatThread'); if(!thread) return;
  const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
  thread.innerHTML = '<p style="color:#9CA3AF; margin:auto;">Memuatkan mesej…</p>';
- fetch('/.netlify/functions/tiktok-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=50', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
+ fetch('/.netlify/functions/tiktok-chat?mode=messages&conversation_id='+encodeURIComponent(cid)+'&page_size=20', { headers: window.__authHeaderSync({}) }).then(r=>r.json()).then(r => {
   if(r && (r.code === 105005 || (r.error && /105005|scope|denied/i.test(String(r.error))))) { thread.innerHTML = window.__chatTiktokScopeMsg(); if(typeof lucide!=='undefined') try{lucide.createIcons();}catch(e){} return; }
   if(r && r.error) { thread.innerHTML = '<p style="color:#B23A2E;">TikTok: '+esc(r.error)+'</p>'; return; }
   let msgs = (r.data && r.data.messages) || (r.response && r.response.messages) || [];
