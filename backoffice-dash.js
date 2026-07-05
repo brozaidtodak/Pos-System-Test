@@ -85,7 +85,7 @@ window.renderReturnsLog = async function() {
  <thead><tr><th>Tarikh</th><th>SKU</th><th>Type</th><th>Reason</th><th style="text-align:right;">Qty</th><th>Channel</th><th>Reporter</th></tr></thead>
  <tbody>
  ${rows.slice(0, 100).map(r => {
- const typeColor = { return:'#cd7c32', damaged:'#B23A2E', missing:'#C68A1A', expired:'#a05f22', cancel:'#cd7c32' }[r.type] || '#6B7280';
+ const typeColor = { return:'var(--primary-500,#CD7C32)', damaged:'#B23A2E', missing:'#C68A1A', expired:'var(--primary-700,#A05F22)', cancel:'var(--primary-500,#CD7C32)' }[r.type] || '#6B7280';
  const typeLabel = { return:'Return', damaged:'Rosak', missing:'Hilang', expired:'Expired', cancel:'Batal/Refund' }[r.type] || r.type;
  return `<tr>
  <td style="font-size:11px; color:#6B7280;">${new Date(r.reported_at).toLocaleString('en-MY', { dateStyle:'short', timeStyle:'short' })}</td>
@@ -466,7 +466,7 @@ window.__cpDefaultFees = {
  'Shopee':         { fee: 8.0, processing: 2.5, label: 'Shopee', color: '#EE4D2D' },
  'TikTok Shop':    { fee: 5.0, processing: 2.0, label: 'TikTok Shop', color: '#000000' },
  'POS Cashier':  { fee: 0.0, processing: 0.5, label: 'POS Cashier', color: '#101010' },
- 'Web EasyStore':  { fee: 0.0, processing: 2.5, label: 'Web EasyStore', color: '#cd7c32' },
+ 'Web EasyStore':  { fee: 0.0, processing: 2.5, label: 'Web EasyStore', color: 'var(--primary-500,#CD7C32)' },
  'WhatsApp':       { fee: 0.0, processing: 0.5, label: 'WhatsApp', color: '#5C8A56' }
 };
 

@@ -9,6 +9,8 @@
  <title>10 CAMP — Premium Camping & Outdoor Gear Malaysia</title>
  <meta name="description" content="Malaysia's home for premium camping &amp; outdoor gear. 11 trusted brands including Naturehike, Mobi Garden &amp; Mountainhiker. Buy on Shopee &amp; TikTok Shop, or visit our Cyberjaya store.">
  <meta name="theme-color" content="#CD7C32">
+ <script>/* p1_1071 — pasang tema tersimpan SEBELUM CSS paint (elak kelip warna) */
+ try{var __t=localStorage.getItem('posTheme_v1');if(__t&&__t!=='official'){document.documentElement.setAttribute('data-theme',__t);var __tc={flame:'#D9481F',ocean:'#2F6F94',forest:'#3E7C4F',desert:'#B3924B'}[__t];var __m=document.querySelector('meta[name="theme-color"]');if(__m&&__tc)__m.setAttribute('content',__tc);}}catch(e){}</script>
  <link rel="canonical" href="https://www.10camp.com/">
  <meta property="og:url" content="https://www.10camp.com/">
  <meta name="twitter:title" content="10 CAMP — Premium Camping & Outdoor Gear Malaysia">
@@ -34,7 +36,7 @@
  <link rel="apple-touch-icon" href="assets/brand/logo/10camp-logo-color.png">
  <link rel="shortcut icon" href="assets/brand/logo/10camp-logo-color.png">
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Poppins:wght@400;600;700;800;900&amp;family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&amp;display=swap" rel="stylesheet">
- <link rel="stylesheet" href="style.css?v=77">
+ <link rel="stylesheet" href="style.css?v=78">
  <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
  <link rel="dns-prefetch" href="https://images.weserv.nl">
  <!-- p1_1026 preconnect: warm TLS awal untuk DATA+IMEJ storage (Supabase) + FONT — boot lebih laju di mobile -->
@@ -42,7 +44,7 @@
  <link rel="dns-prefetch" href="https://asehjdnfzoypbwfeazra.supabase.co">
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
- <link rel="stylesheet" href="design-tokens.css?v=161">
+ <link rel="stylesheet" href="design-tokens.css?v=162">
  <!-- Supabase Core — p1_976: vendored (self-host) supaya tak bergantung CDN luar +
       di-cache oleh Service Worker. Elak "Auth tidak tersedia" bila CDN jsdelivr lambat/blocked.
       Fallback ke CDN HANYA kalau fail tempatan gagal define global supabase. -->
@@ -63,8 +65,8 @@
 <body>
  <!-- p1_1012 — Boot splash (kaunter iPad): tutup landing customer dari saat pertama sampai app tentukan POS/skrin-kunci. Skrip inline sinkron tanda <html> sebelum landing sempat paint. -->
  <div id="posBootSplash" style="display:none; position:fixed; inset:0; z-index:9999; background:radial-gradient(130% 80% at 50% -10%, #212a3a 0%, #14181f 45%, #0d0d0d 100%); flex-direction:column; align-items:center; justify-content:center; gap:18px; transition:opacity .3s ease;">
- <div style="font-weight:800; letter-spacing:3px; color:#CD7C32; font-size:15px; font-family:Poppins,sans-serif;">10 CAMP · KAUNTER POS</div>
- <div style="width:34px; height:34px; border:3px solid rgba(205,124,50,.25); border-top-color:#CD7C32; border-radius:50%; animation:pbsSpin .8s linear infinite;"></div>
+ <div style="font-weight:800; letter-spacing:3px; color:var(--primary-500,#CD7C32); font-size:15px; font-family:Poppins,sans-serif;">10 CAMP · KAUNTER POS</div>
+ <div style="width:34px; height:34px; border:3px solid rgba(var(--primary-rgb,205,124,50),.25); border-top-color:var(--primary-500,#CD7C32); border-radius:50%; animation:pbsSpin .8s linear infinite;"></div>
  <div style="color:#9a948b; font-size:13px; font-family:Poppins,sans-serif;">Memuatkan…</div>
  </div>
  <script>(function(){try{if(/TenCampPOSApp/.test(navigator.userAgent||'')||/[?&]posapp=1/.test(location.search||'')){document.documentElement.classList.add('pos-app-boot');setTimeout(function(){var s=document.getElementById('posBootSplash');document.documentElement.classList.remove('pos-app-boot');if(s){s.style.opacity='0';setTimeout(function(){s.style.display='none';},340);}},15000);}}catch(e){}})();</script>
@@ -76,7 +78,7 @@
  <div class="login-box" style="max-width:520px; width:95%; padding:0; overflow:hidden; text-align:left;">
  <!-- Progress bar -->
  <div style="background:#f3f4f6; height:6px; position:relative;">
- <div id="obwProgress" style="position:absolute; left:0; top:0; height:100%; width:25%; background:linear-gradient(90deg, var(--primary), #b86a26); transition:width.3s;"></div>
+ <div id="obwProgress" style="position:absolute; left:0; top:0; height:100%; width:25%; background:linear-gradient(90deg, var(--primary), var(--primary-600,#B86A26)); transition:width.3s;"></div>
  </div>
  <div style="padding:24px 28px;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -166,7 +168,7 @@
  <div class="login-box pin-login-box" style="max-width:360px;">
  <button id="pinLoginClose" onclick="document.getElementById('pinLoginOverlay').style.display='none'" style="float:right; border:none; background:none; font-size:24px; cursor:pointer; color:var(--text-muted); margin-top:-10px; margin-right:-10px;">×</button>
  <div style="text-align:center; margin-bottom:14px;">
- <div style="width:54px; height:54px; margin:0 auto 8px; background:linear-gradient(135deg, var(--primary), #B86A26); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(205,124,50,0.3);">
+ <div style="width:54px; height:54px; margin:0 auto 8px; background:linear-gradient(135deg, var(--primary), var(--primary-600,#B86A26)); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(var(--primary-rgb,205,124,50),0.3);">
  <i data-lucide="key-round" style="width:26px; height:26px; color:#FFF;"></i>
  </div>
  <h2 style="font-weight:900; font-size:18px; margin-bottom:4px; color:var(--primary);">Log Masuk</h2>
@@ -301,8 +303,8 @@
  <div><label class="small-lbl">+ Upah Buruh (RM)</label><input type="number" id="calcLabor" class="login-input" step="0.01" oninput="window.calcPricing()"></div>
  <div></div>
  <div style="grid-column: 1 / -1; border-top:1px dashed #ccc; padding-top:10px;">
- <label class="small-lbl" style="color:#b86a26;">= Modal Keseluruhan (RM)</label>
- <input type="number" id="calcTotalCost" class="login-input" readonly="" style="background:#fff8f0; font-weight:bold; color:#101010;">
+ <label class="small-lbl" style="color:var(--primary-600,#B86A26);">= Modal Keseluruhan (RM)</label>
+ <input type="number" id="calcTotalCost" class="login-input" readonly="" style="background:var(--primary-50,#FFF8F0); font-weight:bold; color:#101010;">
  </div>
  
  <div><label class="small-lbl">Margin Untung (%)</label><input type="number" id="calcMarginPct" class="login-input" oninput="window.calcPricing()"></div>
@@ -340,7 +342,7 @@
  <!-- Receipt details go here -->
  </div>
  
- <button id="sendEmailBtn" onclick="dispatchEmailReceipt()" class="login-btn" style="background:#b86a26; margin-bottom:10px; display:flex; justify-content:center; align-items:center; gap:8px;"><span></span> Hantar Auto-Resit Ke Emel</button>
+ <button id="sendEmailBtn" onclick="dispatchEmailReceipt()" class="login-btn" style="background:var(--primary-600,#B86A26); margin-bottom:10px; display:flex; justify-content:center; align-items:center; gap:8px;"><span></span> Hantar Auto-Resit Ke Emel</button>
  <button id="sendWhatsAppBtn" onclick="dispatchWhatsAppReceipt()" class="login-btn" style="background:#25D366; margin-bottom:10px; display:flex; justify-content:center; align-items:center; gap:8px;"> Hantar via WhatsApp</button>
  <button onclick="closeReceipt()" class="login-btn" style="background:#FFF; color:var(--text-main); border:1px solid var(--border-color);">Selesai (Pelanggan Seterusnya)</button>
  </div>
@@ -379,7 +381,7 @@
  <p id="cartDiscBase" style="font-size:12px; color:#6B7280; margin:0 0 16px;">—</p>
  <label class="small-lbl">Jenis Diskaun</label>
  <div style="display:flex; gap:8px; margin-bottom:14px;">
- <button id="cartDiscTypeRM" onclick="cartDiscSetType('rm')" style="flex:1; padding:9px; border:1px solid #CD7C32; border-radius:8px; font-weight:700; cursor:pointer; background:#CD7C32; color:#fff;">RM (potong)</button>
+ <button id="cartDiscTypeRM" onclick="cartDiscSetType('rm')" style="flex:1; padding:9px; border:1px solid var(--primary-500,#CD7C32); border-radius:8px; font-weight:700; cursor:pointer; background:var(--primary-500,#CD7C32); color:#fff;">RM (potong)</button>
  <button id="cartDiscTypePct" onclick="cartDiscSetType('pct')" style="flex:1; padding:9px; border:1px solid #E5E7EB; border-radius:8px; font-weight:700; cursor:pointer; background:#fff; color:#374151;">% (peratus)</button>
  </div>
  <label class="small-lbl">Jumlah Diskaun (<span id="cartDiscSuffix">RM / unit</span>)</label>
@@ -388,7 +390,7 @@
  <input type="text" id="cartDiscReason" class="login-input" placeholder="cth: pelanggan tetap, display unit, calar kecik" style="margin-bottom:18px;">
  <div style="display:flex; gap:8px;">
  <button onclick="removeCartItemDiscount()" style="flex:0 0 auto; padding:13px 16px; background:#fff; color:#B23A2E; border:1px solid #ECD2CA; border-radius:8px; font-weight:700; cursor:pointer;">Buang</button>
- <button onclick="applyCartItemDiscount()" class="login-btn" style="flex:1; background:#CD7C32; padding:13px; font-size:14px;">Apply Diskaun</button>
+ <button onclick="applyCartItemDiscount()" class="login-btn" style="flex:1; background:var(--primary-500,#CD7C32); padding:13px; font-size:14px;">Apply Diskaun</button>
  </div>
  </div>
  </div>
@@ -534,7 +536,7 @@
  <input type="tel" id="customerPhone" class="login-input" style="margin-bottom:0; padding:12px; flex:1;" placeholder="No. Telefon (Pilihan)" onchange="if(typeof checkoutVipLookup==='function')checkoutVipLookup()" onblur="if(typeof checkoutVipLookup==='function')checkoutVipLookup()">
  </div>
  <div id="checkoutVipBadge" style="display:none; padding:8px 12px; border-radius:6px; margin-bottom:8px; font-size:13px; font-weight:bold;"></div>
- <input type="email" id="customerEmail" class="login-input" style="margin-bottom:5px; padding:12px; border-color:#fdba74; background:#fff8f0;" placeholder="Alamat E-mel (Untuk Auto-Resit)">
+ <input type="email" id="customerEmail" class="login-input" style="margin-bottom:5px; padding:12px; border-color:var(--primary-300,#FDBA74); background:var(--primary-50,#FFF8F0);" placeholder="Alamat E-mel (Untuk Auto-Resit)">
  <input type="text" id="customerBuyerTin" class="login-input" style="margin-top:5px; margin-bottom:5px; padding:12px;" placeholder="Buyer TIN (B2B sahaja — pilihan, untuk e-Invoice)" autocomplete="off">
  <small style="color:#64748b; font-size:10px; display:block;">* TIN diperlukan kalau customer business yang nak claim invoice. Tinggal kosong untuk B2C.</small>
  <!-- p1_707 — Sumber pelanggan utk attribution sosial->jualan -->
@@ -600,21 +602,21 @@
  </div>
 
  <!-- p1_180 — Payment proof upload (shown when non-Cash picked) -->
- <div id="proofUploadSection" style="display:none; padding:14px; background:#fff8f0; border:1px dashed #fdba74; border-radius:8px; margin-bottom:14px;">
- <label style="font-size:11.5px; font-weight:700; color:#7c4a1a; display:block; margin-bottom:6px;"><i data-lucide="upload-cloud" style="width:13px;height:13px;vertical-align:-2px;"></i> Resit Pembayaran (opsional) — screenshot transfer / receipt printout</label>
+ <div id="proofUploadSection" style="display:none; padding:14px; background:var(--primary-50,#FFF8F0); border:1px dashed var(--primary-300,#FDBA74); border-radius:8px; margin-bottom:14px;">
+ <label style="font-size:11.5px; font-weight:700; color:var(--primary-800,#7C4A1A); display:block; margin-bottom:6px;"><i data-lucide="upload-cloud" style="width:13px;height:13px;vertical-align:-2px;"></i> Resit Pembayaran (opsional) — screenshot transfer / receipt printout</label>
  <!-- p1_230 — Camera input (capture="environment" force rear camera on mobile) + Snap button -->
  <input type="file" id="proofCameraInput" accept="image/*,.heic,.heif" capture="environment" onchange="window.__proofPickFile(this)" style="display:none;">
  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
- <button type="button" onclick="document.getElementById('proofCameraInput').click()" id="proofSnapBtn" style="flex:1; min-width:120px; padding:10px 14px; background:#7c4a1a; color:#fff; border:none; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="camera" style="width:14px;height:14px;"></i> Snap Resit (Camera)</button>
- <button type="button" onclick="document.getElementById('proofFileInput').click()" style="flex:1; min-width:120px; padding:10px 14px; background:#fff; color:#7c4a1a; border:1.5px solid #7c4a1a; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="folder" style="width:14px;height:14px;"></i> Pilih dari Fail</button>
+ <button type="button" onclick="document.getElementById('proofCameraInput').click()" id="proofSnapBtn" style="flex:1; min-width:120px; padding:10px 14px; background:var(--primary-800,#7C4A1A); color:#fff; border:none; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="camera" style="width:14px;height:14px;"></i> Snap Resit (Camera)</button>
+ <button type="button" onclick="document.getElementById('proofFileInput').click()" style="flex:1; min-width:120px; padding:10px 14px; background:#fff; color:var(--primary-800,#7C4A1A); border:1.5px solid var(--primary-800,#7C4A1A); border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="folder" style="width:14px;height:14px;"></i> Pilih dari Fail</button>
  </div>
  <input type="file" id="proofFileInput" accept="image/*,.heic,.heif,application/pdf" onchange="window.__proofPickFile(this)" style="display:none;">
- <div id="proofPreview" style="display:none; margin-top:10px; padding:8px; background:#fff; border:1px solid #ffedd5; border-radius:6px;">
+ <div id="proofPreview" style="display:none; margin-top:10px; padding:8px; background:#fff; border:1px solid var(--primary-100,#FFEDD5); border-radius:6px;">
  <img id="proofPreviewImg" style="max-width:100%; max-height:180px; display:block; margin:0 auto; border-radius:4px;">
  <div id="proofPreviewMeta" style="font-size:10.5px; color:#6B7280; margin-top:6px; text-align:center;"></div>
  <button type="button" onclick="window.__proofClearFile()" style="background:none; border:none; color:#B23A2E; font-size:11px; cursor:pointer; margin-top:4px; display:block; margin-left:auto;"><i data-lucide="x" style="width:11px;height:11px;vertical-align:-1px;"></i> Buang</button>
  </div>
- <p style="font-size:10.5px; color:#7c4a1a; margin-top:6px; margin-bottom:0;">Boleh upload kemudian dari Reports → Payment Proofs jika belum sempat sekarang. Max 5MB. Format: JPG / PNG / WEBP / PDF.</p>
+ <p style="font-size:10.5px; color:var(--primary-800,#7C4A1A); margin-top:6px; margin-bottom:0;">Boleh upload kemudian dari Reports → Payment Proofs jika belum sempat sekarang. Max 5MB. Format: JPG / PNG / WEBP / PDF.</p>
  </div>
 
  <!-- E-Wallet sub-panel: only shown when E-Wallet method picked -->
@@ -895,18 +897,18 @@
  <div id="cashDrawerHub" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:430px; width:93%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
- <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="sunrise" style="width:19px;height:19px; color:#CD7C32;"></i> Buka Shift</h2>
+ <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="sunrise" style="width:19px;height:19px; color:var(--primary-500,#CD7C32);"></i> Buka Shift</h2>
  <button type="button" onclick="window.closeCashDrawerHub()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
  <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Mula shift: kira semua duit dalam cash box dan masukkan jumlah. Operasi tunai shift (Duit Keluar, Pulangan, Tutup Kira) semua di sini.</p>
 
  <!-- p1_879 — Buka Shift: staff kira cash sebenar dalam box (float mula) -->
  <div id="hubShiftSection" style="background:#FAF6EF; border:1px solid #EEE7DA; border-radius:12px; padding:13px 14px; margin-bottom:14px;">
- <p class="cp-section__title" style="margin:0 0 4px; display:flex; align-items:center; gap:6px;"><i data-lucide="banknote" style="width:15px;height:15px; color:#CD7C32;"></i> Kira Cash Dalam Box</p>
+ <p class="cp-section__title" style="margin:0 0 4px; display:flex; align-items:center; gap:6px;"><i data-lucide="banknote" style="width:15px;height:15px; color:var(--primary-500,#CD7C32);"></i> Kira Cash Dalam Box</p>
  <p style="font-size:11.5px; color:#9a948b; margin:0 0 8px;">Kira semua duit dalam cash box sekarang, masukkan jumlahnya untuk buka shift.</p>
  <div style="display:flex; gap:8px; align-items:stretch;">
  <span class="cc-row__inp" style="flex:1; background:#fff; border:1px solid #EEE7DA; border-radius:10px; padding:0 12px; display:flex; align-items:center; gap:6px;"><span style="color:#9a948b; font-size:13px;">RM</span> <input type="number" id="hubFloatInput" aria-label="Jumlah cash dalam box (RM)" step="0.01" min="0" placeholder="0.00" inputmode="decimal" style="flex:1; border:none; background:none; text-align:right; font:700 16px Poppins; color:#101010; font-variant-numeric:tabular-nums; min-height:46px;"></span>
- <button type="button" id="hubSaveFloatBtn" onclick="window.saveOpeningFloat()" class="login-btn" style="background:#CD7C32; width:auto; padding:0 18px; font-size:14px; margin:0; flex-shrink:0;">Buka Shift</button>
+ <button type="button" id="hubSaveFloatBtn" onclick="window.saveOpeningFloat()" class="login-btn" style="background:var(--primary-500,#CD7C32); width:auto; padding:0 18px; font-size:14px; margin:0; flex-shrink:0;">Buka Shift</button>
  </div>
  <p id="hubFloatHint" style="font-size:11.5px; color:#9a948b; margin:7px 2px 0;"></p>
  </div>
@@ -1096,16 +1098,16 @@
  <input type="hidden" id="locModalSkuHidden">
  
  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
- <div style="background:#fff8f0; padding:12px; border-radius:8px; border:1px solid #fed7aa;">
- <label style="font-size:11px; font-weight:bold; color:#a05f22; display:block; margin-bottom:5px;">Zon (Zone)</label>
+ <div style="background:var(--primary-50,#FFF8F0); padding:12px; border-radius:8px; border:1px solid var(--primary-200,#FED7AA);">
+ <label style="font-size:11px; font-weight:bold; color:var(--primary-700,#A05F22); display:block; margin-bottom:5px;">Zon (Zone)</label>
  <input type="text" id="locZone" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: ZON A">
  </div>
  <div style="background:#F8EFD7; padding:12px; border-radius:8px; border:1px solid #ECD9A4;">
  <label style="font-size:11px; font-weight:bold; color:#7A5410; display:block; margin-bottom:5px;">Lorong (Aisle)</label>
  <input type="text" id="locAisle" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: L01">
  </div>
- <div style="background:#fff8f0; padding:12px; border-radius:8px; border:1px solid #ffedd5;">
- <label style="font-size:11px; font-weight:bold; color:#7c4a1a; display:block; margin-bottom:5px;">Rak (Rack)</label>
+ <div style="background:var(--primary-50,#FFF8F0); padding:12px; border-radius:8px; border:1px solid var(--primary-100,#FFEDD5);">
+ <label style="font-size:11px; font-weight:bold; color:var(--primary-800,#7C4A1A); display:block; margin-bottom:5px;">Rak (Rack)</label>
  <input type="text" id="locRack" class="login-input" style="margin:0; padding:8px; font-weight:bold; text-align:center; text-transform:uppercase;" placeholder="Cth: R01">
  </div>
  <div style="background:#FCE7F3; padding:12px; border-radius:8px; border:1px solid #FBCFE8;">
@@ -1166,7 +1168,7 @@
  </button>
  <div id="lpLoginMenu" style="display:none; position:absolute; top:calc(100% + 10px); right:0; background:#FFF; border:1px solid #ECE6DE; border-radius:14px; box-shadow:0 12px 34px rgba(16,16,16,0.14); min-width:250px; z-index:6000; overflow:hidden; text-align:left;">
  <button onclick="window.location.href='loyalty.html'" style="display:block; width:100%; padding:13px 16px; background:none; border:none; border-bottom:1px solid #F3F0EA; cursor:pointer; text-align:left; font-family:Poppins,sans-serif;">
- <span style="display:flex; align-items:center; gap:10px;"><i data-lucide="gift" style="width:17px;height:17px;color:#CD7C32;"></i><span><strong style="font-size:13.5px; color:#101010;">Customer Login</strong><br><span style="font-size:11px; color:#8A8578;">10 CAMP Rewards — semak mata &amp; tier</span></span></span>
+ <span style="display:flex; align-items:center; gap:10px;"><i data-lucide="gift" style="width:17px;height:17px;color:var(--primary-500,#CD7C32);"></i><span><strong style="font-size:13.5px; color:#101010;">Customer Login</strong><br><span style="font-size:11px; color:#8A8578;">10 CAMP Rewards — semak mata &amp; tier</span></span></span>
  </button>
  <button onclick="document.getElementById('lpLoginMenu').style.display='none'; handleLogin()" style="display:block; width:100%; padding:13px 16px; background:none; border:none; cursor:pointer; text-align:left; font-family:Poppins,sans-serif;">
  <span style="display:flex; align-items:center; gap:10px;"><i data-lucide="lock" style="width:17px;height:17px;color:#101010;"></i><span><strong style="font-size:13.5px; color:#101010;">Staff Login</strong><br><span style="font-size:11px; color:#8A8578;">PIN staf / emel Bos</span></span></span>
@@ -1310,7 +1312,7 @@
  <h3 style="color:#fff;" data-i18n="lp_coll_sale_title">Promos &amp; Vouchers</h3>
  <p style="color:rgba(255,255,255,0.9);" data-i18n="lp_coll_sale_sub">Lots of vouchers on TikTok &amp; Shopee</p>
  <div style="display:flex; gap:9px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
- <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" style="background:#fff; color:#A05F22; font-weight:800; font-size:12.5px; padding:8px 18px; border-radius:22px; text-decoration:none;">Shopee</a>
+ <a href="https://shopee.com.my/10camp.os" target="_blank" rel="noopener" style="background:#fff; color:var(--primary-700,#A05F22); font-weight:800; font-size:12.5px; padding:8px 18px; border-radius:22px; text-decoration:none;">Shopee</a>
  <a href="https://vt.tiktok.com/ZSxoAXDhd/" target="_blank" rel="noopener" style="background:rgba(0,0,0,.28); color:#fff; font-weight:800; font-size:12.5px; padding:8px 18px; border-radius:22px; text-decoration:none; border:1px solid rgba(255,255,255,.35);">TikTok</a>
  </div>
  </div>
@@ -1476,7 +1478,7 @@
  <h2 class="lp-h2" style="text-align:center;" data-i18n="lp_follow_h2">Ikuti Kami</h2>
  <p data-i18n="lp_follow_sub">Barang baru, promo &amp; idea trip outdoor — kami post di sini dulu.</p>
  <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:4px;">
- <a href="https://www.instagram.com/10campofficial" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#fff; font-size:13.5px; font-weight:700; text-decoration:none; padding:11px 20px; background:#CD7C32; border-radius:8px;"><i data-lucide="instagram" style="width:17px;height:17px;"></i>Instagram</a>
+ <a href="https://www.instagram.com/10campofficial" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#fff; font-size:13.5px; font-weight:700; text-decoration:none; padding:11px 20px; background:var(--primary-500,#CD7C32); border-radius:8px;"><i data-lucide="instagram" style="width:17px;height:17px;"></i>Instagram</a>
  <a href="https://www.tiktok.com/@10campofficial" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#fff; font-size:13.5px; font-weight:700; text-decoration:none; padding:11px 20px; background:#101010; border-radius:8px;"><i data-lucide="music-2" style="width:17px;height:17px;"></i>TikTok</a>
  <a href="https://www.facebook.com/p/10-Camp-Store-61558971968591/" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:#fff; font-size:13.5px; font-weight:700; text-decoration:none; padding:11px 20px; background:#101010; border-radius:8px;"><i data-lucide="facebook" style="width:17px;height:17px;"></i>Facebook</a>
  </div>
@@ -1500,7 +1502,7 @@
  <!-- p1_704 — Ikuti Kami: social follow links (dari Direktori Akaun Social Media) -->
  <div style="font-size:12px; font-weight:700; color:var(--neutral-300); margin-top:14px;" data-i18n="lp_foot_follow">Ikuti Kami</div>
  <div style="display:flex; gap:10px; margin-top:8px;">
- <a href="https://www.instagram.com/10campofficial" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram" style="width:36px; height:36px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:#CD7C32; color:#fff; text-decoration:none;"><i data-lucide="instagram" style="width:18px; height:18px;"></i></a>
+ <a href="https://www.instagram.com/10campofficial" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram" style="width:36px; height:36px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:var(--primary-500,#CD7C32); color:#fff; text-decoration:none;"><i data-lucide="instagram" style="width:18px; height:18px;"></i></a>
  <a href="https://www.facebook.com/p/10-Camp-Store-61558971968591/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook" style="width:36px; height:36px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:#101010; color:#fff; text-decoration:none;"><i data-lucide="facebook" style="width:18px; height:18px;"></i></a>
  <a href="https://www.tiktok.com/@10campofficial" target="_blank" rel="noopener" aria-label="TikTok" title="TikTok" style="width:36px; height:36px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:#101010; color:#fff; text-decoration:none;"><i data-lucide="music-2" style="width:18px; height:18px;"></i></a>
  </div>
@@ -1556,7 +1558,7 @@
  <input type="tel" id="custPhonePub" class="login-input" placeholder="No. telefon *" style="margin-bottom:10px; border:1px solid #ccc;">
  <input type="email" id="custEmailPub" class="login-input" placeholder="Email *" style="margin-bottom:15px; border:1px solid #ccc;">
 
- <button id="btnPublicCheckout" onclick="processPublicCheckout()" class="login-btn" style="background:#CD7C32; color:#fff; border:none; border-radius:8px; width:100%;">Hantar &amp; Jana Invois</button>
+ <button id="btnPublicCheckout" onclick="processPublicCheckout()" class="login-btn" style="background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; width:100%;">Hantar &amp; Jana Invois</button>
  </div>
  </div>
  </div>
@@ -1636,7 +1638,7 @@
  padding-right: 12px;
  }
 .menu-item[data-group-toggle]:hover {
- background: rgba(205,124,50,.08) !important;
+ background: rgba(var(--primary-rgb,205,124,50),.08) !important;
  }
 .menu-item[data-group-toggle].group-chevron {
  display: inline-flex;
@@ -1663,7 +1665,7 @@
  }
  #sidebarRoadmapBtn:hover {
  transform: translateY(-1px);
- box-shadow: 0 6px 18px rgba(205,124,50,0.40) !important;
+ box-shadow: 0 6px 18px rgba(var(--primary-rgb,205,124,50),0.40) !important;
  filter: brightness(1.05);
  }
  #sidebarRoadmapBtn:active {
@@ -2469,7 +2471,7 @@
  </div>
 
  <div style="border-top:1px dashed var(--border-color); margin: 15px 0 5px 0;"></div>
- <div class="menu-item" id="sidebarRoadmapBtn" data-tab="roadmap" onclick="switchHub(['roadmapSection'], 'Roadmap &amp; Progress', this); if(typeof renderRoadmap==='function') renderRoadmap();" style="background:linear-gradient(135deg, var(--primary), #A05F22); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 14px; border-radius:10px; box-shadow:0 4px 12px rgba(205,124,50,0.28); margin:6px 0 4px 0;">
+ <div class="menu-item" id="sidebarRoadmapBtn" data-tab="roadmap" onclick="switchHub(['roadmapSection'], 'Roadmap &amp; Progress', this); if(typeof renderRoadmap==='function') renderRoadmap();" style="background:linear-gradient(135deg, var(--primary), var(--primary-700,#A05F22)); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 14px; border-radius:10px; box-shadow:0 4px 12px rgba(var(--primary-rgb,205,124,50),0.28); margin:6px 0 4px 0;">
  <span style="display:flex; align-items:center; gap:8px; font-size:13px;">
  <i data-lucide="target" style="width:16px; height:16px;"></i>
  <span data-i18n="sb_roadmap">Roadmap &amp; Progress</span>
@@ -2656,7 +2658,7 @@
  <button onclick="(document.querySelector('[data-tab=hr_claim]'))?.click()" class="btn-success" style="display:inline-flex; align-items:center; gap:6px;">
  <i data-lucide="receipt" style="width:14px; height:14px;"></i> <span data-i18n="hr_today_action_submit_claim">Hantar Claim</span>
  </button>
- <button onclick="(document.querySelector('[data-tab=hr_clock_history]'))?.click()" class="btn-primary" style="background:#cd7c32; border-color:#cd7c32; display:inline-flex; align-items:center; gap:6px;">
+ <button onclick="(document.querySelector('[data-tab=hr_clock_history]'))?.click()" class="btn-primary" style="background:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32); display:inline-flex; align-items:center; gap:6px;">
  <i data-lucide="history" style="width:14px; height:14px;"></i> <span data-i18n="hr_today_action_clock_history">Riwayat Clock</span>
  </button>
  </div>
@@ -2706,7 +2708,7 @@
  <div id="hrcMyBenefits" style="font-size:13px; color:#374151; line-height:1.6;">—</div>
  </div>
  <div class="admin-card" style="padding:14px;">
- <h3 style="font-size:13px; font-weight:800; margin:0 0 8px; display:flex; align-items:center; gap:6px;"><i data-lucide="briefcase" style="width:14px;height:14px;color:#b86a26;"></i> Skop Kerja</h3>
+ <h3 style="font-size:13px; font-weight:800; margin:0 0 8px; display:flex; align-items:center; gap:6px;"><i data-lucide="briefcase" style="width:14px;height:14px;color:var(--primary-600,#B86A26);"></i> Skop Kerja</h3>
  <div id="hrcMyJobScope" style="font-size:13px; color:#374151; line-height:1.6;">—</div>
  </div>
  </div>
@@ -2785,18 +2787,18 @@
  </div>
  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
  <label style="font-size:11px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="rsMyRowOnly" onchange="window.__rsApplyMyRowFilter && window.__rsApplyMyRowFilter()"> Show My Row Only</label>
- <button onclick="window.__rsPrintSchedule()" style="background:#cd7c32; color:#fff; border:none; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+ <button onclick="window.__rsPrintSchedule()" style="background:var(--primary-500,#CD7C32); color:#fff; border:none; padding:9px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
  <i data-lucide="printer" style="width:14px; height:14px;"></i> Print Jadual
  </button>
- <button id="btnOpenAdminRoster" onclick="window.openAdminRoster()" style="display:none; background:#7c4a1a; color:#fff; border:none; padding:9px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; align-items:center; gap:6px;">
+ <button id="btnOpenAdminRoster" onclick="window.openAdminRoster()" style="display:none; background:var(--primary-800,#7C4A1A); color:#fff; border:none; padding:9px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; align-items:center; gap:6px;">
  <i data-lucide="shield" style="width:14px; height:14px;"></i> Mod Pengurusan Roster
  </button>
  </div>
  </div>
  
  <!-- PUBLIC ROSTER PERMOHONAN FORM -->
- <div style="background:#fff8f0; border:1px solid #fed7aa; padding:15px; border-radius:8px; margin-bottom:20px;">
- <h3 style="color:#a05f22; margin-bottom:10px; font-size:14px;"> Borang Permohonan Tukar Syif / Cuti</h3>
+ <div style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-200,#FED7AA); padding:15px; border-radius:8px; margin-bottom:20px;">
+ <h3 style="color:var(--primary-700,#A05F22); margin-bottom:10px; font-size:14px;"> Borang Permohonan Tukar Syif / Cuti</h3>
  <p style="font-size:11px; color:#333; margin-bottom:10px;">Hantar permohonan ke peti kelulusan (Admin). Perubahan tidak rasmi selagi tidak di-Lulus oleh bos.</p>
  <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
  <div style="flex:1; min-width:140px;">
@@ -2822,7 +2824,7 @@
  <p style="font-size:10px; color:#6B7280; margin:3px 0 0;">Note: filename direkod sahaja (storage upload TBD)</p>
  </div>
  <div style="flex:1; min-width:120px;">
- <button class="btn-primary" id="reqScheduleBtn" style="margin:0; width:100%; height:44px; background:#cd7c32;">Hantar Permohonan</button>
+ <button class="btn-primary" id="reqScheduleBtn" style="margin:0; width:100%; height:44px; background:var(--primary-500,#CD7C32);">Hantar Permohonan</button>
  </div>
  </div>
  <!-- p1_127 — Cuti balance hint (shown when AL/MC/EL selected) -->
@@ -2897,7 +2899,7 @@
  <div id="deptAlertBox"></div>
  <div id="integrationAlertBox"></div>
  <div id="ovAimEmpty" class="dash-card" style="display:none; text-align:center; padding:30px var(--space-3);">
-  <i data-lucide="shield-check" style="width:34px; height:34px; color:#CD7C32; margin-bottom:10px;"></i>
+  <i data-lucide="shield-check" style="width:34px; height:34px; color:var(--primary-500,#CD7C32); margin-bottom:10px;"></i>
   <h3 style="margin:0 0 6px; font-size:15px; font-weight:700; color:var(--neutral-700);">Tiada amaran buat masa ni</h3>
   <p style="margin:0 0 14px; font-size:12.5px; color:var(--neutral-500);">Tiada isu untuk department anda — stok, harga/margin, jualan & integrasi semua OK.</p>
   <button onclick="window.__rescanIntegration && window.__rescanIntegration()" style="padding:6px 14px; background:#fff; color:var(--primary); border:1px solid var(--primary); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">Semak semula</button>
@@ -2929,7 +2931,7 @@
  <div class="dash-card" id="dashOverviewRosterCard">
  <div class="dash-card__head">
  <h3 class="dash-card__title" style="display:flex; align-items:center; gap:8px;">
- <i data-lucide="calendar-days" style="width:16px; height:16px; color:#CD7C32;"></i>
+ <i data-lucide="calendar-days" style="width:16px; height:16px; color:var(--primary-500,#CD7C32);"></i>
  <span data-i18n="dash_overview_roster_title">Jadual</span> <span id="dashOverviewRosterDate" style="font-weight:400; color:var(--neutral-500); font-size:12px;"></span>
  </h3>
  <button onclick="document.querySelector('[data-tab=hr_roster]')?.click();" style="background:none; border:none; color:var(--primary); font-size:12px; cursor:pointer; text-decoration:underline;" data-i18n="dash_overview_roster_view">Lihat penuh</button>
@@ -2975,7 +2977,7 @@
       diganti SASARAN BULAN (hidup + actionable: %, baki RM, pace/hari). Data: dashMonthlyTarget_v1 (Settings). -->
  <div class="lbl" data-i18n="hs_target_month">Sasaran Bulan</div>
  <div class="val" style="font-size:20px;" id="dashTargetHomePct">—</div>
- <div style="height:6px; background:rgba(16,16,16,0.08); border-radius:99px; overflow:hidden; margin:6px 0 5px;"><div id="dashTargetHomeFill" style="height:100%; width:0%; background:#CD7C32; border-radius:99px; transition:width .6s ease;"></div></div>
+ <div style="height:6px; background:rgba(16,16,16,0.08); border-radius:99px; overflow:hidden; margin:6px 0 5px;"><div id="dashTargetHomeFill" style="height:100%; width:0%; background:var(--primary-500,#CD7C32); border-radius:99px; transition:width .6s ease;"></div></div>
  <div class="sub" id="dashTargetHomeSub">—</div>
  </div>
  <!-- p1_1053 — Sales Trajectory sparkline (hiasan: garis tanpa paksi/nombor, bentuk penuh ada dlm
@@ -3057,7 +3059,7 @@
  <div style="font-weight:700; font-size:13px; color:var(--text-main);">Sasaran Jualan Bulan Ini</div>
  <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted);">RM <input type="number" id="saTarget" onchange="window.__saSaveTarget && window.__saSaveTarget(this.value)" placeholder="cth 50000" style="width:120px; padding:4px 8px; border:1px solid var(--border-color); border-radius:6px; margin:0; font-size:12px;"></div>
  </div>
- <div style="height:16px; background:#E5E7EB; border-radius:20px; overflow:hidden;"><div id="saTargetBar" style="height:100%; width:0%; background:linear-gradient(90deg,#CD7C32,#b86a26); border-radius:20px; transition:width .4s;"></div></div>
+ <div style="height:16px; background:#E5E7EB; border-radius:20px; overflow:hidden;"><div id="saTargetBar" style="height:100%; width:0%; background:linear-gradient(90deg,var(--primary-500,#CD7C32),var(--primary-600,#B86A26)); border-radius:20px; transition:width .4s;"></div></div>
  <div id="saTargetLabel" style="font-size:11.5px; color:var(--text-muted); margin-top:7px;">Tetapkan sasaran untuk jejak kemajuan jualan bulan ini.</div>
  </div>
  <div class="sa-charts" style="display:grid; grid-template-columns:1fr 1.5fr; gap:18px; margin-bottom:18px;">
@@ -3285,7 +3287,7 @@
  <!-- p1_1045 — data-i18n MESTI di span label, BUKAN di <button>: applyI18N buat textContent=val
       pada elemen data-i18n → kalau di button, anak span "RM <bayarBtnTotal>" DIPADAM tiap kali i18n
       jalan (sejak p1_947 letak total dlm butang) → total tak pernah nampak (aduan Ariff). -->
- <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:var(--primary); padding:16px 22px; margin:0; border-radius:50px; box-shadow:0 4px 18px rgba(205,124,50,0.35); transition:0.2s; display:flex; justify-content:space-between; align-items:center; font-size:15px;" disabled="" title="Pintasan: F9 / Shortcut: F9"><span data-i18n="cs_pay_now">BAYAR SEKARANG</span><span style="font-size:18px; font-weight:900; letter-spacing:-0.5px;">RM <span id="bayarBtnTotal">0.00</span></span></button>
+ <button onclick="window.openPaymentModal()" id="btnOpenPayment" class="checkout-btn" style="background:var(--primary); padding:16px 22px; margin:0; border-radius:50px; box-shadow:0 4px 18px rgba(var(--primary-rgb,205,124,50),0.35); transition:0.2s; display:flex; justify-content:space-between; align-items:center; font-size:15px;" disabled="" title="Pintasan: F9 / Shortcut: F9"><span data-i18n="cs_pay_now">BAYAR SEKARANG</span><span style="font-size:18px; font-weight:900; letter-spacing:-0.5px;">RM <span id="bayarBtnTotal">0.00</span></span></button>
  <!-- p1_131 — Keyboard shortcut hints visible (hidden in mobile app) -->
  <div class="pos-desktop-kbd-hints" style="display:flex; justify-content:center; gap:14px; margin-top:10px; font-size:10px; color:#9CA3AF;">
  <span><kbd style="background:#F3F4F6; padding:1px 5px; border-radius:3px; font-family:monospace; font-size:10px;">F9</kbd> Bayar</span>
@@ -3336,7 +3338,7 @@
  
  <!-- Mobile Floating Cart Bar — p1_988: gaya "Bakul" Grab (badge kiraan + RM + chevron-up) → tap buka Ringkasan Pesanan -->
  <div id="mobileCartFloatingBar" style="display:none;">
- <button type="button" onclick="toggleMobileCartSheet()" style="background:var(--primary); color:#fff; border:none; padding:16px 22px; border-radius:16px; font-size:15px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 8px 24px rgba(205,124,50,0.4); transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(0.98)'" ontouchend="this.style.transform=''">
+ <button type="button" onclick="toggleMobileCartSheet()" style="background:var(--primary); color:#fff; border:none; padding:16px 22px; border-radius:16px; font-size:15px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 8px 24px rgba(var(--primary-rgb,205,124,50),0.4); transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(0.98)'" ontouchend="this.style.transform=''">
  <span style="display:flex; align-items:center; gap:11px;">
  <span style="position:relative; display:flex; align-items:center;">
  <i data-lucide="shopping-bag" style="width:20px;height:20px;"></i>
@@ -3538,16 +3540,16 @@
  <!-- p1_154 — Progress counter -->
  <span id="stProgressCounter" style="font-size:12px; color:#6B7280; font-weight:700; padding:8px 12px; background:#F3F4F6; border-radius:6px;">— / —</span>
  <button onclick="openBarcodeScannerModal()" class="btn-primary" style="background:#101010; border:none; margin:0; padding:10px 15px;" data-i18n="st_scan_btn">Scan Barcode/QR</button>
- <button onclick="window.__stBulkSubmit()" class="btn-primary" style="background:#cd7c32; border:none; margin:0; padding:10px 15px;"><i data-lucide="check-check" style="width:14px; height:14px; vertical-align:-2px;"></i> Submit All Drafts</button>
- <button onclick="window.__stSubmitSessionToZack()" class="btn-primary" style="background:#a05f22; border:none; margin:0; padding:10px 15px;"><i data-lucide="send" style="width:14px; height:14px; vertical-align:-2px;"></i> Submit Session ke Zack</button>
+ <button onclick="window.__stBulkSubmit()" class="btn-primary" style="background:var(--primary-500,#CD7C32); border:none; margin:0; padding:10px 15px;"><i data-lucide="check-check" style="width:14px; height:14px; vertical-align:-2px;"></i> Submit All Drafts</button>
+ <button onclick="window.__stSubmitSessionToZack()" class="btn-primary" style="background:var(--primary-700,#A05F22); border:none; margin:0; padding:10px 15px;"><i data-lucide="send" style="width:14px; height:14px; vertical-align:-2px;"></i> Submit Session ke Zack</button>
  </div>
  </div>
  <p style="font-size:13px; color:#888; margin-bottom:20px;" data-i18n="st_subtitle">Kira dan sahkan kuantiti secara teliti. Tekan "Submit" bagi setiap item yang dikira, atau gunakan pengimbas kod.</p>
  <div id="stDraftBanner" hidden></div>
 
- <div style="background:#fff8f0; border:2px dashed #b86a26; padding:20px; border-radius:8px; text-align:center; margin-bottom:20px;">
- <h3 style="color:#b86a26; margin-bottom:10px; font-size:18px;" data-i18n="st_scanner_focus_title">Tumpu Scanner Anda Di Sini</h3>
- <input type="text" id="mainAuditScanner" onkeyup="handleMainAuditScan(event)" class="login-input" style="font-size:20px; padding:15px; text-align:center; border-color:#b86a26; margin:0 auto; max-width:500px; font-weight:bold; letter-spacing:2px; box-shadow:0 0 10px rgba(2,132,199,0.2);" placeholder="Beep!">
+ <div style="background:var(--primary-50,#FFF8F0); border:2px dashed var(--primary-600,#B86A26); padding:20px; border-radius:8px; text-align:center; margin-bottom:20px;">
+ <h3 style="color:var(--primary-600,#B86A26); margin-bottom:10px; font-size:18px;" data-i18n="st_scanner_focus_title">Tumpu Scanner Anda Di Sini</h3>
+ <input type="text" id="mainAuditScanner" onkeyup="handleMainAuditScan(event)" class="login-input" style="font-size:20px; padding:15px; text-align:center; border-color:var(--primary-600,#B86A26); margin:0 auto; max-width:500px; font-weight:bold; letter-spacing:2px; box-shadow:0 0 10px rgba(2,132,199,0.2);" placeholder="Beep!">
  <p style="font-size:12px; color:#555; margin-top:10px;" data-i18n="st_scanner_hint">(Pop-up kemaskini kuantiti fizikal akan muncul secara automatik)</p>
  </div>
 
@@ -3751,13 +3753,13 @@
  #fifoSection .data-table tbody td { border-bottom:1px solid #E5E7EB; }
  #fifoSection .data-table thead th { border-bottom:2px solid #D1D5DB; }
  #fifoSection .data-table tbody tr:nth-child(even){ background:#FAFBFC; }
- #fifoSection .data-table tbody tr:hover { background:#fff8f0 !important; }
+ #fifoSection .data-table tbody tr:hover { background:var(--primary-50,#FFF8F0) !important; }
  </style>
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="layers" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> FIFO Listing</h2>
  <p style="color:#6B7280; font-size:13px; margin:2px 0 14px;">Batch stok disusun <strong>First-In-First-Out</strong> — yang masuk dulu, ambil/jual dulu. Batch lama di atas; ambil dari sini dulu untuk elak stok lama tersimpan.</p>
  <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:end;">
  <div style="flex:1; min-width:220px;"><label class="small-lbl">Cari SKU / Nama</label><input type="text" id="fifoSearch" class="login-input" placeholder="BD005 / tent..." style="margin:0;" oninput="window.renderFifoListing && window.renderFifoListing()"></div>
- <button type="button" onclick="window.__receiveOpen()" class="btn-primary" style="background:#CD7C32; border:none; color:#fff; font-weight:700; padding:11px 18px; border-radius:8px; flex-shrink:0; white-space:nowrap;"><i data-lucide="package-plus" style="width:15px;height:15px;vertical-align:-3px;"></i> Terima Stok</button>
+ <button type="button" onclick="window.__receiveOpen()" class="btn-primary" style="background:var(--primary-500,#CD7C32); border:none; color:#fff; font-weight:700; padding:11px 18px; border-radius:8px; flex-shrink:0; white-space:nowrap;"><i data-lucide="package-plus" style="width:15px;height:15px;vertical-align:-3px;"></i> Terima Stok</button>
  </div>
  <div id="fifoStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;"></div>
  <div class="admin-card" style="padding:0;">
@@ -3789,7 +3791,7 @@
  <div id="receiveStockModal" class="login-overlay" style="display:none; z-index:6000; align-items:flex-start; overflow-y:auto; padding:20px 0;">
  <div class="login-box" style="max-width:460px; width:93%; text-align:left;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
- <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="package-plus" style="width:19px;height:19px; color:#CD7C32;"></i> Terima Stok</h2>
+ <h2 style="margin:0; font-size:18px; color:#101010; display:flex; align-items:center; gap:8px;"><i data-lucide="package-plus" style="width:19px;height:19px; color:var(--primary-500,#CD7C32);"></i> Terima Stok</h2>
  <button type="button" onclick="window.__receiveClose()" aria-label="Tutup" style="background:none; border:none; cursor:pointer; color:#9a948b; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
  </div>
  <p style="font-size:12.5px; color:#6B7280; margin:0 0 14px;">Setiap penerimaan cipta satu <strong>batch</strong> ikut tarikh stok mendarat. FIFO — batch mendarat paling awal dijual dulu.</p>
@@ -3814,7 +3816,7 @@
  <label class="small-lbl">Rujukan DO / Nota (pilihan)</label>
  <input type="text" id="receiveRef" class="login-input" placeholder="DO-2024-04-24 / shipment…">
 
- <button type="button" id="receiveSaveBtn" onclick="window.__receiveSave()" class="login-btn" style="background:#CD7C32; width:100%; padding:15px; font-size:15px; margin-top:16px;"><i data-lucide="check" style="width:15px;height:15px;vertical-align:-2px;"></i> Terima &amp; Cipta Batch</button>
+ <button type="button" id="receiveSaveBtn" onclick="window.__receiveSave()" class="login-btn" style="background:var(--primary-500,#CD7C32); width:100%; padding:15px; font-size:15px; margin-top:16px;"><i data-lucide="check" style="width:15px;height:15px;vertical-align:-2px;"></i> Terima &amp; Cipta Batch</button>
  </div>
  </div>
 
@@ -3826,7 +3828,7 @@
  #stockReconSection .data-table th.l { text-align:left; }
  #stockReconSection .data-table td { text-align:right; padding:8px 10px; border-bottom:1px solid #EEE; white-space:nowrap; }
  #stockReconSection .data-table td.l { text-align:left; }
- #stockReconSection .data-table tbody tr:hover { background:#fff8f0; }
+ #stockReconSection .data-table tbody tr:hover { background:var(--primary-50,#FFF8F0); }
  #stockReconSection .recon-gap { font-weight:800; }
  </style>
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="scale" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Rekonsiliasi Stok</h2>
@@ -3873,7 +3875,7 @@
  .calc-subnav{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border-color);}
  .calc-subtab{display:inline-flex; align-items:center; gap:7px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:700; color:#6B7280; background:#F3F4F6; border:1px solid #E5E7EB; border-radius:10px; padding:9px 16px; cursor:pointer; transition:background .12s, color .12s, box-shadow .12s;}
  .calc-subtab:hover{background:#EFE7DC; color:#7A4A1E;}
- .calc-subtab--active{background:#CD7C32; color:#fff; border-color:#CD7C32; box-shadow:0 2px 6px -1px rgba(205,124,50,.45);}
+ .calc-subtab--active{background:var(--primary-500,#CD7C32); color:#fff; border-color:var(--primary-500,#CD7C32); box-shadow:0 2px 6px -1px rgba(var(--primary-rgb,205,124,50),.45);}
  </style>
  <div id="shipmentCalcSection" class="tab-section" data-skip-title-sync style="display:none;">
  <div class="rp-wrap">
@@ -3904,7 +3906,7 @@
  <select id="scShipmentPicker" class="login-input" style="margin:0;" onchange="scLoadSelected()"><option value="">— Pilih shipment —</option></select>
  </div>
  <button onclick="scNewShipment()" style="padding:8px 14px; font-size:13px; font-weight:600; background:#F3F4F6; color:#374151; border:1px solid #E5E7EB; border-radius:8px; cursor:pointer;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:-2px;"></i> Shipment Baru</button>
- <button onclick="scSaveShipment()" style="padding:8px 16px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan Shipment</button>
+ <button onclick="scSaveShipment()" style="padding:8px 16px; font-size:13px; font-weight:700; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="save" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan Shipment</button>
  <button onclick="scDeleteShipment()" style="padding:8px 12px; font-size:13px; font-weight:600; background:#fff; color:#B23A2E; border:1px solid #ECD2CA; border-radius:8px; cursor:pointer;">Padam</button>
  </div>
 
@@ -3923,7 +3925,7 @@
  <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Bila bayar ke bank, kadar RMB boleh lain dari kadar masa order. Masuk kadar sebenar untuk tahu untung atau rugi FX pada order ni.</p>
  <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
  <div><label class="small-lbl">Kadar Sebenar Dibayar (RMB→RM)</label><input id="scRatePaid" type="number" step="0.0001" class="login-input" style="margin:0; width:150px;" placeholder="0.63" oninput="window.scRenderFx()"></div>
- <button onclick="window.scSaveFx()" style="padding:8px 14px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:7px; cursor:pointer;"><i data-lucide="save" style="width:13px;height:13px;vertical-align:-2px;"></i> Simpan Kadar</button>
+ <button onclick="window.scSaveFx()" style="padding:8px 14px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid var(--primary-500,#CD7C32); border-radius:7px; cursor:pointer;"><i data-lucide="save" style="width:13px;height:13px;vertical-align:-2px;"></i> Simpan Kadar</button>
  </div>
  <div id="scFxBody"><div style="font-size:12px; color:#9CA3AF;">Masuk kadar order (Exchange) + produk + kadar sebenar dibayar.</div></div>
  </div>
@@ -3948,7 +3950,7 @@
  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
  <div style="display:flex; gap:8px; flex-wrap:wrap;">
  <button onclick="scAddRow()" style="padding:7px 12px; font-size:12px; font-weight:600; background:#F3F4F6; color:#374151; border:1px solid #E5E7EB; border-radius:7px; cursor:pointer;"><i data-lucide="plus" style="width:13px;height:13px;vertical-align:-2px;"></i> Tambah Produk</button>
- <button onclick="document.getElementById('scCatalogFile').click()" style="padding:7px 12px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:7px; cursor:pointer;"><i data-lucide="file-up" style="width:13px;height:13px;vertical-align:-2px;"></i> Import Katalog (CSV)</button>
+ <button onclick="document.getElementById('scCatalogFile').click()" style="padding:7px 12px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid var(--primary-500,#CD7C32); border-radius:7px; cursor:pointer;"><i data-lucide="file-up" style="width:13px;height:13px;vertical-align:-2px;"></i> Import Katalog (CSV)</button>
  <input type="file" id="scCatalogFile" accept=".csv,text/csv,.txt" style="display:none;" onchange="window.scCatalogPick(this)">
  </div>
  <span id="scTotalQty" style="font-size:12px; color:#374151; font-weight:600;">Jumlah Qty: 0</span>
@@ -3957,18 +3959,18 @@
  </div>
 
  <!-- p1_931 — Banding Harga Supplier -->
- <div class="admin-card" style="border-top:4px solid #CD7C32; margin-bottom:16px;">
+ <div class="admin-card" style="border-top:4px solid var(--primary-500,#CD7C32); margin-bottom:16px;">
  <h3 style="margin:0 0 4px;">Banding Harga Supplier</h3>
  <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Bila SKU sama pernah dibeli dari beberapa supplier (dari shipment lalu), banding kos RMB &amp; tunjuk mana paling murah. Bantu pilih supplier sebelum buat PO.</p>
  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
  <input id="scCompareSearch" class="login-input" style="margin:0; flex:1; min-width:200px;" placeholder="Cari SKU / nama produk…" oninput="window.scCompareSearch()">
- <button onclick="window.scCompareCurrentOrder()" style="padding:8px 14px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:7px; cursor:pointer; white-space:nowrap;"><i data-lucide="git-compare" style="width:13px;height:13px;vertical-align:-2px;"></i> Banding produk dalam order ni</button>
+ <button onclick="window.scCompareCurrentOrder()" style="padding:8px 14px; font-size:12px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid var(--primary-500,#CD7C32); border-radius:7px; cursor:pointer; white-space:nowrap;"><i data-lucide="git-compare" style="width:13px;height:13px;vertical-align:-2px;"></i> Banding produk dalam order ni</button>
  </div>
  <div id="scCompareBody"><div style="font-size:12px; color:#9CA3AF;">Taip SKU atau tekan "Banding produk dalam order ni".</div></div>
  </div>
 
  <!-- (2) Shipping Calculator Method -->
- <div class="admin-card" style="border-top:4px solid #CD7C32; margin-bottom:16px;">
+ <div class="admin-card" style="border-top:4px solid var(--primary-500,#CD7C32); margin-bottom:16px;">
  <h3 style="margin:0 0 4px;">2. Shipping Calculator Method</h3>
  <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
  <div><label class="small-lbl">Kos Shipping shipment (RM)</label><input id="scShipping" type="number" step="0.01" class="login-input" style="margin:0; width:160px;" placeholder="1000" oninput="scCompute()"></div>
@@ -3977,7 +3979,7 @@
  </div>
 
  <!-- (3) Inventory Calculator Method (part-timer) -->
- <div class="admin-card" style="border-top:4px solid #B86A26; margin-bottom:16px;">
+ <div class="admin-card" style="border-top:4px solid var(--primary-600,#B86A26); margin-bottom:16px;">
  <h3 style="margin:0 0 4px;">3. Inventory Calculator Method (Part-timer)</h3>
  <div style="display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
  <div><label class="small-lbl">Kos Part-timer (RM)</label><input id="scParttimer" type="number" step="0.01" class="login-input" style="margin:0; width:160px;" placeholder="340" oninput="scCompute()"></div>
@@ -4003,9 +4005,9 @@
  </table>
  </div>
  <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
- <button onclick="scApplyCostPrice()" style="padding:9px 18px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="tag" style="width:14px;height:14px;vertical-align:-2px;"></i> Apply ke cost_price</button>
+ <button onclick="scApplyCostPrice()" style="padding:9px 18px; font-size:13px; font-weight:700; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="tag" style="width:14px;height:14px;vertical-align:-2px;"></i> Apply ke cost_price</button>
  <button onclick="scApplyBatch()" style="padding:9px 18px; font-size:13px; font-weight:700; background:#101010; color:#fff; border:none; border-radius:8px; cursor:pointer;"><i data-lucide="package-plus" style="width:14px;height:14px;vertical-align:-2px;"></i> Rekod jadi kos batch (stock-in)</button>
- <button onclick="window.__calcLogLanded('manual')" style="padding:9px 18px; font-size:13px; font-weight:700; background:#fff; color:#7A4A1E; border:1px solid #CD7C32; border-radius:8px; cursor:pointer;"><i data-lucide="history" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan ke Log Formula</button>
+ <button onclick="window.__calcLogLanded('manual')" style="padding:9px 18px; font-size:13px; font-weight:700; background:#fff; color:#7A4A1E; border:1px solid var(--primary-500,#CD7C32); border-radius:8px; cursor:pointer;"><i data-lucide="history" style="width:14px;height:14px;vertical-align:-2px;"></i> Simpan ke Log Formula</button>
  </div>
  <p style="font-size:11px; color:#9CA3AF; margin:8px 0 0;">Setiap "Apply" auto-rekod dalam Log Formula (formula + input + tarikh). Tekan "Simpan ke Log" kalau nak rekod pengiraan tanpa apply.</p>
  </div>
@@ -4041,8 +4043,8 @@
  </div>
  <div style="display:flex; gap:10px; justify-content:flex-end; padding:16px 22px; border-top:1px solid #ECECEC; flex-wrap:wrap;">
  <button onclick="window.scCatalogClose()" style="padding:9px 16px; font-size:13px; font-weight:600; background:#fff; color:#6B7280; border:1px solid #E5E7EB; border-radius:8px; cursor:pointer;">Batal</button>
- <button onclick="window.scCatalogImport('append')" style="padding:9px 16px; font-size:13px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid #CD7C32; border-radius:8px; cursor:pointer;">Tambah ke senarai</button>
- <button onclick="window.scCatalogImport('replace')" style="padding:9px 16px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer;">Ganti semua</button>
+ <button onclick="window.scCatalogImport('append')" style="padding:9px 16px; font-size:13px; font-weight:700; background:#F3EEE7; color:#7A4A1E; border:1px solid var(--primary-500,#CD7C32); border-radius:8px; cursor:pointer;">Tambah ke senarai</button>
+ <button onclick="window.scCatalogImport('replace')" style="padding:9px 16px; font-size:13px; font-weight:700; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; cursor:pointer;">Ganti semua</button>
  </div>
  </div>
  </div>
@@ -4063,7 +4065,7 @@
  <style>
  /* p1_396 — Arkib table: berjalur (zebra) + lapang/kemas */
  .sc-arch{border-collapse:separate; border-spacing:0; width:100%; font-size:12px;}
- .sc-arch thead th{background:#F3EEE7; color:#5A3413; font-weight:700; padding:12px 10px; border:none; border-bottom:2px solid #E6D9C7; white-space:nowrap; position:sticky; top:0; z-index:2;}
+ .sc-arch thead th{background:#F3EEE7; color:var(--primary-900,#5A3413); font-weight:700; padding:12px 10px; border:none; border-bottom:2px solid #E6D9C7; white-space:nowrap; position:sticky; top:0; z-index:2;}
  .sc-arch tbody td{padding:11px 10px; border:none; border-bottom:1px solid #F0EAE2; vertical-align:middle;}
  .sc-arch tbody tr.sc-row:hover > td{background:#FFF1E2;}
  .sc-arch tbody tr.sc-row{transition:background .12s;}
@@ -4495,7 +4497,7 @@
  <div id="scsAssignList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:6px; margin:6px 0 14px; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#FAFAFA;">
  <p style="color:#9CA3AF; font-size:12px; padding:20px; text-align:center; grid-column:1/-1;">Memuatkan staff…</p>
  </div>
- <div id="scsPreview" style="background:#fff8f0; border:1px solid #fed7aa; padding:12px; border-radius:8px; margin-bottom:14px; font-size:12.5px; color:#075985;">
+ <div id="scsPreview" style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-200,#FED7AA); padding:12px; border-radius:8px; margin-bottom:14px; font-size:12.5px; color:#075985;">
  <strong>Preview:</strong> Tiada SKU dipilih lagi.
  </div>
  <div style="display:flex; gap:8px;">
@@ -4714,7 +4716,7 @@
  <div class="rp-kpi"><div class="rp-kpi__lbl">Unit Masuk (Input)</div><div class="rp-kpi__val" id="ihKpiIn" style="color:#345E43;">—</div></div>
  <div class="rp-kpi"><div class="rp-kpi__lbl">Unit Keluar (Output)</div><div class="rp-kpi__val" id="ihKpiOut" style="color:#7C2A20;">—</div></div>
  <div class="rp-kpi"><div class="rp-kpi__lbl">Net (Masuk − Keluar)</div><div class="rp-kpi__val" id="ihKpiNet">—</div></div>
- <div class="rp-kpi"><div class="rp-kpi__lbl">Stok Semasa (Live)</div><div class="rp-kpi__val" id="ihKpiStock" style="color:#CD7C32;">—</div><div class="rp-kpi__lbl" id="ihKpiStockHint" style="margin-top:2px; font-weight:600;">semua produk</div></div>
+ <div class="rp-kpi"><div class="rp-kpi__lbl">Stok Semasa (Live)</div><div class="rp-kpi__val" id="ihKpiStock" style="color:var(--primary-500,#CD7C32);">—</div><div class="rp-kpi__lbl" id="ihKpiStockHint" style="margin-top:2px; font-weight:600;">semua produk</div></div>
  </div>
  </div>
 
@@ -5152,8 +5154,8 @@
  </div>
 
  <!-- Form -->
- <div class="rp-section" style="border-left:4px solid #cd7c32; background:rgba(205, 124, 50,.04);">
- <h3 class="rp-section__title" style="color:#CD7C32;"><i data-lucide="edit-3" style="width:14px;height:14px;"></i> Isi Data Minggu Ni</h3>
+ <div class="rp-section" style="border-left:4px solid var(--primary-500,#CD7C32); background:rgba(var(--primary-rgb,205,124,50),.04);">
+ <h3 class="rp-section__title" style="color:var(--primary-500,#CD7C32);"><i data-lucide="edit-3" style="width:14px;height:14px;"></i> Isi Data Minggu Ni</h3>
  <p class="rp-section__help">Anggar je kalau tak ingat tepat. Compare vs minggu lepas dalam history table di bawah.</p>
 
  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
@@ -5272,7 +5274,7 @@
  <div><label class="small-lbl">Dari Tarikh</label><input type="date" id="ledgerDateFrom" class="login-input" style="margin:0;" onchange="renderSalesLedger()"></div>
  <div><label class="small-lbl">Hingga Tarikh</label><input type="date" id="ledgerDateTo" class="login-input" style="margin:0;" onchange="renderSalesLedger()"></div>
  <div style="display:flex; align-items:end;">
- <button class="btn-success" onclick="window.exportSalesLedgerCsv()" style="width:100%; background:#cd7c32; border-color:#cd7c32;"> Export CSV (filter)</button>
+ <button class="btn-success" onclick="window.exportSalesLedgerCsv()" style="width:100%; background:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32);"> Export CSV (filter)</button>
  </div>
  </div>
  <p id="ledgerSummaryLine" style="font-size:12px; color:#666; margin-top:10px;"></p>
@@ -5510,7 +5512,7 @@
  <!-- p1_613 — Tab Finance: pautan ke 10cc (sumber kewangan rasmi) -->
  <div id="anTabFinance" style="display:none;">
  <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px; padding:30px 26px; max-width:640px; text-align:center; margin:14px auto;">
- <div style="width:56px; height:56px; border-radius:14px; background:rgba(205,124,50,0.12); display:flex; align-items:center; justify-content:center; margin:0 auto 16px;"><i data-lucide="wallet" style="width:28px; height:28px; color:var(--primary);"></i></div>
+ <div style="width:56px; height:56px; border-radius:14px; background:rgba(var(--primary-rgb,205,124,50),0.12); display:flex; align-items:center; justify-content:center; margin:0 auto 16px;"><i data-lucide="wallet" style="width:28px; height:28px; color:var(--primary);"></i></div>
  <h3 style="margin:0 0 8px; font-size:20px; font-weight:800;">Kewangan diuruskan di 10cc</h3>
  <p style="font-size:13px; color:var(--text-muted); line-height:1.65; margin:0 0 20px;">Untung Rugi, COGS, aliran tunai, gaji & cukai semua di <strong>10cc Command Centre</strong> — sumber kewangan rasmi 10 CAMP. POS fokus pada operasi jualan & stok sahaja, supaya angka kewangan tak bercanggah.</p>
  <a href="https://10cc.10camp.com" target="_blank" rel="noopener" class="btn btn--primary" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;"><i data-lucide="external-link" style="width:16px; height:16px;"></i> Buka 10cc Command Centre</a>
@@ -5528,11 +5530,11 @@
  <div class="sa-kpi"><div class="sa-kpi__lbl">Order (30 hari)</div><div class="sa-kpi__val" id="confOrders">0</div></div>
  </div>
  <!-- p1_457 — Financial = 10cc (source of truth). POS tak kira untung/margin (data finance dah pindah 10cc). Bridge dalam pembinaan. -->
- <div style="background:#FAF2E6; border:1px solid #FED7AA; border-radius:12px; padding:16px; margin-bottom:18px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
+ <div style="background:#FAF2E6; border:1px solid var(--primary-200,#FED7AA); border-radius:12px; padding:16px; margin-bottom:18px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
  <i data-lucide="git-merge" style="width:22px; height:22px; color:#9E7016; flex:0 0 auto;"></i>
  <div style="flex:1; min-width:220px;">
- <div style="font-weight:800; font-size:14px; color:#7c4a1a;">Untung · Margin · COGS · P&L → 10cc Command Centre</div>
- <div style="font-size:12.5px; color:#7c4a1a; margin-top:4px;">Financial rasmi 10 CAMP diurus di <strong>10cc</strong> (bukan POS). Data finance POS dah dipindah ke 10cc, jadi POS tak papar margin/untung di sini supaya tak menyesatkan. Sambungan <strong>POS ↔ 10cc (financial alignment)</strong> dalam pembinaan.</div>
+ <div style="font-weight:800; font-size:14px; color:var(--primary-800,#7C4A1A);">Untung · Margin · COGS · P&L → 10cc Command Centre</div>
+ <div style="font-size:12.5px; color:var(--primary-800,#7C4A1A); margin-top:4px;">Financial rasmi 10 CAMP diurus di <strong>10cc</strong> (bukan POS). Data finance POS dah dipindah ke 10cc, jadi POS tak papar margin/untung di sini supaya tak menyesatkan. Sambungan <strong>POS ↔ 10cc (financial alignment)</strong> dalam pembinaan.</div>
  </div>
  <a href="https://10cc.10camp.com" target="_blank" rel="noopener" class="sy-btn" style="font-size:12px; white-space:nowrap; text-decoration:none; flex:0 0 auto;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Buka 10cc</a>
  </div>
@@ -5663,7 +5665,7 @@
  #abandonedCheckoutsSection .data-table tbody td { border-bottom:1px solid #E5E7EB; }
  #abandonedCheckoutsSection .data-table thead th { border-bottom:2px solid #D1D5DB; }
  #abandonedCheckoutsSection .data-table tbody tr:nth-child(even) { background:#FAFBFC; }
- #abandonedCheckoutsSection .data-table tbody tr:hover { background:#fff8f0 !important; }
+ #abandonedCheckoutsSection .data-table tbody tr:hover { background:var(--primary-50,#FFF8F0) !important; }
  </style>
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="shopping-cart" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> Belum Bayar / Abandoned</h2>
  <p style="color:#6B7280; font-size:13px; margin:2px 0 14px;">Order yang dah dibuat tapi customer belum bayar (status <strong>Belum Bayar</strong>). Follow up untuk recover jualan. <em>10 CAMP takde web cart — sumber = order belum bayar dari semua channel.</em></p>
@@ -5700,7 +5702,7 @@
  #allOrdersSection .data-table thead th { border-bottom:2px solid #D1D5DB; }
  #allOrdersSection .data-table tbody tr { transition:background .12s; }
  #allOrdersSection .data-table tbody tr:nth-child(even) { background:#FAFBFC; }
- #allOrdersSection .data-table tbody tr:hover { background:#fff8f0 !important; }
+ #allOrdersSection .data-table tbody tr:hover { background:var(--primary-50,#FFF8F0) !important; }
  </style>
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="list-ordered" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> All Orders</h2>
 
@@ -5777,9 +5779,9 @@
  </div>
 
  <!-- p1_331 — bar tindakan bulk (muncul bila ada order dipilih) -->
- <div id="aoBulkBar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; background:#fff8f0; border:1px solid #fed7aa; border-radius:10px; padding:10px 14px; margin-bottom:14px;">
- <span style="font-size:13px; font-weight:700; color:#7c4a1a;"><strong id="aoBulkCount">0</strong> order dipilih</span>
- <span style="width:1px; height:20px; background:#fed7aa;"></span>
+ <div id="aoBulkBar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-200,#FED7AA); border-radius:10px; padding:10px 14px; margin-bottom:14px;">
+ <span style="font-size:13px; font-weight:700; color:var(--primary-800,#7C4A1A);"><strong id="aoBulkCount">0</strong> order dipilih</span>
+ <span style="width:1px; height:20px; background:var(--primary-200,#FED7AA);"></span>
  <label class="small-lbl" style="margin:0;">Tukar status:</label>
  <select id="aoBulkStatusSel" class="login-input" style="margin:0; width:auto; min-width:150px;">
  <option value="To Fulfil">Perlu Pack</option>
@@ -5832,7 +5834,7 @@
  #customersSection .data-table thead th { border-bottom:2px solid #D1D5DB; padding:9px 10px; white-space:nowrap; }
  #customersSection .data-table tbody td { border-bottom:1px solid #E5E7EB; padding:7px 10px; }
  #customersSection .data-table tbody tr:nth-child(even){ background:#FAFBFC; }
- #customersSection .data-table tbody tr:hover { background:#fff8f0 !important; cursor:pointer; }
+ #customersSection .data-table tbody tr:hover { background:var(--primary-50,#FFF8F0) !important; cursor:pointer; }
  </style>
  <!-- p1_244: data-skip-title-sync supaya switchHub tak append "Customer Lookup" ke end h2 (bug: span tak detected as text node, append node ke akhir h2). -->
  <h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="users" style="width:22px; height:22px; vertical-align:middle; margin-right:6px;"></i> <span data-i18n="cr_title">Customer Database (CRM)</span></h2>
@@ -5953,7 +5955,7 @@
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:8px;">
  <h2 style="margin:0;" data-i18n="mk_promo_title">Promotion &amp; Voucher Manager</h2>
  <div style="display:flex; gap:8px;">
- <button class="btn-success" onclick="window.openFestivalTemplates()" style="background:#cd7c32; border-color:#cd7c32;" data-i18n="mk_promo_festival_btn">Festival Templates</button>
+ <button class="btn-success" onclick="window.openFestivalTemplates()" style="background:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32);" data-i18n="mk_promo_festival_btn">Festival Templates</button>
  <button class="btn-primary" onclick="if(typeof renderPromotionsV2==='function')renderPromotionsV2()" data-i18n="mk_promo_refresh_btn">Refresh</button>
  </div>
  </div>
@@ -6242,6 +6244,30 @@
  <div class="set-card__icon"><i data-lucide="flask-conical" style="width:18px; height:18px;"></i></div>
  <div class="set-card__title" data-i18n="set_card_test_title">System Test Guide</div>
  <div class="set-card__sub" data-i18n="set_card_test_sub">POS system test guide for the owner to verify each module flow.</div>
+ </div>
+
+ <!-- p1_1071 — Tema Warna (per-device, localStorage) -->
+ <div class="set-card">
+ <div class="set-card__icon"><i data-lucide="palette" style="width:18px; height:18px;"></i></div>
+ <div class="set-card__title" data-i18n="set_card_theme_title">Tema Warna</div>
+ <div class="set-card__sub" data-i18n="set_card_theme_sub">Pilih tema untuk device ini. Warna status (merah/hijau/amber) kekal sama.</div>
+ <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+ <button type="button" class="theme-swatch" data-theme-key="official" onclick="window.__setTheme('official')" title="10CAMP Official">
+ <span class="theme-swatch__dot" style="background:#CD7C32;"></span><span class="theme-swatch__lbl">Official</span>
+ </button>
+ <button type="button" class="theme-swatch" data-theme-key="flame" onclick="window.__setTheme('flame')" title="10CAMP Flame">
+ <span class="theme-swatch__dot" style="background:#D9481F;"></span><span class="theme-swatch__lbl">Flame</span>
+ </button>
+ <button type="button" class="theme-swatch" data-theme-key="ocean" onclick="window.__setTheme('ocean')" title="10CAMP Ocean">
+ <span class="theme-swatch__dot" style="background:#2F6F94;"></span><span class="theme-swatch__lbl">Ocean</span>
+ </button>
+ <button type="button" class="theme-swatch" data-theme-key="forest" onclick="window.__setTheme('forest')" title="10CAMP Forest">
+ <span class="theme-swatch__dot" style="background:#3E7C4F;"></span><span class="theme-swatch__lbl">Forest</span>
+ </button>
+ <button type="button" class="theme-swatch" data-theme-key="desert" onclick="window.__setTheme('desert')" title="10CAMP Desert">
+ <span class="theme-swatch__dot" style="background:#B3924B;"></span><span class="theme-swatch__lbl">Desert</span>
+ </button>
+ </div>
  </div>
  </div>
  </div>
@@ -6583,7 +6609,7 @@
 .cm-stat.lbl { font-size:11px; text-transform:uppercase; letter-spacing:.5px; font-weight:700; color:var(--text-muted); margin-bottom:6px; }
 .cm-stat.val { font-size:22px; font-weight:900; color:#111; line-height:1.1; }
 .cm-stat.refund.val { color:#B23A2E; }
-.cm-stat.commission { background:linear-gradient(135deg, var(--primary) 0%, #b86a26 100%); border:none; }
+.cm-stat.commission { background:linear-gradient(135deg, var(--primary) 0%, var(--primary-600,#B86A26) 100%); border:none; }
 .cm-stat.commission.lbl,.cm-stat.commission.val { color:#fff; }
 .cm-stat.commission.lbl { color:rgba(255,255,255,.85); }
  @media (max-width:768px) {.cm-stat-grid { grid-template-columns:1fr 1fr; } }
@@ -7012,7 +7038,7 @@
  <!-- Action bar (p1_312 redesign) -->
  <div id="bulkActionBar" style="position:sticky; top:0; z-index:50; background:#FFF; border:1px solid var(--border-color); border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,.04);">
  <div style="font-size:13px; color:#374151;">
- <strong id="bulkSelectedCount" style="color:#CD7C32;">0</strong> <span data-i18n="bk_selected_label">dipilih</span>
+ <strong id="bulkSelectedCount" style="color:var(--primary-500,#CD7C32);">0</strong> <span data-i18n="bk_selected_label">dipilih</span>
  <span style="color:#9CA3AF; margin-left:8px;" id="bulkVisibleCount"></span>
  </div>
  <div style="display:flex; gap:7px; flex-wrap:wrap; align-items:center;">
@@ -7025,15 +7051,15 @@
  <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:14px;">
  <button onclick="document.getElementById('bulkFieldPanel').style.display='none'; bulkAction('publish')" style="padding:8px 10px; font-size:12px; font-weight:600; background:#EEF3EC; color:#345E43; border:1px solid #C9DEC2; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;"><i data-lucide="eye" style="width:13px;height:13px;"></i> Publish</button>
  <button onclick="document.getElementById('bulkFieldPanel').style.display='none'; bulkAction('unpublish')" style="padding:8px 10px; font-size:12px; font-weight:600; background:#F9FAFB; color:#374151; border:1px solid #E5E7EB; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;"><i data-lucide="eye-off" style="width:13px;height:13px;"></i> Unpublish</button>
- <button onclick="document.getElementById('bulkFieldPanel').style.display='none'; bulkOpenPriceModal()" style="padding:8px 10px; font-size:12px; font-weight:600; background:#FEF7ED; color:#9A3412; border:1px solid #FED7AA; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;" title="Tukar harga produk dipilih secara % atau RM"><i data-lucide="percent" style="width:13px;height:13px;"></i> Set Harga</button>
- <button onclick="document.getElementById('bulkFieldPanel').style.display='none'; bulkOpenCategoryModal()" style="padding:8px 10px; font-size:12px; font-weight:600; background:#fff8f0; color:#7c4a1a; border:1px solid #ffedd5; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;"><i data-lucide="folder" style="width:13px;height:13px;"></i> Tukar Kategori</button>
+ <button onclick="document.getElementById('bulkFieldPanel').style.display='none'; bulkOpenPriceModal()" style="padding:8px 10px; font-size:12px; font-weight:600; background:#FEF7ED; color:#9A3412; border:1px solid var(--primary-200,#FED7AA); border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;" title="Tukar harga produk dipilih secara % atau RM"><i data-lucide="percent" style="width:13px;height:13px;"></i> Set Harga</button>
+ <button onclick="document.getElementById('bulkFieldPanel').style.display='none'; bulkOpenCategoryModal()" style="padding:8px 10px; font-size:12px; font-weight:600; background:var(--primary-50,#FFF8F0); color:var(--primary-800,#7C4A1A); border:1px solid var(--primary-100,#FFEDD5); border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:5px;"><i data-lucide="folder" style="width:13px;height:13px;"></i> Tukar Kategori</button>
  </div>
  <div style="border-top:1px solid #F0F0F0; margin:0 0 12px;"></div>
  <div style="font-weight:800; font-size:14px; color:#101010;">Pilih Kolum</div>
  <div style="font-size:11.5px; color:#9CA3AF; margin:2px 0 4px;">Pilih kolum nak tunjuk &amp; edit dalam jadual. Tetapan disimpan automatik.</div>
  <div id="bulkFieldPanelBody"></div>
  <div style="display:flex; justify-content:flex-end; margin-top:16px;">
- <button onclick="bulkConfirmFields()" style="padding:8px 18px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer;">Sahkan</button>
+ <button onclick="bulkConfirmFields()" style="padding:8px 18px; font-size:13px; font-weight:700; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; cursor:pointer;">Sahkan</button>
  </div>
  </div>
  </span>
@@ -7043,7 +7069,7 @@
  <span id="bulkEditHint" style="font-size:11px; color:#9CA3AF;"></span>
  <!-- p1_660 — butang khusus tukar + push harga ke Shopee/TikTok (jelas, betul-betul push) -->
  <button onclick="window.openMpPush && window.openMpPush()" style="padding:8px 16px; font-size:13px; font-weight:700; background:#fff; color:#111827; border:1.5px solid #111827; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Tukar harga di Shopee/TikTok & push terus ke Seller Centre"><i data-lucide="upload-cloud" style="width:15px;height:15px;"></i> Tukar Harga Marketplace</button>
- <button onclick="window.bulkSaveEdits && window.bulkSaveEdits()" style="padding:8px 18px; font-size:13px; font-weight:700; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Simpan semua field yang diedit"><i data-lucide="save" style="width:15px;height:15px;"></i> Simpan Perubahan</button>
+ <button onclick="window.bulkSaveEdits && window.bulkSaveEdits()" style="padding:8px 18px; font-size:13px; font-weight:700; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Simpan semua field yang diedit"><i data-lucide="save" style="width:15px;height:15px;"></i> Simpan Perubahan</button>
  </div>
  </div>
 
@@ -7065,7 +7091,7 @@
      <div style="display:flex; justify-content:space-between; color:#6B7280;"><span>Floor minimum (35%)</span><b id="mpPushFloor" style="color:#9E7016;"></b></div>
     </div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
-     <div><label style="font-size:11.5px; font-weight:700; color:#EE4D2D;">Harga Shopee (RM)</label><input id="mpPushShopee" type="number" step="0.01" style="width:100%; box-sizing:border-box; padding:9px; border:1.5px solid #FED7AA; border-radius:8px; font-size:15px; margin-top:4px;"></div>
+     <div><label style="font-size:11.5px; font-weight:700; color:#EE4D2D;">Harga Shopee (RM)</label><input id="mpPushShopee" type="number" step="0.01" style="width:100%; box-sizing:border-box; padding:9px; border:1.5px solid var(--primary-200,#FED7AA); border-radius:8px; font-size:15px; margin-top:4px;"></div>
      <div><label style="font-size:11.5px; font-weight:700; color:#111827;">Harga TikTok (RM)</label><input id="mpPushTiktok" type="number" step="0.01" style="width:100%; box-sizing:border-box; padding:9px; border:1.5px solid #D1D5DB; border-radius:8px; font-size:15px; margin-top:4px;"></div>
     </div>
     <p style="font-size:11px; color:#9CA3AF; margin:0 0 16px;">Kosongkan untuk tak ubah channel itu. Harga bawah floor 35% auto-naik ke floor.</p>
@@ -7141,13 +7167,13 @@
  </div>
  
  <!-- Velocity Analysis launcher (p8_1+p8_2) -->
- <div class="admin-card" style="padding:14px; margin-bottom:14px; background:linear-gradient(135deg, #fff8f0, #ffedd5); border-left:4px solid #cd7c32;">
+ <div class="admin-card" style="padding:14px; margin-bottom:14px; background:linear-gradient(135deg, var(--primary-50,#FFF8F0), var(--primary-100,#FFEDD5)); border-left:4px solid var(--primary-500,#CD7C32);">
  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
  <div>
  <h3 style="margin:0 0 4px;" data-i18n="wh_velocity_title">Velocity Analysis (auto-tune reorder points)</h3>
  <p style="font-size:12px; color:#666; margin:0;" data-i18n="wh_velocity_sub">Computes per-SKU sales velocity from history → suggests reorder_point + reorder_qty. Recommend run sebulan sekali.</p>
  </div>
- <button class="btn-primary" onclick="window.openVelocityAnalysis()" style="background:#cd7c32; border-color:#cd7c32;" data-i18n="wh_velocity_btn">Run Velocity Analysis</button>
+ <button class="btn-primary" onclick="window.openVelocityAnalysis()" style="background:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32);" data-i18n="wh_velocity_btn">Run Velocity Analysis</button>
  </div>
  </div>
 
@@ -7170,7 +7196,7 @@
  #masterProductFormCard details.mp-adv[open] > summary{border-bottom:1px solid #F3F4F6; margin-bottom:16px;}
  #masterProductFormCard details.mp-adv > div.mp-adv-body{padding-bottom:18px;}
  /* p1_720 — Variants builder (Option type/value chips + jadual auto-jana) */
- #masterProductFormCard .mp-link-add{background:none; border:none; color:#CD7C32; font-size:12px; font-weight:700; cursor:pointer; padding:0;}
+ #masterProductFormCard .mp-link-add{background:none; border:none; color:var(--primary-500,#CD7C32); font-size:12px; font-weight:700; cursor:pointer; padding:0;}
  #masterProductFormCard .mp-link-add:hover{text-decoration:underline;}
  #masterProductFormCard .mp-link-del{background:none; border:none; color:#B23A2E; font-size:12px; font-weight:700; cursor:pointer; padding:0;}
  #masterProductFormCard .mp-link-del:hover{text-decoration:underline;}
@@ -7180,7 +7206,7 @@
  #masterProductFormCard .mp-ot-del{background:none; border:1px solid #EEEEEE; border-radius:8px; width:36px; height:36px; margin-top:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#B23A2E; flex:none;}
  #masterProductFormCard .mp-ot-del:hover{background:#FEF2F2; border-color:#FCA5A5;}
  #masterProductFormCard .mp-chipbox{min-height:38px; border:1px solid #E5E7EB; border-radius:8px; background:#fff; padding:5px 8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; cursor:text;}
- #masterProductFormCard .mp-chipbox:focus-within{border-color:#CD7C32; box-shadow:0 0 0 2px rgba(205,124,50,.12);}
+ #masterProductFormCard .mp-chipbox:focus-within{border-color:var(--primary-500,#CD7C32); box-shadow:0 0 0 2px rgba(var(--primary-rgb,205,124,50),.12);}
  #masterProductFormCard .mp-chip{display:inline-flex; align-items:center; gap:5px; background:#F1F5F9; border:1px solid #E2E8F0; border-radius:6px; padding:2px 7px; font-size:12px; color:#101010;}
  #masterProductFormCard .mp-chip i{width:12px; height:12px; cursor:pointer; color:#6B7280;}
  #masterProductFormCard .mp-chip i:hover{color:#B23A2E;}
@@ -7188,13 +7214,13 @@
  #masterProductFormCard .mp-vtable{width:100%; border-collapse:collapse; font-size:12px; overflow-x:auto; display:block;}
  #masterProductFormCard .mp-vtable thead th{text-align:left; font-size:10.5px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:.3px; padding:8px 8px; border-bottom:1px solid #EEEEEE; white-space:nowrap;}
  #masterProductFormCard .mp-vtable tbody td{padding:6px 8px; border-bottom:1px solid #F3F4F6; vertical-align:middle;}
- #masterProductFormCard .mp-vtable .mp-vlabel{font-weight:700; color:#CD7C32; white-space:nowrap;}
+ #masterProductFormCard .mp-vtable .mp-vlabel{font-weight:700; color:var(--primary-500,#CD7C32); white-space:nowrap;}
  #masterProductFormCard .mp-vtable input{width:100%; min-width:90px; border:1px solid #E5E7EB; border-radius:6px; padding:6px 7px; font-size:12px;}
- #masterProductFormCard .mp-vtable input:focus{border-color:#CD7C32; outline:none;}
+ #masterProductFormCard .mp-vtable input:focus{border-color:var(--primary-500,#CD7C32); outline:none;}
  /* p1_724 — highlight field wajib kosong + sticky save */
  #masterProductFormCard .mp-invalid{border-color:#E11D48 !important; box-shadow:0 0 0 2px rgba(225,29,72,.12) !important;}
  #masterProductFormCard .mp-savebar{position:sticky; bottom:0; z-index:5; background:linear-gradient(180deg, rgba(250,246,239,0) 0%, #FAF6EF 32%); padding:14px 0 4px; margin-top:4px;}
- #masterProductFormCard .mp-savebar button{width:100%; background:#CD7C32; color:#fff; border:none; font-size:14px; font-weight:800; padding:13px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px rgba(205,124,50,.25);}
+ #masterProductFormCard .mp-savebar button{width:100%; background:var(--primary-500,#CD7C32); color:#fff; border:none; font-size:14px; font-weight:800; padding:13px; border-radius:10px; cursor:pointer; box-shadow:0 2px 8px rgba(var(--primary-rgb,205,124,50),.25);}
  #masterProductFormCard .mp-savebar button:hover{background:#B96E2C;}
  @media(max-width:900px){#masterProductFormCard .mp-grid{grid-template-columns:1fr;} #masterProductFormCard .mp-ot-grid{grid-template-columns:1fr auto;}}
  </style>
@@ -7219,7 +7245,7 @@
  <input type="text" id="mpSearchSku" class="login-input" placeholder="Taip SKU... e.g. BD005" style="margin:0;" list="mpAllSkusList" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.loadMasterProductForEdit();}">
  <datalist id="mpAllSkusList"></datalist>
  </div>
- <button onclick="window.loadMasterProductForEdit()" style="margin:0; padding:10px 16px; background:#CD7C32; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Load</button>
+ <button onclick="window.loadMasterProductForEdit()" style="margin:0; padding:10px 16px; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;"></i> Load</button>
  <button onclick="window.clearMpForm()" style="margin:0; padding:10px 16px; background:#fff; color:#374151; border:1px solid #E5E7EB; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="rotate-ccw" style="width:14px;height:14px;vertical-align:-2px;"></i> Reset</button>
  <button onclick="window.deleteMasterProduct()" style="margin:0; padding:10px 16px; background:#fff; color:#B23A2E; border:1px solid #F0C6BF; border-radius:8px; cursor:pointer; font-weight:700;"><i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:-2px;"></i> Padam</button>
  </div>
@@ -7236,7 +7262,7 @@
  </div>
  <div style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 8px;">
  <span class="small-lbl" style="margin:0;">Description</span>
- <button type="button" onclick="window.mpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#fff; color:#CD7C32; border:1px solid #E7C8A8; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
+ <button type="button" onclick="window.mpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#fff; color:var(--primary-500,#CD7C32); border:1px solid #E7C8A8; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
  </div>
  <textarea id="mpDescription" class="login-input" rows="4" placeholder="Tent ringan untuk hiking 2 orang, double-wall, 3-season..."></textarea>
  <!-- p1_718 — seksyen Images: upload fail / drag-drop / Add from URL + galeri -->
@@ -7244,14 +7270,14 @@
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
  <label class="small-lbl" style="margin:0;">Gambar Produk</label>
  <span style="font-size:11.5px;">
- <label for="mpFileInput" style="color:#CD7C32; font-weight:700; cursor:pointer;">Add images</label>
+ <label for="mpFileInput" style="color:var(--primary-500,#CD7C32); font-weight:700; cursor:pointer;">Add images</label>
  <span style="color:#D1D5DB; margin:0 4px;">·</span>
- <a onclick="window.mpAddImageUrl()" style="color:#CD7C32; font-weight:700; cursor:pointer;">Add from URL</a>
+ <a onclick="window.mpAddImageUrl()" style="color:var(--primary-500,#CD7C32); font-weight:700; cursor:pointer;">Add from URL</a>
  </span>
  </div>
  <input type="file" id="mpFileInput" accept="image/*" multiple style="display:none;" onchange="window.mpUploadImages(this)">
- <div id="mpDropZone" onclick="document.getElementById('mpFileInput').click()" ondragover="event.preventDefault(); this.style.borderColor='#CD7C32'; this.style.background='#FBF3EA';" ondragleave="this.style.borderColor='#D1D5DB'; this.style.background='#FAFAF9';" ondrop="window.mpDropImages(event)" style="border:1.5px dashed #D1D5DB; border-radius:10px; background:#FAFAF9; padding:24px; text-align:center; cursor:pointer;">
- <div style="font-size:13px; color:#6B7280;"><i data-lucide="upload" style="width:16px;height:16px;vertical-align:-3px;"></i> <strong style="color:#CD7C32;">Upload files</strong> atau drag &amp; drop</div>
+ <div id="mpDropZone" onclick="document.getElementById('mpFileInput').click()" ondragover="event.preventDefault(); this.style.borderColor='var(--primary-500,#CD7C32)'; this.style.background='#FBF3EA';" ondragleave="this.style.borderColor='#D1D5DB'; this.style.background='#FAFAF9';" ondrop="window.mpDropImages(event)" style="border:1.5px dashed #D1D5DB; border-radius:10px; background:#FAFAF9; padding:24px; text-align:center; cursor:pointer;">
+ <div style="font-size:13px; color:#6B7280;"><i data-lucide="upload" style="width:16px;height:16px;vertical-align:-3px;"></i> <strong style="color:var(--primary-500,#CD7C32);">Upload files</strong> atau drag &amp; drop</div>
  <div style="font-size:10.5px; color:#9CA3AF; margin-top:4px;">JPG, PNG, WebP — max 8MB setiap gambar. Gambar pertama = cover.</div>
  </div>
  <div id="mpImageGallery" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
@@ -7482,16 +7508,16 @@
  </div>
 
  <!-- STOCK MOVEMENT LEDGER (NEW) -->
- <div class="admin-card" style="border-top:4px solid #cd7c32; padding:20px; margin-bottom:20px; animation:fadeIn 0.5s;">
+ <div class="admin-card" style="border-top:4px solid var(--primary-500,#CD7C32); padding:20px; margin-bottom:20px; animation:fadeIn 0.5s;">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
  <h3 style="margin:0;"> Lejar Pergerakan Stok (Movement History)</h3>
- <button class="btn-success" style="font-size:10px; padding:5px 10px; margin:0; background:#a05f22; border-color:#a05f22;" onclick="window.downloadLedgerCsv()"> Eksport CSV</button>
+ <button class="btn-success" style="font-size:10px; padding:5px 10px; margin:0; background:var(--primary-700,#A05F22); border-color:var(--primary-700,#A05F22);" onclick="window.downloadLedgerCsv()"> Eksport CSV</button>
  </div>
  <p style="font-size:12px; color:#888; margin-bottom:15px;">Log terperinci bagi setiap pergerakan inventori (Inbound, Outbound, Stock Take).</p>
  
  <div class="table-responsive" style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;">
  <table class="data-table" style="font-size:12px;">
- <thead style="position:sticky; top:0; background:#fff8f0; color:#7c4a1a;">
+ <thead style="position:sticky; top:0; background:var(--primary-50,#FFF8F0); color:var(--primary-800,#7C4A1A);">
  <tr>
  <th>Tarikh & Masa</th>
  <th>Staf Bertugas</th>
@@ -7571,7 +7597,7 @@
  <div class="admin-card" style="border-top:4px solid var(--primary); margin-top:20px; margin-bottom:20px;">
  <div style="display:flex; justify-content:space-between; align-items:center;">
  <h3> Master System Management</h3>
- <span style="font-size:10px; background:#cd7c32; color:white; padding:3px 8px; border-radius:12px;">Superior Access Only</span>
+ <span style="font-size:10px; background:var(--primary-500,#CD7C32); color:white; padding:3px 8px; border-radius:12px;">Superior Access Only</span>
  </div>
  <p style="font-size:12px; color:#888; margin-top:10px; margin-bottom:15px;">Akses sulit pengarah untuk token pangkalan data (Supabase), sandaran keseluruhan, dan pelepasan (override) keselamatan hub lain.</p>
  <div style="display:flex; gap:10px;">
@@ -7663,7 +7689,7 @@
  <!-- GLOBAL STAFF DIRECTORY -->
  <div class="table-responsive" style="border:1px solid var(--border-color); margin-top:20px;">
  <table class="data-table" style="font-size:12px; width:100%; border-collapse:collapse; text-align:left;">
- <thead style="background:#cd7c32; color:#fff;">
+ <thead style="background:var(--primary-500,#CD7C32); color:#fff;">
  <tr><th>CMP ID</th><th>Tanda Nama (POS)</th><th>Nama Individu Sepenuhnya</th><th>Tarikh Mula Kem</th><th>Tempoh Perkhidmatan (Semasa)</th></tr>
  </thead>
  <tbody id="staffDirectoryTbody">
@@ -7693,16 +7719,16 @@
  </div>
 
  <!-- HR AUDIT LOG -->
- <div class="admin-card" style="border-top:4px solid #cd7c32; margin-top:20px;">
+ <div class="admin-card" style="border-top:4px solid var(--primary-500,#CD7C32); margin-top:20px;">
  <div style="display:flex; justify-content:space-between; align-items:center;">
- <h3 style="color:#5a3413;"> Audit Log HR (Keputusan Jadual)</h3>
- <button onclick="if(typeof renderAuditLogs === 'function') renderAuditLogs()" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#cd7c32; border-color:#cd7c32;">Refresh Log</button>
+ <h3 style="color:var(--primary-900,#5A3413);"> Audit Log HR (Keputusan Jadual)</h3>
+ <button onclick="if(typeof renderAuditLogs === 'function') renderAuditLogs()" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32);">Refresh Log</button>
  </div>
  <p style="font-size:12px; color:#888; margin-bottom:15px; margin-top:5px;">Senarai sejarah kelulusan (Approve) atau penolakan (Reject) permohonan staf.</p>
  
- <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid #ffedd5;">
+ <div class="table-responsive" style="max-height:250px; overflow-y:auto; border:1px solid var(--primary-100,#FFEDD5);">
  <table class="data-table" style="font-size:12px; width:100%; border-collapse:collapse; text-align:left;">
- <thead style="position:sticky; top:0; background:#ffedd5; color:#5a3413; z-index:1;">
+ <thead style="position:sticky; top:0; background:var(--primary-100,#FFEDD5); color:var(--primary-900,#5A3413); z-index:1;">
  <tr><th>Masa &amp; Tarikh Tindakan</th><th>Admin Bertugas</th><th>Tindakan / Subjek</th><th>Cuti / Penerangan</th></tr>
  </thead>
  <tbody id="auditLogsTbody">
@@ -7733,22 +7759,22 @@
  </div>
  </div><div id="salesAnalyticsSection" class="tab-section" style="display: none;">
  <!-- Graf Analisis Teras Jualan -->
- <div class="admin-card" style="border-top:4px solid #cd7c32; margin-bottom:20px;">
+ <div class="admin-card" style="border-top:4px solid var(--primary-500,#CD7C32); margin-bottom:20px;">
  <div style="display:flex; justify-content:space-between; align-items:center;">
  <h3> Graf Prestasi Jualan</h3>
- <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph(window.currentGraphMode || '7days')" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:#cd7c32; border-color:#cd7c32;">⟳ Segarkan Graf</button>
+ <button onclick="if(typeof renderSalesGraph === 'function') renderSalesGraph(window.currentGraphMode || '7days')" class="btn-primary" style="font-size:10px; padding:4px 8px; margin:0; background:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32);">⟳ Segarkan Graf</button>
  </div>
  
  <!-- Chart Filters -->
  <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:15px; margin-bottom:10px; font-size:11px;">
- <button onclick="changeGraphMode('7days')" id="btnGraph7" class="btn-secondary" style="margin:0; padding:4px 10px; color:#fff; background-color:#cd7c32; border-color:#cd7c32;">7 Hari</button>
+ <button onclick="changeGraphMode('7days')" id="btnGraph7" class="btn-secondary" style="margin:0; padding:4px 10px; color:#fff; background-color:var(--primary-500,#CD7C32); border-color:var(--primary-500,#CD7C32);">7 Hari</button>
  <button onclick="changeGraphMode('thismonth')" id="btnGraphMonth" class="btn-secondary" style="margin:0; padding:4px 10px;">Bulan Ini</button>
  <button onclick="changeGraphMode('thisyear')" id="btnGraphYear" class="btn-secondary" style="margin:0; padding:4px 10px;">Tahun Ini</button>
  <button onclick="changeGraphMode('custom')" id="btnGraphCustom" class="btn-secondary" style="margin:0; padding:4px 10px;">Custom</button>
  </div>
  
  <!-- Custom Range Selector (Hidden By Default) -->
- <div id="graphCustomRangeBox" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; background:#fff8f0; padding:10px; border-radius:6px; margin-bottom:15px;">
+ <div id="graphCustomRangeBox" style="display:none; gap:10px; flex-wrap:wrap; align-items:center; background:var(--primary-50,#FFF8F0); padding:10px; border-radius:6px; margin-bottom:15px;">
  <input type="date" id="graphStartDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
  <span>-</span>
  <input type="date" id="graphEndDate" class="login-input" style="max-width:120px; font-size:11px; margin:0; padding:4px 8px;">
@@ -8308,7 +8334,7 @@
  <div id="winbackPanel" style="background:#fff; border:1px solid #EDE3D4; border-radius:14px; padding:18px 20px; margin-bottom:20px;">
  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
  <div style="display:flex; align-items:center; gap:10px;">
- <i data-lucide="mail" style="width:18px; height:18px; color:#CD7C32;"></i>
+ <i data-lucide="mail" style="width:18px; height:18px; color:var(--primary-500,#CD7C32);"></i>
  <div>
  <div style="font-weight:800; font-size:15px; color:#101010;">Email Win-Back</div>
  <div style="font-size:12px; color:#6B7280;">Auto-email pelanggan lama (ada email, tak beli lama) → beli semula di Shopee / TikTok / WhatsApp.</div>
@@ -8326,7 +8352,7 @@
  </div>
  </div>
  <div id="wbStats" style="display:flex; gap:22px; flex-wrap:wrap; margin-bottom:14px;">
- <div><div style="font-size:26px; font-weight:800; color:#CD7C32;" id="wbCount">—</div><div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:.4px;">Boleh dihantar</div></div>
+ <div><div style="font-size:26px; font-weight:800; color:var(--primary-500,#CD7C32);" id="wbCount">—</div><div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:.4px;">Boleh dihantar</div></div>
  </div>
  <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
  <div style="flex:1; min-width:280px;">
@@ -8337,7 +8363,7 @@
  <div style="font-size:11px; color:#9CA3AF; text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;">Contoh sasaran</div>
  <div id="wbSample" style="font-size:12px; color:#4A4238; line-height:1.5; margin-bottom:16px;">—</div>
  <button id="wbDryBtn" onclick="window.__winbackDry()" class="re-btn re-btn--ghost" style="width:100%; margin-bottom:8px; justify-content:center;"><i data-lucide="flask-conical" style="width:14px; height:14px;"></i> <span>Dry-run (tak hantar)</span></button>
- <button id="wbLiveBtn" onclick="window.__winbackLive()" class="re-btn" style="width:100%; justify-content:center; background:#CD7C32; color:#fff; border:none;"><i data-lucide="send" style="width:14px; height:14px;"></i> <span>Hantar LIVE</span></button>
+ <button id="wbLiveBtn" onclick="window.__winbackLive()" class="re-btn" style="width:100%; justify-content:center; background:var(--primary-500,#CD7C32); color:#fff; border:none;"><i data-lucide="send" style="width:14px; height:14px;"></i> <span>Hantar LIVE</span></button>
  <div style="font-size:11px; color:#9CA3AF; margin-top:8px; line-height:1.5;">Dry-run dulu untuk semak. Live hantar sebenar via email — perlu sahkan.</div>
  <div id="wbResult" style="font-size:12px; color:#4A4238; margin-top:10px;"></div>
  </div>
@@ -8466,9 +8492,9 @@
  <h3 class="card-title" style="margin-bottom:10px;" data-i18n="mk_wa_card_preview">Message preview</h3>
  <p style="font-size:11px; color:#666; margin-bottom:6px;" data-i18n="mk_wa_vars">Variables: {name}, {points}, {total_spent}, {last_order_days}, {promo_code}</p>
  <textarea id="waMessage" class="cp-input" rows="9" style="font-family:monospace; font-size:12px;" oninput="window.__waPreviewMessage(true)"></textarea>
- <div style="margin-top:10px; padding:10px; background:#fff8f0; border-radius:6px; font-size:12px;">
+ <div style="margin-top:10px; padding:10px; background:var(--primary-50,#FFF8F0); border-radius:6px; font-size:12px;">
  <strong data-i18n="mk_wa_sample">Sample for first match:</strong>
- <div id="waSamplePreview" style="margin-top:4px; white-space:pre-wrap; color:#7c4a1a;"></div>
+ <div id="waSamplePreview" style="margin-top:4px; white-space:pre-wrap; color:var(--primary-800,#7C4A1A);"></div>
  </div>
  </div>
  </div>
@@ -8527,7 +8553,7 @@
  position:sticky; top:0; z-index:5; background:var(--bg-color); padding:10px 4px; border-bottom:1px solid var(--border-color); }
 /* p1_137 — flash highlight bila deep-link arrive */
 .deliverable.rm-flash { animation: rmFlash 1.8s ease-out; }
-@keyframes rmFlash { 0% { box-shadow:0 0 0 4px rgba(205,124,50,.5); transform:translateX(0); } 50% { box-shadow:0 0 0 8px rgba(205,124,50,.25); } 100% { box-shadow:0 0 0 0 rgba(205,124,50,0); } }
+@keyframes rmFlash { 0% { box-shadow:0 0 0 4px rgba(var(--primary-rgb,205,124,50),.5); transform:translateX(0); } 50% { box-shadow:0 0 0 8px rgba(var(--primary-rgb,205,124,50),.25); } 100% { box-shadow:0 0 0 0 rgba(var(--primary-rgb,205,124,50),0); } }
 .roadmap-toolbar button {
  background:#fff; border:1px solid var(--border-color);
  color:var(--text-main); padding:7px 14px;
@@ -8956,7 +8982,7 @@
  font-weight:700; font-size:13px; font-family:inherit;
  display:inline-flex; align-items:center; gap:6px; transition:all.15s;
  }
-.sy-btn:hover { background:#A05F22; transform:translateY(-1px); }
+.sy-btn:hover { background:var(--primary-700,#A05F22); transform:translateY(-1px); }
 .sy-btn.secondary { background:#fff; color:var(--text-main); border:1px solid var(--border-color); }
 .sy-btn.secondary:hover { background:var(--bg-color); border-color:var(--primary); color:var(--primary); }
 .sy-btn.success { background:var(--success); }
@@ -8970,15 +8996,15 @@
  background:var(--bg-color); border:2px solid var(--border-color);
  border-radius:12px; padding:16px;
  }
-.sy-sim-pane.user-a { border-color:#cd7c32; }
-.sy-sim-pane.user-b { border-color:#cd7c32; }
+.sy-sim-pane.user-a { border-color:var(--primary-500,#CD7C32); }
+.sy-sim-pane.user-b { border-color:var(--primary-500,#CD7C32); }
 .sy-sim-pane.pane-head {
  display:flex; align-items:center; justify-content:space-between;
  font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px;
  margin-bottom:10px;
  }
-.sy-sim-pane.user-a.pane-head { color:#cd7c32; }
-.sy-sim-pane.user-b.pane-head { color:#cd7c32; }
+.sy-sim-pane.user-a.pane-head { color:var(--primary-500,#CD7C32); }
+.sy-sim-pane.user-b.pane-head { color:var(--primary-500,#CD7C32); }
 .sy-sim-pane.version-tag {
  font-size:10px; padding:2px 8px; border-radius:50px;
  background:rgba(0,0,0,.06); color:var(--text-muted); font-weight:700;
@@ -9034,8 +9060,8 @@
  transition:all.15s; line-height:1.3;
  }
 .sy-resolve-btns button:hover { border-color:var(--primary); }
-.sy-resolve-btns button.theirs { border-color:#cd7c32; color:#cd7c32; }
-.sy-resolve-btns button.mine { border-color:#cd7c32; color:#cd7c32; }
+.sy-resolve-btns button.theirs { border-color:var(--primary-500,#CD7C32); color:var(--primary-500,#CD7C32); }
+.sy-resolve-btns button.mine { border-color:var(--primary-500,#CD7C32); color:var(--primary-500,#CD7C32); }
 .sy-resolve-btns button.merge { border-color:var(--success); color:var(--success); }
 
 .sy-log-table { width:100%; border-collapse:collapse; font-size:12.5px; }
@@ -9045,8 +9071,8 @@
  font-size:10px; padding:2px 7px; border-radius:50px; font-weight:700;
  text-transform:uppercase; letter-spacing:.3px;
  }
-.sy-log-table.resolution-pill.theirs { background:rgba(205, 124, 50,.12); color:#cd7c32; }
-.sy-log-table.resolution-pill.mine { background:rgba(205, 124, 50,.12); color:#cd7c32; }
+.sy-log-table.resolution-pill.theirs { background:rgba(var(--primary-rgb,205,124,50),.12); color:var(--primary-500,#CD7C32); }
+.sy-log-table.resolution-pill.mine { background:rgba(var(--primary-rgb,205,124,50),.12); color:var(--primary-500,#CD7C32); }
 .sy-log-table.resolution-pill.merge { background:rgba(16, 16, 16,.12); color:var(--success); }
 
 .sy-table-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
@@ -9141,12 +9167,12 @@
  <h3> The Problem</h3>
  <p class="sub">Tanpa sync guard:</p>
  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; font-size:12.5px;">
- <div style="padding:14px; background:rgba(205, 124, 50,.06); border-radius:10px; border-left:3px solid #cd7c32;">
- <strong style="color:#cd7c32;">10:00 — Aiman</strong><br>
+ <div style="padding:14px; background:rgba(var(--primary-rgb,205,124,50),.06); border-radius:10px; border-left:3px solid var(--primary-500,#CD7C32);">
+ <strong style="color:var(--primary-500,#CD7C32);">10:00 — Aiman</strong><br>
  Loads customer "Faris" record on his iPad
  </div>
- <div style="padding:14px; background:rgba(205, 124, 50,.06); border-radius:10px; border-left:3px solid #cd7c32;">
- <strong style="color:#cd7c32;">10:01 — Hakim</strong><br>
+ <div style="padding:14px; background:rgba(var(--primary-rgb,205,124,50),.06); border-radius:10px; border-left:3px solid var(--primary-500,#CD7C32);">
+ <strong style="color:var(--primary-500,#CD7C32);">10:01 — Hakim</strong><br>
  Loads same record on his phone
  </div>
  <div style="padding:14px; background:rgba(192, 57, 43,.06); border-radius:10px; border-left:3px solid var(--danger);">
@@ -9472,8 +9498,8 @@
  + '<p id="sgcfSub" style="color:#6F6F6F; font-size:13px; margin-bottom:14px;"></p>'
  + '<table id="sgcfDiff" style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px;"></table>'
  + '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">'
- + '<button id="sgcfTheirs" style="padding:11px 12px; border:1px solid #cd7c32; color:#cd7c32; background:#fff; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; line-height:1.3;"> Take Theirs<br><span style="font-size:10px; opacity:.8; font-weight:500;">Discard your changes</span></button>'
- + '<button id="sgcfMine" style="padding:11px 12px; border:1px solid #cd7c32; color:#cd7c32; background:#fff; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; line-height:1.3;"> Take Mine<br><span style="font-size:10px; opacity:.8; font-weight:500;">Force overwrite</span></button>'
+ + '<button id="sgcfTheirs" style="padding:11px 12px; border:1px solid var(--primary-500,#CD7C32); color:var(--primary-500,#CD7C32); background:#fff; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; line-height:1.3;"> Take Theirs<br><span style="font-size:10px; opacity:.8; font-weight:500;">Discard your changes</span></button>'
+ + '<button id="sgcfMine" style="padding:11px 12px; border:1px solid var(--primary-500,#CD7C32); color:var(--primary-500,#CD7C32); background:#fff; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; line-height:1.3;"> Take Mine<br><span style="font-size:10px; opacity:.8; font-weight:500;">Force overwrite</span></button>'
  + '<button id="sgcfMerge" style="padding:11px 12px; border:1px solid #101010; color:#101010; background:#fff; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; line-height:1.3;"> Smart Merge<br><span style="font-size:10px; opacity:.8; font-weight:500;">Keep both, mine wins</span></button>'
  + '</div></div>';
  document.body.appendChild(modal);
@@ -9484,7 +9510,7 @@
  const theirs = opts.theirs || {};
  const mine = opts.mine || {};
  const allKeys = Array.from(new Set([...Object.keys(theirs),...Object.keys(mine)])).filter(k => k !== 'version' && k !== 'created_at' && k !== 'updated_at');
- let html = '<thead><tr><th style="padding:8px 10px; border:1px solid #E2E2E2; background:#F7F5F1; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#6F6F6F; text-align:left;">Field</th><th style="padding:8px 10px; border:1px solid #E2E2E2; background:#F7F5F1; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#cd7c32; text-align:left;">Theirs (server)</th><th style="padding:8px 10px; border:1px solid #E2E2E2; background:#F7F5F1; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#cd7c32; text-align:left;">Yours (you)</th></tr></thead><tbody>';
+ let html = '<thead><tr><th style="padding:8px 10px; border:1px solid #E2E2E2; background:#F7F5F1; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#6F6F6F; text-align:left;">Field</th><th style="padding:8px 10px; border:1px solid #E2E2E2; background:#F7F5F1; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--primary-500,#CD7C32); text-align:left;">Theirs (server)</th><th style="padding:8px 10px; border:1px solid #E2E2E2; background:#F7F5F1; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--primary-500,#CD7C32); text-align:left;">Yours (you)</th></tr></thead><tbody>';
  allKeys.forEach(k => {
  const tv = theirs[k];
  const mv = mine[k];
@@ -9637,7 +9663,7 @@
  };
  function flashSimToast(label, msg){
  const flash = document.createElement('div');
- const bg = label==='A' ? '#cd7c32' : '#cd7c32';
+ const bg = label==='A' ? 'var(--primary-500,#CD7C32)' : 'var(--primary-500,#CD7C32)';
  flash.style.cssText = 'position:fixed; top:20px; right:20px; background:'+bg+'; color:#fff; padding:10px 16px; border-radius:8px; z-index:9999; font-weight:700; box-shadow:0 4px 16px rgba(0,0,0,.2); font-size:13px;';
  flash.textContent = 'User '+label+': '+msg;
  document.body.appendChild(flash);
@@ -9932,7 +9958,7 @@
 .sh-stat.sub { font-size:11px; color:var(--text-muted); margin-top:3px; }
 .sh-stat[data-pm="cash"] { border-left:3px solid var(--success); }
 .sh-stat[data-pm="card"] { border-left:3px solid var(--info); }
-.sh-stat[data-pm="ewallet"] { border-left:3px solid #a05f22; }
+.sh-stat[data-pm="ewallet"] { border-left:3px solid var(--primary-700,#A05F22); }
 .sh-stat[data-pm="online"] { border-left:3px solid var(--warning); }
 .sh-stat[data-pm="total"] { border-left:3px solid var(--primary); background:linear-gradient(135deg, #fff, var(--primary-soft, #FBEFE2)); }
 
@@ -9943,7 +9969,7 @@
  font-weight:700; font-size:13.5px; font-family:inherit;
  display:inline-flex; align-items:center; gap:8px; transition:all.15s;
  }
-.sh-btn:hover { background:#A05F22; transform:translateY(-1px); }
+.sh-btn:hover { background:var(--primary-700,#A05F22); transform:translateY(-1px); }
 .sh-btn.success { background:var(--success); }
 .sh-btn.success:hover { background:#3F7350; }
 .sh-btn.danger { background:var(--danger); }
@@ -9963,14 +9989,14 @@
  border-bottom:1px solid var(--border-color);
  }
 .sh-history-table tbody td { padding:11px 12px; border-bottom:1px solid var(--border-color); }
-.sh-history-table tbody tr:hover { background:rgba(205,124,50,.03); }
+.sh-history-table tbody tr:hover { background:rgba(var(--primary-rgb,205,124,50),.03); }
 .sh-variance-pill {
  display:inline-flex; align-items:center;
  padding:2px 9px; border-radius:50px;
  font-size:11px; font-weight:800;
  }
 .sh-variance-pill.zero { background:rgba(16, 16, 16,.12); color:var(--success); }
-.sh-variance-pill.over { background:rgba(205, 124, 50,.12); color:var(--info); }
+.sh-variance-pill.over { background:rgba(var(--primary-rgb,205,124,50),.12); color:var(--info); }
 .sh-variance-pill.short { background:rgba(192, 57, 43,.12); color:var(--danger); }
 
  /* Modal */
@@ -9991,7 +10017,7 @@
  width:100%; padding:10px 12px; border:1px solid var(--border-color);
  border-radius:8px; font-size:14px; font-family:inherit;
  }
-.sh-modal input:focus,.sh-modal textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(205,124,50,.12); }
+.sh-modal input:focus,.sh-modal textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb,205,124,50),.12); }
 .sh-modal.field { margin-bottom:14px; }
 .sh-modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
 
@@ -10012,7 +10038,7 @@
  margin-top:10px;
  }
 .sh-variance-display.zero { background:rgba(16, 16, 16,.1); color:var(--success); }
-.sh-variance-display.over { background:rgba(205, 124, 50,.1); color:var(--info); }
+.sh-variance-display.over { background:rgba(var(--primary-rgb,205,124,50),.1); color:var(--info); }
 .sh-variance-display.short { background:rgba(192, 57, 43,.1); color:var(--danger); }
 .sh-variance-display.label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; opacity:.8; margin-bottom:4px; display:block; }
 
@@ -10566,7 +10592,7 @@
  }
 .sm-stat.num { font-size:24px; font-weight:800; color:var(--primary); line-height:1; letter-spacing:-1px; }
 .sm-stat.lbl { font-size:10px; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-top:4px; }
-.sm-stat[data-role="superior"].num { color:#a05f22; }
+.sm-stat[data-role="superior"].num { color:var(--primary-700,#A05F22); }
 .sm-stat[data-role="mgmt"].num { color:var(--info); }
 .sm-stat[data-role="inventory"].num { color:var(--warning); }
 .sm-stat[data-role="sales"].num { color:var(--success); }
@@ -10587,7 +10613,7 @@
  font-weight:700; font-size:13px; font-family:inherit;
  display:inline-flex; align-items:center; gap:6px; transition:all.15s;
  }
-.sm-btn:hover { background:#A05F22; transform:translateY(-1px); }
+.sm-btn:hover { background:var(--primary-700,#A05F22); transform:translateY(-1px); }
 .sm-btn-secondary { background:#fff; color:var(--text-main); border:1px solid var(--border-color); }
 .sm-btn-secondary:hover { background:var(--bg-color); border-color:var(--primary); color:var(--primary); }
 .sm-btn-danger { background:var(--danger); }
@@ -10603,7 +10629,7 @@
  }
 .sm-table tbody td { padding:12px 14px; border-bottom:1px solid var(--border-color); vertical-align:middle; }
 .sm-table tbody tr:last-child td { border-bottom:none; }
-.sm-table tbody tr:hover { background:rgba(205,124,50,.03); }
+.sm-table tbody tr:hover { background:rgba(var(--primary-rgb,205,124,50),.03); }
 .sm-table tbody td.actions { text-align:right; white-space:nowrap; }
 .sm-table.role-pill {
  display:inline-flex; align-items:center; gap:5px;
@@ -10611,8 +10637,8 @@
  font-size:10px; font-weight:800; letter-spacing:.5px;
  text-transform:uppercase;
  }
-.sm-table.role-pill[data-r="superior"] { background:rgba(124,58,237,.12); color:#a05f22; }
-.sm-table.role-pill[data-r="mgmt"] { background:rgba(205, 124, 50,.12); color:var(--info); }
+.sm-table.role-pill[data-r="superior"] { background:rgba(124,58,237,.12); color:var(--primary-700,#A05F22); }
+.sm-table.role-pill[data-r="mgmt"] { background:rgba(var(--primary-rgb,205,124,50),.12); color:var(--info); }
 .sm-table.role-pill[data-r="inventory"] { background:rgba(245,158,11,.12); color:var(--warning); }
 .sm-table.role-pill[data-r="sales"] { background:rgba(16, 16, 16,.12); color:var(--success); }
 .sm-table.source-tag {
@@ -10626,7 +10652,7 @@
  color:var(--text-muted); padding:6px 8px; border-radius:6px;
  cursor:pointer; transition:all.15s; margin-left:4px;
  }
-.sm-icon-btn:hover { color:var(--primary); border-color:var(--primary); background:rgba(205,124,50,.06); }
+.sm-icon-btn:hover { color:var(--primary); border-color:var(--primary); background:rgba(var(--primary-rgb,205,124,50),.06); }
 .sm-icon-btn.danger:hover { color:var(--danger); border-color:var(--danger); background:rgba(192, 57, 43,.06); }
 
  /* Modal */
@@ -10635,14 +10661,14 @@
 .sz-th-corner,.sz-th-color,.sz-th-size { font-size:11px; font-weight:700; padding:6px 8px; background:#F9FAFB; border:1px solid #E5E7EB; text-align:center; }
 .sz-th-size { text-align:left; }
 .sz-cell { border:1px solid #E5E7EB; text-align:center; padding:10px 6px; cursor:pointer; transition:background .12s; }
-.sz-cell:not(.sz-oos):not(.sz-na):hover { background:#FEF3E2; border-color:#CD7C32; }
+.sz-cell:not(.sz-oos):not(.sz-na):hover { background:#FEF3E2; border-color:var(--primary-500,#CD7C32); }
 .sz-stock { font-size:12px; font-weight:700; display:block; }
 .sz-cell.sz-oos { background:#F9FAFB; color:#9CA3AF; cursor:not-allowed; }
 .sz-cell.sz-low .sz-stock { color:#B45309; }
 .sz-cell.sz-na { color:#D1D5DB; cursor:default; }
 .sz-chips { display:flex; flex-wrap:wrap; gap:8px; padding:4px 0; }
 .sz-chip { display:flex; flex-direction:column; align-items:center; border:1.5px solid #D1D5DB; background:#FFF; border-radius:10px; padding:10px 16px; cursor:pointer; min-width:72px; transition:border-color .12s, background .12s; }
-.sz-chip:not(.sz-chip--oos):hover { border-color:#CD7C32; background:#FEF3E2; }
+.sz-chip:not(.sz-chip--oos):hover { border-color:var(--primary-500,#CD7C32); background:#FEF3E2; }
 .sz-chip-label { font-size:13px; font-weight:700; }
 .sz-chip-stock { font-size:10px; color:#6B7280; margin-top:3px; }
 .sz-chip--oos { opacity:.5; cursor:not-allowed; }
@@ -10672,7 +10698,7 @@
  border:1px solid var(--border-color); border-radius:8px;
  font-size:13.5px; font-family:inherit; background:#fff;
  }
-.sm-modal input:focus,.sm-modal select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(205,124,50,.12); }
+.sm-modal input:focus,.sm-modal select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb,205,124,50),.12); }
 .sm-modal.sm-field-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .sm-modal.hint { font-size:11px; color:var(--text-muted); margin-top:3px; }
 .sm-modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
@@ -10859,14 +10885,14 @@
  <label class="sm-mode-row" data-mode="operations" style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:#FFF; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer;">
  <input type="checkbox" id="smfMode_operations" style="width:16px; height:16px; margin-top:2px; cursor:pointer;">
  <span>
- <strong style="color:#cd7c32;"> Operasi</strong>
+ <strong style="color:var(--primary-500,#CD7C32);"> Operasi</strong>
  <div style="font-size:11px; color:#6B7280; margin-top:2px;">Inventory, PO, stock take, valuation</div>
  </span>
  </label>
  <label class="sm-mode-row" data-mode="manager" style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:#FFF; border:1px solid #E5E7EB; border-radius:6px; cursor:pointer;">
  <input type="checkbox" id="smfMode_manager" style="width:16px; height:16px; margin-top:2px; cursor:pointer;">
  <span>
- <strong style="color:#cd7c32;"> Pengurus</strong>
+ <strong style="color:var(--primary-500,#CD7C32);"> Pengurus</strong>
  <div style="font-size:11px; color:#6B7280; margin-top:2px;">Dashboard, CRM, promo, AI, settings</div>
  </span>
  </label>
@@ -11336,7 +11362,7 @@
  color:var(--text-muted); transition:all.15s; font-family:inherit;
  display:inline-flex; align-items:center; gap:6px;
  }
-.compl-tab:hover { color:var(--primary); background:rgba(205,124,50,.06); }
+.compl-tab:hover { color:var(--primary); background:rgba(var(--primary-rgb,205,124,50),.06); }
 .compl-tab.active { background:var(--primary); color:#fff; }
 .compl-tab.status-dot { width:8px; height:8px; border-radius:50%; background:var(--text-muted); }
 .compl-tab.active.status-dot { background:#fff; }
@@ -11362,7 +11388,7 @@
  background:#fff; transition:border-color.15s;
  }
 .compl-card.field input:focus,.compl-card.field select:focus,.compl-card.field textarea:focus {
- outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(205,124,50,.12);
+ outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb,205,124,50),.12);
  }
 .compl-card.hint { font-size:11px; color:var(--text-muted); margin-top:3px; }
 
@@ -11395,7 +11421,7 @@
  display:inline-flex; align-items:center; gap:6px;
  transition:all.15s;
  }
-.compl-btn:hover { background:#A05F22; transform:translateY(-1px); }
+.compl-btn:hover { background:var(--primary-700,#A05F22); transform:translateY(-1px); }
 .compl-btn-secondary { background:#fff; color:var(--text-main); border:1px solid var(--border-color); }
 .compl-btn-secondary:hover { background:var(--bg-color); border-color:var(--primary); color:var(--primary); }
 .compl-btn-danger { background:var(--danger); }
@@ -11439,7 +11465,7 @@
  display:flex; gap:12px; align-items:flex-start;
  margin-bottom:14px;
  }
-.compl-banner.info { background:rgba(205, 124, 50,.08); color:#7c4a1a; border:1px solid rgba(205, 124, 50,.2); }
+.compl-banner.info { background:rgba(var(--primary-rgb,205,124,50),.08); color:var(--primary-800,#7C4A1A); border:1px solid rgba(var(--primary-rgb,205,124,50),.2); }
 .compl-banner.warn { background:rgba(245,158,11,.08); color:#7A5410; border:1px solid rgba(245,158,11,.2); }
 .compl-banner.warn b { color:#5E3F0C; }
 .compl-banner i { flex-shrink:0; margin-top:2px; }
@@ -13165,7 +13191,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1051"></script>
+ <script src="app.js?v=1052"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>
@@ -13214,10 +13240,10 @@
  <!-- Card: Media -->
  <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
  <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
- <strong style="color:#202223;">Media <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></strong>
+ <strong style="color:#202223;">Media <span style="font-size:10px; font-weight:600; color:var(--primary-500,#CD7C32); background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></strong>
  <div style="display:flex; gap:16px; align-items:center;">
  <button id="pdpImportBtn" style="background:none; border:none; color:#EE4D2D; cursor:pointer; font-weight:700;" onclick="window.importPdpMediaFromMarketplace()" title="Tarik gambar dari Shopee/TikTok (produk kena dah di-map)"><i data-lucide="download-cloud" style="width:13px; height:13px; vertical-align:-2px;"></i> Import Shopee/TikTok</button>
- <button id="pdpUploadBtn" style="background:none; border:none; color:#CD7C32; cursor:pointer; font-weight:700;" onclick="document.getElementById('pdpMediaFile').click()"><i data-lucide="upload" style="width:13px; height:13px; vertical-align:-2px;"></i> Upload Gambar</button>
+ <button id="pdpUploadBtn" style="background:none; border:none; color:var(--primary-500,#CD7C32); cursor:pointer; font-weight:700;" onclick="document.getElementById('pdpMediaFile').click()"><i data-lucide="upload" style="width:13px; height:13px; vertical-align:-2px;"></i> Upload Gambar</button>
  <button style="background:none; border:none; color:#2c6ecb; cursor:pointer;" onclick="window.addPdpMedia()">Add URL</button>
  </div>
  </div>
@@ -13233,7 +13259,7 @@
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
  <strong style="color:#202223; font-size:13px;">Video produk <span style="font-size:10px; font-weight:600; color:#9b8b76;">(variant ini sahaja)</span></strong>
  <div style="display:flex; gap:16px; align-items:center;">
- <button id="pdpVideoUploadBtn" type="button" style="background:none; border:none; color:#CD7C32; cursor:pointer; font-weight:700;" onclick="document.getElementById('pdpVideoFile').click()"><i data-lucide="upload" style="width:13px; height:13px; vertical-align:-2px;"></i> Upload Video</button>
+ <button id="pdpVideoUploadBtn" type="button" style="background:none; border:none; color:var(--primary-500,#CD7C32); cursor:pointer; font-weight:700;" onclick="document.getElementById('pdpVideoFile').click()"><i data-lucide="upload" style="width:13px; height:13px; vertical-align:-2px;"></i> Upload Video</button>
  <button type="button" style="background:none; border:none; color:#2c6ecb; cursor:pointer;" onclick="window.addPdpVideoUrl()">Add URL</button>
  </div>
  </div>
@@ -13248,7 +13274,7 @@
  <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
  <strong style="color:#202223;">Variants</strong>
- <button type="button" onclick="window.pdpAddVariantOption()" style="background:#CD7C32; color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Variant</button>
+ <button type="button" onclick="window.pdpAddVariantOption()" style="background:var(--primary-500,#CD7C32); color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="plus" style="width:11px;height:11px;vertical-align:-1px;"></i> Tambah Variant</button>
  </div>
  <!-- p1_300 — sibling variants table (this product's variants, EasyStore-style) -->
  <div id="pdpSiblingVariants" style="margin-bottom:16px;"></div>
@@ -13289,11 +13315,11 @@
  <!-- p1_228 Card: Description -->
  <div style="background:#fff; border-radius:8px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
  <!-- p1_746 Product Name — nama produk tunggal dikongsi semua variant (istilah sama Shopee/TikTok) -->
- <label style="display:block; font-size:13px; color:#202223; margin-bottom:5px; font-weight:700;">Product Name <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></label>
+ <label style="display:block; font-size:13px; color:#202223; margin-bottom:5px; font-weight:700;">Product Name <span style="font-size:10px; font-weight:600; color:var(--primary-500,#CD7C32); background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></label>
  <input type="text" id="pdpProductName" class="login-input" placeholder="Nama produk untuk integrasi Shopee/TikTok — satu untuk semua variant">
  <div style="font-size:11px; color:#9CA3AF; margin:5px 0 16px;">Nama rasmi produk (satu, dikongsi semua variant) — guna istilah sama macam "Product Name" di Shopee/TikTok untuk integrasi. Berbeza dengan "Title" di atas (= tajuk variant, boleh beza ikut SKU).</div>
  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
- <strong style="color:#202223;">Description / Penerangan <span style="font-size:10px; font-weight:600; color:#CD7C32; background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></strong>
+ <strong style="color:#202223;">Description / Penerangan <span style="font-size:10px; font-weight:600; color:var(--primary-500,#CD7C32); background:#FAF6EF; border:1px solid #EADFD0; padding:1px 7px; border-radius:999px; vertical-align:middle;">dikongsi semua variant</span></strong>
  <button type="button" onclick="window.pdpCleanDescriptionHtml()" title="Strip HTML tags + EasyStore sheets data → plain text" style="background:#CE9420; color:#fff; border:none; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:11px; font-weight:700;"><i data-lucide="sparkles" style="width:11px;height:11px;vertical-align:-1px;"></i> Clean HTML</button>
  </div>
  <textarea id="pdpDescription" class="login-input" rows="5" placeholder="Penerangan produk untuk customer + staff..." style="resize:vertical;"></textarea>
@@ -13339,7 +13365,7 @@
  <select id="pdpTiktokMode"><option value="rm">RM (tetap)</option><option value="pct">% markup</option></select>
  <input type="number" id="pdpTiktokPrice" step="0.01">
  </div>
- <p style="font-size:12px; color:#6d7175; margin-top:4px; display:flex; align-items:center; gap:6px;"><i data-lucide="arrow-down-circle" style="width:14px; height:14px; flex-shrink:0; color:#CD7C32;"></i> Harga · Cost · Shopee · TikTok diset di <strong>jadual produk</strong> bahagian bawah (kad Variants).</p>
+ <p style="font-size:12px; color:#6d7175; margin-top:4px; display:flex; align-items:center; gap:6px;"><i data-lucide="arrow-down-circle" style="width:14px; height:14px; flex-shrink:0; color:var(--primary-500,#CD7C32);"></i> Harga · Cost · Shopee · TikTok diset di <strong>jadual produk</strong> bahagian bawah (kad Variants).</p>
  </div>
 
  <!-- Card: Metafields — p1_710 disorok (Zaid: tak guna; ID dikekal utk savePdpData) -->
