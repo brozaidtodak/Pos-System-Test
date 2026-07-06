@@ -100,6 +100,12 @@ exports.handler = async (event) => {
             // Insert; ignore-duplicates on mid so Meta retries don't double-store.
             if (rows.length) {
                 await sb('POST', '/meta_messages', rows, { Prefer: 'resolution=ignore-duplicates,return=minimal' });
+            } else {
+                // p1_1082 DEBUG (temporary): capture raw payload when nothing parsed, to learn Meta's exact shape.
+                await sb('POST', '/meta_messages', {
+                    channel: '_debug', thread_id: 'webhook_debug', direction: 'in',
+                    text: String(raw).slice(0, 500), mid: null, raw: body
+                }, { Prefer: 'return=minimal' });
             }
         } catch (e) {
             // Never 5xx to Meta or it will retry aggressively; log-and-ack.
