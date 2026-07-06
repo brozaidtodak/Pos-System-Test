@@ -43391,6 +43391,20 @@ window.__marginTagHtml = function(price, cost){
       })
       .catch(function(e){ window.showToast && showToast('Ralat: '+e,'error'); if(btn){ btn.disabled=false; btn.textContent='Sambung Meta'; } });
   };
+  // p1_1081 — token KEKAL: paste USER token dari Graph Explorer, server tukar jadi page token tak-luput.
+  window.__metaExchangeSave = function(btn){
+    var tok=(document.getElementById('metaUserToken')||{}).value||'';
+    if(!tok.trim()){ window.showToast && showToast('Tampal User Token dari Graph Explorer dulu','warn'); return; }
+    if(btn){ btn.disabled=true; btn.textContent='Menukar…'; }
+    fetch('/.netlify/functions/meta-settings', { method:'POST', headers: metaHdr({'Content-Type':'application/json'}), body: JSON.stringify({ exchange_user_token:tok.trim() }) })
+      .then(function(r){ return r.json(); })
+      .then(function(r){
+        if(r && r.ok){ window.showToast && showToast('Token KEKAL tersimpan: '+(r.page_name||r.page_id||'OK'),'success'); window.renderMetaInsights(); return; }
+        var msg = (r && r.error==='no_app_secret') ? 'META_APP_SECRET belum diset di Netlify env (lihat nota bawah)' : ((r&&(r.detail||r.error))||'gagal tukar token');
+        window.showToast && showToast('Gagal: '+msg,'error'); if(btn){ btn.disabled=false; btn.textContent='Tukar jadi Token Kekal'; }
+      })
+      .catch(function(e){ window.showToast && showToast('Ralat: '+e,'error'); if(btn){ btn.disabled=false; btn.textContent='Tukar jadi Token Kekal'; } });
+  };
   window.renderMetaInsights = function(){
     var u = window.currentUser || {};
     var isBoss = !!(typeof window.isBoss==='function' && window.isBoss(u));
@@ -43402,15 +43416,24 @@ window.__marginTagHtml = function(price, cost){
         if(!st || !st.connected){
           // BELUM SAMBUNG — kad panduan + (owner sahaja) borang tampal token.
           var connectForm = isBoss
-            ? card('Sambung Meta (owner)',
-                todo('Buka business.facebook.com → Business Settings → System Users → jana token untuk Page 10 CAMP (scope: pages_read_engagement, pages_show_list, read_insights; +instagram_basic kalau nak IG)')
+            ? card('Sambung Meta — Token Kekal (disyorkan)',
+                '<p style="margin:0 0 8px;font-size:12.5px;color:var(--text-muted);line-height:1.6;">Cara mudah &amp; kekal (tak luput, tak perlu portfolio/System User):</p>'
+                +todo('Buka developers.facebook.com/tools/explorer → pilih app 10 CAMP → "Get User Access Token"')
+                +todo('Tick scope: pages_show_list, pages_read_engagement, read_insights, pages_messaging, pages_manage_posts, instagram_basic, instagram_manage_messages')
+                +todo('Generate → copy USER token → tampal bawah ni')
                 +'<div style="margin-top:10px;display:grid;gap:8px;max-width:520px;">'
-                +'<input id="metaPageId" placeholder="Page ID (nombor)" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:var(--font-main,Poppins);">'
-                +'<input id="metaIgId" placeholder="Instagram User ID (pilihan)" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:var(--font-main,Poppins);">'
-                +'<textarea id="metaToken" placeholder="Page Access Token (tampal di sini)" rows="3" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-family:monospace;resize:vertical;"></textarea>'
-                +'<button onclick="window.__metaConnectSave(this)" style="justify-self:start;font-size:13px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:9px 18px;border-radius:8px;cursor:pointer;">Sambung Meta</button>'
+                +'<textarea id="metaUserToken" placeholder="User Access Token dari Graph Explorer (tampal di sini)" rows="3" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-family:monospace;resize:vertical;"></textarea>'
+                +'<button onclick="window.__metaExchangeSave(this)" style="justify-self:start;font-size:13px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:9px 18px;border-radius:8px;cursor:pointer;">Tukar jadi Token Kekal</button>'
                 +'</div>'
-                +'<p style="margin:10px 0 0;font-size:11.5px;color:var(--text-muted);line-height:1.5;">Token disimpan server-side (RLS terkunci) — tak didedah balik ke skrin. Guna token PAGE (long-lived) supaya tak cepat luput.</p>')
+                +'<p style="margin:10px 0 0;font-size:11.5px;color:var(--text-muted);line-height:1.5;">Server tukar token pendek → token PAGE tak-luput, simpan terkunci (tak didedah balik). <b>Perlu sekali:</b> set <code>META_APP_SECRET</code> di Netlify env (Site settings → Environment variables, account-level) = App Secret dari developers.facebook.com → app 10 CAMP → Settings → Basic.</p>')
+              + card('Cara lain — tampal Page Token terus',
+                '<p style="margin:0 0 8px;font-size:12px;color:var(--text-muted);">Kalau kau dah ada Page Access Token (cth System User), tampal terus:</p>'
+                +'<div style="display:grid;gap:8px;max-width:520px;">'
+                +'<input id="metaPageId" placeholder="Page ID (pilihan — auto-kesan)" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:var(--font-main,Poppins);">'
+                +'<input id="metaIgId" placeholder="Instagram User ID (pilihan)" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;font-family:var(--font-main,Poppins);">'
+                +'<textarea id="metaToken" placeholder="Page Access Token" rows="2" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-family:monospace;resize:vertical;"></textarea>'
+                +'<button onclick="window.__metaConnectSave(this)" style="justify-self:start;font-size:13px;font-weight:700;color:var(--primary);background:#fff;border:1.5px solid var(--primary);padding:9px 18px;border-radius:8px;cursor:pointer;">Sambung Meta</button>'
+                +'</div>')
             : card('Belum tersambung','<p style="margin:0;font-size:13px;color:var(--text-muted);line-height:1.6;">Page Facebook belum disambungkan ke Graph API. Minta owner (Bos) sambungkan di skrin ni — lepas tu followers, jangkauan & post akan muncul di sini automatik.</p>');
           set('metaInsightsBody', shell('thumbs-up','Meta / FB & IG','Prestasi Page Facebook & Instagram 10 CAMP — followers, jangkauan, post terkini. Terus dari Meta, tak perlu buka FB.',
             card('Kenapa berguna','<p style="margin:0;font-size:13px;color:var(--text-muted);line-height:1.6;">Nampak prestasi FB/IG dalam POS tanpa buka app lain. Bila dah sambung, halaman ni tarik data live dari Meta.</p>')

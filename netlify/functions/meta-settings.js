@@ -14,6 +14,28 @@
 const { getMetaConfig, saveMetaConfig, graph } = require('./_meta');
 const { requireAuth } = require('./_auth');
 
+const APP_ID     = process.env.META_APP_ID || '2083582475704447';
+const APP_SECRET = process.env.META_APP_SECRET || '';
+
+// Turn a short-lived user token (from Graph API Explorer) into a NON-EXPIRING page token.
+// Requires META_APP_SECRET in env. No Business-portfolio / System-User needed — works because
+// the signed-in user is a Page admin. Returns { page_id, page_name, page_access_token } or throws.
+async function exchangeUserTokenToPageToken(userToken, wantPageId) {
+    if (!APP_SECRET) { const e = new Error('META_APP_SECRET not set in Netlify env'); e.code = 'no_secret'; throw e; }
+    // 1) short-lived user token → long-lived user token (~60 days)
+    const ll = await graph('/oauth/access_token', {
+        query: { grant_type: 'fb_exchange_token', client_id: APP_ID, client_secret: APP_SECRET, fb_exchange_token: userToken }
+    });
+    const longUser = ll && ll.access_token;
+    if (!longUser) throw new Error('exchange failed (no long-lived user token)');
+    // 2) list pages the user manages → page token derived from a long-lived user token DOES NOT expire
+    const accts = await graph('/me/accounts', { token: longUser, query: { fields: 'id,name,access_token' } });
+    const pages = (accts && accts.data) || [];
+    if (!pages.length) throw new Error('no pages found for this user');
+    const chosen = wantPageId ? (pages.find(p => String(p.id) === String(wantPageId)) || pages[0]) : pages[0];
+    return { page_id: chosen.id, page_name: chosen.name, page_access_token: chosen.access_token };
+}
+
 function json(code, obj) {
     return { statusCode: code, headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(obj, null, 2) };
 }
@@ -41,6 +63,24 @@ exports.handler = async (event) => {
         if (event.httpMethod === 'POST') {
             let body = {};
             try { body = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { error: 'bad json' }); }
+
+            // p1_1081 — exchange path: paste a short-lived USER token → server mints a non-expiring PAGE token.
+            // Sidesteps the Business-portfolio / System-User flow entirely (works because signed-in user is Page admin).
+            if (body.exchange_user_token) {
+                const existing = await getMetaConfig();
+                let got;
+                try {
+                    got = await exchangeUserTokenToPageToken(String(body.exchange_user_token).trim(), body.page_id || (existing && existing.page_id));
+                } catch (e) {
+                    return json(400, { error: e.code === 'no_secret' ? 'no_app_secret' : 'exchange_failed', detail: e.message || String(e) });
+                }
+                const saved = await saveMetaConfig({
+                    page_id: got.page_id, page_name: got.page_name, page_access_token: got.page_access_token,
+                    ig_user_id: body.ig_user_id || (existing && existing.ig_user_id) || null
+                }, (auth.user && (auth.user.email || auth.user.id)) || 'staff');
+                const row = Array.isArray(saved) ? saved[0] : saved;
+                return json(200, { ok: true, connected: true, permanent: true, page_id: row && row.page_id, page_name: row && row.page_name });
+            }
 
             const patch = {};
             ['page_id', 'ig_user_id', 'business_id', 'page_name'].forEach(k => {
