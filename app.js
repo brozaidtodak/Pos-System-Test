@@ -36407,13 +36407,20 @@ window.__posBrowseOpen = function(type){
    + '<button onclick="window.__posBrowseClose()" title="Tutup" style="border:none;background:#F3F4F6;width:32px;height:32px;border-radius:50%;cursor:pointer;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>'
   + '</div>'
   + '<div id="posBrowseTabs" style="display:flex; gap:8px; padding:14px 18px 0;"></div>'
+  // p1_1075 — search dalam Katalog (Ariff): taip "flysheet" → semua kumpulan flysheet (semua bentuk:
+  // hexagon, rectangle, twin peak, octagon…) terus keluar, tak perlu tahu nama kategori penuh.
+  // Carian merentas SEMUA jenis kumpulan (Koleksi + Brand + Kategori) sekali gus, hasil ada badge jenis.
+  + '<div style="position:relative; padding:12px 18px 0;">'
+   + '<i data-lucide="search" style="position:absolute; left:31px; top:24px; width:14px; height:14px; color:#9CA3AF; pointer-events:none;"></i>'
+   + '<input type="text" id="posBrowseSearch" oninput="window.__posBrowseRender()" placeholder="Cari kumpulan… cth: flysheet, dome, chair" autocomplete="off" style="width:100%; margin:0; padding:10px 14px 10px 38px; border:1.5px solid #E5E7EB; border-radius:10px; font-size:13px; font-weight:500; font-family:var(--font-main,Poppins); box-sizing:border-box;">'
+  + '</div>'
   + '<div id="posBrowseBody" style="padding:16px 18px 22px; max-height:70vh; overflow:auto;"></div>'
   + '</div>';
  document.body.appendChild(ov);
  window.__posBrowseRender();
  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
 };
-window.__posBrowseSetTab = function(type){ window.__posBrowseType = type; window.__posBrowseRender(); if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} };
+window.__posBrowseSetTab = function(type){ window.__posBrowseType = type; const s = document.getElementById('posBrowseSearch'); if(s) s.value = ''; /* p1_1075 — tukar tab = keluar mod carian */ window.__posBrowseRender(); if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){} };
 window.__posBrowseRender = function(){
  const tabsEl = document.getElementById('posBrowseTabs'); const bodyEl = document.getElementById('posBrowseBody');
  if(!tabsEl || !bodyEl) return;
@@ -36423,28 +36430,46 @@ window.__posBrowseRender = function(){
   return '<button onclick="window.__posBrowseSetTab(\'' + t[0] + '\')" style="flex:1; padding:9px 10px; border-radius:10px; border:1.5px solid ' + (on?'var(--primary)':'#E5E7EB') + '; background:' + (on?'var(--primary)':'#fff') + '; color:' + (on?'#fff':'#374151') + '; font-weight:700; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i data-lucide="' + t[2] + '" style="width:14px;height:14px;"></i>' + t[1] + '</button>';
  }).join('');
  const prods = (typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) ? masterProducts : [];
- const tally = new Map();
+ // p1_1075 — bila ada carian: cari nama kumpulan merentas SEMUA jenis (Koleksi + Brand + Kategori),
+ // bukan tab semasa sahaja — staff tak perlu tahu "flysheet" tu kategori ke koleksi ke brand.
+ const q = ((document.getElementById('posBrowseSearch') || {}).value || '').trim().toLowerCase();
+ const tally = new Map(); // key "type::name" bila carian; nama biasa bila tab
+ const bump = (t, g) => {
+  if(!g) return;
+  if(q && g.toLowerCase().indexOf(q) === -1) return;
+  const k = q ? (t + '::' + g) : g;
+  tally.set(k, (tally.get(k) || 0) + 1);
+ };
  for(const p of prods){
   if(!isPublished(p)) continue; if(window.__isDiscontinued && window.__isDiscontinued(p)) continue;
-  let g = '';
-  if(type === 'brand') g = (p.brand || '').trim();
-  else if(type === 'category') g = (p.category || '').trim();
-  else g = (window.__collectionOf ? window.__collectionOf(p) : '');
-  if(!g) continue;
-  tally.set(g, (tally.get(g) || 0) + 1);
+  if(q){
+   bump('collection', (window.__collectionOf ? window.__collectionOf(p) : ''));
+   bump('brand', (p.brand || '').trim());
+   bump('category', (p.category || '').trim());
+  } else {
+   let g = '';
+   if(type === 'brand') g = (p.brand || '').trim();
+   else if(type === 'category') g = (p.category || '').trim();
+   else g = (window.__collectionOf ? window.__collectionOf(p) : '');
+   bump(type, g);
+  }
  }
  const groups = Array.from(tally.entries()).sort((a,b) => b[1] - a[1]);
  const esc = (typeof hesc === 'function') ? hesc : (x)=>String(x==null?'':x);
- if(!groups.length){ bodyEl.innerHTML = '<div style="padding:34px; text-align:center; color:#9CA3AF;">Tiada kumpulan untuk tab ini.</div>'; return; }
+ if(!groups.length){ bodyEl.innerHTML = '<div style="padding:34px; text-align:center; color:#9CA3AF;">' + (q ? 'Tiada kumpulan padan dengan "' + esc(q) + '".' : 'Tiada kumpulan untuk tab ini.') + '</div>'; return; }
+ const typeLabel = { collection:'Koleksi', brand:'Brand', category:'Kategori' };
  bodyEl.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:12px;">'
-  + groups.map(function(gc){ const name = gc[0], count = gc[1];
+  + groups.map(function(gc){ const count = gc[1];
+    const gType = q ? gc[0].split('::')[0] : type;
+    const name = q ? gc[0].slice(gc[0].indexOf('::') + 2) : gc[0];
     // p1_1015 — tab Brand: utamakan LOGO brand; kalau tiada logo (brand tak dikenali) → fallback gambar produk.
-    const brandLogo = (type === 'brand') ? window.__brandLogoUrl(name) : '';
-    const img = brandLogo || window.__groupThumb(type, name);
+    const brandLogo = (gType === 'brand') ? window.__brandLogoUrl(name) : '';
+    const img = brandLogo || window.__groupThumb(gType, name);
+    const badge = q ? '<span style="position:absolute; top:7px; left:7px; background:rgba(16,16,16,.72); color:#FAF6EF; font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:999px; letter-spacing:.02em;">' + typeLabel[gType] + '</span>' : '';
     const media = img
-     ? '<div style="aspect-ratio:1/1; background:' + (brandLogo ? '#fff' : '#FBF7F0') + '; border-radius:11px 11px 0 0; overflow:hidden; display:flex; align-items:center; justify-content:center;' + (brandLogo ? ' padding:16px;' : '') + '"><img src="' + esc(img) + '" style="max-width:100%; max-height:100%; width:' + (brandLogo ? 'auto' : '100%') + '; height:' + (brandLogo ? 'auto' : '100%') + '; object-fit:contain;" loading="lazy"></div>'
-     : '<div style="aspect-ratio:1/1; background:#F4E8D8; border-radius:11px 11px 0 0; display:flex; align-items:center; justify-content:center; color:#A5611F; font-weight:800; font-size:22px; letter-spacing:.02em;">' + esc(String(name).slice(0,2).toUpperCase()) + '</div>';
-    return '<button onclick="window.__posPickGroup(\'' + type + '\',' + JSON.stringify(String(name)).replace(/"/g,'&quot;') + ')" style="text-align:left; padding:0; border:1px solid #EAE0D2; border-radius:12px; background:#fff; cursor:pointer; overflow:hidden;">'
+     ? '<div style="position:relative; aspect-ratio:1/1; background:' + (brandLogo ? '#fff' : '#FBF7F0') + '; border-radius:11px 11px 0 0; overflow:hidden; display:flex; align-items:center; justify-content:center;' + (brandLogo ? ' padding:16px;' : '') + '"><img src="' + esc(img) + '" style="max-width:100%; max-height:100%; width:' + (brandLogo ? 'auto' : '100%') + '; height:' + (brandLogo ? 'auto' : '100%') + '; object-fit:contain;" loading="lazy">' + badge + '</div>'
+     : '<div style="position:relative; aspect-ratio:1/1; background:#F4E8D8; border-radius:11px 11px 0 0; display:flex; align-items:center; justify-content:center; color:#A5611F; font-weight:800; font-size:22px; letter-spacing:.02em;">' + esc(String(name).slice(0,2).toUpperCase()) + badge + '</div>';
+    return '<button onclick="window.__posPickGroup(\'' + gType + '\',' + JSON.stringify(String(name)).replace(/"/g,'&quot;') + ')" style="text-align:left; padding:0; border:1px solid #EAE0D2; border-radius:12px; background:#fff; cursor:pointer; overflow:hidden;">'
      + media
      + '<div style="padding:8px 10px 10px;"><div style="font-size:12.5px; font-weight:700; color:#101010; line-height:1.25;">' + esc(name) + '</div><div style="font-size:11px; color:#8C7C6A; margin-top:2px;">' + count + ' produk</div></div>'
      + '</button>';
