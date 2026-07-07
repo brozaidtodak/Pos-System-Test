@@ -8225,6 +8225,11 @@ async function initApp() {
  // p1_1032 — cashier dah didedah awal (produk+stok); segar semula bila sales/customers masuk
  // supaya banner Sasaran Jualan + VIP lookup betul (bukan 0 sekejap).
  try { if(typeof renderPOS === 'function') renderPOS(); } catch(e){}
+ // p1_1084 — BUGFIX: banner Sasaran + KPI dikira masa cashier didedah awal (salesHistory masih
+ // kosong, terutama app mobile yg dedah produk laju). Dulu tak di-render semula bila jualan masuk
+ // → tersangkut RM 0. Render semula di sini supaya angka betul lepas sales load.
+ try { if(typeof window.__renderSalesTarget === 'function') window.__renderSalesTarget(); } catch(e){}
+ try { if(typeof window.__renderCashierKPI === 'function') window.__renderCashierKPI(); } catch(e){}
  // p1_1061 — kalau user tengah DUDUK di page Points & Membership masa customers sampai
  // (buka pantas lepas login), render semula supaya senarai ahli tak tersangkut "0 ahli".
  try {
@@ -8247,6 +8252,8 @@ async function initApp() {
  salesHistory = [...localOnly, ...all];
  window.__fullSalesLoaded = true;
  try { window.__aoUpdateOrderBadge && window.__aoUpdateOrderBadge(); } catch(e){}
+ try { if(typeof window.__renderSalesTarget === 'function') window.__renderSalesTarget(); } catch(e){} // p1_1084
+ try { if(typeof window.__renderCashierKPI === 'function') window.__renderCashierKPI(); } catch(e){} // p1_1084
  try { const ao = document.getElementById('allOrdersSection'); if(ao && ao.style.display !== 'none' && window.renderAllOrders) window.renderAllOrders(); } catch(e){}
  try { const cr = document.getElementById('commissionReportSection'); if(cr && cr.style.display !== 'none' && window.renderCommissionReport) window.renderCommissionReport(); } catch(e){}
  }
