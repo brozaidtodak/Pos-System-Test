@@ -43492,6 +43492,77 @@ window.__marginTagHtml = function(price, cost){
       });
   };
 
+  // 3c) Auto-Post (p1_1083) — post dari POS ke FB Page (+ IG/Threads bila disambung).
+  window.__autoPostSend = function(btn){
+    var cap=(document.getElementById('apCaption')||{}).value||'';
+    var link=(document.getElementById('apLink')||{}).value||'';
+    var img=(document.getElementById('apImage')||{}).value||'';
+    var targets=[];
+    ['fb','ig','threads'].forEach(function(t){ var el=document.getElementById('apT_'+t); if(el&&el.checked) targets.push(t); });
+    if(!cap.trim() && !img.trim()){ window.showToast && showToast('Tulis caption atau letak URL gambar dulu','warn'); return; }
+    if(!targets.length){ window.showToast && showToast('Pilih sekurang-kurangnya satu platform','warn'); return; }
+    if(btn){ btn.disabled=true; btn.textContent='Menghantar…'; }
+    var res=document.getElementById('apResult'); if(res) res.innerHTML='';
+    fetch('/.netlify/functions/meta-post', { method:'POST', headers:(window.__authHeaderSync?window.__authHeaderSync({'Content-Type':'application/json'}):{'Content-Type':'application/json'}), body: JSON.stringify({ caption:cap.trim(), link:link.trim(), image_url:img.trim(), targets:targets }) })
+      .then(function(r){ return r.json(); })
+      .then(function(r){
+        if(btn){ btn.disabled=false; btn.textContent='Post Sekarang'; }
+        if(r && r.error){ window.showToast && showToast('Gagal: '+r.error,'error'); return; }
+        var rr=r.results||{};
+        var lbl={fb:'Facebook',ig:'Instagram',threads:'Threads'};
+        var rows=Object.keys(rr).map(function(k){ var v=rr[k]||{};
+          var ok=!!v.ok;
+          return '<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin:5px 0;"><i data-lucide="'+(ok?'check-circle':'x-circle')+'" style="width:15px;height:15px;color:'+(ok?'#2e7d32':'#b91c1c')+';"></i><b>'+(lbl[k]||k)+':</b> '+(ok?('Berjaya dipost'+(v.id?' (id '+String(v.id).slice(0,18)+'…)':'')):('<span style="color:#b91c1c;">'+(v.error||'gagal')+'</span>'))+'</div>';
+        }).join('');
+        if(res){ res.innerHTML='<div style="margin-top:12px;padding:12px 14px;background:#F9FAFB;border:1px solid #ECECEC;border-radius:10px;">'+rows+'</div>'; if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}} }
+        if(r.ok){ window.showToast && showToast('Post dihantar!','success'); }
+        else window.showToast && showToast('Tiada platform berjaya — lihat butiran','warn');
+      })
+      .catch(function(e){ if(btn){ btn.disabled=false; btn.textContent='Post Sekarang'; } window.showToast && showToast('Ralat: '+e,'error'); });
+  };
+  window.renderAutoPost = function(){
+    set('autoPostBody', shell('send','Auto-Post','Post ke Facebook Page (dan Instagram/Threads bila disambung) terus dari POS — tak perlu buka app lain.', card('','<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;"><i data-lucide="loader" style="width:16px;height:16px;"></i> Menyemak sambungan…</div>')));
+    if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}}
+    fetch('/.netlify/functions/meta-settings', { headers:(window.__authHeaderSync?window.__authHeaderSync({}):{}) })
+      .then(function(r){ return r.json(); })
+      .then(function(st){
+        var fbOk = !!(st && st.connected);
+        var igOk = !!(st && st.ig_user_id);
+        if(!fbOk){
+          set('autoPostBody', shell('send','Auto-Post','Post ke Facebook Page terus dari POS.',
+            card('Sambung Meta dulu','<p style="margin:0;font-size:13px;color:var(--text-muted);line-height:1.6;">Auto-post perlukan Page Facebook disambung. Buka <b>Marketing → Meta / FB & IG</b> dan sambungkan token dulu, kemudian kembali ke sini.</p>')));
+          if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}}
+          return;
+        }
+        function chk(id,label,on,note){
+          return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-main);cursor:'+(on?'pointer':'not-allowed')+';opacity:'+(on?'1':'.55')+';">'
+            +'<input type="checkbox" id="apT_'+id+'" '+(id==='fb'?'checked':'')+' '+(on?'':'disabled')+' style="width:16px;height:16px;"> '+label
+            +(note?' <span style="font-size:11px;color:var(--text-muted);">'+note+'</span>':'')+'</label>';
+        }
+        var composer =
+          '<div style="display:grid;gap:10px;max-width:620px;">'
+          +'<textarea id="apCaption" rows="4" placeholder="Tulis caption post…" style="padding:11px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13.5px;font-family:var(--font-main,Poppins);resize:vertical;"></textarea>'
+          +'<input id="apLink" placeholder="Link (pilihan) — cth link produk Shopee" style="padding:10px 13px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;font-family:var(--font-main,Poppins);">'
+          +'<input id="apImage" placeholder="URL gambar (pilihan) — wajib untuk Instagram" style="padding:10px 13px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;font-family:var(--font-main,Poppins);">'
+          +'<div style="display:flex;gap:18px;flex-wrap:wrap;padding:6px 2px;">'
+            +chk('fb','Facebook',true)
+            +chk('ig','Instagram',igOk, igOk?'':'(link IG ke Page dulu)')
+            +chk('threads','Threads',false,'(perlu sambung Threads)')
+          +'</div>'
+          +'<button onclick="window.__autoPostSend(this)" style="justify-self:start;font-size:14px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:11px 22px;border-radius:9px;cursor:pointer;"><i data-lucide="send" style="width:14px;height:14px;vertical-align:-2px;margin-right:5px;"></i>Post Sekarang</button>'
+          +'</div>'
+          +'<div id="apResult"></div>';
+        set('autoPostBody', shell('send','Auto-Post','Post ke '+mesc(st.page_name||'Facebook Page')+' terus dari POS. Instagram & Threads muncul bila disambung.',
+          card('Karang post', composer)
+          + card('Nota', done('Facebook Page: aktif')
+              + (igOk?done('Instagram: aktif'):todo('Instagram: link akaun IG business ke Page 10 Camp Store dulu (Meta Business Suite → Settings → Instagram)'))
+              + todo('Threads: perlu sambungan token Threads berasingan (fasa depan)')
+              + '<p style="margin:8px 0 0;font-size:11.5px;color:var(--text-muted);">Setiap post direkod dalam Content & SEO (status posted).</p>')));
+        if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}}
+      })
+      .catch(function(e){ set('autoPostBody', shell('send','Auto-Post','', card('Ralat','<p style="margin:0;font-size:13px;color:#b91c1c;">Gagal semak sambungan: '+mesc(e)+'</p>'))); });
+  };
+
   // 4) Referrals
   window.renderReferrals = function(){
     var msg='Aku beli gear camping dari 10 CAMP, memang berbaloi. Kalau kau nak start camping, cuba tengok stok diorang (Naturehike, Mobi Garden, Blackdog & lebih) di Shopee/TikTok atau kedai Cyberjaya: '+SHOP;
