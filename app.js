@@ -372,6 +372,43 @@ window.__isRealSale = function(s) {
  return true;
 };
 
+// p1_1085 — TELEMETRY klien (siasat aduan Ariff "cashier lag / Selesai tak load" yang tak dapat
+// direproduce). Hantar event ringan (checkout timing + JS error) ke client-telemetry fn →
+// table client_telemetry. Fire-and-forget: TAK BOLEH ganggu cashier walau apa pun (silent fail).
+window.__telAppV = (function(){ try { const s = document.querySelector('script[src*="app.js?v="]'); const m = s && /v=(\d+)/.exec(s.src); return m ? m[1] : ''; } catch(e){ return ''; } })();
+window.__tel = function(type, data){
+ try {
+  if(!window.currentUser) return; // hanya sesi staff
+  const ev = {
+   type: type, data: data || null,
+   staff: (window.currentUser.name || ''),
+   app_version: window.__telAppV,
+   device: (navigator.userAgent || '').slice(0, 200),
+   online: (typeof navigator.onLine === 'boolean') ? navigator.onLine : null
+  };
+  fetch('/.netlify/functions/client-telemetry', {
+   method: 'POST', keepalive: true,
+   headers: (window.__authHeaderSync ? window.__authHeaderSync({'Content-Type':'application/json'}) : {'Content-Type':'application/json'}),
+   body: JSON.stringify({ events: [ev] })
+  }).catch(function(){});
+ } catch(e){}
+};
+// Tangkap ralat JS global (cap 10/sesi supaya tak banjir) — konteks section aktif disertakan.
+window.__telErrCount = 0;
+window.addEventListener('error', function(e){
+ try {
+  if(window.__telErrCount >= 10) return; window.__telErrCount++;
+  window.__tel('js_error', { msg: String(e.message || '').slice(0, 300), src: String(e.filename || '').slice(0, 120), line: e.lineno || 0, col: e.colno || 0 });
+ } catch(_){}
+});
+window.addEventListener('unhandledrejection', function(e){
+ try {
+  if(window.__telErrCount >= 10) return; window.__telErrCount++;
+  const r = e && e.reason;
+  window.__tel('js_error', { msg: 'unhandledrejection: ' + String((r && (r.message || r)) || '').slice(0, 300), stack: String(r && r.stack || '').slice(0, 400) });
+ } catch(_){}
+});
+
 // p1_486 — kadar mata loyalti: RM10 belanja = 1 mata (Zaid).
 window.POINTS_RM_PER_POINT = 10;
 window.__pointsForSpend = function(rm) { return Math.floor((Number(rm) || 0) / (window.POINTS_RM_PER_POINT || 10)); };
@@ -15120,6 +15157,21 @@ window.processNewCheckout = async function() {
  const btn = document.getElementById("checkoutBtn");
  btn.disabled = true;
  btn.textContent = "Processing Omnichannel FIFO...";
+ // p1_1085 — jejak masa setiap langkah checkout (telemetry siasatan "Selesai tak load" Ariff).
+ // __ckStep juga kemaskini teks butang cpConfirm supaya staff NAMPAK progress (bukan beku).
+ const __ck = { t0: Date.now(), last: Date.now(), steps: {}, err: null, items: (cart && cart.length) || 0 };
+ const __ckStep = (doneKey, nextLabel) => {
+  try {
+   const now = Date.now();
+   if(doneKey) __ck.steps[doneKey] = now - __ck.last;
+   __ck.last = now;
+   if(nextLabel){
+    const cb = document.getElementById('cpConfirmBtn');
+    if(cb && cb.disabled) cb.innerHTML = '<i data-lucide="loader" style="width:16px; height:16px;"></i> ' + nextLabel;
+    if(btn) btn.textContent = nextLabel;
+   }
+  } catch(e){}
+ };
 
  // p1_554 — jejak sama ada sale BETUL-BETUL disimpan; kalau gagal, pulihkan stok dlm catch (#1)
  let saleCommitted = false;
@@ -15184,6 +15236,7 @@ window.processNewCheckout = async function() {
  const __txnId = window.__currentTxnId;
  // Kalau cap ni DAH wujud dalam DB → jualan ni dah tersimpan tadi (cubaan sebelum berjaya diam-diam):
  // JANGAN tolak stok / simpan lagi. Tunjuk berjaya + kosongkan troli (elak dupe + double komisen).
+ __ckStep(null, 'Menyemak sambungan…'); // p1_1085
  try {
  const { data: __exist } = await withTimeout(db.from('sales_history').select('id').eq('client_txn_id', __txnId).limit(1), 8000, 'semak transaksi berganda');
  if(__exist && __exist.length){
@@ -15242,7 +15295,9 @@ window.processNewCheckout = async function() {
  }
  }
  };
+ __ckStep('dup_check', 'Menolak stok…'); // p1_1085
  await Promise.all(__realItems.map(__deductOne));
+ __ckStep('deduct', 'Merekod stok…'); // p1_1085
  // p1_236 — Expose backorder list ke saleMeta for sales_history.metadata transparency
  if(backorderItems.length > 0) {
  window.__lastBackorderItems = backorderItems;
@@ -15256,6 +15311,7 @@ window.processNewCheckout = async function() {
  } else { window.__lastDeductFailed = null; }
 
  if(transactionsPayload.length> 0) await withTimeout(db.from('inventory_transactions').insert(transactionsPayload), 15000, 'rekod transaksi stok');
+ __ckStep('txns', 'Rekod pelanggan…'); // p1_1085
 
  // p1_554 — blok auto-simpan pelanggan + mata DIPINDAH ke bawah (selepas finalTotal dikira)
  // supaya mata/total_spent guna harga LEPAS diskaun, bukan subtotal sebelum diskaun (#22/#23).
@@ -15421,6 +15477,7 @@ window.processNewCheckout = async function() {
 
  // p1_199 — capture customerEmail early so we can save with the sale row
  const earlyEmail = (document.getElementById("customerEmail").value || '').trim();
+ __ckStep('customer', 'Menyimpan jualan…'); // p1_1085
  const insertRes = await withTimeout(db.from('sales_history').insert([{
  customer_name: custNameText, customer_phone: custPhoneText, customer_email: earlyEmail || null, payment_method: pm, channel: cn, status: cst,
  total: finalTotal, total_amount: finalTotal, items: cart,
@@ -15466,6 +15523,7 @@ window.processNewCheckout = async function() {
    }
  } catch(e) { console.warn('marketplace stock-push skipped:', e); }
 
+ __ckStep('sale_insert', 'Siap — resit…'); // p1_1085
  const invId = "INV-10C-" + Math.floor(1000 + Math.random() * 9000);
  const email = document.getElementById("customerEmail").value.trim();
  showReceiptModal(invId, custNameText, email, totalVal, [...cart]);
@@ -15540,9 +15598,11 @@ window.processNewCheckout = async function() {
  catch(e) { console.warn('post-sale refresh gagal (non-blocking):', e); }
  window.__currentTxnId = null; window.__txnSig = null; // p1_674 — jualan berjaya → cap habis, jualan seterusnya dapat cap baru
  try { localStorage.removeItem('pos_txn_id'); localStorage.removeItem('pos_txn_sig'); } catch(_){}
+ __ckStep('ui_reset', null); // p1_1085
  __checkoutOk = true; // p1_672 — sampai sini = jualan berjaya disimpan + UI direset
  } catch (e) {
  console.error(e);
+ try { __ck.err = String(e && e.message || e).slice(0, 300); } catch(_){} // p1_1085
  // p1_554 (#1) — kalau sale GAGAL disimpan tapi stok dah ditolak, pulihkan balik supaya stok tak rosak.
  if(!saleCommitted) {
  try {
@@ -15588,6 +15648,15 @@ window.processNewCheckout = async function() {
  }
 
  if(btn) { btn.disabled = false; btn.textContent = "PENGESAHAN BAYARAN"; }
+ // p1_1085 — hantar telemetry checkout (SETIAP jualan: timing per langkah + ok/err) + amaran wifi
+ // lambat supaya staff tahu ia rangkaian, bukan app rosak. Fire-and-forget, tak blok apa-apa.
+ try {
+  const __ms = Date.now() - __ck.t0;
+  window.__tel && window.__tel('checkout', { ok: __checkoutOk, ms: __ms, steps: __ck.steps, items: __ck.items, err: __ck.err });
+  if(__checkoutOk && __ms > 6000 && typeof showToast === 'function') {
+   showToast('Rangkaian kedai lambat (' + Math.round(__ms/1000) + 's) — jualan tetap TERSIMPAN elok.', 'warn');
+  }
+ } catch(e){}
  return __checkoutOk; // p1_672 — beritahu cpConfirm sama ada berjaya (tunjuk success) atau gagal (reset)
 }
 
