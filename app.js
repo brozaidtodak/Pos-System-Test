@@ -2882,6 +2882,18 @@ window.__ensureMarketing = function(){
 // lebih sesuai 1 page, ada yang sesuai page sendiri"). Prinsip: alat kerap = page sendiri;
 // info/checklist/keluarga sama = satu page bertab. SEMUA section + render fn sedia ada KEKAL —
 // hub cuma lapisan navigasi: switchHub ke section sasaran + inject bar tab di atas section.
+// p1_1087 — Fasa 2: kini GENERIC (__NAV_HUBS) — tambah hub Inventory (Audit Stok + Lejar Stok).
+window.__NAV_HUBS = {
+ audit: { label: 'Audit Stok', tabs: [
+  { key:'stocktake',  label:'Stock Take',        icon:'clipboard-check', section:'checkSessionsSection',    render:'renderCheckSessions' },
+  { key:'cyclecount', label:'Cycle Count',        icon:'list-checks',     section:'cycleCountSection',       render:'renderCycleCount' },
+  { key:'recon',      label:'Rekonsiliasi Stok',  icon:'scale',           section:'stockReconSection',       render:'renderStockRecon' }
+ ]},
+ lejar: { label: 'Lejar Stok', tabs: [
+  { key:'fifo',    label:'FIFO Listing',      icon:'layers',  section:'fifoSection',             render:'renderFifoListing' },
+  { key:'history', label:'Inventory History', icon:'history', section:'inventoryHistorySection', render:'renderInventoryHistory' }
+ ]}
+};
 window.__MKT_HUBS = {
  content: { label: 'Kandungan', tabs: [
   { key:'schedule', label:'Content Schedule', icon:'calendar-days', section:'contentScheduleSection', render:'renderContentSchedule' },
@@ -2901,7 +2913,7 @@ window.__MKT_HUBS = {
  ]}
 };
 window.__mktHubGo = function(hubKey, tabKey, el){
- const hub = window.__MKT_HUBS[hubKey]; if(!hub) return;
+ const hub = window.__MKT_HUBS[hubKey] || window.__NAV_HUBS[hubKey]; if(!hub) return; // p1_1087 — generic
  const tab = hub.tabs.find(t => t.key === tabKey) || hub.tabs[0];
  // el = menu-item sidebar (untuk highlight aktif); bila tukar tab dlm hub, el tiada — kekalkan highlight
  if(typeof switchHub === 'function') switchHub([tab.section], hub.label, el || document.querySelector('[data-tab="nav_hub_' + hubKey + '"]'));
@@ -2918,6 +2930,7 @@ window.__mktHubGo = function(hubKey, tabKey, el){
   if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  } catch(e){}
 };
+window.__navHubGo = window.__mktHubGo; // p1_1087 — alias generic (hub bukan marketing shj lagi)
 
 // ============================================================================
 // p1_1036 — DASHBOARD BACK-OFFICE dipindah ke backoffice-dash.js (lazy). Stub loader:
@@ -5569,7 +5582,7 @@ window.__rpRenderSysmgmtTemplate = async function(body, u, range) {
  <td style="font-size:12px;"><strong>${r.period_start} → ${r.period_end}</strong></td>
  <td style="font-size:12px;">${escAttr(r.submitted_by_name)}</td>
  <td style="text-align:right; font-size:12px;">${r.items_variance} items / ${fmtRM(r.rm_variance)}</td>
- <td><button class="sy-btn fin-btn--gold" style="font-size:11px; padding:5px 10px;" onclick="document.querySelector('[data-tab=nav_sys_stocktake]')?.click()">Review →</button><!-- p1_1047: inv_stockcheck dah tak wujud --></td>
+ <td><button class="sy-btn fin-btn--gold" style="font-size:11px; padding:5px 10px;" onclick="window.__navHubGo('audit','stocktake')">Review →</button><!-- p1_1087: Stock Take kini dlm hub Audit Stok --></td>
  </tr>`).join('')}
  </tbody>
  </table>
@@ -33212,7 +33225,7 @@ window.__computeDeptAlerts = function(){
  if(neg.length) out.push({ key:'stock_neg', dept:['inventory','system'], sev:'critical', icon:'package-x',
   title:'Stok negatif (data tak konsisten)', desc:'Baki stok di bawah 0 — kemungkinan oversell atau silap rekod. Kena siasat.',
   count:neg.length, rows:neg.slice(0,12).map(x=>({a:x.sku, b:String(x.qty)})),
-  action:{label:'Semak Stok', onclick:"document.querySelector('[data-tab=nav_sys_stocktake]')?.click()"} });
+  action:{label:'Semak Stok', onclick:"window.__navHubGo('audit','stocktake')"} }); // p1_1087 — Stock Take dlm hub Audit Stok
  // B) Live tapi stok habis (inventory, warn)
  const liveZero = MP.filter(p=> pub(p) && ((stock[p.sku]==null) || stock[p.sku] <= 0));
  if(liveZero.length) out.push({ key:'live_zero', dept:['inventory'], sev:'warn', icon:'package',
