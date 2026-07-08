@@ -2878,6 +2878,47 @@ window.__ensureMarketing = function(){
  window[fn].__isMktStub = true;
 });
 
+// p1_1086 — SIDEBAR REORG Fasa 1: 10 item Marketing digabung jadi 3 HUB bertab (Zaid: "ada yang
+// lebih sesuai 1 page, ada yang sesuai page sendiri"). Prinsip: alat kerap = page sendiri;
+// info/checklist/keluarga sama = satu page bertab. SEMUA section + render fn sedia ada KEKAL —
+// hub cuma lapisan navigasi: switchHub ke section sasaran + inject bar tab di atas section.
+window.__MKT_HUBS = {
+ content: { label: 'Kandungan', tabs: [
+  { key:'schedule', label:'Content Schedule', icon:'calendar-days', section:'contentScheduleSection', render:'renderContentSchedule' },
+  { key:'social',   label:'Social Media',     icon:'share-2',       section:'socialMediaSection',     render:'renderSocialMedia' },
+  { key:'seo',      label:'Blog & SEO',       icon:'file-text',     section:'contentSeoSection',      render:'renderContentSeo' }
+ ]},
+ digital: { label: 'Digital Hub', tabs: [
+  { key:'webtraffic', label:'Web Traffic',    icon:'activity',   section:'webTrafficSection',   render:'renderWebTraffic' },
+  { key:'meta',       label:'Meta / FB & IG', icon:'thumbs-up',  section:'metaInsightsSection', render:'renderMetaInsights' },
+  { key:'autopost',   label:'Auto-Post',      icon:'send',       section:'autoPostSection',     render:'renderAutoPost' }
+ ]},
+ playbook: { label: 'Playbook & Setup', tabs: [
+  { key:'reviews',   label:'Reviews',        icon:'star',              section:'reviewsHubSection', render:'renderReviewsHub' },
+  { key:'referrals', label:'Referrals',      icon:'users',             section:'referralsSection',  render:'renderReferrals' },
+  { key:'localseo',  label:'Local & Google', icon:'map-pin',           section:'localSeoSection',   render:'renderLocalSeo' },
+  { key:'ads',       label:'Ads',            icon:'badge-dollar-sign', section:'adsSection',        render:'renderAds' }
+ ]}
+};
+window.__mktHubGo = function(hubKey, tabKey, el){
+ const hub = window.__MKT_HUBS[hubKey]; if(!hub) return;
+ const tab = hub.tabs.find(t => t.key === tabKey) || hub.tabs[0];
+ // el = menu-item sidebar (untuk highlight aktif); bila tukar tab dlm hub, el tiada — kekalkan highlight
+ if(typeof switchHub === 'function') switchHub([tab.section], hub.label, el || document.querySelector('[data-tab="nav_hub_' + hubKey + '"]'));
+ try { if(typeof window[tab.render] === 'function') window[tab.render](); } catch(e){ console.warn('hub render gagal:', tab.render, e); }
+ // Bar tab di ATAS section (section semua ada body-div dalaman; render fn sasar body, bar selamat)
+ try {
+  const sec = document.getElementById(tab.section); if(!sec) return;
+  let bar = sec.querySelector(':scope > .mkt-hub-tabs');
+  if(!bar){ bar = document.createElement('div'); bar.className = 'mkt-hub-tabs'; bar.style.cssText = 'display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 4px;'; sec.insertBefore(bar, sec.firstChild); }
+  bar.innerHTML = hub.tabs.map(t => {
+   const on = t.key === tab.key;
+   return '<button onclick="window.__mktHubGo(\'' + hubKey + '\',\'' + t.key + '\')" style="display:inline-flex; align-items:center; gap:6px; padding:8px 15px; border-radius:50px; font-size:12.5px; font-weight:700; cursor:pointer; border:1.5px solid ' + (on ? 'var(--primary)' : '#E5E7EB') + '; background:' + (on ? 'var(--primary)' : '#fff') + '; color:' + (on ? '#fff' : '#374151') + ';"><i data-lucide="' + t.icon + '" style="width:13px;height:13px;"></i>' + t.label + '</button>';
+  }).join('');
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ } catch(e){}
+};
+
 // ============================================================================
 // p1_1036 — DASHBOARD BACK-OFFICE dipindah ke backoffice-dash.js (lazy). Stub loader:
 // (Returns/Supplier/Brand/Channel/Reorder/InvHistory — mobile 4-tab tak guna; web muat bila klik)
