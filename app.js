@@ -11019,13 +11019,19 @@ window.__scsToggleSkuList = async function(sessionId) {
  // p1_488 — susun ikut RUJUKAN KEDUA lokasi (bhgn selepas '-' pertama). Cth A-F1 → guna "F1".
  // Zaid: turutan kira ikut rujukan kedua (rak), bukan zon pertama (A/B/C). Lokasi kosong di hujung.
  const __secondRef = (loc) => { const l = (loc || '').trim(); const i = l.indexOf('-'); return i >= 0 ? l.slice(i + 1).trim() : ''; };
+ // p1_1095 — Zaid: lokasi BETUL = location_bin TERKINI dari produk (sumber yang staf update).
+ // Snapshot sesi (i.location_bin masa sesi dicipta) boleh basi kalau lokasi diubah lepas tu.
+ // i.__locNow = live dulu, snapshot fallback — dipakai utk SUSUNAN + paparan senarai + popup.
+ const __locNowMap = new Map();
+ ((typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts : []).forEach(p => { if(p.location_bin) __locNowMap.set(p.sku, String(p.location_bin).trim()); });
+ items.forEach(i => { i.__locNow = __locNowMap.get(i.sku) || String(i.location_bin || '').trim(); });
  items.sort((a, b) => {
-  const ra = __secondRef(a.location_bin), rb = __secondRef(b.location_bin);
+  const ra = __secondRef(a.__locNow), rb = __secondRef(b.__locNow);
   if(!ra && !rb) return String(a.sku||'').localeCompare(String(b.sku||''), undefined, { numeric: true });
   if(!ra) return 1; if(!rb) return -1;
   const c = ra.localeCompare(rb, undefined, { numeric: true, sensitivity: 'base' });
   if(c !== 0) return c;
-  const fa = String(a.location_bin||'').split('-')[0], fb = String(b.location_bin||'').split('-')[0];
+  const fa = String(a.__locNow||'').split('-')[0], fb = String(b.__locNow||'').split('-')[0];
   const cf = fa.localeCompare(fb, undefined, { numeric: true });
   if(cf !== 0) return cf;
   return String(a.sku||'').localeCompare(String(b.sku||''), undefined, { numeric: true });
@@ -11075,12 +11081,13 @@ window.__scsToggleSkuList = async function(sessionId) {
  const __scsBcProd = (typeof masterProducts !== 'undefined' && masterProducts) ? masterProducts.find(p => p.sku === i.sku) : null;
  const scsBc = (__scsBcProd && (__scsBcProd.erp_barcode || __scsBcProd.barcode)) ? String(__scsBcProd.erp_barcode || __scsBcProd.barcode).trim() : '';
  const scsBcJs = scsBc.replace(/[\\']/g, ''); const scsNameJs = String(productName).replace(/[\\']/g, '');
- // p1_914 — lokasi stok: utamakan stock_locations (multi-lokasi + qty), fallback location_bin
+ // p1_1095 — TERBALIK dari p1_914: lokasi utama = location_bin produk TERKINI (i.__locNow — sumber
+ // sama dgn popup, yang staf memang update). Table stock_locations dah BASI → fallback terakhir shj.
  const __locChip = (txt) => `<span style="background:#F8EFD7; color:#7A5410; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px; display:inline-block; margin:1px 3px 1px 0;">${txt}</span>`;
  const scsLocs = __scsLocMap[i.sku] || [];
- const scsLocHtml = scsLocs.length
-  ? scsLocs.map(l => __locChip(escHtml(l.location) + (l.qty ? ' · ' + l.qty : ''))).join('')
-  : (i.location_bin ? __locChip(escHtml(i.location_bin)) : '<span style="color:#D1D5DB;">—</span>');
+ const scsLocHtml = i.__locNow
+  ? __locChip(escHtml(i.__locNow))
+  : (scsLocs.length ? scsLocs.map(l => __locChip(escHtml(l.location) + (l.qty ? ' · ' + l.qty : ''))).join('') : '<span style="color:#D1D5DB;">—</span>');
  // p1_915 — gambar: fallback ke masterProducts.images[0] bila item sesi tiada image_url
  const scsImg = i.image_url || (__scsBcProd && __scsBcProd.images && __scsBcProd.images[0]) || '';
  const thumbHtml = scsImg
@@ -11189,7 +11196,7 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
    <div style="min-width:0;">
     <div style="font-family:'SF Mono',Menlo,monospace; font-weight:700; font-size:13px; color:#111;">${esc(i.sku || '-')}</div>
     <div style="font-size:12px; color:#6B7280; margin-top:2px; line-height:1.35;">${esc(String(productName).slice(0,70))}</div>
-    ${i.location_bin ? `<div style="margin-top:5px;"><span style="background:#F8EFD7; color:#7A5410; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace;"><i data-lucide="map-pin" style="width:9px;height:9px; vertical-align:-1px;"></i> ${esc(i.location_bin)}</span></div>` : ''}
+    ${(i.__locNow || i.location_bin) ? `<div style="margin-top:5px;"><span style="background:#F8EFD7; color:#7A5410; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; font-family:'SF Mono',Menlo,monospace;"><i data-lucide="map-pin" style="width:9px;height:9px; vertical-align:-1px;"></i> ${esc(i.__locNow || i.location_bin)}</span></div>` : ''}
    </div>
   </div>
   ${barcodeVal ? `<div style="padding:12px 18px 4px; text-align:center; border-bottom:1px solid #F3F4F6;"><svg id="scsBarcodeSvg-${itemId}" style="max-width:100%; height:auto;"></svg></div>` : ''}
@@ -44317,7 +44324,7 @@ window.renderBinsLocations = function(){
     return '<tr style="border-bottom:1px solid #F1F1F1;"><td style="padding:8px 11px;font-weight:700;">'+esc(p.sku)+'</td><td style="padding:8px 11px;color:#374151;">'+esc((p.name||'').slice(0,48))+'</td><td style="padding:8px 11px;text-align:right;">'+p.stock+'</td><td style="padding:8px 11px;text-align:right;"><button onclick="window.openLocModal&&window.openLocModal('+JSON.stringify(p.sku).replace(/"/g,'&quot;')+')" style="font-size:11px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:5px 11px;border-radius:7px;cursor:pointer;">Tetapkan</button></td></tr>';
   }).join('');
   var html = '<div style="max-width:1100px;margin:0 auto;padding:4px 2px 60px;">'
-    + '<div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;"><i data-lucide="map-pin" style="width:22px;height:22px;color:var(--primary);"></i><h2 style="margin:0;font-size:22px;font-weight:800;color:var(--text-main);">Locations & Bins</h2></div>'
+    + '<div style="display:flex;align-items:center;gap:10px;margin:0 0 4px;"><i data-lucide="map-pin" style="width:22px;height:22px;color:var(--primary);"></i><h2 style="margin:0;font-size:22px;font-weight:800;color:var(--text-main);">Stock Location</h2></div>'
     + '<p style="margin:0 0 16px;font-size:13px;color:var(--text-muted);max-width:720px;line-height:1.55;">Direktori lokasi gudang kau (dari medan lokasi produk). Scan/taip kod bin untuk lihat apa di dalamnya, cetak label barcode bin, dan tetapkan lokasi untuk SKU yang belum ada. Idea dari WMS (bin master).</p>'
     + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'+kpi('Bin',data.list.length)+kpi('SKU berlokasi',skuLoc,'var(--primary-600,var(--primary-600,#B86A26))')+kpi('SKU tiada lokasi',data.unassigned.length, data.unassigned.length?'#CE9420':'#2e7d32')+kpi('Unit dalam bin',totUnits.toLocaleString())+'</div>'
     + '<div style="background:var(--primary-50,#FFF8F0);border:2px dashed var(--primary-400,#E89348);padding:10px 12px;border-radius:10px;margin-bottom:14px;"><label style="font-size:11.5px;font-weight:700;color:var(--primary-800,#7C4A1A);">Scan / taip kod bin atau SKU</label><input id="binScan" onkeyup="if(event.key===\'Enter\')window.__binSearch&&window.__binSearch()" placeholder="cth Z1-A2-R3 atau SKU" style="margin:6px 0 0;padding:8px 11px;border:1px solid #ECECEC;border-radius:8px;width:100%;font-weight:600;"></div>'
