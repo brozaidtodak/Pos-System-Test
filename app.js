@@ -43624,7 +43624,11 @@ window.__marginTagHtml = function(price, cost){
     fetch('/.netlify/functions/meta-settings', { method:'POST', headers: metaHdr({'Content-Type':'application/json'}), body: JSON.stringify({ exchange_user_token:tok.trim() }) })
       .then(function(r){ return r.json(); })
       .then(function(r){
-        if(r && r.ok){ window.showToast && showToast('Token KEKAL tersimpan: '+(r.page_name||r.page_id||'OK'),'success'); window.renderMetaInsights(); return; }
+        if(r && r.ok){
+          window.showToast && showToast('Token KEKAL tersimpan: '+(r.page_name||r.page_id||'OK'),'success');
+          if(r.webhook_subscribed===false){ window.showToast && showToast('Amaran: page tak dapat subscribe webhook Messenger'+(r.webhook_error?' — '+r.webhook_error:'')+'. Mesej FB mungkin tak masuk inbox.','warn'); }
+          window.renderMetaInsights(); return;
+        }
         var msg = (r && r.error==='no_app_secret') ? 'META_APP_SECRET belum diset di Netlify env (lihat nota bawah)' : ((r&&(r.detail||r.error))||'gagal tukar token');
         window.showToast && showToast('Gagal: '+msg,'error'); if(btn){ btn.disabled=false; btn.textContent='Tukar jadi Token Kekal'; }
       })
@@ -43644,7 +43648,7 @@ window.__marginTagHtml = function(price, cost){
             ? card('Sambung Meta — Token Kekal (disyorkan)',
                 '<p style="margin:0 0 8px;font-size:12.5px;color:var(--text-muted);line-height:1.6;">Cara mudah &amp; kekal (tak luput, tak perlu portfolio/System User):</p>'
                 +todo('Buka developers.facebook.com/tools/explorer → pilih app 10 CAMP → "Get User Access Token"')
-                +todo('Tick scope: pages_show_list, pages_read_engagement, read_insights, pages_messaging, pages_manage_posts, instagram_basic, instagram_manage_messages')
+                +todo('Tick scope: pages_show_list, pages_read_engagement, read_insights, pages_messaging, pages_manage_posts, pages_manage_metadata, instagram_basic, instagram_manage_messages, instagram_content_publish')
                 +todo('Generate → copy USER token → tampal bawah ni')
                 +'<div style="margin-top:10px;display:grid;gap:8px;max-width:520px;">'
                 +'<textarea id="metaUserToken" placeholder="User Access Token dari Graph Explorer (tampal di sini)" rows="3" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-family:monospace;resize:vertical;"></textarea>'
@@ -43668,7 +43672,20 @@ window.__marginTagHtml = function(price, cost){
           return;
         }
         // TERSAMBUNG — tarik page insights + posts + ig serentak.
-        var head = card('Status', '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-weight:700;color:var(--text-main);">Tersambung: '+mesc(st.page_name||st.page_id||'Page')+'</span><span style="font-size:11px;font-weight:800;color:#fff;background:#2e7d32;padding:2px 9px;border-radius:50px;">LIVE</span></div>');
+        // p1_1091: owner boleh tukar token TANPA disconnect (dulu borang hanya muncul bila belum sambung —
+        // terpaksa guna curl + x-internal-key utk refresh scope. Butang toggle borang exchange di sini).
+        var swapForm = isBoss
+          ? '<div id="metaTokenSwap" style="display:none;margin-top:12px;border-top:1px solid #F1F1F1;padding-top:12px;">'
+            +'<p style="margin:0 0 8px;font-size:12px;color:var(--text-muted);line-height:1.6;">Jana USER token baru: developers.facebook.com/tools/explorer → app 10 CAMP → Get User Access Token → tick scope <b>pages_show_list, pages_read_engagement, read_insights, pages_messaging, pages_manage_posts, pages_manage_metadata, instagram_basic, instagram_manage_messages, instagram_content_publish</b> → Generate → copy → tampal sini. Server tukar jadi token PAGE kekal + auto-subscribe webhook Messenger.</p>'
+            +'<div style="display:grid;gap:8px;max-width:520px;">'
+            +'<textarea id="metaUserToken" placeholder="User Access Token dari Graph Explorer (tampal di sini)" rows="3" style="padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-family:monospace;resize:vertical;"></textarea>'
+            +'<button onclick="window.__metaExchangeSave(this)" style="justify-self:start;font-size:13px;font-weight:700;color:#fff;background:var(--primary);border:none;padding:9px 18px;border-radius:8px;cursor:pointer;">Tukar jadi Token Kekal</button>'
+            +'</div></div>'
+          : '';
+        var swapBtn = isBoss
+          ? '<button onclick="var f=document.getElementById(\'metaTokenSwap\');if(f)f.style.display=(f.style.display===\'none\'?\'block\':\'none\');" style="font-size:11.5px;font-weight:700;color:var(--primary);background:#fff;border:1.5px solid var(--primary);padding:3px 12px;border-radius:50px;cursor:pointer;">Tukar Token</button>'
+          : '';
+        var head = card('Status', '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;"><span style="font-weight:700;color:var(--text-main);">Tersambung: '+mesc(st.page_name||st.page_id||'Page')+'</span><span style="display:flex;gap:8px;align-items:center;">'+swapBtn+'<span style="font-size:11px;font-weight:800;color:#fff;background:#2e7d32;padding:2px 9px;border-radius:50px;">LIVE</span></span></div>'+swapForm);
         set('metaInsightsBody', shell('thumbs-up','Meta / FB & IG','Prestasi Page Facebook & Instagram 10 CAMP — data live dari Meta.', head + '<div id="metaLiveBody"><div style="padding:14px;color:var(--text-muted);font-size:13px;"><i data-lucide="loader" style="width:16px;height:16px;"></i> Memuatkan insights…</div></div>'));
         if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}}
         Promise.all([
@@ -43708,7 +43725,7 @@ window.__marginTagHtml = function(price, cost){
             }).join('');
             html+=card('Post Instagram terkini',ir);
           }
-          html+=card('Pautan',ext('https://business.facebook.com','Business Suite')+ext('https://business.facebook.com/latest/insights','Meta Insights')+(isBoss?ext('https://business.facebook.com/latest/settings/system_users','Tukar token'):''));
+          html+=card('Pautan',ext('https://business.facebook.com','Business Suite')+ext('https://business.facebook.com/latest/insights','Meta Insights')+(isBoss?ext('https://developers.facebook.com/tools/explorer','Graph Explorer (jana token)'):''));
           var el=document.getElementById('metaLiveBody'); if(el){ el.innerHTML=html; if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}} }
         });
       })

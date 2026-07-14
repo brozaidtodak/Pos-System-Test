@@ -79,7 +79,17 @@ exports.handler = async (event) => {
                     ig_user_id: body.ig_user_id || (existing && existing.ig_user_id) || null
                 }, (auth.user && (auth.user.email || auth.user.id)) || 'staff');
                 const row = Array.isArray(saved) ? saved[0] : saved;
-                return json(200, { ok: true, connected: true, permanent: true, page_id: row && row.page_id, page_name: row && row.page_name });
+                // Auto-subscribe the page to this app's webhook — /{page}/subscribed_apps starts EMPTY
+                // for a new page/token pairing and nothing else in the setup creates it (9 Jul punca #1).
+                let webhookSubscribed = false, webhookError = null;
+                try {
+                    const sub = await graph(`/${got.page_id}/subscribed_apps`, {
+                        token: got.page_access_token, method: 'POST',
+                        query: { subscribed_fields: 'messages,messaging_postbacks' }
+                    });
+                    webhookSubscribed = !!(sub && sub.success);
+                } catch (e) { webhookError = e.message || String(e); }
+                return json(200, { ok: true, connected: true, permanent: true, page_id: row && row.page_id, page_name: row && row.page_name, webhook_subscribed: webhookSubscribed, webhook_error: webhookError });
             }
 
             const patch = {};
