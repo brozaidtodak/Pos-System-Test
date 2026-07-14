@@ -652,7 +652,8 @@ window.renderTikTokLive = async function(){
  body.innerHTML = '<p style="color:#9CA3AF;padding:30px;text-align:center;">Memuatkan…</p>';
  const sess = await window.__liveLoadSess();
  const u = window.currentUser||{};
- const boss = (typeof window.isBoss==='function' && window.isBoss(u));
+ // p1_1113 — 'pengurus' = Bos + mgmt (Aliff urus gaji/komisen — WAJIB nampak; ikut postur Laporan Komisen mgmt-only)
+ const boss = (typeof window.isBoss==='function' && window.isBoss(u)) || (u.role === 'mgmt');
  const E = window.__mktEsc;
  const staffOpts = ((typeof authUsers!=='undefined'&&authUsers)||[]).filter(function(x){return (x.dept||'').indexOf('External')===-1;}).map(function(x){ return '<option value="'+E(x.name)+'"'+(x.name===(u.name||'')?' selected':'')+'>'+E(x.name)+'</option>'; }).join('');
  const form = '<div class="admin-card" style="padding:16px;margin-bottom:16px;">'
