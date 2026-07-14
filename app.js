@@ -385,6 +385,40 @@ window.__isRealSale = function(s) {
 // direproduce). Hantar event ringan (checkout timing + JS error) ke client-telemetry fn →
 // table client_telemetry. Fire-and-forget: TAK BOLEH ganggu cashier walau apa pun (silent fail).
 window.__telAppV = (function(){ try { const s = document.querySelector('script[src*="app.js?v="]'); const m = s && /v=(\d+)/.exec(s.src); return m ? m[1] : ''; } catch(e){ return ''; } })();
+
+// p1_1093 — PENGAWAL VERSI. Punca: APK/WebView tak pernah reload sendiri — device staf boleh
+// jalan JS basi BERHARI-HARI selepas deploy (kes sebenar: fix OOS p1_1092 dah live tapi device
+// Zaid masih tunjuk Stok Habis sebab kod lama kekal dlm memori; kes Ariff pun disyaki sama).
+// Check versi HTML server bila app resume (throttle 5 min) + tiap 30 min + sekali lepas boot.
+// Versi baru: reload AUTO bila selamat (troli kosong), kalau tengah jual → toast, cuba lagi nanti.
+(function(){
+ if (!window.__telAppV) return; // versi tak dikesan (dev/file://) — skip
+ let lastCheck = 0;
+ async function check(){
+  const now = Date.now();
+  if (now - lastCheck < 5*60*1000) return;
+  lastCheck = now;
+  try {
+   const res = await fetch('/?vercheck=' + now, { cache: 'no-store' });
+   if (!res.ok) return;
+   const m = /app\.js\?v=(\d+)/.exec(await res.text());
+   if (!m) return;
+   const server = parseInt(m[1],10), local = parseInt(window.__telAppV,10);
+   if (!(server > local)) return;
+   const busy = (typeof cart !== 'undefined' && Array.isArray(cart) && cart.length > 0);
+   const key = 'posVerReload_' + server;
+   if (!busy && !sessionStorage.getItem(key)) {
+    try { sessionStorage.setItem(key,'1'); } catch(e){}
+    location.reload();
+    return;
+   }
+   if (busy && window.showToast) showToast('Versi baru POS sedia (v'+server+'). Habiskan jualan ni — app kemaskini sendiri lepas troli kosong.','warn');
+  } catch(e){}
+ }
+ document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') check(); });
+ setInterval(check, 30*60*1000);
+ setTimeout(check, 20000);
+})();
 window.__tel = function(type, data){
  try {
   if(!window.currentUser) return; // hanya sesi staff
