@@ -43716,14 +43716,16 @@ window.__marginTagHtml = function(price, cost){
   window.renderContentSeo = function(){
     function art(href,tag,title){ return '<a href="'+href+'" target="_blank" rel="noopener" style="display:block;padding:11px 13px;border:1px solid #ECECEC;border-radius:10px;margin-bottom:8px;text-decoration:none;"><span style="font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--primary-600,var(--primary-600,#B86A26));">'+tag+'</span><div style="font-size:13.5px;font-weight:700;color:var(--text-main);margin-top:2px;">'+title+'</div></a>'; }
     var body=
-      card('Status SEO',done('Blog /panduan LIVE (4 artikel)')+done('sitemap.xml + robots.txt + llms.txt')+done('Schema FAQPage + BlogPosting + Store')+todo('Daftar sitemap di Google Search Console')+todo('Sambung artikel #5+ dari content plan'))
+      card('Status SEO',done('Blog /panduan LIVE (6 artikel)')+done('sitemap.xml + robots.txt + llms.txt')+done('Schema FAQPage + BlogPosting + Store')+done('Sitemap didaftar di Google Search Console (29 Jun)')+done('Artikel #5 content plan (Camping Musim Hujan) — 14 Jul')+todo('Artikel #6: Naturehike Worth It Tak? Review Jujur'))
       + card('Artikel diterbitkan',
-          art('/blog/khemah-camping-terbaik-malaysia-2026.html','Panduan Gear','Khemah Camping Terbaik Malaysia 2026 (Ikut Bilangan Orang)')
+          art('/blog/camping-musim-hujan-malaysia.html','Cuaca','Camping Musim Hujan di Malaysia — Tips & Gear Wajib (Monsun)')
+        + art('/blog/kerusi-camping-terbaik-malaysia-2026.html','Panduan Gear','Kerusi Camping Terbaik Malaysia 2026')
+        + art('/blog/khemah-camping-terbaik-malaysia-2026.html','Panduan Gear','Khemah Camping Terbaik Malaysia 2026 (Ikut Bilangan Orang)')
         + art('/blog/tempat-camping-best-selangor.html','Tempat','10 Tempat Camping Best dekat Selangor')
         + art('/blog/naturehike-vs-mobi-garden.html','Perbandingan','Naturehike vs Mobi Garden: Brand Mana Lebih Baik?')
         + art('/blog/barang-camping-wajib-first-timer.html','Pemula','10 Barang Camping Wajib untuk First-Timer')
         + ext('/blog/','Buka Blog'))
-      + card('Akan datang (backlog)','<p style="margin:0;font-size:13px;color:var(--text-muted);line-height:1.6;">Camping Musim Hujan + gear · Review Naturehike jujur · Cara Pasang Khemah (HowTo) · Budget Camping breakdown · Sleeping Bag rating suhu · Camping Cyberjaya/Putrajaya. Pelan penuh: <b>docs/MARKETING_CONTENT_PLAN.md</b>.</p>')
+      + card('Akan datang (backlog)','<p style="margin:0;font-size:13px;color:var(--text-muted);line-height:1.6;">Review Naturehike jujur · Cara Pasang Khemah (HowTo) · Tempat camping free/murah Klang Valley · Sleeping Bag rating suhu · Camping Cyberjaya/Putrajaya · Budget Camping breakdown. Pelan penuh: <b>docs/MARKETING_CONTENT_PLAN.md</b>.</p>')
       + card('Alat',ext('https://search.google.com/search-console','Google Search Console')+ext('https://www.10camp.com/sitemap.xml','Lihat sitemap'));
     set('contentSeoBody', shell('file-text','Content & SEO','Enjin trafik organik kau. Tiap artikel = pintu masuk Google + bahan AI (ChatGPT/Perplexity) + funnel ke Shopee/TikTok/walk-in. Sasaran: terbit 1 artikel seminggu.',body));
   };
