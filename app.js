@@ -419,6 +419,79 @@ window.__telAppV = (function(){ try { const s = document.querySelector('script[s
  setInterval(check, 30*60*1000);
  setTimeout(check, 20000);
 })();
+
+// p1_1099 — PULL-TO-REFRESH (APK sahaja): tarik skrin ke bawah di PALING ATAS → segar.
+// Urutan: (1) check versi server — ada baru & troli kosong → reload penuh (dapat kod baru);
+// (2) kalau tak, SOFT refresh: tarik semula produk + stok (paged p1_1092) + render semula
+// skrin semasa — TANPA reload page (elak kena PIN semula p1_1030). Indikator pill atas.
+(function(){
+ if (!window.__isPOSApp) return;
+ let startY = 0, armed = false, pulling = false, lastDy = 0;
+ const THRESH = 90;
+ function pill(txt){
+  let el = document.getElementById('ptrPill');
+  if(!el){
+   el = document.createElement('div'); el.id = 'ptrPill';
+   el.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);z-index:99999;background:#101010;color:#FAF6EF;font:700 12px var(--font-main,Poppins),sans-serif;padding:8px 16px;border-radius:50px;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;white-space:nowrap;';
+   document.body.appendChild(el);
+  }
+  el.textContent = txt; el.style.display = 'block';
+ }
+ function hidePill(delay){ setTimeout(function(){ const el = document.getElementById('ptrPill'); if(el) el.style.display = 'none'; }, delay || 0); }
+ // ada mana-mana bekas atas laluan sentuhan yang DAH scroll ke bawah? (app ada inner scroller)
+ function scrolledAny(el){
+  let n = el;
+  while(n && n !== document.documentElement){
+   if(n.scrollTop > 2) return true;
+   n = n.parentElement;
+  }
+  return (window.scrollY || document.documentElement.scrollTop || 0) > 2;
+ }
+ window.__posAppRefresh = async function(){
+  if (window.__ptrBusy) return; window.__ptrBusy = true;
+  pill('Menyegarkan…');
+  try {
+   try {
+    const res = await fetch('/?ptr=' + Date.now(), { cache: 'no-store' });
+    const m = /app\.js\?v=(\d+)/.exec(await res.text());
+    const cartEmpty = !(typeof cart !== 'undefined' && Array.isArray(cart) && cart.length);
+    if (m && parseInt(m[1], 10) > parseInt(window.__telAppV || '0', 10) && cartEmpty) { pill('Versi baru — memuat semula…'); location.reload(); return; }
+   } catch(e){}
+   const [prods, batches] = await Promise.all([
+    window.__fetchAllRows('products_master', 'sku', true).catch(function(){ return null; }),
+    window.__loadAllBatches().catch(function(){ return null; })
+   ]);
+   if (Array.isArray(prods) && prods.length) masterProducts = prods;
+   if (Array.isArray(batches)) inventoryBatches = batches;
+   try { if (typeof renderPOS === 'function') renderPOS(); } catch(e){}
+   // render semula section yang sedang terbuka (ikut tab app yang nampak)
+   [['checkSessionsSection','renderCheckSessions'], ['allOrdersSection','renderAllOrders'], ['commissionSection','renderCommission']].forEach(function(p){
+    try { const s = document.getElementById(p[0]); if (s && getComputedStyle(s).display !== 'none' && typeof window[p[1]] === 'function') window[p[1]](); } catch(e){}
+   });
+   pill('Dah segar'); hidePill(900);
+  } finally { window.__ptrBusy = false; }
+ };
+ document.addEventListener('touchstart', function(e){
+  armed = false;
+  if (!e.touches || !e.touches.length) return;
+  if (scrolledAny(e.target)) return;                       // tengah scroll dlm senarai — jangan ganggu
+  if (document.querySelector('#scsCountPopupOverlay, #skuLocOverlay, #niSendOverlay, #niBcOverlay, #mktContentModal')) return; // popup terbuka
+  armed = true; pulling = false; lastDy = 0; startY = e.touches[0].clientY;
+ }, { passive: true });
+ document.addEventListener('touchmove', function(e){
+  if (!armed || !e.touches || !e.touches.length) return;
+  const dy = e.touches[0].clientY - startY;
+  if (dy > 25) { pulling = true; lastDy = dy; pill(dy > THRESH ? 'Lepas untuk segar semula' : 'Tarik lagi…'); }
+ }, { passive: true });
+ document.addEventListener('touchend', function(){
+  if (!armed) return;
+  armed = false;
+  if (pulling && lastDy > THRESH) window.__posAppRefresh();
+  else if (pulling) hidePill(0);
+  pulling = false; lastDy = 0;
+ }, { passive: true });
+})();
+
 window.__tel = function(type, data){
  try {
   if(!window.currentUser) return; // hanya sesi staff
