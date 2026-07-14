@@ -4463,7 +4463,7 @@ window.scLoadSupplierPrices = async function(){
  if(typeof db==='undefined'||!db) return null;
  try {
  const { data: ships } = await db.from('cost_shipments').select('id,supplier,order_date,label,updated_at').limit(2000);
- const { data: items } = await db.from('cost_shipment_items').select('shipment_id,sku,product_name,cost_rmb').limit(100000);
+ const items = await window.__fetchAllRows('cost_shipment_items', 'id', true, { select: 'shipment_id,sku,product_name,cost_rmb,id' }); // p1_1092 — paged: dah 1,042 baris, limit besar dipotong server pada 1000
  const shipMap={}; (ships||[]).forEach(s=>{ shipMap[s.id]=s; });
  const idx={};
  (items||[]).forEach(it=>{
@@ -4633,7 +4633,7 @@ window.scApplyBatchReceived = async function(){
  const uName=(window.currentUser||{}).name||'System'; const label=(document.getElementById('scLabel').value||'').trim();
  let ok=0; const errs=[];
  for(const r of rows){ try{ const { error } = await db.from('inventory_batches').insert([{ sku:r.sku, qty_received:r.qty, qty_remaining:r.qty, cost_price:r.landed, inbound_date:new Date().toISOString(), notes:'Terima carton'+(label?' ('+label+')':'')+' by '+uName }]); if(error) throw error; ok++; }catch(e){ errs.push(r.sku+': '+e.message); } }
- try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){}
+ try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} // p1_1092 — paged (cap 1000)
  if(ok>0 && window.__scId){ const uN=uName; try{ await db.from('cost_shipments').update({ stage:'arrived', stage_updated_at:new Date().toISOString(), stage_updated_by:uN }).eq('id', window.__scId); }catch(e){} }
  if(ok>0 && typeof window.__calcLogLanded==='function') window.__calcLogLanded('apply_batch');
  if(typeof showToast==='function') showToast(`Stock-in ikut terima: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
@@ -4766,7 +4766,7 @@ window.scApplyBatch = async function(){
  ok++;
  } catch(e){ errs.push(r.sku+': '+e.message); }
  }
- try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){}
+ try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} // p1_1092 — paged (cap 1000)
  if(ok>0 && typeof window.__calcLogLanded==='function') window.__calcLogLanded('apply_batch');
  if(typeof showToast==='function') showToast(`Stock-in batch: ${ok}${errs.length?'. Ralat: '+errs[0]:''}.`, errs.length?'warn':'success');
 };
@@ -4791,7 +4791,8 @@ window.scLoadArchive = async function(){
  tb.innerHTML='<tr><td colspan="8" style="text-align:center; padding:20px; color:#9CA3AF;">Memuatkan…</td></tr>';
  try {
  const { data: ships } = await db.from('cost_shipments').select('*').order('order_date',{ascending:false, nullsFirst:false}).order('updated_at',{ascending:false}).limit(500);
- const { data: items } = await db.from('cost_shipment_items').select('shipment_id,sku,cost_rmb,qty,sort_idx').order('sort_idx',{ascending:true}).limit(100000);
+ const items = await window.__fetchAllRows('cost_shipment_items', 'id', true, { select: 'shipment_id,sku,cost_rmb,qty,sort_idx,id' }); // p1_1092 — paged (1,042 baris); susun sort_idx dlm JS (page ikut id unik, elak skip/dup)
+ items.sort((a,b)=>(a.sort_idx==null?1e9:a.sort_idx)-(b.sort_idx==null?1e9:b.sort_idx));
  const byShip = {};
  (items||[]).forEach(it=>{ (byShip[it.shipment_id] = byShip[it.shipment_id] || []).push(it); });
  window.__scArchive = (ships||[]).map(s=>{
@@ -8226,26 +8227,27 @@ async function initApp() {
    }
   } catch(e){}
  }
- // p1_308 — explicit high .limit() so PostgREST's default 1000-row cap doesn't
- // silently truncate (sales_history already >4900 rows). Keeps full data loaded.
+ // p1_1092 — DULU .limit(100000) disangka pintas cap 1000 PostgREST — SALAH: server tetap
+ // potong pada max-rows. inventory_batches cecah 1,013 baris (13 Jul) → 13 batch TERBARU
+ // tergugur (order inbound_date ASC) → produk baru kekal OOS + snapshot terpotong tersimpan
+ // dlm boot cache APK. Kini muat berperingkat penuh (__fetchAllRows/__loadAllBatches).
  // p1_651 (4b) — staff (authenticated) read the full base table (incl cost); public/anon read
  // the cost-free public_products view. Hides cost/margin/supplier from competitors.
  // PERF (B) — muat DUA benda WAJIB utk render (produk + stok) SERENTAK, bukan bersiri.
- // p1_651 (4b) — staff baca base table penuh (incl cost); anon baca view tanpa-cost.
  const __masterQ = window.currentUser
-   ? db.from('products_master').select('*').limit(100000)
-   : db.from('public_products').select('*').limit(100000);
+   ? window.__fetchAllRows('products_master', 'sku', true)
+   : window.__fetchAllRows('public_products', 'sku', true);
  const __batchQ = window.currentUser
-   ? db.from('inventory_batches').select('*').order('inbound_date', {ascending: true}).limit(100000)
-   : db.from('public_stock').select('*').limit(100000);
- const [__masterRes, __batchRes] = await Promise.all([
-   __masterQ.then(r=>r).catch(()=>({data:null})),
-   __batchQ.then(r=>r).catch(()=>({data:null}))
+   ? window.__loadAllBatches()
+   : window.__fetchAllRows('public_stock', 'sku', true);
+ const [__masterRows, __batchRows] = await Promise.all([
+   __masterQ.catch(()=>null),
+   __batchQ.catch(()=>null)
  ]);
- if(__masterRes && __masterRes.data) masterProducts = __masterRes.data;
- if(__batchRes && __batchRes.data) inventoryBatches = __batchRes.data;
+ if(Array.isArray(__masterRows) && __masterRows.length) masterProducts = __masterRows;
+ if(Array.isArray(__batchRows)) inventoryBatches = __batchRows;
  // p1_1034 — simpan snapshot fresh ke boot cache (fire-and-forget) utk launch seterusnya serta-merta.
- if (window.__isPOSApp && window.currentUser && __masterRes && __masterRes.data && __batchRes && __batchRes.data) {
+ if (window.__isPOSApp && window.currentUser && Array.isArray(__masterRows) && __masterRows.length && Array.isArray(__batchRows)) {
   try { window.__bootCacheSet({ t: Date.now(), p: masterProducts, b: inventoryBatches }); } catch(e){}
  }
  window.__mktPromos = window.__mktPromos || []; // diisi di latar (A) utk staf; anon = kosong
@@ -8286,7 +8288,7 @@ async function initApp() {
  window.__deferStaffLoadRunning = true;
  (async () => {
  try { const { data: mktp } = await db.from('marketplace_promotions').select('*').eq('active', true).limit(500); window.__mktPromos = mktp || []; } catch(e){ window.__mktPromos = window.__mktPromos || []; }
- try { let __itq = db.from('inventory_transactions').select('*').order('created_at', {ascending: false}); __itq = window.__isAppDataCapped() ? __itq.gte('created_at', window.__appDataCutoffISO()) : __itq.limit(100000); const { data: txns } = await __itq; if(txns) inventoryTransactions = txns; } catch(e){} // p1_1021 — app mobile: 2 bulan; web: penuh
+ try { const __itF = window.__isAppDataCapped() ? function(q){ return q.gte('created_at', window.__appDataCutoffISO()); } : null; const txns = await window.__fetchAllRows('inventory_transactions', 'id', false, __itF ? { filter: __itF } : null); if(txns) inventoryTransactions = txns; } catch(e){} // p1_1021 — app mobile: 2 bulan; web: penuh. p1_1092 — paged: dah 1,503 baris, .limit(100000) dipotong server pada 1000
  try { if(typeof loadSuppliers === 'function') await loadSuppliers(); } catch(e){ console.warn('loadSuppliers:', e); }
  try { if(typeof loadPosV2 === 'function') await loadPosV2(); } catch(e){ console.warn('loadPosV2:', e); }
  try { if(typeof loadReservations === 'function') await loadReservations(); } catch(e){ console.warn('loadReservations:', e); }
@@ -10523,7 +10525,7 @@ window.__scsPublishConfirm = async function() {
   } catch(e) { console.error('publish gagal', sel.sku, e); fail++; }
  }
  // Reload inventory global supaya UI cermin stok baru
- try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){}
+ try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} // p1_1092 — paged (cap 1000)
  // Audit trail
  try {
   await db.from('audit_logs').insert([{ action_type: 'stock_publish_from_session', actor_name: u.name || 'System', details: JSON.stringify({ session_id: sessionId, published: done, failed: fail, adjustments }), created_at: new Date().toISOString() }]);
@@ -15206,7 +15208,7 @@ window.__postSaleRefresh = async function(soldItems) {
  // (2) reconcile awan — satu jadual sahaja, di latar
  try {
   if(window.currentUser && typeof db !== 'undefined' && db) {
-   const { data } = await db.from('inventory_batches').select('*').order('inbound_date', { ascending: true }).limit(100000);
+   const data = await window.__loadAllBatches(); // p1_1092 — paged (cap 1000)
    if(data && data.length) {
     inventoryBatches = data;
     try { if(typeof renderPOS === 'function') renderPOS(); } catch(e){}
@@ -21539,9 +21541,11 @@ window.renderStockRecon = async function(){
   tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;padding:32px;">Mengira pergerakan stok…</td></tr>';
   let txns = [], rets = [], doItems = [];
   try { if(typeof db !== 'undefined' && db){
-   const t = await db.from('inventory_transactions').select('sku,transaction_type,qty_change,reason').limit(200000); txns = (t.data) || [];
-   const r = await db.from('returns_log').select('sku,qty').limit(50000); rets = (r.data) || [];
-   const dq = await db.from('delivery_order_items').select('sku,qty').limit(100000); doItems = (dq.data) || [];
+   // p1_1092 — paged: inventory_transactions 1,503 + delivery_order_items 1,050 baris —
+   // .limit(besar) dipotong server pada 1000, recon Diterima/CUD kurang senyap.
+   txns = await window.__fetchAllRows('inventory_transactions', 'id', true, { select: 'sku,transaction_type,qty_change,reason' });
+   rets = await window.__fetchAllRows('returns_log', 'id', true, { select: 'sku,qty' });
+   doItems = await window.__fetchAllRows('delivery_order_items', 'id', true, { select: 'sku,qty' });
   }} catch(e){ console.warn('recon fetch', e); }
   window.__reconCache = { txns, rets, doItems }; window.__reconCacheAt = now;
  }
@@ -22055,9 +22059,9 @@ window.__mpTiktokStock = async function(filter, forceReload){
   // Muat semula: refresh katalog POS dulu supaya produk baru (cth dicipta staf lain) nampak
   if(forceReload && window.currentUser && typeof db!=='undefined'){
    try {
-    const { data: master } = await db.from('products_master').select('*').limit(100000);
-    if(master) masterProducts = master;
-    const { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date',{ascending:true}).limit(100000);
+    const master = await window.__fetchAllRows('products_master', 'sku', true); // p1_1092 — paged
+    if(master && master.length) masterProducts = master;
+    const batches = await window.__loadAllBatches();
     if(batches) inventoryBatches = batches;
    } catch(e){ /* abaikan ralat refresh katalog */ }
   }
@@ -26384,7 +26388,7 @@ window.__pdpSaveVariants = async function(parentSku) {
  // Reload batches so the stock display reflects the adjustments, then re-render
  // the variant table IN PLACE. Resets inputs to true current stock so pressing
  // Simpan again can't compound deltas (p1_307 fix).
- try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){}
+ try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} // p1_1092 — paged (cap 1000)
  if(typeof showToast === 'function') showToast(`Variants disimpan — ${fieldUpdates} field, ${stockAdj} stok adjust${errs.length ? '. Ralat: ' + errs[0] : ''}.`, errs.length ? 'warn' : 'success');
  const freshProd = (masterProducts || []).find(x => x.sku === curSku);
  if(freshProd) {
@@ -27929,7 +27933,7 @@ window.bulkRefresh = async function() {
   if(typeof window.__fetchAllRows === 'function') {
    const prods = await window.__fetchAllRows('products_master', 'sku', true);
    if(Array.isArray(prods) && prods.length) masterProducts = prods;
-   const batches = await window.__fetchAllRows('inventory_batches', 'inbound_date', false);
+   const batches = await window.__loadAllBatches(); // p1_1092 — page ikut id unik + susun FIFO
    if(Array.isArray(batches) && batches.length) inventoryBatches = batches;
   }
   if(typeof window.renderBulkOps === 'function') window.renderBulkOps();
@@ -28226,7 +28230,7 @@ window.bulkSaveEdits = async function() {
  if(typeof window.__shopeePriceReminder === 'function') window.__shopeePriceReminder();
  }
  // reload batches so stock display reflects adjustments
- if(stockChanged) { try { const { data } = await db.from('inventory_batches').select('*').limit(100000); if(data) inventoryBatches = data; } catch(e){} }
+ if(stockChanged) { try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} } // p1_1092 — paged (cap 1000)
  if(hint) hint.textContent = '';
  if(errs.length) console.warn('bulk save errors:', errs);
  if(typeof showToast === 'function') showToast(`Disimpan: ${changed} perubahan${errs.length ? '. Ralat: ' + errs[0] : ''}.`, errs.length ? 'warn' : 'success');
@@ -29532,14 +29536,15 @@ window.exportInventorySnapshot = async function() {
  try {
  // Approximate snapshot: current batches that were created on or before cutoff
  // Plus replay txns to reconstruct historical qty (safer)
- const [{ data: batches }, { data: txns }] = await Promise.all([
- db.from('inventory_batches').select('*').lte('inbound_date', cutoff),
- db.from('inventory_transactions').select('*').lte('created_at', cutoff)
+ // p1_1092 — paged (dua-dua table dah >1000 baris; select tanpa limit dipotong server pada 1000)
+ const [batches, txns] = await Promise.all([
+ window.__fetchAllRows('inventory_batches', 'id', true, { filter: q => q.lte('inbound_date', cutoff) }),
+ window.__fetchAllRows('inventory_transactions', 'id', true, { filter: q => q.lte('created_at', cutoff) })
 ]);
 
  // Build per-SKU qty by replaying txns (approximate; current state minus everything after cutoff)
- const allTxns = await db.from('inventory_transactions').select('*');
- const txnsAfter = (allTxns.data || []).filter(t => new Date(t.created_at)> new Date(cutoff));
+ const allTxns = await window.__fetchAllRows('inventory_transactions', 'id', true);
+ const txnsAfter = (allTxns || []).filter(t => new Date(t.created_at)> new Date(cutoff));
 
  const skuQty = {};
  masterProducts.forEach(p => {
@@ -32112,7 +32117,8 @@ window.__aoPrintPickingList = function() {
 };
 
 // p1_329/p1_330 — muat SEMUA baris berperingkat 1000-1000 (PostgREST max-rows ~1000 walau limit besar)
-window.__fetchAllRows = async function(table, orderCol, ascending) {
+// p1_1092 — opts pilihan: { select:'kolum,kolum', filter:fn(q)=>q } utk query berkolum/bertapis.
+window.__fetchAllRows = async function(table, orderCol, ascending, opts) {
  const all = [];
  const PAGE = 1000;
  // p1_480 — WAJIB ada ORDER BY stabil masa paginate .range(); tanpa order, Postgres
@@ -32121,7 +32127,8 @@ window.__fetchAllRows = async function(table, orderCol, ascending) {
  const oc = orderCol || 'id';
  const asc = orderCol ? !!ascending : true;
  for(let start = 0; start < 1000000; start += PAGE) {
- let q = db.from(table).select('*').order(oc, { ascending: asc });
+ let q = db.from(table).select((opts && opts.select) || '*').order(oc, { ascending: asc });
+ if(opts && typeof opts.filter === 'function') q = opts.filter(q);
  const { data, error } = await q.range(start, start + PAGE - 1);
  if(error) throw error;
  if(!data || !data.length) break;
@@ -32129,6 +32136,16 @@ window.__fetchAllRows = async function(table, orderCol, ascending) {
  if(data.length < PAGE) break;
  }
  return all;
+};
+// p1_1092 — inventory_batches melepasi 1,000 baris (13 Jul 2026): PostgREST potong pada
+// max-rows 1000 WALAUPUN .limit(100000), jadi batch terbaru tergugur (susunan inbound_date
+// ASC buang hujung) → produk baru Zack kekal "STOK HABIS" walau stok dah didaftar.
+// Muat berperingkat ikut id (unik — tiada skip/dup antara page), lepas tu susun FIFO
+// inbound_date ASC (sort JS stabil: seri kekal ikut id) sebab deduct FIFO harap susunan ni.
+window.__loadAllBatches = async function() {
+ const rows = await window.__fetchAllRows('inventory_batches', 'id', true);
+ rows.sort((a, b) => new Date(a.inbound_date || 0) - new Date(b.inbound_date || 0));
+ return rows;
 };
 window.__aoFetchAllSales = function() { return window.__fetchAllRows('sales_history', 'created_at', false); };
 
@@ -44390,7 +44407,7 @@ window.renderBackfillOrder = function(){
   if(window.lucide&&lucide.createIcons){try{lucide.createIcons();}catch(e){}}
 };
 window.__bfoRefresh = async function(){
-  try { var r = await db.from('inventory_batches').select('*'); if(r && r.data) inventoryBatches = r.data; } catch(e){}
+  try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} // p1_1092 — paged (cap 1000)
   if(window.renderBackfillOrder) window.renderBackfillOrder();
 };
 window.__bfoExecute = async function(mode){
@@ -44502,7 +44519,7 @@ window.__rcvSaveDamage = async function(poId){
     }
     var el=document.getElementById('rcvEditOverlay'); if(el) el.remove();
     window.showToast&&showToast('Rosak direkod ('+totDmg+' unit)'+(shortMsg?' · stok tak cukup:'+shortMsg:''), shortMsg?'warn':'success');
-    try { var rb=await db.from('inventory_batches').select('*'); if(rb&&rb.data) inventoryBatches=rb.data; } catch(e){}
+    try { inventoryBatches = await window.__loadAllBatches(); } catch(e){} // p1_1092 — paged (cap 1000)
     if(window.renderReceiving) window.renderReceiving();
   } catch(e){ window.showToast&&showToast('Simpan gagal: '+(e.message||e),'error'); console.error('rcv save dmg:',e); }
 };
@@ -45006,9 +45023,9 @@ window.__pdbRefresh = async function(btn){
  if(btn){ btn.disabled = true; btn.classList.add('is-loading'); }
  try {
   if(window.currentUser){
-   const { data: master } = await db.from('products_master').select('*').limit(100000);
-   if(master) masterProducts = master;
-   const { data: batches } = await db.from('inventory_batches').select('*').order('inbound_date', { ascending:true }).limit(100000);
+   const master = await window.__fetchAllRows('products_master', 'sku', true); // p1_1092 — paged
+   if(master && master.length) masterProducts = master;
+   const batches = await window.__loadAllBatches();
    if(batches) inventoryBatches = batches;
   }
   if(typeof renderProductDatabase === 'function') renderProductDatabase();
