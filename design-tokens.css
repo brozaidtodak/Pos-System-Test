@@ -4433,6 +4433,18 @@ body.pos-app-scoped .login-input { font-size: 16px !important; }
   body.pos-app-scoped .scs-sku-table td.scs-cell-thumb > div { width: 44px !important; height: 44px !important; }
   /* Aksi (Reset/Buang) = butang di hujung kad, rata kiri */
   body.pos-app-scoped .scs-sku-table td.scs-cell-aksi { justify-content: flex-start; padding-top: 8px !important; }
+
+  /* p1_1097 — item SIAP (tr.scs-done) jadi SATU BARIS kecil bila mod compact (default ON):
+     SKU + Dikira + Status sahaja, kekal boleh-tekan utk buka popup. Toggle "Item siap: kecil/penuh". */
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done { display: flex !important; align-items: center; gap: 10px; padding: 7px 12px; opacity: .88; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td { display: none !important; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td.scs-cell-sku,
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td[data-label="Dikira"],
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td[data-label="Status"] { display: flex !important; border-bottom: 0 !important; padding: 0 !important; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td::before { display: none !important; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td.scs-cell-sku { font-size: 13px !important; flex: 1 1 auto; justify-content: flex-start; min-width: 0; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td.scs-cell-sku > div { display: none !important; } /* sorok barcode kecil */
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td[data-label="Dikira"] { font-weight: 800; }
 }
 
 body.pos-app-scoped #saFab { display: none !important; }

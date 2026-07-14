@@ -11090,7 +11090,10 @@ window.__scsToggleSkuList = async function(sessionId) {
  // p1_461 — reviewer view (reveal): tunjuk Sistem + Selisih. p1_465 — baris kekal clickable (popup adapt)
  const sistemCell = reveal ? `<td data-label="Sistem" style="padding:8px 10px; text-align:right; font-size:11.5px; color:#6B7280; font-weight:700;">${i.system_qty != null ? i.system_qty : '-'}</td>` : '';
  const selisihCell = reveal ? `<td data-label="Selisih" style="padding:8px 10px; text-align:right; font-size:11.5px; font-weight:700; color:${variance == null ? '#D1D5DB' : (variance === 0 ? '#345E43' : (variance > 0 ? '#7A5410' : '#7C2A20'))};">${variance == null ? '—' : (variance > 0 ? '+' + variance : variance)}</td>` : '';
- const trOpen = `<tr onclick="window.__scsOpenCountPopup(${i.id}, ${sessionId})" title="${reveal ? 'Tekan untuk semak / betulkan kiraan' : 'Tekan untuk isi kiraan fizikal'}" style="border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#FAF2E6'" onmouseout="this.style.background=''">`;
+ // p1_1097 — item SIAP (tiada tindakan lagi) dikecilkan di phone supaya staf tak scroll jauh:
+ // active = dah kira; reveal = Tepat ATAU dah ada Semakan 2. Kad kecil kekal boleh-tekan (buka popup).
+ const isSettled = isChecked && (!reveal || (variance != null && variance === 0) || i.counted_qty_2 != null);
+ const trOpen = `<tr class="${isSettled ? 'scs-done' : ''}" onclick="window.__scsOpenCountPopup(${i.id}, ${sessionId})" title="${reveal ? 'Tekan untuk semak / betulkan kiraan' : 'Tekan untuk isi kiraan fizikal'}" style="border-bottom:1px solid #F3F4F6; cursor:pointer;" onmouseover="this.style.background='#FAF2E6'" onmouseout="this.style.background=''">`;
  return `${trOpen}
  <td data-label="Gambar" class="scs-cell-thumb" style="padding:6px 8px; width:48px;">${thumbHtml}</td>
  <td data-label="SKU" class="scs-cell-sku" style="padding:8px 10px; font-family:'SF Mono', Menlo, monospace; font-weight:700; font-size:11.5px;">${escHtml(i.sku || '-')}${scsBc ? `<div onclick="event.stopPropagation(); window.__niShowBarcode('${scsBcJs}','${scsNameJs}')" title="Tap untuk barcode besar — boleh scan" style="display:flex; align-items:center; gap:3px; margin-top:3px; color:#6B6B6B; font-weight:600; font-size:9.5px; cursor:pointer; letter-spacing:0; width:fit-content;"><i data-lucide="barcode" style="width:10px;height:10px;"></i>${escHtml(scsBc)}</div>` : ''}</td>
@@ -11109,15 +11112,20 @@ window.__scsToggleSkuList = async function(sessionId) {
  <td data-label="Aksi" class="scs-cell-aksi" style="padding:8px 6px; text-align:center; white-space:nowrap;">${isChecked ? `<button onclick="event.stopPropagation(); window.__scsResetItem(${i.id}, ${sessionId})" title="Reset count balik ke Belum Check" style="background:none; border:1px solid #E0B3A9; color:#7C2A20; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="rotate-ccw" style="width:9px;height:9px;"></i> Reset</button>` : `<button onclick="event.stopPropagation(); window.__scsRemoveItem(${i.id}, ${sessionId})" title="Buang SKU dari sesi ni" style="background:none; border:1px solid #E5E7EB; color:#6B7280; padding:3px 7px; border-radius:5px; cursor:pointer; font-size:10px; font-weight:700;"><i data-lucide="trash-2" style="width:9px;height:9px;"></i> Buang</button>`}</td>
  </tr>`;
  }).join('');
+ // p1_1097 — mod kad kecil utk item siap (default ON di phone); toggle flip kelas tanpa re-render
+ if(window.__scsCompactDone == null) window.__scsCompactDone = true;
  box.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:10px; flex-wrap:wrap;">
  <div style="font-size:12px; color:#6B7280;">
  Total: <strong style="color:#111;">${items.length}</strong> ·
  <span style="color:#101010;">${checked.length} dah check</span> ·
  <span style="color:#9CA3AF;">${pending.length} belum</span>
  </div>
+ <div style="display:flex; align-items:center; gap:8px;">
+ <button onclick="window.__scsCompactDone=!window.__scsCompactDone; var w=this.closest('[id^=scsSkuList-]').querySelector('.scs-sku-wrap'); if(w) w.classList.toggle('scs-compact', window.__scsCompactDone); this.textContent=window.__scsCompactDone?'Item siap: kecil':'Item siap: penuh';" style="font-size:10.5px; font-weight:700; color:var(--primary-800,#7C4A1A); background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-100,#FFEDD5); padding:3px 10px; border-radius:50px; cursor:pointer;">${window.__scsCompactDone ? 'Item siap: kecil' : 'Item siap: penuh'}</button>
  <div style="font-size:12px; color:var(--primary); font-weight:800;">${totalPct}%</div>
  </div>
- <div class="scs-sku-wrap" style="overflow-x:auto; border:1px solid var(--border-color); border-radius:6px;">
+ </div>
+ <div class="scs-sku-wrap${window.__scsCompactDone ? ' scs-compact' : ''}" style="overflow-x:auto; border:1px solid var(--border-color); border-radius:6px;">
  <table class="scs-sku-table" style="width:100%; border-collapse:collapse; font-size:12px;">
  <thead style="background:#F9FAFB;">
  <tr>
@@ -11218,7 +11226,8 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
    <div style="display:flex; align-items:center; gap:6px; margin-top:10px; padding:7px 10px; background:var(--primary-50,#FFF8F0); border-radius:8px; font-size:10.5px; color:var(--primary-800,#7C4A1A);"><i data-lucide="eye-off" style="width:12px;height:12px; flex-shrink:0;"></i><span>Kiraan 1 disorok — kira ikut fizikal sendiri. Sistem akan banding padan/tak.</span></div>
    <button onclick="window.__scsPopupSave2(${itemId}, ${sessionId}, '${skuEsc}')" style="width:100%; margin-top:14px; background:var(--primary-700,#A05F22); border:none; color:#fff; padding:12px; border-radius:9px; cursor:pointer; font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px;"><i data-lucide="shield-check" style="width:15px;height:15px;"></i> ${i.counted_qty_2 != null ? 'Kemaskini Semakan 2' : 'Simpan Semakan 2'}</button>
    `)}
-   <button onclick="window.__scsClosePopup()" style="width:100%; margin-top:9px; background:none; border:none; color:#9CA3AF; padding:6px; cursor:pointer; font-size:11.5px; font-weight:600;">Tutup</button>
+   <button onclick="window.__scsPopupNext(${itemId}, ${sessionId})" style="width:100%; margin-top:9px; background:none; border:1.5px solid var(--primary); color:var(--primary); padding:10px; border-radius:9px; cursor:pointer; font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">Produk Seterusnya <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></button>
+   <button onclick="window.__scsClosePopup()" style="width:100%; margin-top:7px; background:none; border:none; color:#9CA3AF; padding:6px; cursor:pointer; font-size:11.5px; font-weight:600;">Tutup</button>
   </div>
  </div>`;
  document.body.appendChild(ov);
@@ -11232,6 +11241,29 @@ window.__scsOpenCountPopup = function(itemId, sessionId) {
  } catch(e) { const bsvg = document.getElementById('scsBarcodeSvg-' + itemId); if(bsvg && bsvg.parentElement) bsvg.parentElement.style.display = 'none'; }
  const qf = document.getElementById('scsQtyInput-' + itemId);
  if(qf) { qf.focus(); qf.select(); }
+};
+// p1_1097 — cari item SETERUSNYA yang masih perlu tindakan (active: belum kira; reveal: selisih
+// tanpa Semakan 2). Ikut susunan paparan (rak), pusing balik ke atas kalau dah hujung senarai.
+// pendingOnly=false → fallback item berikut dlm senarai walau dah siap (butang Next sentiasa jalan).
+window.__scsFindNext = function(sessionId, curId, pendingOnly) {
+ const items = (window.__scsItemsCache && window.__scsItemsCache[sessionId]) || [];
+ if(!items.length) return null;
+ const reveal = !!((window.__scsSessStatusCache || {})[sessionId]) && window.__scsSessStatusCache[sessionId] !== 'active';
+ const needs = (it) => reveal
+  ? (it.counted_qty == null || (it.variance != null && Number(it.variance) !== 0 && it.counted_qty_2 == null))
+  : (it.counted_qty == null);
+ const idx = items.findIndex(x => x.id === curId);
+ for(let k = 1; k <= items.length; k++) {
+  const it = items[((idx < 0 ? -1 : idx) + k) % items.length];
+  if(it.id !== curId && needs(it)) return it;
+ }
+ if(!pendingOnly && items.length > 1 && idx >= 0) return items[(idx + 1) % items.length];
+ return null;
+};
+window.__scsPopupNext = function(itemId, sessionId) {
+ const nx = window.__scsFindNext(sessionId, itemId, false);
+ if(!nx) { if(typeof showToast === 'function') showToast('Tiada item lain dalam sesi ni.', 'info'); return; }
+ window.__scsOpenCountPopup(nx.id, sessionId);
 };
 // p1_459 — Save from blind-count popup (validates, then closes popup on success)
 window.__scsPopupSave = async function(itemId, sessionId, sku, systemQty) {
@@ -11272,6 +11304,10 @@ window.__scsPopupSave = async function(itemId, sessionId, sku, systemQty) {
   window.__scsClosePopup();
   // p1_462 — renderCheckSessions kini buka semula senarai SKU yang terbuka, jadi tak perlu double-toggle
   if(typeof window.renderCheckSessions === 'function') await window.renderCheckSessions();
+  // p1_1097 — auto-buka produk PENDING seterusnya (percepat stock take — tak perlu cari dlm senarai)
+  const __nx = window.__scsFindNext(sessionId, itemId, true);
+  if(__nx) window.__scsOpenCountPopup(__nx.id, sessionId);
+  else if(typeof showToast === 'function') showToast('Semua item dalam sesi ni dah siap ✓', 'success');
  } catch(e) {
   if(typeof showToast === 'function') showToast('Simpan gagal: ' + e.message, 'error');
  }
@@ -11307,6 +11343,10 @@ window.__scsPopupSave2 = async function(itemId, sessionId, sku) {
   );
   window.__scsClosePopup();
   if(typeof window.renderCheckSessions === 'function') await window.renderCheckSessions();
+  // p1_1097 — auto-buka item PENDING seterusnya (selisih yang belum ada Semakan 2)
+  const __nx2 = window.__scsFindNext(sessionId, itemId, true);
+  if(__nx2) window.__scsOpenCountPopup(__nx2.id, sessionId);
+  else if(typeof showToast === 'function') showToast('Semua item dalam sesi ni dah siap ✓', 'success');
  } catch(e) {
   if(typeof showToast === 'function') showToast('Simpan semakan 2 gagal: ' + e.message, 'error');
  }
