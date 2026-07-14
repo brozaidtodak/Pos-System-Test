@@ -5510,14 +5510,51 @@
  <div class="sa-kpi"><div class="sa-kpi__lbl">Jualan (30 hari)</div><div class="sa-kpi__val" id="confRev">RM 0</div></div>
  <div class="sa-kpi"><div class="sa-kpi__lbl">Order (30 hari)</div><div class="sa-kpi__val" id="confOrders">0</div></div>
  </div>
- <!-- p1_457 — Financial = 10cc (source of truth). POS tak kira untung/margin (data finance dah pindah 10cc). Bridge dalam pembinaan. -->
+ <!-- p1_457/p1_1110 — Financial rasmi = 10cc. Jambatan COGS LIVE Jul 2026; POS papar untung KASAR operasi (kos SKU semasa) utk keputusan harian. -->
  <div style="background:#FAF2E6; border:1px solid var(--primary-200,#FED7AA); border-radius:12px; padding:16px; margin-bottom:18px; display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap;">
  <i data-lucide="git-merge" style="width:22px; height:22px; color:#9E7016; flex:0 0 auto;"></i>
  <div style="flex:1; min-width:220px;">
- <div style="font-weight:800; font-size:14px; color:var(--primary-800,#7C4A1A);">Untung · Margin · COGS · P&L → 10cc Command Centre</div>
- <div style="font-size:12.5px; color:var(--primary-800,#7C4A1A); margin-top:4px;">Financial rasmi 10 CAMP diurus di <strong>10cc</strong> (bukan POS). Data finance POS dah dipindah ke 10cc, jadi POS tak papar margin/untung di sini supaya tak menyesatkan. Sambungan <strong>POS ↔ 10cc (financial alignment)</strong> dalam pembinaan.</div>
+ <div style="font-weight:800; font-size:14px; color:var(--primary-800,#7C4A1A);">P&L rasmi · fi marketplace · overhead → 10cc Command Centre</div>
+ <div style="font-size:12.5px; color:var(--primary-800,#7C4A1A); margin-top:4px;">Jambatan <strong>POS → 10cc LIVE</strong>: COGS bulanan auto masuk buku kira tiap 1hb. Angka di bawah = <strong>untung KASAR</strong> (jualan − kos SKU) untuk keputusan operasi harian; untung BERSIH rasmi (lepas fi marketplace, gaji, sewa) semak di 10cc.</div>
  </div>
  <a href="https://10cc.10camp.com" target="_blank" rel="noopener" class="sy-btn" style="font-size:12px; white-space:nowrap; text-decoration:none; flex:0 0 auto;"><i data-lucide="external-link" style="width:14px;height:14px;"></i> Buka 10cc</a>
+ </div>
+
+ <!-- p1_1110 — UNTUNG PER JUALAN (kasar): setiap resit/order tunjuk jualan − kos SKU = untung. -->
+ <div style="background:var(--card-bg); border:1px solid var(--border-color,#E5E7EB); border-radius:12px; padding:16px; margin-bottom:18px;">
+ <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+ <div style="font-weight:800; font-size:14px;"><i data-lucide="trending-up" style="width:16px;height:16px;vertical-align:-3px;color:var(--primary);"></i> Untung per Jualan <span style="font-weight:600; color:var(--text-muted); font-size:12px;">(kasar) <span id="uppRangeLabel"></span></span></div>
+ <div id="uppPills" style="display:flex; gap:6px; flex-wrap:wrap;">
+ <button class="sy-btn secondary upp-pill" style="font-size:11.5px; padding:4px 10px;" onclick="window.__uppSetRange('7d', this)">7 hari</button>
+ <button class="sy-btn secondary upp-pill active" style="font-size:11.5px; padding:4px 10px;" onclick="window.__uppSetRange('30d', this)">30 hari</button>
+ <button class="sy-btn secondary upp-pill" style="font-size:11.5px; padding:4px 10px;" onclick="window.__uppSetRange('mtd', this)">Bulan ini</button>
+ <button class="sy-btn secondary upp-pill" style="font-size:11.5px; padding:4px 10px;" onclick="window.__uppSetRange('90d', this)">90 hari</button>
+ </div>
+ </div>
+ <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:12px;">
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Jualan</div><div class="sa-kpi__val" id="uppRev">RM 0</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Kos SKU</div><div class="sa-kpi__val" id="uppCost">RM 0</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Untung Kasar</div><div class="sa-kpi__val" id="uppProfit">RM 0</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Margin</div><div class="sa-kpi__val" id="uppMargin">0%</div></div>
+ <div class="sa-kpi"><div class="sa-kpi__lbl">Transaksi Rugi</div><div class="sa-kpi__val" id="uppLossCount" style="color:var(--danger-700,#95342A);">0</div></div>
+ </div>
+ <div id="uppCoverageNote" style="font-size:11.5px; color:var(--text-muted); margin-bottom:12px;"></div>
+
+ <div style="font-weight:700; font-size:12.5px; margin-bottom:6px;">SKU margin paling rendah (ikut jualan dalam julat ini)</div>
+ <div style="overflow-x:auto; margin-bottom:14px;">
+ <table class="sy-table" style="width:100%; font-size:12px;">
+ <thead><tr><th style="text-align:left;">SKU / Produk</th><th style="text-align:right;">Unit</th><th style="text-align:right;">Jualan</th><th style="text-align:right;">Kos</th><th style="text-align:right;">Untung</th><th style="text-align:right;">Margin</th></tr></thead>
+ <tbody id="uppSkuBody"><tr><td colspan="6" style="color:var(--text-muted);">Tiada data dalam julat ini.</td></tr></tbody>
+ </table>
+ </div>
+
+ <div style="font-weight:700; font-size:12.5px; margin-bottom:6px;">Setiap transaksi <span id="uppTxnCount" style="font-weight:600; color:var(--text-muted); font-size:11.5px;"></span></div>
+ <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+ <table class="sy-table" style="width:100%; font-size:12px;">
+ <thead><tr><th style="text-align:left;">Tarikh</th><th style="text-align:left;">ID</th><th style="text-align:left;">Channel</th><th style="text-align:right;">Jualan</th><th style="text-align:right;">Kos</th><th style="text-align:right;">Untung</th><th style="text-align:right;">Margin</th></tr></thead>
+ <tbody id="uppTxnBody"><tr><td colspan="7" style="color:var(--text-muted);">Tiada data dalam julat ini.</td></tr></tbody>
+ </table>
+ </div>
  </div>
  <div style="background:var(--card-bg); border:1px solid var(--danger-200, #ECD2CA); border-left:4px solid var(--danger-700, #95342A); border-radius:12px; padding:16px; margin-bottom:18px;">
  <div style="font-weight:800; font-size:14px; color:var(--danger-700, #95342A); margin-bottom:4px;">Wang Berisiko</div>
@@ -13178,7 +13215,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1087"></script>
+ <script src="app.js?v=1088"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

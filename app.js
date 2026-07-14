@@ -30138,6 +30138,132 @@ window.renderConfidentialReport = function() {
  const rb = document.getElementById('confRiskBreakdown');
  if(rb) rb.textContent = lowCnt + ' produk stok rendah (RM ' + Math.round(lowVal).toLocaleString() + ') · ' + arCnt + ' invois tertunggak >30 hari (RM ' + Math.round(arVal).toLocaleString() + ')';
  } catch(e){}
+
+ if(typeof window.renderProfitPerSale === 'function') window.renderProfitPerSale(); // p1_1110
+};
+
+// ===================================
+// p1_1110 — UNTUNG PER JUALAN (kasar), dlm Laporan Sulit (PIN 1999).
+// Untung kasar = jualan sebenar dicaj − (qty × cost_price semasa). Kos SKU
+// semasa (bukan kos batch masa jualan) — cukup utk keputusan operasi; angka
+// rasmi bulanan = jambatan COGS → 10cc. Item tanpa kos (cth CUSTOM) dikira
+// kos RM0 dan transaksi ditanda "kos ?" — TAK dikira sebagai rugi.
+// ===================================
+window.__uppRange = window.__uppRange || '30d';
+window.__uppSetRange = function(r, btn) {
+ window.__uppRange = r || '30d';
+ document.querySelectorAll('#uppPills .upp-pill').forEach(p => p.classList.toggle('active', p === btn));
+ window.renderProfitPerSale();
+};
+window.renderProfitPerSale = function() {
+ const sod = (d)=>{ const x=new Date(d); x.setHours(0,0,0,0); return x; };
+ const now = new Date();
+ const r = window.__uppRange || '30d';
+ let start;
+ if(r === '7d') { const s=new Date(now); s.setDate(s.getDate()-6); start=sod(s); }
+ else if(r === '90d') { const s=new Date(now); s.setDate(s.getDate()-89); start=sod(s); }
+ else if(r === 'mtd') { start = sod(new Date(now.getFullYear(), now.getMonth(), 1)); }
+ else { const s=new Date(now); s.setDate(s.getDate()-29); start=sod(s); }
+ const startMs = start.getTime(), endMs = now.getTime();
+
+ const lbl = document.getElementById('uppRangeLabel');
+ if(lbl) lbl.textContent = '· ' + start.toLocaleDateString('en-MY',{day:'numeric',month:'short'}) + ' – ' + now.toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'});
+
+ const fmtRM2 = (n)=> 'RM ' + Number(n||0).toLocaleString('en-MY',{minimumFractionDigits:2, maximumFractionDigits:2});
+ const setT = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+ const esc = (s)=> String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const qtyOf = (it)=> Number(it.qty!=null?it.qty:(it.quantity!=null?it.quantity:0))||0; // gotcha: marketplace guna 'qty', cashier 'quantity'
+ const itemsOf = (s)=>{ let it=s.items; if(typeof it==='string'){try{it=JSON.parse(it);}catch(e){it=[];}} return Array.isArray(it)?it:[]; };
+
+ const costMap = {}, nameMap = {};
+ (Array.isArray(masterProducts)?masterProducts:[]).forEach(p => {
+ if(!p.sku) return;
+ const k = String(p.sku).toUpperCase();
+ costMap[k] = parseFloat(p.cost_price||0)||0;
+ nameMap[k] = p.name || '';
+ });
+
+ let totRev=0, totCost=0, lossCnt=0, noCostSales=0;
+ const rows = [];
+ const bySku = {};
+ (Array.isArray(salesHistory)?salesHistory:[]).forEach(s => {
+ if(!window.__isRealSale(s) || !s.created_at) return;
+ const t = new Date(s.created_at).getTime();
+ if(t<startMs || t>endMs) return;
+ const rev = Number(s.total||s.total_amount||0)||0;
+ let cost=0, missing=false;
+ itemsOf(s).forEach(it => {
+ const sku = String(it.sku||'').toUpperCase();
+ const q = qtyOf(it);
+ const c = costMap[sku]||0;
+ cost += q*c;
+ if(!c) missing = true;
+ // agregat per SKU (jualan baris = harga × qty − diskaun baris)
+ if(sku){
+ const lr = (Number(it.price||0)||0)*q - (Number(it.discount||0)||0);
+ const a = bySku[sku] || (bySku[sku] = {qty:0, rev:0, cost:0, noCost:!c});
+ a.qty += q; a.rev += lr; a.cost += q*c; if(!c) a.noCost = true;
+ }
+ });
+ cost = round2(cost);
+ const profit = round2(rev - cost);
+ totRev = round2(totRev+rev); totCost = round2(totCost+cost);
+ if(missing) noCostSales++;
+ else if(profit < 0) lossCnt++;
+ rows.push({t, id: s.id, ch: s.channel||'—', rev, cost, profit, missing});
+ });
+
+ const totProfit = round2(totRev - totCost);
+ const marginPct = totRev>0 ? (totProfit/totRev*100) : 0;
+ setT('uppRev', fmtRM2(totRev));
+ setT('uppCost', fmtRM2(totCost));
+ setT('uppProfit', fmtRM2(totProfit));
+ setT('uppMargin', marginPct.toFixed(1) + '%');
+ setT('uppLossCount', String(lossCnt));
+ const cov = document.getElementById('uppCoverageNote');
+ if(cov) cov.textContent = noCostSales>0
+ ? ('⚠ ' + noCostSales + ' transaksi ada item TANPA kos (cth item CUSTOM) — untung sebenar mereka lebih rendah dari yang dipapar. Isi kos di Products.')
+ : 'Semua item dalam julat ini ada kos SKU — liputan 100%.';
+
+ // ---- jadual SKU margin terendah ----
+ const skuArr = Object.keys(bySku).map(k => {
+ const a = bySku[k];
+ const p = round2(a.rev - a.cost);
+ return {sku:k, name:nameMap[k]||'', qty:a.qty, rev:round2(a.rev), cost:round2(a.cost), profit:p,
+ margin: a.rev>0 ? p/a.rev*100 : 0, noCost:a.noCost};
+ }).filter(x => x.rev>0 && !x.noCost).sort((a,b)=> a.margin - b.margin).slice(0,15);
+ const sb = document.getElementById('uppSkuBody');
+ if(sb) sb.innerHTML = skuArr.length ? skuArr.map(x => {
+ const mCol = x.margin<0 ? 'var(--danger-700,#95342A)' : (x.margin<35 ? '#9E7016' : 'inherit');
+ return '<tr>'
+ + '<td style="text-align:left; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="'+esc(x.name)+'"><strong>'+esc(x.sku)+'</strong> <span style="color:var(--text-muted);">'+esc(String(x.name).slice(0,40))+'</span></td>'
+ + '<td style="text-align:right;">'+x.qty+'</td>'
+ + '<td style="text-align:right;">'+fmtRM2(x.rev)+'</td>'
+ + '<td style="text-align:right;">'+fmtRM2(x.cost)+'</td>'
+ + '<td style="text-align:right; font-weight:700; color:'+mCol+';">'+fmtRM2(x.profit)+'</td>'
+ + '<td style="text-align:right; font-weight:700; color:'+mCol+';">'+x.margin.toFixed(1)+'%'+(x.margin<0?' <span style="font-size:10px; background:var(--danger-700,#95342A); color:#fff; border-radius:6px; padding:1px 5px;">RUGI</span>':(x.margin<35?' <span style="font-size:10px; background:#FAF2E6; color:#9E7016; border-radius:6px; padding:1px 5px;">&lt;35%</span>':''))+'</td>'
+ + '</tr>';
+ }).join('') : '<tr><td colspan="6" style="color:var(--text-muted);">Tiada data dalam julat ini.</td></tr>';
+
+ // ---- jadual per transaksi (terkini dulu, had papar 200) ----
+ rows.sort((a,b)=> b.t - a.t);
+ const shown = rows.slice(0,200);
+ setT('uppTxnCount', '· ' + rows.length + ' transaksi' + (rows.length>200 ? ' (papar 200 terkini)' : ''));
+ const tb = document.getElementById('uppTxnBody');
+ if(tb) tb.innerHTML = shown.length ? shown.map(x => {
+ const m = x.rev>0 ? x.profit/x.rev*100 : 0;
+ const bad = !x.missing && x.profit<0;
+ const col = bad ? 'var(--danger-700,#95342A)' : 'inherit';
+ return '<tr'+(bad?' style="background:rgba(149,52,42,0.06);"':'')+'>'
+ + '<td style="text-align:left; white-space:nowrap;">'+new Date(x.t).toLocaleDateString('en-MY',{day:'numeric',month:'short'})+' '+new Date(x.t).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'})+'</td>'
+ + '<td style="text-align:left; font-family:monospace; font-size:11px;">'+esc(String(x.id||'').slice(0,10))+'</td>'
+ + '<td style="text-align:left;">'+esc(x.ch)+'</td>'
+ + '<td style="text-align:right;">'+fmtRM2(x.rev)+'</td>'
+ + '<td style="text-align:right;">'+(x.missing?'<span title="ada item tanpa kos">'+fmtRM2(x.cost)+' ?</span>':fmtRM2(x.cost))+'</td>'
+ + '<td style="text-align:right; font-weight:700; color:'+col+';">'+fmtRM2(x.profit)+(bad?' <span style="font-size:10px; background:var(--danger-700,#95342A); color:#fff; border-radius:6px; padding:1px 5px;">RUGI</span>':'')+'</td>'
+ + '<td style="text-align:right; color:'+col+';">'+m.toFixed(1)+'%</td>'
+ + '</tr>';
+ }).join('') : '<tr><td colspan="7" style="color:var(--text-muted);">Tiada data dalam julat ini.</td></tr>';
 };
 
 // ===================================
