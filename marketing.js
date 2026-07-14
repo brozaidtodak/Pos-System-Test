@@ -241,68 +241,120 @@ window.renderSocialMedia = async function(){
 // =================== 2) CONTENT SCHEDULE ===================
 window.__mktContentFilter = { status:'all', platform:'all', date:'all' };
 window.__mktSetContentFilter = function(k,v){ window.__mktContentFilter[k]=v; window.renderContentSchedule(); };
+// p1_1101 — kad kandungan (dikongsi paparan Kalendar + Senarai)
+window.__mktContentCard = function(c){
+ const E = window.__mktEsc;
+ const st = window.__mktContentStatuses.find(function(s){return s[0]===c.status;}) || ['idea','Idea','#F3F4F6','#6B7280'];
+ const flowIdx = window.__mktStageFlow.indexOf(c.status);
+ const nextKey = flowIdx >= 0 && flowIdx < window.__mktStageFlow.length-1 ? window.__mktStageFlow[flowIdx+1] : null;
+ const nextSt = nextKey ? window.__mktContentStatuses.find(function(s){return s[0]===nextKey;}) : null;
+ const plats = (c.platforms||'').split(',').filter(Boolean).map(function(pl){ const m=window.__mktPlat[pl]; return m?('<span style="font-size:9px;font-weight:700;color:'+m.color+';border:1px solid '+m.color+';padding:1px 5px;border-radius:4px;">'+m.label+'</span>'):''; }).join(' ');
+ const dt = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'}) : 'tiada tarikh';
+ const metrics = (c.views||c.likes||c.leads) ? ('<div style="font-size:11px;color:#345E43;margin-top:4px;font-weight:600;"><i data-lucide="bar-chart-2" style="width:10px;height:10px;vertical-align:-1px;"></i> '+Number(c.views||0).toLocaleString()+' views · '+Number(c.likes||0).toLocaleString()+' likes · '+Number(c.leads||0).toLocaleString()+' leads</div>') : '';
+ const preCopy = ['idea','rakam','edit','copy'].indexOf(c.status)!==-1;
+ return '<div style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border-color);border-radius:9px;margin-bottom:8px;background:#fff;">'+window.__mktThumb(c.product_sku,48)
+  + '<div style="flex:1;min-width:0;">'
+  + '<div style="font-size:13px;font-weight:700;">'+E((c.title||'').slice(0,70))+'</div>'
+  + '<div style="font-size:11px;color:#9CA3AF;margin-top:3px;">'+plats+' · '+E(c.content_type||'')+' · <i data-lucide="calendar" style="width:10px;height:10px;vertical-align:-1px;"></i> '+dt+(c.assigned_to_name?(' · '+E(c.assigned_to_name)):'')+'</div>'
+  + (c.caption?('<div style="font-size:11px;color:#6B7280;margin-top:4px;font-style:italic;">'+E((c.caption||'').slice(0,90))+'</div>'):'')
+  + metrics
+  + '</div>'
+  + '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">'
+  + '<span title="'+E(window.__mktStageHints[c.status]||'')+'" style="padding:3px 9px;border-radius:50px;background:'+st[2]+';color:'+st[3]+';font-size:10px;font-weight:700;">'+(flowIdx>=0?(flowIdx+1)+'/'+window.__mktStageFlow.length+' · ':'')+st[1]+'</span>'
+  + '<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">'
+  + (nextSt?('<button onclick="window.__mktAdvanceStage('+c.id+')" title="'+E(window.__mktStageHints[nextKey]||'')+'" style="background:var(--primary);border:none;color:#fff;padding:4px 9px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;"><i data-lucide="arrow-right" style="width:10px;height:10px;vertical-align:-1px;"></i> '+nextSt[1]+'</button>'):'')
+  + (preCopy?('<button onclick="window.__mktAiCopy('+c.id+')" title="Minta Tanya AI draf caption" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">AI Copy</button>'):'')
+  + (c.status==='scheduled' && (c.platforms||'').indexOf('facebook')!==-1?('<button onclick="window.__mktSendToAutoPost('+c.id+')" title="Prefill Auto-Post FB" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Post FB</button>'):'')
+  + (c.status==='ads'?('<button onclick="window.__mktHubGo(\'playbook\',\'ads\')" title="Rekod kempen di tab Ads" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Buka Ads</button>'):'')
+  + (c.link?('<a href="'+E(c.link)+'" target="_blank" style="background:#F3F4F6;color:#374151;padding:4px 8px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">Link</a>'):'')
+  + '<button onclick="window.__mktContentModal('+c.id+')" title="Edit" style="background:none;border:1px solid var(--border-color);color:#6B7280;padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Edit</button>'
+  + '<button onclick="window.__mktDeleteContent('+c.id+')" title="Padam" style="background:none;border:1px solid #E0B3A9;color:#7C2A20;padding:4px 7px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>'
+  + '</div></div></div>';
+};
+// p1_1101 — paparan KALENDAR (default; Zaid: "display calendar, tekan tarikh keluar semua planning hari tu")
+window.__mktContentView = window.__mktContentView || 'cal';
+window.__mktSetView = function(v){ window.__mktContentView = v; window.renderContentSchedule(); };
+window.__mktCalNav = function(d){
+ const p = (window.__mktCalMonth||'').split('-');
+ const nd = new Date(Number(p[0]), Number(p[1])-1+d, 1);
+ window.__mktCalMonth = nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0');
+ window.renderContentSchedule();
+};
+window.__mktCalPick = function(iso){ window.__mktCalSel = iso; window.renderContentSchedule(); };
 window.renderContentSchedule = async function(){
  const body = document.getElementById('contentScheduleBody');
  if(!body) return;
  body.innerHTML = '<p style="color:#9CA3AF;padding:30px;text-align:center;">Memuatkan…</p>';
  const all = await window.__mktLoadContent();
  const E = window.__mktEsc;
- let rows = all.slice();
- // p1_1094 — 'draft' lama = 'copy' baru (petakan on-the-fly, tiada migrasi perlu; table kosong masa tukar)
- rows.forEach(function(r){ if(r.status==='draft') r.status='copy'; });
- if(window.__mktContentFilter.status!=='all') rows = rows.filter(function(r){ return r.status===window.__mktContentFilter.status; });
- if(window.__mktContentFilter.platform!=='all') rows = rows.filter(function(r){ return (r.platforms||'').indexOf(window.__mktContentFilter.platform)!==-1; });
- if(window.__mktContentFilter.date!=='all') rows = rows.filter(function(r){ return (r.scheduled_date||'').slice(0,10)===window.__mktContentFilter.date; });
- const counts = {}; window.__mktContentStatuses.forEach(function(s){ counts[s[0]] = all.filter(function(r){return r.status===s[0];}).length; });
- const statusPills = '<button onclick="window.__mktSetContentFilter(\'status\',\'all\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(window.__mktContentFilter.status==='all'?'var(--primary)':'var(--border-color)')+';background:'+(window.__mktContentFilter.status==='all'?'var(--primary)':'#fff')+';color:'+(window.__mktContentFilter.status==='all'?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">Semua ('+all.length+')</button>'
-  + window.__mktContentStatuses.map(function(s){ const on=window.__mktContentFilter.status===s[0]; return '<button onclick="window.__mktSetContentFilter(\'status\',\''+s[0]+'\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(on?'var(--primary)':'var(--border-color)')+';background:'+(on?'var(--primary)':'#fff')+';color:'+(on?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">'+s[1]+' ('+counts[s[0]]+')</button>'; }).join('');
- const platPills = '<button onclick="window.__mktSetContentFilter(\'platform\',\'all\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(window.__mktContentFilter.platform==='all'?'var(--primary)':'var(--border-color)')+';background:'+(window.__mktContentFilter.platform==='all'?'var(--primary)':'#fff')+';color:'+(window.__mktContentFilter.platform==='all'?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">Semua platform</button>'
-  + ['tiktok','instagram','facebook','shopee'].map(function(pl){ const on=window.__mktContentFilter.platform===pl; const m=window.__mktPlat[pl]; return '<button onclick="window.__mktSetContentFilter(\'platform\',\''+pl+'\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(on?m.color:'var(--border-color)')+';background:'+(on?m.color:'#fff')+';color:'+(on?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">'+m.label+'</button>'; }).join('');
- // p1_1094 — jalur MINGGU INI: 7 hari akan datang, klik hari = tapis ikut tarikh siar
- const wk = [];
- const today = new Date(); today.setHours(0,0,0,0);
- for(let d=0; d<7; d++){
-  const day = new Date(today.getTime() + d*86400000);
-  const iso = day.getFullYear()+'-'+String(day.getMonth()+1).padStart(2,'0')+'-'+String(day.getDate()).padStart(2,'0');
-  const n = all.filter(function(r){ return (r.scheduled_date||'').slice(0,10)===iso; }).length;
-  const on = window.__mktContentFilter.date===iso;
-  const lbl = d===0 ? 'Hari ini' : day.toLocaleDateString('ms-MY',{weekday:'short', day:'numeric', month:'short'});
-  wk.push('<button onclick="window.__mktSetContentFilter(\'date\',\''+(on?'all':iso)+'\')" style="flex:1;min-width:76px;padding:7px 4px;border-radius:9px;border:1.5px solid '+(on?'var(--primary)':'var(--border-color)')+';background:'+(on?'var(--primary)':'#fff')+';color:'+(on?'#fff':(n?'#374151':'#B9BEC7'))+';font-size:11px;font-weight:700;cursor:pointer;text-align:center;">'+lbl+'<div style="font-size:15px;margin-top:1px;">'+(n||'·')+'</div></button>');
+ all.forEach(function(r){ if(r.status==='draft') r.status='copy'; });
+ const now = new Date();
+ const todayIso = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+ if(!window.__mktCalMonth) window.__mktCalMonth = todayIso.slice(0,7);
+ if(!window.__mktCalSel) window.__mktCalSel = todayIso;
+ const isCal = window.__mktContentView !== 'list';
+ const viewToggle = '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+  + [['cal','Kalendar','calendar-days'],['list','Senarai','list']].map(function(v){
+    const on = (isCal && v[0]==='cal') || (!isCal && v[0]==='list');
+    return '<button onclick="window.__mktSetView(\''+v[0]+'\')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:50px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid '+(on?'var(--primary)':'var(--border-color)')+';background:'+(on?'var(--primary)':'#fff')+';color:'+(on?'#fff':'#6B7280')+';"><i data-lucide="'+v[2]+'" style="width:12px;height:12px;"></i>'+v[1]+'</button>';
+   }).join('') + '</div>';
+ const header = '<div class="rp-header"><div><h2 class="rp-title"><i data-lucide="calendar-days" style="width:22px;height:22px;color:var(--primary);"></i> Jadual Marketing</h2><p class="rp-subtitle">Tekan tarikh untuk lihat semua planning hari tu. Pipeline: Idea → Rakam → Edit → Copy → Jadual → Siar → Ads → Analitik.</p></div><button onclick="window.__mktContentModal(null, window.__mktCalSel)" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:-2px;"></i> Tambah Kandungan</button></div>';
+ let main = '';
+ if(isCal){
+  const p = window.__mktCalMonth.split('-');
+  const y = Number(p[0]), m = Number(p[1]);
+  const first = new Date(y, m-1, 1);
+  const daysInM = new Date(y, m, 0).getDate();
+  const startDow = (first.getDay()+6)%7; // Isnin = 0
+  const byDay = {};
+  all.forEach(function(c){ const d=(c.scheduled_date||'').slice(0,10); if(d) (byDay[d]=byDay[d]||[]).push(c); });
+  const undated = all.filter(function(c){ return !(c.scheduled_date||'').slice(0,10); });
+  const monthLbl = first.toLocaleDateString('ms-MY',{month:'long',year:'numeric'});
+  const dows = ['Isn','Sel','Rab','Kha','Jum','Sab','Ahd'];
+  let cells = dows.map(function(d){ return '<div style="text-align:center;font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#9CA3AF;padding:4px 0;">'+d+'</div>'; }).join('');
+  for(let i=0;i<startDow;i++) cells += '<div></div>';
+  for(let d=1; d<=daysInM; d++){
+   const iso = y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+   const items = byDay[iso]||[];
+   const isSel = iso===window.__mktCalSel, isToday = iso===todayIso;
+   const allDone = items.length && items.every(function(c){ return ['posted','ads','done'].indexOf(c.status)!==-1; });
+   const badge = items.length
+    ? '<div style="margin-top:2px;"><span style="display:inline-block;min-width:17px;padding:1px 5px;border-radius:50px;font-size:10px;font-weight:800;background:'+(isSel?'#fff':(allDone?'#E4EFE2':'var(--primary-100,#FFEDD5)'))+';color:'+(isSel?'var(--primary)':(allDone?'#345E43':'var(--primary-800,#7C4A1A)'))+';">'+items.length+'</span></div>'
+    : '<div style="margin-top:2px;font-size:10px;visibility:hidden;">0</div>';
+   cells += '<button onclick="window.__mktCalPick(\''+iso+'\')" style="padding:6px 2px 5px;border-radius:10px;cursor:pointer;text-align:center;border:1.5px solid '+(isSel?'var(--primary)':(isToday?'var(--primary-300,#F3B577)':'transparent'))+';background:'+(isSel?'var(--primary)':'#fff')+';">'
+    + '<div style="font-size:13px;font-weight:'+((isToday||isSel)?'800':'600')+';color:'+(isSel?'#fff':(isToday?'var(--primary)':'#374151'))+';">'+d+'</div>'+badge+'</button>';
+  }
+  const navBtn = 'style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border-color);background:#fff;color:#374151;font-size:17px;font-weight:800;cursor:pointer;line-height:1;"';
+  const cal = '<div style="background:#fff;border:1px solid var(--border-color);border-radius:14px;padding:12px 12px 8px;margin-bottom:16px;">'
+   + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+   + '<button onclick="window.__mktCalNav(-1)" '+navBtn+'>&lsaquo;</button>'
+   + '<div style="font-size:14.5px;font-weight:800;color:var(--text-main);text-transform:capitalize;">'+monthLbl+'</div>'
+   + '<button onclick="window.__mktCalNav(1)" '+navBtn+'>&rsaquo;</button></div>'
+   + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">'+cells+'</div></div>';
+  const selItems = (byDay[window.__mktCalSel]||[]);
+  const selLbl = new Date(window.__mktCalSel+'T00:00:00').toLocaleDateString('ms-MY',{weekday:'long', day:'numeric', month:'long'});
+  const dayPanel = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 0 10px;flex-wrap:wrap;">'
+   + '<div style="font-size:14px;font-weight:800;color:var(--text-main);text-transform:capitalize;">'+selLbl+' <span style="font-weight:600;color:#9CA3AF;font-size:12px;">· '+selItems.length+' planning</span></div>'
+   + '<button onclick="window.__mktContentModal(null, \''+window.__mktCalSel+'\')" style="font-size:11.5px;font-weight:700;color:var(--primary);background:#fff;border:1.5px solid var(--primary);padding:5px 12px;border-radius:50px;cursor:pointer;">+ Tambah hari ni</button></div>'
+   + (selItems.length ? selItems.map(window.__mktContentCard).join('') : '<p style="color:#9CA3AF;padding:20px;text-align:center;border:1.5px dashed var(--border-color);border-radius:10px;">Tiada planning pada hari ni. Tekan "+ Tambah hari ni" untuk mula.</p>');
+  const undatedHtml = undated.length
+   ? '<div style="margin-top:20px;"><div style="font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#9CA3AF;margin-bottom:8px;">Tiada tarikh ('+undated.length+') — set tarikh melalui Edit</div>'+undated.map(window.__mktContentCard).join('')+'</div>'
+   : '';
+  main = cal + dayPanel + undatedHtml;
+ } else {
+  let rows = all.slice();
+  if(window.__mktContentFilter.status!=='all') rows = rows.filter(function(r){ return r.status===window.__mktContentFilter.status; });
+  if(window.__mktContentFilter.platform!=='all') rows = rows.filter(function(r){ return (r.platforms||'').indexOf(window.__mktContentFilter.platform)!==-1; });
+  const counts = {}; window.__mktContentStatuses.forEach(function(s){ counts[s[0]] = all.filter(function(r){return r.status===s[0];}).length; });
+  const statusPills = '<button onclick="window.__mktSetContentFilter(\'status\',\'all\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(window.__mktContentFilter.status==='all'?'var(--primary)':'var(--border-color)')+';background:'+(window.__mktContentFilter.status==='all'?'var(--primary)':'#fff')+';color:'+(window.__mktContentFilter.status==='all'?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">Semua ('+all.length+')</button>'
+   + window.__mktContentStatuses.map(function(s){ const on=window.__mktContentFilter.status===s[0]; return '<button onclick="window.__mktSetContentFilter(\'status\',\''+s[0]+'\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(on?'var(--primary)':'var(--border-color)')+';background:'+(on?'var(--primary)':'#fff')+';color:'+(on?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">'+s[1]+' ('+counts[s[0]]+')</button>'; }).join('');
+  const platPills = '<button onclick="window.__mktSetContentFilter(\'platform\',\'all\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(window.__mktContentFilter.platform==='all'?'var(--primary)':'var(--border-color)')+';background:'+(window.__mktContentFilter.platform==='all'?'var(--primary)':'#fff')+';color:'+(window.__mktContentFilter.platform==='all'?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">Semua platform</button>'
+   + ['tiktok','instagram','facebook','shopee'].map(function(pl){ const on=window.__mktContentFilter.platform===pl; const mm=window.__mktPlat[pl]; return '<button onclick="window.__mktSetContentFilter(\'platform\',\''+pl+'\')" style="padding:5px 12px;border-radius:50px;border:1px solid '+(on?mm.color:'var(--border-color)')+';background:'+(on?mm.color:'#fff')+';color:'+(on?'#fff':'#6B7280')+';font-size:12px;font-weight:700;cursor:pointer;">'+mm.label+'</button>'; }).join('');
+  const list = rows.length ? rows.map(window.__mktContentCard).join('') : '<p style="color:#9CA3AF;padding:30px;text-align:center;">Tiada kandungan padan tapisan. Tekan "Tambah Kandungan".</p>';
+  main = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+statusPills+'</div>'
+   + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">'+platPills+'</div>' + list;
  }
- const list = rows.length ? rows.map(function(c){
-  const st = window.__mktContentStatuses.find(function(s){return s[0]===c.status;}) || ['idea','Idea','#F3F4F6','#6B7280'];
-  const flowIdx = window.__mktStageFlow.indexOf(c.status);
-  const nextKey = flowIdx >= 0 && flowIdx < window.__mktStageFlow.length-1 ? window.__mktStageFlow[flowIdx+1] : null;
-  const nextSt = nextKey ? window.__mktContentStatuses.find(function(s){return s[0]===nextKey;}) : null;
-  const plats = (c.platforms||'').split(',').filter(Boolean).map(function(pl){ const m=window.__mktPlat[pl]; return m?('<span style="font-size:9px;font-weight:700;color:'+m.color+';border:1px solid '+m.color+';padding:1px 5px;border-radius:4px;">'+m.label+'</span>'):''; }).join(' ');
-  const dt = c.scheduled_date ? new Date(c.scheduled_date).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'}) : 'tiada tarikh';
-  const metrics = (c.views||c.likes||c.leads) ? ('<div style="font-size:11px;color:#345E43;margin-top:4px;font-weight:600;"><i data-lucide="bar-chart-2" style="width:10px;height:10px;vertical-align:-1px;"></i> '+Number(c.views||0).toLocaleString()+' views · '+Number(c.likes||0).toLocaleString()+' likes · '+Number(c.leads||0).toLocaleString()+' leads</div>') : '';
-  const preCopy = ['idea','rakam','edit','copy'].indexOf(c.status)!==-1;
-  return '<div style="display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--border-color);border-radius:9px;margin-bottom:8px;">'+window.__mktThumb(c.product_sku,48)
-   + '<div style="flex:1;min-width:0;">'
-   + '<div style="font-size:13px;font-weight:700;">'+E((c.title||'').slice(0,70))+'</div>'
-   + '<div style="font-size:11px;color:#9CA3AF;margin-top:3px;">'+plats+' · '+E(c.content_type||'')+' · <i data-lucide="calendar" style="width:10px;height:10px;vertical-align:-1px;"></i> '+dt+(c.assigned_to_name?(' · '+E(c.assigned_to_name)):'')+'</div>'
-   + (c.caption?('<div style="font-size:11px;color:#6B7280;margin-top:4px;font-style:italic;">'+E((c.caption||'').slice(0,90))+'</div>'):'')
-   + metrics
-   + '</div>'
-   + '<div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">'
-   + '<span title="'+E(window.__mktStageHints[c.status]||'')+'" style="padding:3px 9px;border-radius:50px;background:'+st[2]+';color:'+st[3]+';font-size:10px;font-weight:700;">'+(flowIdx>=0?(flowIdx+1)+'/'+window.__mktStageFlow.length+' · ':'')+st[1]+'</span>'
-   + '<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">'
-   + (nextSt?('<button onclick="window.__mktAdvanceStage('+c.id+')" title="'+E(window.__mktStageHints[nextKey]||'')+'" style="background:var(--primary);border:none;color:#fff;padding:4px 9px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;"><i data-lucide="arrow-right" style="width:10px;height:10px;vertical-align:-1px;"></i> '+nextSt[1]+'</button>'):'')
-   + (preCopy?('<button onclick="window.__mktAiCopy('+c.id+')" title="Minta Tanya AI draf caption" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">AI Copy</button>'):'')
-   + (c.status==='scheduled' && (c.platforms||'').indexOf('facebook')!==-1?('<button onclick="window.__mktSendToAutoPost('+c.id+')" title="Prefill Auto-Post FB" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Post FB</button>'):'')
-   + (c.status==='ads'?('<button onclick="window.__mktHubGo(\'playbook\',\'ads\')" title="Rekod kempen di tab Ads" style="background:none;border:1px solid var(--primary);color:var(--primary);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Buka Ads</button>'):'')
-   + (c.link?('<a href="'+E(c.link)+'" target="_blank" style="background:#F3F4F6;color:#374151;padding:4px 8px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">Link</a>'):'')
-   + '<button onclick="window.__mktContentModal('+c.id+')" title="Edit" style="background:none;border:1px solid var(--border-color);color:#6B7280;padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Edit</button>'
-   + '<button onclick="window.__mktDeleteContent('+c.id+')" title="Padam" style="background:none;border:1px solid #E0B3A9;color:#7C2A20;padding:4px 7px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;"><i data-lucide="trash-2" style="width:11px;height:11px;"></i></button>'
-   + '</div></div></div>';
- }).join('') : '<p style="color:#9CA3AF;padding:30px;text-align:center;">Tiada kandungan padan tapisan. Tekan "Tambah Kandungan".</p>';
- body.innerHTML = '<div class="rp-wrap">'
-  + '<div class="rp-header"><div><h2 class="rp-title"><i data-lucide="calendar-days" style="width:22px;height:22px;color:var(--primary);"></i> Jadual Marketing</h2><p class="rp-subtitle">Pipeline produksi kandungan: Idea → Rakam → Edit → Copywriting → Jadual → Siar → Ads → Analitik. Tekan butang oren pada kad untuk gerak ke tahap seterusnya.</p></div><button onclick="window.__mktContentModal()" style="padding:9px 18px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:-2px;"></i> Tambah Kandungan</button></div>'
-  + '<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;">'+wk.join('')+'</div>'
-  + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'+statusPills+'</div>'
-  + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">'+platPills+'</div>'
-  + list + '</div>';
+ body.innerHTML = '<div class="rp-wrap">' + header + viewToggle + main + '</div>';
  if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
 };
 // p1_1094 — gerak kad ke tahap seterusnya dlm pipeline (posted → cap posted_at automatik)
@@ -349,8 +401,9 @@ window.__mktSendToAutoPost = function(id){
   }, 700);
  } catch(e){}
 };
-window.__mktContentModal = function(id){
+window.__mktContentModal = function(id, presetDate){
  const c = id ? (window.__mktContentCache.find(function(x){return x.id===id;})||{}) : {};
+ if(!id && presetDate) c.scheduled_date = presetDate; // p1_1101 — prefill tarikh dari kalendar
  const E = window.__mktEsc;
  const old = document.getElementById('mktContentModal'); if(old) old.remove();
  const selPlats = (c.platforms||'').split(',').filter(Boolean);
@@ -394,6 +447,8 @@ window.__mktSaveContent = async function(id){
   else { rec.created_by = u.staff_id||'unknown'; rec.created_by_name = u.name||'Unknown'; const r = await db.from('marketing_content').insert([rec]); if(r.error) throw r.error; }
   if(typeof showToast==='function') showToast('Kandungan disimpan.', 'success');
   const m = document.getElementById('mktContentModal'); if(m) m.remove();
+  // p1_1101 — kalendar lompat ke tarikh yang disimpan supaya kad terus nampak
+  if(rec.scheduled_date){ window.__mktCalSel = String(rec.scheduled_date).slice(0,10); window.__mktCalMonth = window.__mktCalSel.slice(0,7); }
   await window.__mktLoadContent(); window.renderContentSchedule();
  } catch(e){ if(typeof showToast==='function') showToast('Simpan gagal: '+e.message, 'error'); }
 };
