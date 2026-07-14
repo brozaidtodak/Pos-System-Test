@@ -11121,7 +11121,7 @@ window.__scsToggleSkuList = async function(sessionId) {
  <span style="color:#9CA3AF;">${pending.length} belum</span>
  </div>
  <div style="display:flex; align-items:center; gap:8px;">
- <button onclick="window.__scsCompactDone=!window.__scsCompactDone; var w=this.closest('[id^=scsSkuList-]').querySelector('.scs-sku-wrap'); if(w) w.classList.toggle('scs-compact', window.__scsCompactDone); this.textContent=window.__scsCompactDone?'Item siap: kecil':'Item siap: penuh';" style="font-size:10.5px; font-weight:700; color:var(--primary-800,#7C4A1A); background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-100,#FFEDD5); padding:3px 10px; border-radius:50px; cursor:pointer;">${window.__scsCompactDone ? 'Item siap: kecil' : 'Item siap: penuh'}</button>
+ <button onclick="window.__scsCompactDone=!window.__scsCompactDone; var w=this.closest('[id^=scsSkuList-]').querySelector('.scs-sku-wrap'); if(w) w.classList.toggle('scs-compact', window.__scsCompactDone); this.textContent=window.__scsCompactDone?'Kad: kecil':'Kad: penuh';" style="font-size:10.5px; font-weight:700; color:var(--primary-800,#7C4A1A); background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-100,#FFEDD5); padding:3px 10px; border-radius:50px; cursor:pointer;">${window.__scsCompactDone ? 'Kad: kecil' : 'Kad: penuh'}</button>
  <div style="font-size:12px; color:var(--primary); font-weight:800;">${totalPct}%</div>
  </div>
  </div>

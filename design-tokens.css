@@ -4434,17 +4434,21 @@ body.pos-app-scoped .login-input { font-size: 16px !important; }
   /* Aksi (Reset/Buang) = butang di hujung kad, rata kiri */
   body.pos-app-scoped .scs-sku-table td.scs-cell-aksi { justify-content: flex-start; padding-top: 8px !important; }
 
-  /* p1_1097 — item SIAP (tr.scs-done) jadi SATU BARIS kecil bila mod compact (default ON):
-     SKU + Dikira + Status sahaja, kekal boleh-tekan utk buka popup. Toggle "Item siap: kecil/penuh". */
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done { display: flex !important; align-items: center; gap: 10px; padding: 7px 12px; opacity: .88; }
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td { display: none !important; }
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td.scs-cell-sku,
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td[data-label="Dikira"],
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td[data-label="Status"] { display: flex !important; border-bottom: 0 !important; padding: 0 !important; }
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td::before { display: none !important; }
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td.scs-cell-sku { font-size: 13px !important; flex: 1 1 auto; justify-content: flex-start; min-width: 0; }
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td.scs-cell-sku > div { display: none !important; } /* sorok barcode kecil */
-  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done td[data-label="Dikira"] { font-weight: 800; }
+  /* p1_1097/p1_1098 — mod compact (default ON): SEMUA baris jadi SATU BARIS kecil dari awal
+     (Zaid: "buat kad tu memang kecil dari awal") — SKU + Lokasi + Dikira + Status sahaja;
+     detail penuh (gambar/nama/barcode) dlm popup bila tekan. Item siap (scs-done) dipudarkan.
+     Toggle "Kad: kecil/penuh" utk balik jadual penuh. */
+  body.pos-app-scoped .scs-compact .scs-sku-table tr { display: flex !important; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 12px; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td { display: none !important; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td.scs-cell-sku,
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td[data-label="Lokasi"],
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td[data-label="Dikira"],
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td[data-label="Status"] { display: flex !important; border-bottom: 0 !important; padding: 0 !important; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td::before { display: none !important; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td.scs-cell-sku { font-size: 13px !important; flex: 1 1 auto; justify-content: flex-start; min-width: 0; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td.scs-cell-sku > div { display: none !important; } /* sorok barcode kecil */
+  body.pos-app-scoped .scs-compact .scs-sku-table tr td[data-label="Dikira"] { font-weight: 800; }
+  body.pos-app-scoped .scs-compact .scs-sku-table tr.scs-done { opacity: .72; }
 }
 
 body.pos-app-scoped #saFab { display: none !important; }
