@@ -19584,12 +19584,30 @@ const HR_JOB_SCOPE_BOSS = 'Pengarah Urusan — kawalan menyeluruh operasi 10 CAM
 function _hrCurrentUser() {
  return window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
 }
-function _hrcLoadClaims() {
- try { return JSON.parse(localStorage.getItem(window.HRC_CLAIMS_KEY) || '[]'); } catch(e) { return []; }
-}
+// p1_1114 — claim kini DB-backed (table staff_claims). Dulu localStorage sahaja = claim tak pernah
+// sampai ke Bos di device lain. _hrcLoadClaims kekal SYNC (baca cache); __hrcFetch isi cache dari DB
+// + MIGRASI sekali: claim lama dlm localStorage dinaikkan ke DB lepas tu localStorage dibersihkan.
+window.__hrcCache = window.__hrcCache || [];
+window.__hrcFetch = async function() {
+ try {
+  if(typeof db === 'undefined' || !db) return window.__hrcCache;
+  // migrasi localStorage → DB (sekali; guna upsert id supaya selamat ulang)
+  try {
+   const local = JSON.parse(localStorage.getItem(window.HRC_CLAIMS_KEY) || '[]');
+   if(local.length){
+    await db.from('staff_claims').upsert(local.map(c => ({ id:c.id, staff_id:c.staff_id, staff_name:c.staff_name, type:c.type, amount:c.amount, date:c.date||null, description:c.description||null, status:c.status||'pending', submitted_at:c.submitted_at||null, approved_by:c.approved_by||null, decision_at:c.decision_at||null })));
+    localStorage.removeItem(window.HRC_CLAIMS_KEY);
+   }
+  } catch(e){}
+  const { data } = await db.from('staff_claims').select('*').order('submitted_at', { ascending:false }).limit(500);
+  if(data) window.__hrcCache = data;
+ } catch(e){ console.warn('hrc fetch:', e.message); }
+ try { if(typeof window.refreshClaimBadge === 'function') window.refreshClaimBadge(); } catch(e){}
+ return window.__hrcCache;
+};
+function _hrcLoadClaims() { return window.__hrcCache || []; }
 function _hrcSaveClaims(arr) {
- try { localStorage.setItem(window.HRC_CLAIMS_KEY, JSON.stringify(arr)); } catch(e) {}
- // p1_77 fix #7: refresh sidebar badge so Bos sees new pending claim immediately
+ window.__hrcCache = arr;
  try { if(typeof window.refreshClaimBadge === 'function') window.refreshClaimBadge(); } catch(e){}
 }
 
@@ -19787,6 +19805,8 @@ window.renderHrCuti = function() {
 };
 
 window.renderHrClaim = function() {
+ // p1_1114 — tarik dari DB dulu (async), render semula bila sampai
+ if(!window.__hrcFetched){ window.__hrcFetched = true; window.__hrcFetch().then(function(){ try{ window.renderHrClaim(); }catch(e){} }); }
  const u = _hrCurrentUser();
  if (!u) return;
  const tbody = document.getElementById('hrcClaimTbody');
@@ -19841,6 +19861,7 @@ window.hrcSubmitClaim = function() {
  const all = _hrcLoadClaims();
  all.push(claim);
  _hrcSaveClaims(all);
+ try { db.from('staff_claims').insert([claim]).then(r => { if(r.error && typeof showToast==='function') showToast('Amaran: claim tak tersimpan ke server — cuba lagi. '+r.error.message, 'error'); }); } catch(e){}
  document.getElementById('clmAmount').value = '';
  document.getElementById('clmDate').value = '';
  document.getElementById('clmDesc').value = '';
@@ -19858,6 +19879,7 @@ window.hrcApproveClaim = function(id) {
  c.approved_by = u.name;
  c.decision_at = new Date().toISOString();
  _hrcSaveClaims(all);
+ try { db.from('staff_claims').update({ status:'approved', approved_by:c.approved_by, decision_at:c.decision_at }).eq('id', id).then(()=>{}); } catch(e){}
  if (typeof showToast === 'function') showToast('Tuntutan diluluskan: RM ' + Number(c.amount).toFixed(2), 'success');
  window.renderHrClaim();
 };
@@ -19873,6 +19895,7 @@ window.hrcRejectClaim = function(id) {
  c.approved_by = u.name;
  c.decision_at = new Date().toISOString();
  _hrcSaveClaims(all);
+ try { db.from('staff_claims').update({ status:'rejected', approved_by:c.approved_by, decision_at:c.decision_at }).eq('id', id).then(()=>{}); } catch(e){}
  if (typeof showToast === 'function') showToast('Tuntutan ditolak', 'success');
  window.renderHrClaim();
 };
