@@ -6940,8 +6940,8 @@
 
  <!-- Status pills -->
  <div class="pdb-pills" id="pdbStatusPills">
- <button class="pdb-pill pdb-pill--active" data-status="" onclick="window.pdbSetStatus('', this)" data-i18n="db_pill_all">All</button>
- <button class="pdb-pill" data-status="published" onclick="window.pdbSetStatus('published', this)">
+ <button class="pdb-pill" data-status="" onclick="window.pdbSetStatus('', this)" data-i18n="db_pill_all">All</button>
+ <button class="pdb-pill pdb-pill--active" data-status="published" onclick="window.pdbSetStatus('published', this)">
  <span class="pdb-dot pdb-dot--green"></span> <span data-i18n="db_pill_live">Live</span>
  </button>
  <button class="pdb-pill" data-status="draft" onclick="window.pdbSetStatus('draft', this)">
@@ -6968,7 +6968,7 @@
  <button class="pdb-pill" data-status="under10" onclick="window.pdbSetStatus('under10', this)">
  <span class="pdb-dot pdb-dot--orange"></span> <span data-i18n="db_pill_under10">Stok &lt; 10</span>
  </button>
- <input type="hidden" id="pdStatus" value="">
+ <input type="hidden" id="pdStatus" value="published">
  </div>
 
  <!-- Active filter chips -->
