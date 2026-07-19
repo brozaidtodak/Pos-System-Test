@@ -172,7 +172,9 @@ window.__injectPosAppTopBar = function(){
  if(document.getElementById('posAppTopBar')) return;
  const bar = document.createElement('div');
  bar.id = 'posAppTopBar';
- bar.innerHTML = '<span class="pat-title" id="posAppTitle">POS / Cashier</span>'
+ // p1_1119 — logo 10 CAMP kiri atas APP: klik buka Dashboard Hari Ini (versi ringkas back office)
+ bar.innerHTML = '<img src="assets/brand/logo/10camp-logo-color.png" alt="10 CAMP" onclick="window.__miniDash && window.__miniDash()" style="height:26px; width:26px; object-fit:contain; border-radius:6px; margin-right:10px; flex:0 0 auto; cursor:pointer;">'
+ + '<span class="pat-title" id="posAppTitle">POS / Cashier</span>'
  + '<button class="pat-who" id="posAppWho" onclick="window.__switchStaff && window.__switchStaff()" title="Tukar Staf" style="flex:0 0 auto; background:rgba(var(--primary-rgb,205,124,50),.18); border:0; color:#FAF6EF; font-family:inherit; font-weight:700; font-size:12.5px; padding:6px 11px; border-radius:20px; margin-right:8px; cursor:pointer; display:none; align-items:center; gap:6px; max-width:120px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;"></button>'
  // p1_1029 — Apa Baru dibuang dari mobile top bar (back to basics; kekal di back office).
  // p1_1040 — Tanya AI DIPULIHKAN atas permintaan Zack. Kos boot = ~0: butang ni je (200 bait);
