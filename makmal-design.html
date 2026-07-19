@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Makmal Design — 10 CAMP</title>
+<link rel="icon" type="image/png" href="assets/brand/logo/10camp-logo-color.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Poppins:wght@400;600;700&family=Familjen+Grotesk:wght@400;700&family=Saira+Condensed:wght@600;800&family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Plus+Jakarta+Sans:wght@400;600&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;600&family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Figtree:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root { --bg:#F4F2EC; --ink:#141414; --oren:#FF4D00; --kabus:#6E6A5E; --garis:#B9B4A6; --surface:#FFFDF6; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--ink); font-family:'Archivo',sans-serif;
+         background-image:repeating-radial-gradient(circle at 85% 10%, transparent 0 46px, rgba(20,20,20,.04) 46px 47px); }
+  .mono { font-family:'IBM Plex Mono',monospace; }
+  header { display:flex; align-items:center; gap:12px; padding:18px 26px; border-bottom:2px solid var(--ink); background:var(--surface); position:sticky; top:0; z-index:50; }
+  header img { height:34px; width:34px; object-fit:contain; }
+  header b { font-family:'Archivo Black'; font-size:18px; letter-spacing:.5px; text-transform:uppercase; }
+  header .coord { margin-left:auto; font-family:'IBM Plex Mono'; font-size:11.5px; color:var(--kabus); letter-spacing:1px; }
+  .wrap { display:grid; grid-template-columns:300px 1fr 320px; gap:0; min-height:calc(100vh - 71px); }
+  @media(max-width:1100px){ .wrap { grid-template-columns:1fr; } }
+
+  /* ---- Galeri ---- */
+  .galeri { border-right:2px solid var(--ink); background:var(--surface); padding:16px; overflow-y:auto; }
+  .galeri h3, .editor h3 { font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:2.5px; text-transform:uppercase; color:var(--kabus); margin-bottom:12px; }
+  .tcard { border:1.5px solid var(--garis); border-radius:8px; padding:12px; margin-bottom:10px; cursor:pointer; background:#FFF; }
+  .tcard:hover { border-color:var(--ink); }
+  .tcard.pilih { border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); }
+  .tcard .nm { font-weight:700; font-size:13.5px; display:flex; align-items:center; gap:8px; }
+  .tcard .sw { display:flex; gap:4px; margin-top:8px; }
+  .tcard .sw i { width:18px; height:18px; border-radius:4px; border:1px solid rgba(0,0,0,.15); display:block; }
+  .tcard .st { font-family:'IBM Plex Mono'; font-size:10.5px; margin-top:7px; color:var(--kabus); }
+  .badge-aktif { background:#168C50; color:#FFF; font-family:'IBM Plex Mono'; font-size:9.5px; padding:2px 8px; border-radius:99px; letter-spacing:1px; }
+  .badge-draf { background:var(--oren); color:#141414; font-family:'IBM Plex Mono'; font-size:9.5px; padding:2px 8px; border-radius:99px; letter-spacing:1px; }
+
+  /* ---- Preview ---- */
+  .preview { padding:22px; overflow-y:auto; }
+  .pv-tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .pv-tab { font-family:'IBM Plex Mono'; font-size:12px; letter-spacing:1px; padding:8px 16px; border:1.5px solid var(--ink); background:#FFF; cursor:pointer; border-radius:4px; }
+  .pv-tab.on { background:var(--ink); color:#FFF; }
+  .stage { border:2px solid var(--ink); border-radius:12px; overflow:hidden; background:#FFF; box-shadow:6px 6px 0 var(--ink); }
+  .stage2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .stage2 .stage { box-shadow:4px 4px 0 var(--ink); }
+  .stage-label { font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:2px; color:var(--kabus); margin:14px 0 8px; text-transform:uppercase; }
+
+  /* preview surfaces guna CSS vars t-* */
+  .pv { --t-bg:#FAF6EF; --t-surface:#FFF; --t-text:#101010; --t-muted:#71717A; --t-accent:#CD7C32; --t-accentText:#FFF; --t-line:#E4E4E7; --t-fd:'Poppins'; --t-fb:'Poppins'; --t-fm:'IBM Plex Mono'; --t-rb:8px; --t-rc:14px; }
+  .pv-hero { background:var(--t-bg); color:var(--t-text); padding:34px 30px; position:relative; overflow:hidden; min-height:300px; }
+  .pv-hero.topo:before { content:''; position:absolute; inset:0; background-image:repeating-radial-gradient(circle at 80% 15%, transparent 0 34px, rgba(0,0,0,.05) 34px 35px); }
+  .pv-hero .nv { display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px; position:relative; }
+  .pv-hero .nv img { height:22px; width:22px; object-fit:contain; background:#FFF; border-radius:4px; padding:1px; }
+  .pv-hero .nv span.r { margin-left:auto; color:var(--t-muted); font-weight:400; font-size:11px; }
+  .pv-hero h1 { font-family:var(--t-fd); font-size:40px; line-height:1.02; margin-top:26px; position:relative; max-width:430px; }
+  .pv-hero h1 .a { color:var(--t-accent); }
+  .pv-hero .coords { font-family:var(--t-fm); font-size:10.5px; color:var(--t-muted); margin-top:12px; letter-spacing:1px; position:relative; }
+  .pv-hero p { font-family:var(--t-fb); font-size:13px; color:var(--t-muted); margin-top:10px; max-width:380px; line-height:1.55; position:relative; }
+  .pv-hero .cta { display:inline-block; margin-top:16px; background:var(--t-accent); color:var(--t-accentText); font-family:var(--t-fb); font-weight:700; font-size:13px; padding:11px 22px; border-radius:var(--t-rb); text-decoration:none; position:relative; }
+  .pv-hero .cta.hard { border:2.5px solid var(--t-text); box-shadow:5px 5px 0 var(--t-text); }
+  .pv-hero .mani { font-family:var(--t-fm); font-size:11.5px; margin-top:22px; border-top:1.5px solid var(--t-text); position:relative; }
+  .pv-hero .mani div { display:flex; justify-content:space-between; padding:7px 2px; border-bottom:1px dashed var(--t-line); }
+  .pv-hero .mani em { font-style:normal; color:var(--t-accent); font-weight:600; }
+  .pv-bo { background:var(--t-bg); padding:20px; color:var(--t-text); font-family:var(--t-fb); }
+  .pv-bo .bar { display:flex; gap:10px; margin-bottom:12px; }
+  .pv-bo .stat { flex:1; background:var(--t-surface); border:1px solid var(--t-line); border-radius:var(--t-rc); padding:11px; }
+  .pv-bo .stat .l { font-size:9.5px; text-transform:uppercase; letter-spacing:1.5px; color:var(--t-muted); font-family:var(--t-fm); }
+  .pv-bo .stat .v { font-family:var(--t-fm); font-weight:600; font-size:18px; margin-top:4px; }
+  .pv-bo .stat .v.a { color:var(--t-accent); }
+  .pv-bo table { width:100%; border-collapse:collapse; font-size:12px; background:var(--t-surface); border-radius:var(--t-rc); overflow:hidden; }
+  .pv-bo th { font-family:var(--t-fm); font-size:9.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--t-muted); text-align:left; padding:8px 10px; border-bottom:1px solid var(--t-line); }
+  .pv-bo td { padding:9px 10px; border-bottom:1px solid var(--t-line); }
+  .pv-bo td.n { text-align:right; font-family:var(--t-fm); }
+  .pv-bo .btn { display:inline-block; margin-top:12px; background:var(--t-accent); color:var(--t-accentText); font-weight:700; font-size:12px; padding:9px 18px; border-radius:var(--t-rb); }
+  .pv-phone { display:flex; justify-content:center; padding:20px; background:repeating-conic-gradient(#EEE 0 25%, #FFF 0 50%) 0 0/28px 28px; }
+  .pv-phone .frame { width:250px; border:8px solid #111; border-radius:32px; overflow:hidden; background:var(--t-bg); color:var(--t-text); }
+  .pv-phone .top { background:var(--t-text); color:#FFF; font-size:11px; font-weight:700; padding:10px 12px; display:flex; align-items:center; gap:6px; font-family:var(--t-fb); }
+  .pv-phone .top img { height:16px; width:16px; border-radius:3px; background:#FFF; }
+  .pv-phone .body { padding:12px; font-family:var(--t-fb); }
+  .pv-phone .goal { background:var(--t-surface); border:1px solid var(--t-line); border-radius:var(--t-rc); padding:10px; font-size:11px; }
+  .pv-phone .goal b { font-family:var(--t-fm); color:var(--t-accent); }
+  .pv-phone .prod { display:flex; justify-content:space-between; font-size:11.5px; padding:9px 2px; border-bottom:1px dashed var(--t-line); }
+  .pv-phone .prod em { font-style:normal; font-family:var(--t-fm); color:var(--t-accent); }
+  .pv-phone .cta { display:block; text-align:center; background:var(--t-accent); color:var(--t-accentText); font-weight:700; font-size:12px; padding:10px; border-radius:var(--t-rb); margin-top:12px; }
+
+  /* ---- Editor ---- */
+  .editor { border-left:2px solid var(--ink); background:var(--surface); padding:16px; overflow-y:auto; }
+  .fld { margin-bottom:11px; }
+  .fld label { display:block; font-family:'IBM Plex Mono'; font-size:10.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--kabus); margin-bottom:4px; }
+  .fld input[type=text], .fld select, .fld input[type=number] { width:100%; border:1.5px solid var(--garis); border-radius:5px; padding:8px 10px; font-family:'Archivo'; font-size:13px; background:#FFF; }
+  .fld .clr { display:flex; gap:8px; align-items:center; }
+  .fld input[type=color] { width:38px; height:34px; border:1.5px solid var(--garis); border-radius:5px; background:#FFF; padding:2px; cursor:pointer; }
+  .fld .hex { flex:1; font-family:'IBM Plex Mono'; }
+  .tgl { display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:7px; cursor:pointer; }
+  .btnrow { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  .b1 { background:var(--oren); color:var(--ink); border:2.5px solid var(--ink); box-shadow:4px 4px 0 var(--ink); font-family:'Archivo Black'; font-size:13px; text-transform:uppercase; padding:12px; cursor:pointer; border-radius:2px; }
+  .b1:active { transform:translate(2px,2px); box-shadow:2px 2px 0 var(--ink); }
+  .b2 { background:var(--ink); color:#FFF; border:none; font-family:'Archivo'; font-weight:700; font-size:13px; padding:12px; cursor:pointer; border-radius:4px; }
+  .b3 { background:#FFF; color:var(--ink); border:1.5px solid var(--ink); font-family:'Archivo'; font-weight:600; font-size:12.5px; padding:10px; cursor:pointer; border-radius:4px; }
+  .vlist { font-family:'IBM Plex Mono'; font-size:11.5px; margin-top:10px; }
+  .vlist div { display:flex; justify-content:space-between; padding:6px 2px; border-bottom:1px dashed var(--garis); }
+  .vlist a { color:var(--oren); cursor:pointer; text-decoration:underline; }
+  #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--ink); color:#FFF; font-family:'IBM Plex Mono'; font-size:12.5px; padding:11px 20px; border-radius:6px; display:none; z-index:99; }
+
+  /* PIN gate */
+  #gate { position:fixed; inset:0; background:var(--bg); z-index:100; display:flex; align-items:center; justify-content:center; }
+  #gate .box { background:var(--surface); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--ink); border-radius:10px; padding:34px; width:320px; text-align:center; }
+  #gate img { height:44px; margin-bottom:10px; }
+  #gate h2 { font-family:'Archivo Black'; text-transform:uppercase; font-size:17px; }
+  #gate p { font-size:12.5px; color:var(--kabus); margin:8px 0 16px; }
+  #gate input { width:100%; text-align:center; font-family:'IBM Plex Mono'; font-size:20px; letter-spacing:8px; padding:10px; border:1.5px solid var(--garis); border-radius:6px; }
+  #gate button { width:100%; margin-top:12px; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <img src="assets/brand/logo/10camp-logo-color.png" alt="">
+    <h2>Makmal Design</h2>
+    <p>PIN pengurusan diperlukan (sama dengan Laporan Sulit).</p>
+    <input id="gatePin" type="password" inputmode="numeric" maxlength="6" placeholder="····" onkeydown="if(event.key==='Enter')masuk()">
+    <button class="b1" onclick="masuk()">Masuk</button>
+  </div>
+</div>
+
+<header>
+  <img src="assets/brand/logo/10camp-logo-color.png" alt="">
+  <b>Makmal Design</b>
+  <span class="mono" style="font-size:11px; background:#141414; color:#FF4D00; padding:3px 10px; border-radius:4px;">SANDBOX — tak sentuh site live</span>
+  <span class="coord">2.9188° N, 101.6520° E — 10 CAMP CO.</span>
+</header>
+
+<div class="wrap">
+  <aside class="galeri">
+    <h3>Koleksi Tema (<span id="gCount">0</span>)</h3>
+    <div id="gList">Memuatkan…</div>
+  </aside>
+
+  <main class="preview">
+    <div class="pv-tabs">
+      <button class="pv-tab on" data-v="landing" onclick="pvTab(this)">Landing</button>
+      <button class="pv-tab" data-v="backoffice" onclick="pvTab(this)">Back Office</button>
+      <button class="pv-tab" data-v="app" onclick="pvTab(this)">App Phone</button>
+      <button class="pv-tab" data-v="banding" onclick="pvTab(this)">Banding 2 Tema</button>
+    </div>
+    <div id="pvArea"></div>
+  </main>
+
+  <aside class="editor">
+    <h3>Editor — <span id="edNama">…</span></h3>
+    <div class="fld"><label>Nama Tema</label><input type="text" id="fName"></div>
+    <div class="fld"><label>Slug (id)</label><input type="text" id="fSlug" class="mono"></div>
+    <div class="fld"><label>Latar (bg)</label><div class="clr"><input type="color" id="cBg"><input type="text" class="hex" id="hBg"></div></div>
+    <div class="fld"><label>Permukaan (kad)</label><div class="clr"><input type="color" id="cSurface"><input type="text" class="hex" id="hSurface"></div></div>
+    <div class="fld"><label>Teks</label><div class="clr"><input type="color" id="cText"><input type="text" class="hex" id="hText"></div></div>
+    <div class="fld"><label>Teks Muted</label><div class="clr"><input type="color" id="cMuted"><input type="text" class="hex" id="hMuted"></div></div>
+    <div class="fld"><label>Aksen (tindakan)</label><div class="clr"><input type="color" id="cAccent"><input type="text" class="hex" id="hAccent"></div></div>
+    <div class="fld"><label>Teks Atas Aksen</label><div class="clr"><input type="color" id="cAccentText"><input type="text" class="hex" id="hAccentText"></div></div>
+    <div class="fld"><label>Garis/Border</label><div class="clr"><input type="color" id="cLine"><input type="text" class="hex" id="hLine"></div></div>
+    <div class="fld"><label>Font Display</label><select id="fFd"></select></div>
+    <div class="fld"><label>Font Badan</label><select id="fFb"></select></div>
+    <div class="fld"><label>Radius Butang (px)</label><input type="number" id="fRb" min="0" max="999"></div>
+    <div class="fld"><label>Radius Kad (px)</label><input type="number" id="fRc" min="0" max="40"></div>
+    <h3 style="margin-top:14px;">Ciri Khas</h3>
+    <label class="tgl"><input type="checkbox" id="dTopo"> Kontur topo di latar</label>
+    <label class="tgl"><input type="checkbox" id="dCoords"> Koordinat GPS</label>
+    <label class="tgl"><input type="checkbox" id="dMani"> Manifest bernombor</label>
+    <label class="tgl"><input type="checkbox" id="dHard"> Butang hard-shadow</label>
+    <div class="btnrow">
+      <button class="b1" onclick="simpan()">Simpan Versi Baru</button>
+      <button class="b2" onclick="terbit()">Terbitkan (jadi aktif)</button>
+      <button class="b3" onclick="loadVersi()">Sejarah Versi</button>
+    </div>
+    <div class="vlist" id="vList"></div>
+    <p class="mono" style="font-size:10.5px; color:var(--kabus); margin-top:14px;">Nota: "Terbitkan" tandakan tema aktif dalam DB. Site live akan ikut tema aktif SELEPAS fasa tokenize landing siap (Fasa 3).</p>
+  </aside>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const db = supabase.createClient('https://asehjdnfzoypbwfeazra.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZWhqZG5mem95cGJ3ZmVhenJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MjE2NjMsImV4cCI6MjA5MTE5NzY2M30.34nAhmcNO_xN73OdsyxayKl_jipIk-M8DIBgibAOdaI');
+const FONTS = ['Archivo Black','Archivo','Poppins','IBM Plex Mono','Familjen Grotesk','Saira Condensed','Fraunces','Plus Jakarta Sans','Instrument Serif','Instrument Sans','Anton','Bricolage Grotesque','Figtree'];
+let PIN = sessionStorage.getItem('makmalPin') || '';
+let themes = {};      // slug -> row terkini
+let pilih = null;     // slug dipilih
+let bandingSet = [];  // utk mod banding
+let view = 'landing';
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none', 2600); }
+
+async function masuk(){
+  const p = document.getElementById('gatePin').value.trim();
+  // sahkan PIN dgn cubaan mode tak-wujud — 401 = salah, 400 = betul
+  const r = await fetch('/.netlify/functions/design-themes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pin:p, mode:'ping' }) });
+  if(r.status === 401){ toast('PIN salah'); return; }
+  PIN = p; sessionStorage.setItem('makmalPin', p);
+  document.getElementById('gate').style.display = 'none';
+}
+if(PIN){ document.getElementById('gate').style.display='none'; }
+
+FONTS.forEach(f => { ['fFd','fFb'].forEach(id => { const o=document.createElement('option'); o.value=f; o.textContent=f; document.getElementById(id).appendChild(o); }); });
+
+async function muat(){
+  const { data, error } = await db.from('design_themes').select('*').order('version', { ascending:false });
+  if(error){ document.getElementById('gList').textContent = 'Gagal muat: '+error.message; return; }
+  themes = {};
+  (data||[]).forEach(r => { if(!themes[r.slug]) themes[r.slug] = r; }); // terkini per slug
+  // aktif dulu, then draf, then arkib
+  const order = { aktif:0, draf:1, arkib:2 };
+  const list = Object.values(themes).sort((a,b) => (order[a.status]??3)-(order[b.status]??3) || a.name.localeCompare(b.name));
+  document.getElementById('gCount').textContent = list.length;
+  document.getElementById('gList').innerHTML = list.map(r => {
+    const t = r.tokens||{};
+    return `<div class="tcard ${pilih===r.slug?'pilih':''}" onclick="pilihTema('${r.slug}')">
+      <div class="nm">${r.name} ${r.status==='aktif'?'<span class="badge-aktif">LIVE</span>':(r.status==='draf'?'<span class="badge-draf">DRAF</span>':'')}</div>
+      <div class="sw"><i style="background:${t.bg}"></i><i style="background:${t.text}"></i><i style="background:${t.accent}"></i><i style="background:${t.surface}"></i></div>
+      <div class="st">v${r.version} · ${t.fontDisplay||''}</div>
+    </div>`;
+  }).join('');
+  if(!pilih && list.length){ pilihTema(list[0].slug); }
+}
+
+function pilihTema(slug){
+  if(view==='banding'){
+    if(bandingSet.includes(slug)) bandingSet = bandingSet.filter(s=>s!==slug);
+    else { bandingSet.push(slug); if(bandingSet.length>2) bandingSet.shift(); }
+    render(); muatGaleriKelas(); return;
+  }
+  pilih = slug;
+  const r = themes[slug]; if(!r) return;
+  const t = r.tokens||{};
+  document.getElementById('edNama').textContent = r.name;
+  document.getElementById('fName').value = r.name;
+  document.getElementById('fSlug').value = r.slug;
+  setClr('Bg', t.bg); setClr('Surface', t.surface); setClr('Text', t.text); setClr('Muted', t.muted);
+  setClr('Accent', t.accent); setClr('AccentText', t.accentText); setClr('Line', t.line);
+  document.getElementById('fFd').value = t.fontDisplay || 'Archivo Black';
+  document.getElementById('fFb').value = t.fontBody || 'Archivo';
+  document.getElementById('fRb').value = t.radiusBtn ?? 8;
+  document.getElementById('fRc').value = t.radiusCard ?? 12;
+  const d = t.devices||{};
+  document.getElementById('dTopo').checked = !!d.topo;
+  document.getElementById('dCoords').checked = !!d.coords;
+  document.getElementById('dMani').checked = !!d.manifest;
+  document.getElementById('dHard').checked = !!d.hardShadow;
+  document.getElementById('vList').innerHTML = '';
+  render(); muatGaleriKelas();
+}
+function muatGaleriKelas(){ document.querySelectorAll('.tcard').forEach(c => c.classList.toggle('pilih', c.getAttribute('onclick').includes(`'${pilih}'`) && view!=='banding')); }
+function setClr(k, v){ v = v || '#FFFFFF'; document.getElementById('c'+k).value = v.length===7?v:'#FFFFFF'; document.getElementById('h'+k).value = v; }
+
+function tokensDariEditor(){
+  return {
+    bg: document.getElementById('hBg').value, surface: document.getElementById('hSurface').value,
+    text: document.getElementById('hText').value, muted: document.getElementById('hMuted').value,
+    accent: document.getElementById('hAccent').value, accentText: document.getElementById('hAccentText').value,
+    line: document.getElementById('hLine').value,
+    fontDisplay: document.getElementById('fFd').value, fontBody: document.getElementById('fFb').value, fontMono: 'IBM Plex Mono',
+    radiusBtn: parseInt(document.getElementById('fRb').value)||0, radiusCard: parseInt(document.getElementById('fRc').value)||0,
+    devices: { topo: document.getElementById('dTopo').checked, coords: document.getElementById('dCoords').checked,
+               manifest: document.getElementById('dMani').checked, hardShadow: document.getElementById('dHard').checked }
+  };
+}
+
+function cssVars(t){
+  const rb = (t.radiusBtn>=999) ? '999px' : (t.radiusBtn||0)+'px';
+  return `--t-bg:${t.bg};--t-surface:${t.surface};--t-text:${t.text};--t-muted:${t.muted};--t-accent:${t.accent};--t-accentText:${t.accentText};--t-line:${t.line};--t-fd:'${t.fontDisplay}';--t-fb:'${t.fontBody}';--t-fm:'IBM Plex Mono';--t-rb:${rb};--t-rc:${(t.radiusCard||0)}px`;
+}
+
+function heroHtml(t){
+  const d = t.devices||{};
+  return `<div class="pv pv-hero ${d.topo?'topo':''}" style="${cssVars(t)}">
+    <div class="nv"><img src="assets/brand/logo/10camp-logo-color.png">10 CAMP<span class="r">Gear · Jenama · Kedai</span></div>
+    <h1>Base camp: <span class="a">Cyberjaya.</span></h1>
+    ${d.coords?'<div class="coords">2.9188° N, 101.6520° E — ELEV. 34M — 630 SKU SEDIA</div>':''}
+    <p>Kedai camping paling lengkap di Cyberjaya. 11 jenama premium — datang, angkat, gerak.</p>
+    <a class="cta ${d.hardShadow?'hard':''}">Mula Misi</a>
+    ${d.manifest?`<div class="mani">
+      <div><span>01 — KHEMAH SHANTING 6.8 / BLACKDOG</span><em>RM 799.00</em></div>
+      <div><span>02 — KERUSI SEA STAR / NATUREHIKE</span><em>RM 140.00</em></div>
+      <div><span>03 — LAMPU LED / 10CAMP</span><em>RM 12.90</em></div></div>`:''}
+  </div>`;
+}
+function boHtml(t){
+  return `<div class="pv pv-bo" style="${cssVars(t)}">
+    <div class="bar">
+      <div class="stat"><div class="l">Jualan Hari Ini</div><div class="v a">RM 2,455.94</div></div>
+      <div class="stat"><div class="l">Order</div><div class="v">17</div></div>
+      <div class="stat"><div class="l">Sasaran</div><div class="v">42%</div></div>
+      <div class="stat"><div class="l">Stok Rendah</div><div class="v">8</div></div>
+    </div>
+    <table><thead><tr><th>SKU</th><th>Produk</th><th style="text-align:right;">Harga</th><th style="text-align:right;">Stok</th></tr></thead>
+    <tbody><tr><td class="n" style="text-align:left;">BD103</td><td>Khemah Shanting 6.8</td><td class="n">799.00</td><td class="n">12</td></tr>
+    <tr><td class="n" style="text-align:left;">NH103</td><td>Kerusi Sea Star</td><td class="n">140.00</td><td class="n">18</td></tr>
+    <tr><td class="n" style="text-align:left;">MX018</td><td>Gas Kovea 220g</td><td class="n">12.00</td><td class="n">84</td></tr></tbody></table>
+    <span class="btn">Simpan Jualan</span>
+  </div>`;
+}
+function phoneHtml(t){
+  return `<div class="pv pv-phone" style="${cssVars(t)}">
+    <div class="frame">
+      <div class="top"><img src="assets/brand/logo/10camp-logo-color.png">POS / Cashier</div>
+      <div class="body">
+        <div class="goal">Sasaran Julai: <b>39%</b> — RM38,900 / RM99,999</div>
+        <div class="prod"><span>10camp Shirt</span><em>RM 79</em></div>
+        <div class="prod"><span>Ultrasonic Mat</span><em>RM 109</em></div>
+        <div class="prod"><span>Gas Kovea</span><em>RM 12</em></div>
+        <span class="cta">Bakul — RM 0.00</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const area = document.getElementById('pvArea');
+  if(view==='banding'){
+    if(bandingSet.length<2){ area.innerHTML = '<p class="mono" style="color:var(--kabus);font-size:12.5px;">Klik 2 tema di galeri kiri untuk banding.</p>'; return; }
+    const [a,b2] = bandingSet.map(s=>themes[s]);
+    area.innerHTML = `<div class="stage2">
+      <div><div class="stage-label">${a.name}</div><div class="stage">${heroHtml(a.tokens)}</div></div>
+      <div><div class="stage-label">${b2.name}</div><div class="stage">${heroHtml(b2.tokens)}</div></div></div>`;
+    return;
+  }
+  const t = tokensDariEditor();
+  const inner = view==='landing' ? heroHtml(t) : (view==='backoffice' ? boHtml(t) : phoneHtml(t));
+  area.innerHTML = `<div class="stage-label">Preview langsung — ubah editor kanan, terus nampak</div><div class="stage">${inner}</div>`;
+}
+function pvTab(btn){
+  view = btn.dataset.v;
+  document.querySelectorAll('.pv-tab').forEach(b=>b.classList.toggle('on', b===btn));
+  if(view!=='banding') bandingSet = [];
+  render();
+}
+
+// sinkron color picker <-> hex + live render
+['Bg','Surface','Text','Muted','Accent','AccentText','Line'].forEach(k => {
+  document.getElementById('c'+k).addEventListener('input', e => { document.getElementById('h'+k).value = e.target.value; render(); });
+  document.getElementById('h'+k).addEventListener('input', e => { if(/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) document.getElementById('c'+k).value = e.target.value; render(); });
+});
+['fFd','fFb','fRb','fRc','dTopo','dCoords','dMani','dHard'].forEach(id => document.getElementById(id).addEventListener('input', render));
+
+async function api(payload){
+  const r = await fetch('/.netlify/functions/design-themes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({ pin: PIN, by:'Makmal' }, payload)) });
+  const jx = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(jx.error||('HTTP '+r.status));
+  return jx;
+}
+async function simpan(){
+  try {
+    const out = await api({ mode:'save', slug: document.getElementById('fSlug').value, name: document.getElementById('fName').value, tokens: tokensDariEditor() });
+    toast('Disimpan: '+out.slug+' v'+out.version); pilih = out.slug; await muat();
+  } catch(e){ toast('Gagal: '+e.message); }
+}
+async function terbit(){
+  const r = themes[pilih]; if(!r) return;
+  if(!confirm('Terbitkan "'+r.name+'" v'+r.version+' sebagai tema AKTIF?')) return;
+  try { const out = await api({ mode:'publish', slug:r.slug, version:r.version }); toast('AKTIF: '+out.aktif); await muat(); }
+  catch(e){ toast('Gagal: '+e.message); }
+}
+async function loadVersi(){
+  const { data } = await db.from('design_themes').select('version,status,created_at,updated_by').eq('slug', pilih).order('version',{ascending:false}).limit(15);
+  document.getElementById('vList').innerHTML = (data||[]).map(v =>
+    `<div><span>v${v.version} · ${v.status} · ${new Date(v.created_at).toLocaleDateString('ms-MY')}</span><a onclick="pulih(${v.version})">pulih</a></div>`).join('') || 'Tiada versi.';
+}
+async function pulih(v){
+  try { const out = await api({ mode:'restore', slug:pilih, version:v }); toast('Dipulihkan sebagai v'+out.version); await muat(); loadVersi(); }
+  catch(e){ toast('Gagal: '+e.message); }
+}
+
+muat();
+</script>
+</body>
+</html>
