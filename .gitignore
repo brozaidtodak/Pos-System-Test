@@ -40,3 +40,4 @@ android/*.keystore
 *.keystore
 android/app/build/
 .gstack/
+planning.html
