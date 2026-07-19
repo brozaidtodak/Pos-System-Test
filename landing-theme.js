@@ -30,11 +30,31 @@
     return (hi + 0.05) / (lo + 0.05);
   }
 
+  // p1_1122 — campur 2 warna hex (utk jana skala primary POS dari satu aksen)
+  function mix(hex, hex2, w) {
+    try {
+      var a = hex.replace('#', ''), b = hex2.replace('#', '');
+      var out = '#';
+      for (var i = 0; i < 3; i++) {
+        var ca = parseInt(a.substr(i * 2, 2), 16), cb = parseInt(b.substr(i * 2, 2), 16);
+        out += ('0' + Math.round(ca * (1 - w) + cb * w).toString(16)).slice(-2);
+      }
+      return out;
+    } catch (e) { return hex; }
+  }
+  function rgb(hex) {
+    var h = hex.replace('#', '');
+    return parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16);
+  }
+
   function apply(theme) {
     var root = document.documentElement;
     var VARS = ['--lp-accent', '--lp-accent-2', '--lp-accent-text', '--lp-ink', '--lp-ink-2', '--lp-bg', '--lp-bg-warm', '--lp-surface', '--lp-muted', '--lp-muted-2', '--lp-line', '--lp-font-display', '--lp-font-body', '--lp-radius-btn', '--lp-radius-card'];
+    // p1_1122 — POS + app ikut Makmal: skala primary penuh + font-main
+    var POSV = ['--primary-50', '--primary-100', '--primary-200', '--primary-300', '--primary-400', '--primary-500', '--primary-600', '--primary-700', '--primary-800', '--primary-900', '--primary-rgb', '--primary', '--font-main'];
     if (!theme || theme.slug === 'klasik-bronze') {
       VARS.forEach(function (v) { root.style.removeProperty(v); });
+      POSV.forEach(function (v) { root.style.removeProperty(v); });
       return;
     }
     var t = theme.tokens || {};
@@ -59,6 +79,23 @@
     if (t.fontBody) set('--lp-font-body', "'" + t.fontBody + "', sans-serif");
     if (t.radiusBtn != null) set('--lp-radius-btn', (t.radiusBtn >= 999 ? '999px' : t.radiusBtn + 'px'));
     if (t.radiusCard != null) set('--lp-radius-card', t.radiusCard + 'px');
+    // p1_1122 — POS (back office) + app mobile ikut tema Makmal:
+    // skala --primary-* dijana dari aksen (inline pada <html> menang atas data-theme).
+    if (t.accent) {
+      set('--primary-500', t.accent);
+      set('--primary-600', mix(t.accent, '#000000', 0.12));
+      set('--primary-700', mix(t.accent, '#000000', 0.24));
+      set('--primary-800', mix(t.accent, '#000000', 0.42));
+      set('--primary-900', mix(t.accent, '#000000', 0.58));
+      set('--primary-400', mix(t.accent, '#FFFFFF', 0.18));
+      set('--primary-300', mix(t.accent, '#FFFFFF', 0.38));
+      set('--primary-200', mix(t.accent, '#FFFFFF', 0.62));
+      set('--primary-100', mix(t.accent, '#FFFFFF', 0.80));
+      set('--primary-50', mix(t.accent, '#FFFFFF', 0.92));
+      set('--primary-rgb', rgb(t.accent));
+      set('--primary', t.accent);
+    }
+    if (t.fontBody) set('--font-main', "'" + t.fontBody + "'");
     // muat font Google kalau bukan font sedia ada
     var need = [t.fontDisplay, t.fontBody].filter(function (f) { return f && f !== 'Poppins' && f !== 'inherit'; });
     if (need.length && !document.getElementById('lpThemeFonts')) {
