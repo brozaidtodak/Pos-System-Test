@@ -45561,56 +45561,141 @@ window.__pdbRefresh = async function(btn){
  };
 
  // ---------- Mini Dashboard (klik logo kiri atas) ----------
+ // p1_1119 (v2, Zaid: "aku nak keluar paparan ni bila tekan logo") — replika KPI strip back office:
+ // pill tempoh + kad Sales/Orders/Monthly Target/Channel + Order Terkini. Kiraan SAMA dgn
+ // renderDashboard (tapisan __isRealSale, delta vs tempoh setara, qty vs quantity).
+ window.__mdRange = 'today';
+ window.__mdSetRange = function(r){ window.__mdRange = r; window.__miniDashRender(); };
+ function __mdRealSales(){
+  const all = Array.isArray(window.salesHistory) ? window.salesHistory : [];
+  if(typeof window.__isRealSale === 'function') return all.filter(window.__isRealSale);
+  return all.filter(function(s){
+   if(!s || s.is_test) return false;
+   const st = (s.status || '').toLowerCase();
+   return !(st.includes('void') || st.includes('cancel') || st.includes('refund'));
+  });
+ }
+ function __mdRange2(){
+  const r = window.__mdRange, now = new Date();
+  const startOf = function(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; };
+  const endOf = function(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; };
+  if(r === 'yesterday'){ const y = new Date(now); y.setDate(y.getDate()-1); return { start:startOf(y), end:endOf(y), label:'Semalam' }; }
+  if(r === '7d'){ const s7 = new Date(now); s7.setDate(s7.getDate()-6); return { start:startOf(s7), end:endOf(now), label:'7 hari' }; }
+  if(r === '30d'){ const s30 = new Date(now); s30.setDate(s30.getDate()-29); return { start:startOf(s30), end:endOf(now), label:'30 hari' }; }
+  if(r === 'mtd') return { start:new Date(now.getFullYear(), now.getMonth(), 1), end:endOf(now), label:'MTD' };
+  if(r === 'all') return { start:null, end:null, label:'Semua' };
+  return { start:startOf(now), end:endOf(now), label:'Hari ini' };
+ }
+ window.__miniDashRender = function(){
+  const body = document.getElementById('miniDashBody'); if(!body) return;
+  const fmt = function(n){ return 'RM' + Number(n||0).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 }); };
+  const range = __mdRange2();
+  const real = __mdRealSales();
+  const inRange = real.filter(function(s){
+   if(!range.start) return true;
+   const d = new Date(s.created_at); return d >= range.start && d <= range.end;
+  });
+  let total = 0; const byCh = {};
+  inRange.forEach(function(s){
+   const amt = Number(s.total || s.total_amount || 0); total += amt;
+   const ch = s.channel || 'POS Cashier'; byCh[ch] = (byCh[ch] || 0) + amt;
+  });
+  // Delta vs tempoh setara (corak p1_1052): hari → hari sama minggu lepas (cap jam sama); 7d/30d → tetingkap sama; mtd → bulan lepas setakat sama
+  let deltaHtml = '';
+  try {
+   const D = 86400000; let pS = null, pE = null, pLbl = '';
+   const r = window.__mdRange, now = new Date();
+   if(r === 'today' || r === 'yesterday'){ pS = new Date(range.start.getTime() - 7*D); pE = new Date(Math.min(range.end.getTime(), Date.now()) - 7*D); try { pLbl = 'vs ' + pS.toLocaleDateString('ms-MY', { weekday:'long' }) + ' lepas'; } catch(e){ pLbl = 'vs minggu lepas'; } }
+   else if(r === '7d' || r === '30d'){ const span = range.end.getTime() - range.start.getTime(); pE = new Date(range.start.getTime() - 1); pS = new Date(range.start.getTime() - span); pLbl = 'vs tempoh sebelum'; }
+   else if(r === 'mtd'){ const pd = new Date(now.getFullYear(), now.getMonth(), 0).getDate(); pS = new Date(now.getFullYear(), now.getMonth()-1, 1); pE = new Date(now.getFullYear(), now.getMonth()-1, Math.min(now.getDate(), pd), now.getHours(), now.getMinutes()); pLbl = 'vs bulan lepas'; }
+   if(pS && pE){
+    let prev = 0;
+    real.forEach(function(s){ const d = new Date(s.created_at); if(d >= pS && d <= pE) prev += Number(s.total || s.total_amount || 0); });
+    if(prev > 0){
+     const pct = Math.round(((total - prev) / prev) * 100);
+     const up = pct >= 0;
+     deltaHtml = '<div style="font-size:11px;margin-top:4px;color:' + (up ? '#8FE3B0' : '#FFB4A8') + ';">' + (up ? '\u25B2 +' : '\u25BC ') + pct + '% ' + pLbl + '</div>';
+    }
+   }
+  } catch(e){}
+  // Monthly target — SENTIASA bulan semasa (macam kad back office), tak ikut pill
+  let target = 0; try { target = parseFloat(localStorage.getItem('dashMonthlyTarget_v1')) || 0; } catch(e){}
+  if(!(target > 0)){ try { target = parseFloat(window.__appSettings && window.__appSettings.sales && window.__appSettings.sales.monthly_target) || 0; } catch(e){} }
+  const now2 = new Date(); const mStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+  let mtd = 0;
+  real.forEach(function(s){ const d = new Date(s.created_at); if(d >= mStart) mtd += Number(s.total || s.total_amount || 0); });
+  const daysIn = new Date(now2.getFullYear(), now2.getMonth()+1, 0).getDate();
+  const daysLeft = Math.max(1, daysIn - now2.getDate() + 1);
+  const pctT = target > 0 ? Math.min(100, (mtd / target) * 100) : 0;
+  const remain = Math.max(0, target - mtd);
+  const cardCss = 'background:#FFF;border-radius:14px;padding:14px;';
+  const lblCss = 'font-size:10px;font-weight:800;letter-spacing:1px;color:#8A8377;text-transform:uppercase;margin-bottom:6px;';
+  const chRows = Object.keys(byCh).sort(function(a,b){ return byCh[b] - byCh[a]; }).slice(0,4).map(function(c){
+   return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span style="font-weight:700;">' + c + '</span><b>' + fmt(byCh[c]) + '</b></div>';
+  }).join('') || '<div style="font-size:12px;color:#999;">Tiada jualan dlm tempoh ni.</div>';
+  const latest = real.slice(0,5).map(function(r2){
+   const t = new Date(r2.created_at); const hm = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+   const dd = t.toLocaleDateString('ms-MY', { day:'numeric', month:'short' });
+   const amt = Number(r2.total || r2.total_amount || 0);
+   return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:12.5px;color:#E8E2D6;">'
+    + '<span>' + dd + ' ' + hm + ' \u00B7 ' + (r2.channel || '?') + (r2.customer_name ? ' \u00B7 ' + String(r2.customer_name).slice(0,16) : '') + '</span>'
+    + '<b>' + fmt(amt) + '</b></div>';
+  }).join('') || '<div style="padding:8px 0;color:#999;">Belum ada order.</div>';
+  const pills = [['today','Today'],['yesterday','Semalam'],['7d','7 hari'],['30d','30 hari'],['mtd','MTD'],['all','Semua']].map(function(p){
+   const on = window.__mdRange === p[0];
+   return '<button onclick="window.__mdSetRange(\'' + p[0] + '\')" style="border:1px solid ' + (on ? 'var(--primary,#CD7C32)' : 'rgba(0,0,0,0.15)') + ';background:' + (on ? 'var(--primary,#CD7C32)' : '#FFF') + ';color:' + (on ? '#FFF' : '#555') + ';border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">' + p[1] + '</button>';
+  }).join('');
+  body.innerHTML =
+   '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px;">' + pills + '</div>'
+   + '<div style="background:#161310;border-radius:18px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+   // Kad 1 — Sales (bronze)
+   + '<div style="background:linear-gradient(135deg,var(--primary,#CD7C32),#B86A26);border-radius:14px;padding:14px;color:#FFF;">'
+   + '<div style="' + lblCss + 'color:rgba(255,255,255,0.8);">Sales \u2014 ' + range.label + '</div>'
+   + '<div style="font-size:22px;font-weight:900;">' + fmt(total) + '</div>' + deltaHtml + '</div>'
+   // Kad 2 — Orders
+   + '<div style="' + cardCss + '"><div style="' + lblCss + '">Orders</div>'
+   + '<div style="font-size:22px;font-weight:900;color:#222;">' + inRange.length + '</div>'
+   + '<div style="font-size:11px;color:#777;margin-top:4px;">Purata ' + fmt(inRange.length ? total/inRange.length : 0) + ' / order</div></div>'
+   // Kad 3 — Monthly Target
+   + '<div style="' + cardCss + '"><div style="' + lblCss + '">Monthly Target</div>'
+   + (target > 0
+     ? '<div style="font-size:22px;font-weight:900;color:#222;">' + Math.round(pctT) + '%</div>'
+      + '<div style="height:6px;border-radius:3px;background:rgba(0,0,0,0.08);margin:6px 0;"><div style="height:100%;width:' + pctT.toFixed(1) + '%;border-radius:3px;background:var(--primary,#CD7C32);"></div></div>'
+      + '<div style="font-size:11px;color:#777;">' + fmt(remain) + ' lagi \u00B7 ' + fmt(remain/daysLeft) + '/hari (' + daysLeft + ' hari)</div>'
+     : '<div style="font-size:12px;color:#999;">Sasaran belum diset.</div>') + '</div>'
+   // Kad 4 — Channel
+   + '<div style="' + cardCss + '"><div style="' + lblCss + '">Channel</div>' + chRows + '</div>'
+   + '</div>'
+   + '<div style="background:#161310;border-radius:18px;padding:14px;margin-top:10px;">'
+   + '<div style="' + lblCss + 'color:#B8B0A2;">Order Terkini</div>' + latest + '</div>';
+ };
  window.__miniDash = async function(){
-  const u = window.currentUser;
-  if(!u){ return; }
-  const isMgmt = (typeof window.isBoss === 'function' && window.isBoss(u)) || u.role === 'mgmt';
+  if(!window.currentUser) return;
   const old = document.getElementById('miniDashOverlay'); if(old) old.remove();
   const ov = document.createElement('div');
   ov.id = 'miniDashOverlay';
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:14px;overflow:auto;';
   ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
-  ov.innerHTML = '<div style="background:var(--bg,#FAF6EF);border-radius:16px;max-width:520px;width:100%;padding:20px;margin-top:30px;">'
-   + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">'
-   + '<img src="assets/brand/logo/10camp-logo-color.png" style="width:28px;height:28px;object-fit:contain;">'
-   + '<b style="font-size:16px;">Dashboard Hari Ini</b>'
-   + '<button onclick="document.getElementById(\'miniDashOverlay\').remove()" style="margin-left:auto;border:none;background:none;font-size:22px;cursor:pointer;color:var(--text-muted,#888);">×</button></div>'
-   + '<div id="miniDashBody" style="font-size:13px;color:var(--text-muted,#777);">Memuatkan…</div></div>';
+  const upd = new Date();
+  ov.innerHTML = '<div style="background:var(--bg,#FAF6EF);border-radius:18px;max-width:560px;width:100%;padding:16px;margin-top:24px;margin-bottom:24px;">'
+   + '<div style="display:flex;align-items:center;gap:10px;">'
+   + '<img src="assets/brand/logo/10camp-logo-color.png" style="width:26px;height:26px;object-fit:contain;">'
+   + '<b style="font-size:15px;">Dashboard</b>'
+   + '<span style="font-size:11px;color:#999;margin-left:auto;">\u25CF Updated ' + String(upd.getHours()).padStart(2,'0') + ':' + String(upd.getMinutes()).padStart(2,'0') + '</span>'
+   + '<button onclick="document.getElementById(\'miniDashOverlay\').remove()" style="border:none;background:none;font-size:22px;cursor:pointer;color:var(--text-muted,#888);line-height:1;">\u00D7</button></div>'
+   + '<div id="miniDashBody"></div></div>';
   document.body.appendChild(ov);
-  try {
-   // Jualan hari ini (MYT) — kira dari DB terus, ringan (aggregate client-side atas rows hari ini sahaja)
-   const now = new Date();
-   const myt = new Date(now.getTime() + (8*60 + now.getTimezoneOffset())*60000);
-   const t0 = new Date(myt.getFullYear(), myt.getMonth(), myt.getDate());
-   const utcStart = new Date(t0.getTime() - (8*60 + now.getTimezoneOffset())*60000).toISOString();
-   const { data: rows } = await db.from('sales_history')
-    .select('id,channel,status,total_amount,total,customer_name,created_at')
-    .gte('created_at', utcStart)
-    .order('created_at', { ascending:false })
-    .limit(500);
-   const all = (rows||[]).filter(function(r){ return r.status !== 'Cancelled' && r.status !== 'Voided' && r.status !== 'Refund'; });
-   let totalRm = 0; const byCh = {};
-   all.forEach(function(r){ const amt = Number(r.total_amount != null ? r.total_amount : r.total) || 0; totalRm += amt; byCh[r.channel || '?'] = (byCh[r.channel || '?'] || 0) + 1; });
-   const chHtml = Object.keys(byCh).sort().map(function(c){ return '<span style="display:inline-block;background:rgba(205,124,50,0.12);border-radius:20px;padding:3px 10px;margin:2px;font-size:12px;">' + c + ' · <b>' + byCh[c] + '</b></span>'; }).join('');
-   const latest = all.slice(0,5).map(function(r){
-    const t = new Date(r.created_at); const hm = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
-    const amt = Number(r.total_amount != null ? r.total_amount : r.total) || 0;
-    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid rgba(0,0,0,0.06);font-size:12.5px;">'
-     + '<span>' + hm + ' · ' + (r.channel || '?') + (r.customer_name ? ' · ' + String(r.customer_name).slice(0,18) : '') + '</span>'
-     + '<b>' + (isMgmt ? 'RM' + amt.toFixed(2) : '#' + r.id) + '</b></div>';
-   }).join('') || '<div style="padding:8px 0;">Belum ada order hari ini.</div>';
-   document.getElementById('miniDashBody').innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;">'
-    + '<div style="background:#FFF;border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:12px;text-align:center;">'
-    + '<div style="font-size:22px;font-weight:900;color:var(--primary,#CD7C32);">' + (isMgmt ? 'RM' + totalRm.toFixed(0) : all.length) + '</div>'
-    + '<div style="font-size:11px;">' + (isMgmt ? 'Jualan hari ini' : 'Order hari ini') + '</div></div>'
-    + '<div style="background:#FFF;border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:12px;text-align:center;">'
-    + '<div style="font-size:22px;font-weight:900;color:var(--primary,#CD7C32);">' + all.length + '</div>'
-    + '<div style="font-size:11px;">Jumlah order</div></div></div>'
-    + '<div style="margin-bottom:10px;">' + chHtml + '</div>'
-    + '<div style="font-weight:700;font-size:13px;color:var(--text,#333);margin-bottom:2px;">Order terkini</div>' + latest;
-  } catch(e){
-   const b = document.getElementById('miniDashBody'); if(b) b.textContent = 'Tak dapat muatkan data. Cuba lagi.';
+  // salesHistory belum sampai (app baru buka)? tunggu sekejap sampai ada
+  if(!Array.isArray(window.salesHistory) || !window.salesHistory.length){
+   const b = document.getElementById('miniDashBody'); if(b) b.innerHTML = '<div style="padding:14px 0;color:#999;font-size:13px;">Memuatkan\u2026</div>';
+   let tries = 0;
+   const t = setInterval(function(){
+    tries++;
+    if(Array.isArray(window.salesHistory) && window.salesHistory.length){ clearInterval(t); window.__miniDashRender(); }
+    else if(tries > 40){ clearInterval(t); window.__miniDashRender(); }
+   }, 250);
+  } else {
+   window.__miniDashRender();
   }
  };
 })();
