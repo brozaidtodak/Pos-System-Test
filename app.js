@@ -796,8 +796,11 @@ window.__dsRedeemCatalog = function(){
  const price = parseFloat(p.price) || 0, cost = parseFloat(p.cost_price) || 0;
  if(!k || sold[k] || (stock[k] || 0) <= 0 || price <= 0 || cost <= 0) return false;
  return ((price - cost) / price * 100) >= minM;
- }).map(p => ({ sku: p.sku, name: p.name || p.sku, price: parseFloat(p.price) || 0, stok: stock[String(p.sku).toUpperCase()] || 0 }))
- .sort((a, b) => a.price - b.price);
+ }).map(p => {
+ // p1_1138 — gambar utk kad tebusan (Customer Display + picker staf)
+ let img = ''; if(Array.isArray(p.images) && p.images[0]) img = p.images[0]; else if(typeof p.images === 'string' && p.images) img = p.images;
+ return { sku: p.sku, name: p.name || p.sku, price: parseFloat(p.price) || 0, stok: stock[String(p.sku).toUpperCase()] || 0, image: img };
+ }).sort((a, b) => a.price - b.price);
 };
 // p1_1137 — cache katalog dead stock 5 minit (kira sekali, dipakai picker + skrin customer;
 // scan salesHistory 60 hari tiap panggilan mahal kalau ulang pada setiap ketikan input)
@@ -820,7 +823,7 @@ window.__cpDisplayLoyalty = function(){
  const t = window.__custTier(m.total_spent);
  const avail = window.__custPointsAvail(m);
  const rate = ((window.LOYALTY_REDEEMS && window.LOYALTY_REDEEMS[tk]) || []).reduce((r, x) => x.type === 'deadstock' ? (x.rate || r) : r, 0.4);
- const afford = window.__dsCatalogCached().map(it => ({ name: it.name, price: it.price, mata: Math.ceil(it.price / rate) })).filter(x => x.mata <= avail);
+ const afford = window.__dsCatalogCached().map(it => ({ name: it.name, price: it.price, mata: Math.ceil(it.price / rate), image: it.image || '' })).filter(x => x.mata <= avail);
  const pend = window.__pendingRedeem;
  return {
  name: m.name || '', tier: t.name, avail: avail, rate: rate,
@@ -862,7 +865,9 @@ window.__dsRenderPickerList = function(q){
  const afford = mata <= ctx.avail;
  if(shown >= 80) return ''; shown++;
  return '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid #F3F4F6; ' + (afford ? '' : 'opacity:.45;') + '">'
- + '<div style="min-width:0;"><div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(it.name) + '</div>'
+ // p1_1138 — thumbnail barang (staf sahkan barang betul sekali imbas)
+ + (it.image ? '<img src="' + esc(it.image) + '" loading="lazy" style="width:38px; height:38px; object-fit:cover; border-radius:7px; flex:0 0 auto; background:#F3F4F6;" onerror="this.style.display=\'none\'">' : '<div style="width:38px; height:38px; border-radius:7px; flex:0 0 auto; background:#F3F4F6;"></div>')
+ + '<div style="min-width:0; flex:1;"><div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(it.name) + '</div>'
  + '<div style="font-size:10.5px; color:#9CA3AF;">' + esc(it.sku) + ' · RM ' + it.price.toFixed(2) + ' · stok ' + it.stok + '</div></div>'
  + (afford
  ? '<button onclick="window.__dsPickRedeem(\'' + String(it.sku).replace(/'/g, "\\'") + '\')" style="flex-shrink:0; background:var(--primary-500,#CD7C32); color:#fff; border:0; border-radius:8px; padding:8px 12px; font-size:11.5px; font-weight:800; cursor:pointer; font-family:inherit;">' + mata.toLocaleString() + ' mata</button>'

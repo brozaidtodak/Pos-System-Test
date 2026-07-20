@@ -297,11 +297,16 @@ function render() {
         const itemsEl = document.getElementById('loyItems');
         if (L.redeemables && L.redeemables.length) {
             itemsEl.style.display = 'flex';
+            // p1_1138 — gambar barang dlm kad tebusan (lagi menggoda dari teks kosong)
             itemsEl.innerHTML = L.redeemables.map(r =>
-                '<div style="flex:0 0 auto; background:#1a1714; border:1px solid #2c2620; border-radius:10px; padding:10px 14px; min-width:170px; max-width:230px;">'
+                '<div style="flex:0 0 auto; display:flex; align-items:center; gap:10px; background:#1a1714; border:1px solid #2c2620; border-radius:10px; padding:8px 14px 8px 8px; min-width:200px; max-width:260px;">'
+                + (r.image
+                    ? '<img src="' + esc(r.image) + '" loading="lazy" style="width:46px; height:46px; object-fit:cover; border-radius:8px; flex:0 0 auto; background:#0c0a08;" onerror="this.style.display=\'none\'">'
+                    : '<div style="width:46px; height:46px; border-radius:8px; flex:0 0 auto; background:#0c0a08;"></div>')
+                + '<div style="min-width:0;">'
                 + '<div style="font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(r.name) + '</div>'
                 + '<div style="font-size:11px; color:#8A847B; margin-top:2px;">RM ' + fmt(r.price) + ' &middot; <b style="color:#7DE3A5;">' + Number(r.mata).toLocaleString() + ' mata</b></div>'
-                + '</div>').join('');
+                + '</div></div>').join('');
             document.getElementById('loyNote').textContent = 'Barang PERCUMA yang anda boleh tebus dengan mata hari ini'
                 + (L.more > 0 ? ' (+' + L.more + ' lagi)' : '') + ' — beritahu staf pilihan anda sebelum bayar.';
         } else {
