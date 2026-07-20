@@ -35,7 +35,7 @@
 - **Dark mode:** belum diperlukan; bila buat — ink jadi latar `#141414`, tulang jadi teks, oren kekal
 
 ## Ciri Khas Jenama (signature devices)
-1. **Kontur topo** — gelang `repeating-radial-gradient` halus (opacity ≤6%) di latar hero/section besar. JANGAN atas kawasan data padat
+1. ~~**Kontur topo**~~ — **DIBUANG 20 Jul (Zaid: "buang garis beralun tu pada semua graphic, tak sesuai")**. TIADA corak garis (beralun/gelang kontur) pada mana-mana graphic — panel bersih, gambar & tipografi buat kerja
 2. **Koordinat GPS** — `2.9188° N, 101.6520° E — ELEV. 34M` sebagai baris mono jenama (footer, hero, resit)
 3. **Manifest bernombor** — senarai produk gaya `01 — NAMA / JENAMA ..... RM X` dengan pemisah dashed; ini ganti card-grid di landing
 4. **Butang misi** — CTA oren dengan border 3px ink + hard shadow `6px 6px 0 #141414`; hover: anjak 2px. Sekunder: outline ink
@@ -64,4 +64,5 @@
 | 19 Jul 2026 | Buang sistem lama (bronze/Poppins) | Arahan Zaid — mahu arah segar |
 | 19 Jul 2026 | Tolak "Malam di Kem" (gelap malam-dulu) | Zaid tak berkenan gelap |
 | 19 Jul 2026 | Pilih ARAH V "Ekspedisi Peta" dari 27 arah | Zaid suka B+P; V = gabungan terus. Grounded ui-ux-pro-max + /design-consultation |
-| 20 Jul 2026 | DI-APPLY ke landing (Fasa A: token + hero poster + butang misi + koordinat GPS) — p1_1125 | Arahan Zaid via /design-consultation "Apply ke landing". Teks butang = ink atas oren (kontras 5.6:1 > putih 3.5:1). Fasa B belum: manifest bernombor, kontur topo radial. Back office/app belum |
+| 20 Jul 2026 | DI-APPLY ke landing (Fasa A: token + hero poster + butang misi + koordinat GPS) — p1_1125 | Arahan Zaid via /design-consultation "Apply ke landing". Teks butang = ink atas oren (kontras 5.6:1 > putih 3.5:1). Fasa B belum: manifest bernombor. Back office/app belum |
+| 20 Jul 2026 | BUANG ciri khas #1 kontur topo — semua corak garis pada graphic dibuang (p1_1127) | Zaid: "buang garis beralun tu pada semua graphic, tak sesuai". Panel bersih; koordinat GPS & manifest kekal sebagai ciri khas |
