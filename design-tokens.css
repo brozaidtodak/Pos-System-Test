@@ -812,7 +812,7 @@
 
 .lp-hero { position: relative; height: 600px; overflow: hidden; background: #0F172A; }
 /* p1_836 — signature topographic contour (10 Camp outdoor identity) — sama bahasa visual dgn kad Jualan Overview */
-.lp-hero::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='360'%20height='240'%20viewBox='0%200%20360%20240'%3E%3Cg%20fill='none'%20stroke='%23ffffff'%20stroke-width='1.4'%20stroke-opacity='0.07'%3E%3Cpath%20d='M-30%2056%20Q90%2012%20210%2056%20T470%2056'/%3E%3Cpath%20d='M-30%20102%20Q90%2058%20210%20102%20T470%20102'/%3E%3Cpath%20d='M-30%20148%20Q90%20104%20210%20148%20T470%20148'/%3E%3Cpath%20d='M-30%20194%20Q90%20150%20210%20194%20T470%20194'/%3E%3C/g%3E%3C/svg%3E"); background-size: 360px 240px; }
+.lp-hero::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: repeating-radial-gradient(circle at 88% 115%, transparent 0 52px, rgba(255,255,255,0.05) 52px 53.5px); } /* p1_1126 — kontur topo radial ganti beralun */
 .lp-hero__bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(0.55) saturate(1.1); }
 .lp-hero__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0.7) 60%, rgba(15,23,42,0.85) 100%); }
 /* p1_1125 — Ekspedisi Peta: hero = komposisi poster jajar-KIRI (DESIGN.md) */
@@ -909,16 +909,18 @@
 @media (max-width: 900px) { .lp-collections__grid, .lp-collections__grid--2col { grid-template-columns: 1fr; } }
 .lp-collection { position: relative; height: 320px; border-radius: 16px; overflow: hidden; text-decoration: none; color: #FFF; display: block; transition: 0.2s; }
 /* p1_984 (design-review #2) — signature topographic contour atas kad koleksi (sama bahasa visual dgn hero + kad Jualan) supaya tak nampak rata */
-.lp-collection::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='360'%20height='240'%20viewBox='0%200%20360%20240'%3E%3Cg%20fill='none'%20stroke='%23ffffff'%20stroke-width='1.4'%20stroke-opacity='0.09'%3E%3Cpath%20d='M-30%2056%20Q90%2012%20210%2056%20T470%2056'/%3E%3Cpath%20d='M-30%20102%20Q90%2058%20210%20102%20T470%20102'/%3E%3Cpath%20d='M-30%20148%20Q90%20104%20210%20148%20T470%20148'/%3E%3Cpath%20d='M-30%20194%20Q90%20150%20210%20194%20T470%20194'/%3E%3C/g%3E%3C/svg%3E"); background-size: 360px 240px; }
+/* p1_1126 — kontur topo radial (ciri khas Ekspedisi Peta) ganti corak beralun; opacity ≤6% */
+.lp-collection::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: repeating-radial-gradient(circle at 84% -35%, transparent 0 42px, rgba(255,255,255,0.06) 42px 43.5px); }
+.lp-collection--lg::after { background-image: none; } /* kad berfoto: biar gambar bercakap, tiada corak atas foto */
 .lp-collection:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.15); }
 .lp-collection__bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: 0.3s; }
 .lp-collection:hover .lp-collection__bg { transform: scale(1.05); }
 .lp-collection__overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85) 100%); }
 .lp-collection__content { position: absolute; inset: auto 0 0 0; padding: 24px; z-index: 2; }
 .lp-collection__content--center { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.lp-collection__tag { display: inline-block; background: var(--lp-accent, #CD7C32); color: var(--lp-accent-text, #FFF); padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.lp-collection__tag { display: inline-block; font-family: var(--lp-font-mono, monospace); background: var(--lp-accent, #FF4D00); color: var(--lp-accent-text, #141414); padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; } /* p1_1126 — label mono utility */
 .lp-collection__tag--white { background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.3); }
-.lp-collection h3 { font-size: 22px; font-weight: 900; margin: 0 0 4px; letter-spacing: -0.5px; }
+.lp-collection h3 { font-size: 22px; font-weight: 400; margin: 0 0 4px; letter-spacing: -0.5px; text-transform: uppercase; } /* p1_1126 — Archivo Black uppercase */
 .lp-collection p { font-size: 13px; opacity: 0.9; margin: 0; }
 
 .lp-shop { padding: 56px 0 40px; max-width: 1280px; margin: 0 auto; }
