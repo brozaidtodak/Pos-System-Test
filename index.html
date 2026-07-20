@@ -3245,17 +3245,21 @@
  <span class="osr-main">Maklum Inventori<span class="osr-sub">Sediakan barang untuk customer</span></span>
  <i data-lucide="chevron-right" class="osr-chev" style="width:18px;height:18px;"></i>
  </button> -->
- <button onclick="window.__heldOpen()" class="order-set-row" title="Jualan customer yang ditahan menunggu inventory">
+ <!-- p1_1146 — "Jualan Ditahan" + "Edit Permintaan Saya" DIBUANG (arahan Zaid 21 Jul).
+      Bukti: held_sales 1 rekod ujian (21 Jun), inventory_notifications KOSONG — ekosistem
+      Maklum Inventori dah pun dorman sejak p1_1063. Poll 15s berkaitan turut dimatikan
+      (__notifyInvStartPoll early-return, app.js). Pulih: nyahkomen 2 butang + buang guard poll. -->
+ <!-- <button onclick="window.__heldOpen()" class="order-set-row" title="Jualan customer yang ditahan menunggu inventory">
  <span class="osr-ic"><i data-lucide="pause-circle" style="width:17px;height:17px;"></i></span>
  <span class="osr-main">Jualan Ditahan<span class="osr-sub">Tahan order tunggu stok / customer</span></span>
- <span id="heldSaleBadge" style="display:none; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#9CA3AF; color:#fff; font-size:11px; font-weight:800; flex-shrink:0;"></span>
+ <span id="heldSaleBadge" style="display:none;"></span>
  <i data-lucide="chevron-right" class="osr-chev" style="width:18px;height:18px;"></i>
  </button>
  <button onclick="window.__notifyInvEditMine()" class="order-set-row" title="Buka & ubah permintaan inventory yang anda dah hantar">
  <span class="osr-ic"><i data-lucide="pencil" style="width:16px;height:16px;"></i></span>
  <span class="osr-main">Edit Permintaan Saya<span class="osr-sub">Ubah permintaan inventori dihantar</span></span>
  <i data-lucide="chevron-right" class="osr-chev" style="width:18px;height:18px;"></i>
- </button>
+ </button> -->
  <button onclick="window.posConfirmClearCart()" class="order-set-row is-danger" title="Pintasan: F10" data-i18n-title="cs_clear_cart">
  <span class="osr-ic"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></span>
  <span class="osr-main">Kosongkan Troli</span>
@@ -13252,7 +13256,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1116"></script>
+ <script src="app.js?v=1117"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

@@ -46076,6 +46076,10 @@ window.__rcvSaveDamage = async function(poId){
   } catch(e){ /* senyap */ }
  };
  window.__notifyInvStartPoll = function(){
+  // p1_1146 — POLL DIMATIKAN (Zaid buang Jualan Ditahan + Edit Permintaan; Maklum Inventori pun
+  // dorman sejak p1_1063). Dulu 2 query DB SETIAP 15 SAAT utk ciri tiada siapa guna (held_sales
+  // 1 rekod ujian, inventory_notifications kosong). Pulih: buang return ni bersama butang index.html.
+  return;
   if(window.__notifyInvPollTimer) return;
   window.__notifyInvPoll();
   if(typeof window.__heldPoll === 'function') window.__heldPoll(); // p1_911
