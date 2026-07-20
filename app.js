@@ -802,16 +802,34 @@ window.__dsRedeemCatalog = function(){
  return { sku: p.sku, name: p.name || p.sku, price: parseFloat(p.price) || 0, stok: stock[String(p.sku).toUpperCase()] || 0, image: img };
  }).sort((a, b) => a.price - b.price);
 };
-// p1_1137 — cache katalog dead stock 5 minit (kira sekali, dipakai picker + skrin customer;
-// scan salesHistory 60 hari tiap panggilan mahal kalau ulang pada setiap ketikan input)
-window.__dsCatalogCached = function(){
+// p1_1137 — cache katalog dead stock 5 minit (kira sekali, dipakai picker + skrin customer).
+// p1_1149 — KIRA DI LATAR SAHAJA utk laluan pasif (Zaid: app "lagging, scroll indicator je
+// bergerak" + butang "Siap — resit…" lama): scan salesHistory + parse items atas MAIN THREAD
+// pada tiap ketikan/selepas jualan = beku UI di iPhone. Kini: cache fresh → pulang terus;
+// tiada/basi → jadualkan kiraan masa TERLUANG (requestIdleCallback) & pulangkan stale/kosong
+// TANPA sekat UI; bila siap, refresh skrin customer sendiri. force=true (picker — tindakan
+// eksplisit staf, sekali tekan) kekal kira segerak.
+window.__dsCatalogCached = function(force){
  try {
  const c = window.__dsCatalogCacheV1;
- if(c && (Date.now() - c.at) < 5 * 60000) return c.items;
- if(!window.__fullSalesLoaded && !window.__isAppDataCapped()) return []; // data belum cukup — jangan kira separuh
+ const fresh = c && (Date.now() - c.at) < 5 * 60000;
+ if(fresh) return c.items;
+ if(!window.__fullSalesLoaded && !window.__isAppDataCapped()) return c ? c.items : [];
+ if(force){
  const items = window.__dsRedeemCatalog();
  window.__dsCatalogCacheV1 = { at: Date.now(), items: items };
  return items;
+ }
+ if(!window.__dsCatalogWarming){
+ window.__dsCatalogWarming = true;
+ const idle = window.requestIdleCallback ? function(f){ window.requestIdleCallback(f, { timeout: 4000 }); } : function(f){ setTimeout(f, 600); };
+ idle(function(){
+ try { window.__dsCatalogCacheV1 = { at: Date.now(), items: window.__dsRedeemCatalog() }; } catch(e){}
+ window.__dsCatalogWarming = false;
+ try { window.writeCustomerDisplayCart(); } catch(e){} // skrin customer dapat senarai bila siap
+ });
+ }
+ return c ? c.items : []; // stale lebih baik dari beku
  } catch(e){ return []; }
 };
 // p1_1137 — blok loyalty utk Customer Display (Zaid: "customer pilih redeem SEBELUM bayar —
@@ -835,7 +853,7 @@ window.__cpDisplayLoyalty = function(){
 };
 window.__dsPickerCtx = null;
 window.__dsOpenRedeemPicker = function(match, tierKey, rate, avail){
- const all = window.__dsRedeemCatalog();
+ const all = window.__dsCatalogCached(true); // p1_1149 — guna cache (force compute kalau basi — tindakan eksplisit)
  if(!all.length){ if(typeof showToast === 'function') showToast('Tiada barang dead stock layak dalam katalog sekarang.', 'warn'); return; }
  window.__dsPickerCtx = { match: match, tier: tierKey, rate: rate, avail: avail, all: all };
  const old = document.getElementById('dsRedeemOverlay'); if(old) old.remove();
@@ -14892,10 +14910,17 @@ window.writeCustomerDisplayCart = function() {
  try {
  const __c = window.posCustomer || null;
  // p1_919 — perkaya item dgn URL gambar (customer display tunjuk gambar + zoom)
- const __imgMap = {};
+ // p1_1149 — imgMap di-CACHE (dulu bina semula 3k produk pada TIAP panggilan — dan fungsi ni
+ // dipanggil tiap ketikan medan customer via cpVipLookup); invalidate bila bilangan produk berubah
+ let __imgMap = {};
  try {
  if(typeof masterProducts !== 'undefined' && Array.isArray(masterProducts)) {
+ if(window.__cdImgMapCache && window.__cdImgMapCache.n === masterProducts.length){
+ __imgMap = window.__cdImgMapCache.map;
+ } else {
  masterProducts.forEach(p => { const s = (p.sku || '').toUpperCase(); if(!s) return; let im = ''; if(Array.isArray(p.images) && p.images[0]) im = p.images[0]; else if(typeof p.images === 'string' && p.images) im = p.images; if(im) __imgMap[s] = im; });
+ window.__cdImgMapCache = { n: masterProducts.length, map: __imgMap };
+ }
  }
  } catch(e){}
  const __items = (Array.isArray(cart) ? cart : []).map(it => Object.assign({}, it, { image: __imgMap[(it.sku || '').toUpperCase()] || '' }));
@@ -15438,6 +15463,13 @@ window.__qrScanClose = function(){
  const ov = document.getElementById('qrScanOverlay'); if(ov) ov.remove();
 };
 
+// p1_1149 — debounce tulisan ke skrin customer (cpVipLookup jalan TIAP ketikan phone/email/nama;
+// dulu tiap ketikan = bina imgMap 3k produk + stringify payload + localStorage write)
+window.__cdWriteTimer = null;
+window.__writeCustomerDisplaySoon = function(){
+ clearTimeout(window.__cdWriteTimer);
+ window.__cdWriteTimer = setTimeout(function(){ try { window.writeCustomerDisplayCart(); } catch(e){} }, 250);
+};
 window.__posRedeemSheetRefresh = function(){
  const m = window.__cpRedeemCustomer; if(!m) return;
  const tier = window.getCustomerTier(m);
@@ -36923,7 +36955,7 @@ window.cpVipLookup = function() {
 
  window.__currentCheckoutVip = null;
  const banner = document.getElementById('cpVipBanner');
- if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; window.__cpRedeemCustomer = null; window.__pendingRedeem = null; cpRecomputeTotal(); try { window.writeCustomerDisplayCart(); } catch(e){} return; } // p1_1137 — clear panel skrin customer
+ if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; window.__cpRedeemCustomer = null; window.__pendingRedeem = null; cpRecomputeTotal(); try { window.__writeCustomerDisplaySoon(); } catch(e){} return; } // p1_1137/1149 — clear panel skrin customer (debounced)
 
  const tier = (typeof getCustomerTier === 'function') ? getCustomerTier(match) : null;
  if(tier) {
@@ -36959,7 +36991,7 @@ window.cpVipLookup = function() {
  }
  }
  cpRecomputeTotal();
- try { window.writeCustomerDisplayCart(); } catch(e){} // p1_1137 — skrin customer: mata + boleh tebus
+ try { window.__writeCustomerDisplaySoon(); } catch(e){} // p1_1137/1149 — skrin customer (debounced)
  try { if(document.getElementById('posRedeemSheet')) window.__posRedeemSheetRefresh(); } catch(e){} // p1_1139 — sheet cart ikut status terkini
 };
 
