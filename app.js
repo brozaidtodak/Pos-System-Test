@@ -37335,6 +37335,36 @@ window.renderProductDatabase = function() {
  stockMap.set(b.sku, (stockMap.get(b.sku) || 0) + (b.qty_remaining || 0));
  });
 
+ // p1_1123 — Dead Stock: set SKU yang ADA jualan dlm 90 hari (jualan sebenar shj), dikira sekali
+ // & cache 5 minit (salesHistory besar; render dipanggil tiap taip carian). Definisi sama
+ // Analytics > Inventory: ada stok tapi SKU tiada dlm set ini = dead.
+ const soldSet = (fStatus === 'dead') ? (function(){
+   const nowT = Date.now();
+   const sh = (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [];
+   const c = window.__pdbDeadCache;
+   if(c && (nowT - c.at) < 300e3 && c.n === sh.length) return c.set;
+   const d90 = nowT - 90*864e5;
+   const set = new Set();
+   sh.forEach(s => {
+     if(!(typeof window.__isRealSale === 'function' ? window.__isRealSale(s) : true) || !s.created_at) return;
+     if(new Date(s.created_at).getTime() < d90) return;
+     let it = s.items; if(typeof it === 'string'){ try { it = JSON.parse(it); } catch(e){ it = []; } }
+     if(Array.isArray(it)) it.forEach(l => { if(l && l.sku && (Number(l.qty != null ? l.qty : l.quantity) || 0) > 0) set.add(l.sku); });
+   });
+   window.__pdbDeadCache = { at: nowT, n: sh.length, set };
+   return set;
+ })() : null;
+
+ // p1_1123 — Tier harga A/B/C: tercile automatik atas produk Live berharga (price > 0; 0 = harga
+ // belum diisi, terkecuali dari semua tier). A = 1/3 termahal, B = tengah, C = 1/3 termurah.
+ let tierCut = null;
+ if(fStatus === 'tier_a' || fStatus === 'tier_b' || fStatus === 'tier_c'){
+   const prices = masterProducts
+     .filter(p => isPublished(p) && !(p.metadata && p.metadata.discontinued === true) && Number(p.price) > 0)
+     .map(p => Number(p.price)).sort((a, b) => a - b);
+   if(prices.length) tierCut = { lo: prices[Math.floor(prices.length/3)], hi: prices[Math.floor(prices.length*2/3)] };
+ }
+
  // Filter
  let list = masterProducts.filter(p => {
  if(fBrand && p.brand !== fBrand) return false;
@@ -37350,6 +37380,16 @@ window.renderProductDatabase = function() {
  if(fStatus === 'low' && (stock === 0 || stock > reorder || disc)) return false;
  // Zack — stok di bawah 10 unit (had tetap 10, tak ikut reorder_point per-produk)
  if(fStatus === 'under10' && (stock === 0 || stock >= 10 || disc)) return false;
+ // p1_1123 — dead stock: ada stok, bukan discontinued, 0 jualan sebenar 90 hari
+ if(fStatus === 'dead' && (stock <= 0 || disc || (soldSet && soldSet.has(p.sku)))) return false;
+ // p1_1123 — tier harga (produk tanpa harga / draf / discontinued terkecuali dari semua tier)
+ if(fStatus === 'tier_a' || fStatus === 'tier_b' || fStatus === 'tier_c'){
+   const v = Number(p.price) || 0;
+   if(!tierCut || v <= 0 || disc || !isPublished(p)) return false;
+   if(fStatus === 'tier_a' && v < tierCut.hi) return false;
+   if(fStatus === 'tier_b' && (v < tierCut.lo || v >= tierCut.hi)) return false;
+   if(fStatus === 'tier_c' && v >= tierCut.lo) return false;
+ }
  if(fStatus === 'noimage') {
    const hasImg = (Array.isArray(p.images) && p.images[0]) || (typeof p.images === 'string' && p.images);
    if(hasImg) return false;
@@ -37417,7 +37457,13 @@ window.renderProductDatabase = function() {
  if(fCat) chips.push({label: 'Category: ' + fCat, clear: "document.getElementById('pdCategory').value=''; window.renderProductDatabase();"});
  if(window.__pdbCollectionFilter) chips.push({label: 'Collection: ' + window.__pdbCollectionFilter, clear: "window.__pdbCollectionFilter=''; window.renderProductDatabase();"});
  if(fStatus) {
-   const map = { published:'Live', draft:'Draft', oos:'Out of Stock', low:'Low Stock', noimage:'No Image', discontinued:'Discontinued', not_tiktok:'Belum di TikTok', under10:'Stok < 10' };
+   // p1_1123 — label tier tunjuk julat RM sebenar (tercile dikira atas)
+   const fmtT = (n) => 'RM ' + Number(n||0).toLocaleString('en-MY', {maximumFractionDigits:0});
+   const map = { published:'Live', draft:'Draft', oos:'Out of Stock', low:'Low Stock', noimage:'No Image', discontinued:'Discontinued', not_tiktok:'Belum di TikTok', under10:'Stok < 10',
+     dead:'Dead Stock (0 jualan 90 hari)',
+     tier_a:'Tier A · Mahal' + (tierCut ? ` (≥ ${fmtT(tierCut.hi)})` : ''),
+     tier_b:'Tier B · Sederhana' + (tierCut ? ` (${fmtT(tierCut.lo)} – ${fmtT(tierCut.hi)})` : ''),
+     tier_c:'Tier C · Murah' + (tierCut ? ` (< ${fmtT(tierCut.lo)})` : '') };
    const allPill = "document.querySelectorAll('#pdbStatusPills .pdb-pill').forEach(b=>b.classList.remove('pdb-pill--active'));document.querySelector('#pdbStatusPills .pdb-pill[data-status=\\\"\\\"]').classList.add('pdb-pill--active');document.getElementById('pdStatus').value='';window.renderProductDatabase();";
    chips.push({label: 'Status: ' + (map[fStatus] || fStatus), clear: allPill});
  }
@@ -38512,6 +38558,10 @@ window.I18N = {
  db_pill_low: { bm: 'Stok Rendah', en: 'Low Stock' },
  db_pill_noimage: { bm: 'Tiada Gambar', en: 'No Image' },
  db_pill_under10: { bm: 'Stok < 10', en: 'Stock < 10' },
+ db_pill_dead: { bm: 'Stok Mati', en: 'Dead Stock' },
+ db_pill_tier_a: { bm: 'Tier A · Mahal', en: 'Tier A · High' },
+ db_pill_tier_b: { bm: 'Tier B · Sederhana', en: 'Tier B · Mid' },
+ db_pill_tier_c: { bm: 'Tier C · Murah', en: 'Tier C · Low' },
  db_quick_edit_ph: { bm: 'Buka SKU →', en: 'Open SKU →' },
  db_th_product: { bm: 'Produk', en: 'Product' },
  db_th_brand: { bm: 'Jenama', en: 'Brand' },

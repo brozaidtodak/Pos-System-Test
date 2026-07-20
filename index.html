@@ -6969,6 +6969,20 @@
  <button class="pdb-pill" data-status="under10" onclick="window.pdbSetStatus('under10', this)">
  <span class="pdb-dot pdb-dot--orange"></span> <span data-i18n="db_pill_under10">Stok &lt; 10</span>
  </button>
+ <!-- p1_1123 — dead stock: ada stok tapi 0 jualan 90 hari (definisi sama Analytics > Inventory) -->
+ <button class="pdb-pill" data-status="dead" onclick="window.pdbSetStatus('dead', this)" title="Ada stok tapi 0 jualan dalam 90 hari">
+ <i data-lucide="package-x" style="width:12px; height:12px;"></i> <span data-i18n="db_pill_dead">Dead Stock</span>
+ </button>
+ <!-- p1_1123 — tier harga (tercile automatik atas produk Live berharga): A mahal / B sederhana / C murah -->
+ <button class="pdb-pill" data-status="tier_a" onclick="window.pdbSetStatus('tier_a', this)" title="1/3 teratas paling mahal (produk Live berharga)">
+ <span class="pdb-dot pdb-dot--amber"></span> <span data-i18n="db_pill_tier_a">Tier A · Mahal</span>
+ </button>
+ <button class="pdb-pill" data-status="tier_b" onclick="window.pdbSetStatus('tier_b', this)" title="1/3 tengah harga sederhana">
+ <span class="pdb-dot pdb-dot--orange"></span> <span data-i18n="db_pill_tier_b">Tier B · Sederhana</span>
+ </button>
+ <button class="pdb-pill" data-status="tier_c" onclick="window.pdbSetStatus('tier_c', this)" title="1/3 terbawah paling murah">
+ <span class="pdb-dot pdb-dot--green"></span> <span data-i18n="db_pill_tier_c">Tier C · Murah</span>
+ </button>
  <input type="hidden" id="pdStatus" value="published">
  </div>
 
@@ -13226,7 +13240,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1099"></script>
+ <script src="app.js?v=1100"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>
