@@ -36293,6 +36293,19 @@ window.cpSetPayment = function(method) {
  // p1_230 — Refresh cpFormView proof badge (Snap/Pilih buttons manual)
  // p1_372 — Zaid: staff nak snap resit untuk SEMUA jualan termasuk Cash. Buang gate Cash.
  if(typeof window.cpRefreshProofBadge === 'function') window.cpRefreshProofBadge();
+ // p1_1150 — iOS WKWebView (Zaid: "pilih pembayaran QR je... tak boleh scroll, indicator je
+ // bergerak"): tukar dari Tunai sorok cpCashPanel (keypad tinggi) → kandungan MENGECUT tapi
+ // scrollTop lama > max baru → scroller sangkut, content tak repaint. Clamp ke had baru +
+ // nudge 1px utk paksa repaint. Jalan utk semua tukar method (selamat, no-op bila tak perlu).
+ requestAnimationFrame(function(){
+ try {
+ const sc = document.querySelector('#checkoutPanel .checkout-panel__body:not(.is-hidden)');
+ if(!sc) return;
+ const max = Math.max(0, sc.scrollHeight - sc.clientHeight);
+ if(sc.scrollTop > max) sc.scrollTop = max;
+ else if(sc.scrollTop > 0) { sc.scrollTop -= 1; sc.scrollTop += 1; }
+ } catch(e){}
+ });
 };
 
 // p1_234 — Sync window.posCustomer ke cpCustName/Phone/Email (call lepas pick/register)
