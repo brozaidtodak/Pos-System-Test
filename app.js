@@ -42576,12 +42576,151 @@ window.renderPointsMembership = function(){
   </div>
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:14px;">${tierCards}</div>
   <p class="soft-note" style="margin-top:14px;">Nota: nilai tier &amp; kadar mata diselaraskan dalam kod supaya konsisten merentas Cashier, portal pelanggan, dan laporan. Nak ubah syarat/diskaun/redeem? Beritahu je, aku update.</p>
-  <h3 class="section-title" data-skip-title-sync style="margin-top:22px; font-size:17px;"><i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i> Senarai Ahli</h3>
+  <h3 class="section-title" data-skip-title-sync style="margin-top:22px; font-size:17px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;"><span><i data-lucide="users" style="width:18px;height:18px;vertical-align:middle;margin-right:6px;"></i> Senarai Ahli</span><button onclick="window.__mbOpen()" style="background:var(--primary-500,#CD7C32); color:#FFF; border:0; border-radius:8px; padding:9px 14px; font-size:12.5px; font-weight:800; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="mail" style="width:14px;height:14px;"></i> Kempen E-mel Mata</button></h3>
   <p class="soft-note" style="margin-top:2px;">Siapa ahli kau, tier, mata boleh guna, dan beli terakhir. Susun ikut belanja tertinggi. Cari nama atau telefon untuk ahli tertentu.</p>
   <div style="margin:8px 0 10px;"><input id="pmSearch" oninput="window.__pmRender(this.value)" placeholder="Cari nama atau nombor telefon..." style="width:100%; max-width:340px; padding:9px 12px; border:1px solid #DDD; border-radius:8px; font-size:13px; font-family:inherit;" /></div>
   <div id="pmTableWrap"></div>`;
  if(typeof window.__pmRender === 'function') window.__pmRender('');
  if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+};
+
+/* ============================================================================
+ * p1_1131 — KEMPEN E-MEL MATA (Points & Membership > butang "Kempen E-mel Mata").
+ * Umum program tebus mata pada member: pilih target (mata >= ambang, ada email,
+ * default hormat consent), edit draf (token {name}/{mata}/{tier}/{kadar}),
+ * WAJIB PRATONTON, baru boleh sahkan hantar. Hantar server-side dari
+ * admin@10camp.com via netlify/functions/loyalty-email-blast.js (Resend batch,
+ * gate requireStaff). Anti-double: rekod localStorage mataBlastLast_v1 + amaran
+ * kalau blast lain < 7 hari lepas.
+ * ==========================================================================*/
+window.__mbState = null;
+window.__mbDefaultSubject = 'Mata anda kini boleh tukar barang percuma di 10 CAMP! \u{1F381}';
+window.__mbDefaultBody = 'Hai {name}!\n\nBerita baik — mata 10 CAMP Rewards anda sekarang ada nilai sebenar. Anda ahli {tier} dengan {mata} mata terkumpul, dan setiap mata bernilai {kadar} untuk tukar dengan barang pilihan di kedai.\n\nCara tebus senang je: singgah kedai 10 CAMP Cyberjaya, beli macam biasa (RM50 ke atas), dan pilih barang percuma anda terus di kaunter. Senarai penuh barang boleh tebus ada dalam portal — tekan butang di bawah.\n\nJumpa di kedai!';
+window.__mbTargets = function(minMata, consentOnly){
+ const custs = Array.isArray(customersData) ? customersData : [];
+ return custs.filter(c => {
+ if(!c || !c.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return false;
+ if(consentOnly && !c.accepts_email_marketing) return false;
+ return (typeof window.__custPointsAvail === 'function' ? window.__custPointsAvail(c) : (Number(c.points)||0)) >= minMata;
+ }).map(c => {
+ const t = window.__custTier(c.total_spent);
+ return { id: c.id, email: String(c.email).toLowerCase(), name: c.name || '', mata: window.__custPointsAvail(c), tier: t.name, kadar: (window.LOYALTY_REDEEMS && window.LOYALTY_REDEEMS[t.key] || []).reduce((r, x) => x.type === 'deadstock' ? (x.rate || r) : r, 0.4) };
+ }).sort((a, b) => b.mata - a.mata);
+};
+window.__mbOpen = function(){
+ const old = document.getElementById('mbOverlay'); if(old) old.remove();
+ // Amaran kalau blast terakhir < 7 hari (elak spam member tanpa sedar)
+ try {
+ const last = JSON.parse(localStorage.getItem('mataBlastLast_v1') || 'null');
+ if(last && last.at && (Date.now() - new Date(last.at).getTime()) < 7 * 86400000){
+ if(typeof showToast === 'function') showToast('Nota: blast terakhir ' + new Date(last.at).toLocaleDateString('en-MY') + ' (' + (last.sent || 0) + ' email). Elak hantar kerap sangat.', 'warn');
+ }
+ } catch(e){}
+ window.__mbState = { min: 100, consent: true, unchecked: {} };
+ const ov = document.createElement('div');
+ ov.id = 'mbOverlay';
+ ov.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3800; display:flex; align-items:flex-start; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); overflow-y:auto;';
+ ov.onclick = function(e){ if(e.target === ov && confirm('Tutup tanpa hantar?')) ov.remove(); };
+ ov.innerHTML = '<div style="background:#fff; max-width:680px; width:100%; border-radius:12px; padding:22px; margin:auto; font-family:var(--font-main,Poppins),sans-serif;">'
+ + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;"><h2 style="margin:0; font-size:17px;">Kempen E-mel Mata</h2>'
+ + '<button onclick="if(confirm(\'Tutup tanpa hantar?\')) document.getElementById(\'mbOverlay\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999; padding:4px 8px;">×</button></div>'
+ + '<div style="font-size:11.5px; color:#6B7280; margin-bottom:12px;">Dari: <b>admin@10camp.com</b> · penerima ikut tapisan di bawah · <b>pratonton wajib sebelum hantar</b></div>'
+ + '<div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12.5px;">'
+ + '<label>Mata minimum <input id="mbMin" type="number" value="100" min="0" style="width:70px; padding:6px 8px; border:1px solid #DDD; border-radius:7px; font-family:inherit;" onchange="window.__mbRefresh()"></label>'
+ + '<label style="display:inline-flex; align-items:center; gap:5px;"><input id="mbConsent" type="checkbox" checked onchange="window.__mbRefresh()"> Hanya yang setuju terima email (consent)</label>'
+ + '<span id="mbCount" style="font-weight:800; color:var(--primary-800,#7C4A1A);"></span></div>'
+ + '<div id="mbList" style="max-height:200px; overflow-y:auto; border:1px solid #EEE; border-radius:8px; margin-bottom:14px;"></div>'
+ + '<label style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase;">Subjek</label>'
+ + '<input id="mbSubject" style="width:100%; padding:9px 12px; border:1px solid #DDD; border-radius:8px; font-size:13px; font-family:inherit; margin:4px 0 10px;" value="">'
+ + '<label style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase;">Isi email — token: {name} {mata} {tier} {kadar}</label>'
+ + '<textarea id="mbBody" rows="9" style="width:100%; padding:10px 12px; border:1px solid #DDD; border-radius:8px; font-size:13px; font-family:inherit; margin-top:4px; resize:vertical;"></textarea>'
+ + '<div style="font-size:11px; color:#9CA3AF; margin:4px 0 12px;">Email akan dibalut template berjenama 10 CAMP + butang ke Loyalty Portal secara automatik.</div>'
+ + '<div style="display:flex; gap:8px; justify-content:flex-end;">'
+ + '<button onclick="if(confirm(\'Tutup tanpa hantar?\')) document.getElementById(\'mbOverlay\').remove()" style="background:#F3F4F6; border:0; border-radius:8px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;">Batal</button>'
+ + '<button onclick="window.__mbPreview()" style="background:var(--primary-500,#CD7C32); color:#FFF; border:0; border-radius:8px; padding:11px 18px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;">Pratonton →</button>'
+ + '</div></div>';
+ document.body.appendChild(ov);
+ document.getElementById('mbSubject').value = window.__mbDefaultSubject;
+ document.getElementById('mbBody').value = window.__mbDefaultBody;
+ window.__mbRefresh();
+};
+window.__mbRefresh = function(){
+ const st = window.__mbState; if(!st) return;
+ st.min = Math.max(0, parseInt((document.getElementById('mbMin') || {}).value, 10) || 0);
+ st.consent = !!((document.getElementById('mbConsent') || {}).checked);
+ const targets = window.__mbTargets(st.min, st.consent);
+ st.targets = targets;
+ const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ const el = document.getElementById('mbList');
+ if(el) el.innerHTML = targets.length ? targets.map(t =>
+ '<label style="display:flex; align-items:center; gap:8px; padding:6px 12px; border-bottom:1px solid #F7F7F7; font-size:12px; cursor:pointer;">'
+ + '<input type="checkbox" ' + (st.unchecked[t.email] ? '' : 'checked') + ' onchange="window.__mbState.unchecked[\'' + t.email.replace(/'/g, "\\'") + '\'] = !this.checked; window.__mbCountUpd();">'
+ + '<span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(t.name || '(tanpa nama)') + ' <span style="color:#9CA3AF;">' + esc(t.email) + '</span></span>'
+ + '<span style="flex-shrink:0; font-weight:700;">' + t.tier + ' · ' + t.mata + ' mata</span></label>').join('')
+ : '<div style="padding:14px; text-align:center; color:#9CA3AF; font-size:12px;">Tiada member padan tapisan ni.</div>';
+ window.__mbCountUpd();
+};
+window.__mbCountUpd = function(){
+ const st = window.__mbState; if(!st) return;
+ const n = (st.targets || []).filter(t => !st.unchecked[t.email]).length;
+ const el = document.getElementById('mbCount'); if(el) el.textContent = n + ' penerima dipilih';
+};
+window.__mbPreview = function(){
+ const st = window.__mbState; if(!st) return;
+ const chosen = (st.targets || []).filter(t => !st.unchecked[t.email]);
+ if(!chosen.length){ if(typeof showToast === 'function') showToast('Tiada penerima dipilih.', 'warn'); return; }
+ const subject = (document.getElementById('mbSubject') || {}).value || '';
+ const bodyTpl = (document.getElementById('mbBody') || {}).value || '';
+ if(!subject.trim() || !bodyTpl.trim()){ if(typeof showToast === 'function') showToast('Subjek & isi email wajib diisi.', 'warn'); return; }
+ st.subject = subject; st.body = bodyTpl; st.chosen = chosen;
+ const s = chosen[0];
+ // Render pratonton SAMA macam server (token + perenggan) supaya apa yg staf nampak = apa yg dihantar
+ const filled = bodyTpl.replace(/\{name\}/g, String(s.name || 'kawan').split(' ')[0]).replace(/\{mata\}/g, s.mata).replace(/\{tier\}/g, s.tier).replace(/\{kadar\}/g, 'RM ' + Number(s.kadar).toFixed(2));
+ const escP = (x) => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ const paras = escP(filled).split(/\n\s*\n/).map(p => '<p style="font-size:14px; color:#374151; line-height:1.7; margin:0 0 14px;">' + p.replace(/\n/g, '<br>') + '</p>').join('');
+ const emailHtml = '<div style="font-family:-apple-system,sans-serif; max-width:480px; margin:0 auto; padding:24px;">'
+ + '<div style="text-align:center; font-weight:800; font-size:20px; color:#CD7C32; letter-spacing:1px;">10 CAMP REWARDS</div>'
+ + '<div style="margin-top:18px;">' + paras + '</div>'
+ + '<div style="text-align:center; margin:20px 0;"><a href="#" style="display:inline-block; background:#CD7C32; color:#101010; font-weight:800; font-size:14px; text-decoration:none; padding:12px 26px; border-radius:10px;">Semak Mata &amp; Barang Boleh Tebus</a></div>'
+ + '<p style="font-size:11px; color:#9CA3AF; margin-top:18px; line-height:1.6;">10 CAMP &middot; Cyberjaya &middot; admin@10camp.com<br>Tak mahu email macam ni lagi? Balas email ini dan tulis "berhenti".</p></div>';
+ const old = document.getElementById('mbPrevOverlay'); if(old) old.remove();
+ const pv = document.createElement('div');
+ pv.id = 'mbPrevOverlay';
+ pv.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:3850; display:flex; align-items:flex-start; justify-content:center; padding:20px; overflow-y:auto;';
+ pv.innerHTML = '<div style="background:#fff; max-width:560px; width:100%; border-radius:12px; padding:20px; margin:auto; font-family:var(--font-main,Poppins),sans-serif;">'
+ + '<h3 style="margin:0 0 4px; font-size:15px;">Pratonton — semak sebelum hantar</h3>'
+ + '<div style="font-size:11.5px; color:#6B7280; margin-bottom:10px;">Dari: <b>10 CAMP Rewards &lt;admin@10camp.com&gt;</b> · Subjek: <b>' + escP(st.subject) + '</b><br>Contoh guna data <b>' + escP(s.name || s.email) + '</b> (' + s.mata + ' mata, ' + s.tier + '). Setiap penerima dapat angka masing-masing.</div>'
+ + '<div style="border:1px solid #E5E7EB; border-radius:10px; padding:6px; background:#FAFAFA; max-height:48vh; overflow-y:auto;">' + emailHtml + '</div>'
+ + '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px;">'
+ + '<button onclick="document.getElementById(\'mbPrevOverlay\').remove()" style="background:#F3F4F6; border:0; border-radius:8px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;">← Kembali edit</button>'
+ + '<button id="mbSendBtn" onclick="window.__mbSend()" style="background:#B91C1C; color:#FFF; border:0; border-radius:8px; padding:11px 18px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;">Sahkan &amp; Hantar ' + chosen.length + ' email</button>'
+ + '</div></div>';
+ document.body.appendChild(pv);
+};
+window.__mbSend = async function(){
+ const st = window.__mbState; if(!st || !st.chosen || !st.chosen.length) return;
+ const btn = document.getElementById('mbSendBtn');
+ if(btn){ btn.disabled = true; btn.textContent = 'Menghantar…'; }
+ try {
+ const res = await fetch('/.netlify/functions/loyalty-email-blast', {
+ method: 'POST',
+ headers: window.__authHeaderSync({ 'Content-Type': 'application/json' }),
+ body: JSON.stringify({ subject: st.subject, body: st.body, recipients: st.chosen.map(t => ({ email: t.email, name: t.name, mata: t.mata, tier: t.tier, kadar: t.kadar })) })
+ });
+ const j = await res.json().catch(() => ({}));
+ if(res.ok && j.ok){
+ try { localStorage.setItem('mataBlastLast_v1', JSON.stringify({ at: new Date().toISOString(), sent: j.sent, subject: st.subject })); } catch(e){}
+ if(typeof showToast === 'function') showToast('Terhantar: ' + j.sent + '/' + j.total + ' email dari admin@10camp.com' + (j.failures && j.failures.length ? ' (' + j.failures.length + ' batch gagal)' : ''), 'success');
+ const pv = document.getElementById('mbPrevOverlay'); if(pv) pv.remove();
+ const ov = document.getElementById('mbOverlay'); if(ov) ov.remove();
+ } else {
+ if(typeof showToast === 'function') showToast('Gagal hantar: ' + (j.error || res.status), 'error');
+ if(btn){ btn.disabled = false; btn.textContent = 'Sahkan & Hantar ' + st.chosen.length + ' email'; }
+ }
+ } catch(e){
+ if(typeof showToast === 'function') showToast('Ralat rangkaian: ' + e.message, 'error');
+ if(btn){ btn.disabled = false; btn.textContent = 'Sahkan & Hantar ' + st.chosen.length + ' email'; }
+ }
 };
 
 /* ============================================================================
