@@ -16171,25 +16171,13 @@ window.processNewCheckout = async function() {
  } catch(e) { console.warn('[receipt-email] trigger error:', e); }
  }
 
- // p1_199 — Auto-send PDF receipt after checkout. Fire-and-forget; runs in
- // background while staff sees the standard receipt modal. If customer has
- // phone → WhatsApp Web tab opens with PDF link. If email → mailto opens.
- if(insertedSaleId) {
- setTimeout(() => {
- try {
- const hasPhone = !!(custPhoneText && custPhoneText.trim());
- const hasEmail = !!(earlyEmail && earlyEmail.includes('@'));
- if(hasPhone) {
- if(typeof showToast === 'function') showToast('Sediakan resit PDF untuk WhatsApp…', 'info');
- window.__sendReceiptPdfWhatsApp(insertedSaleId).catch(() => {});
- }
- if(hasEmail) {
- // Stagger 2s so the WhatsApp window isn't lost behind email client
- setTimeout(() => window.__sendReceiptPdfEmail(insertedSaleId).catch(() => {}), 2000);
- }
- } catch(_) {}
- }, 400);
- }
+ // p1_199 auto-send PDF (WhatsApp+Email) — DIBUANG p1_1148 (Zaid + screenshot: skrin success
+ // "selalu stuck tak boleh tekan X/Selesai"). PUNCA: selepas TIAP jualan ber-phone/email,
+ // 2 penjanaan PDF serentak (html2canvas+jsPDF+upload, main thread) BEKUKAN UI iPhone/iPad
+ // beberapa saat + window.open(wa.me)/mailto terbuka tanpa diminta + 2 toast tutup butang X.
+ // E-receipt EMAIL tetap dihantar auto via server (fungsi receipt-email di atas — laluan betul).
+ // Hantar PDF manual kekal: All Orders / Payment Proofs > butang WhatsApp / Email per order.
+ // Pulih auto-send: lihat git history p1_1148.
 
  cart = [];
  window.__pendingRedeem = null; window.__cpRedeemCustomer = null; // p1_561 — reset redeem selepas jualan
