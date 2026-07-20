@@ -761,6 +761,7 @@ window.__dsLastPurchaseOk = async function(match){
  try {
  let q = db.from('sales_history').select('created_at,status').order('created_at', { ascending: false }).limit(5);
  if(match.phone) q = q.eq('customer_phone', match.phone);
+ else if(match.email) q = q.eq('customer_email', match.email); // p1_1136 — member email-sahaja (SOP pilih salah satu)
  else if(match.name && match.name.toLowerCase() !== 'walk-in') q = q.eq('customer_name', match.name);
  else return { ok: false, why: 'tiada telefon/nama utk semak sejarah' };
  const { data } = await withTimeout(q, 8000, 'semak belian terakhir');
@@ -36674,14 +36675,19 @@ window.cpToggleWalkin = function() {
 };
 
 // VIP lookup integrated with new panel
+// p1_1136 — SOP kaunter (Zaid): staf minta nama + telefon ATAU email (customer pilih salah satu).
+// Padanan kini telefon → EMAIL → nama; email dulunya tak dipakai langsung utk lookup —
+// customer bagi email je = member tak dijumpai, mata/tebusan tak keluar.
 window.cpVipLookup = function() {
  const name = (document.getElementById('cpCustName').value || '').trim().toLowerCase();
  const phoneRaw = (document.getElementById('cpCustPhone').value || '').trim();
  const phone = (typeof normalisePhoneForMatch === 'function') ? normalisePhoneForMatch(phoneRaw) : phoneRaw;
+ const email = ((document.getElementById('cpCustEmail') || {}).value || '').trim().toLowerCase();
 
  let match = null;
  if(typeof customersData !== 'undefined') {
  if(phone) match = customersData.find(c => c.phone === phone);
+ if(!match && email && email.indexOf('@') > 0) match = customersData.find(c => (c.email || '').toLowerCase() === email);
  if(!match && name && name.length>= 3) match = customersData.find(c => (c.name || '').toLowerCase() === name);
  }
 
@@ -42846,13 +42852,15 @@ window.__psRenderOffer = function(){
  const s = (typeof __cpLastSale !== 'undefined') ? __cpLastSale : null; if(!s) return;
  const esc = (x) => String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
  const nm = String(s.customer_name || '').trim();
- const hasCust = String(s.customer_phone || '').trim() || (nm && nm.toLowerCase() !== 'walk-in');
+ const em = String(s.customer_email || '').trim().toLowerCase(); // p1_1136 — SOP: email pun kira "ada customer"
+ const hasCust = String(s.customer_phone || '').trim() || em || (nm && nm.toLowerCase() !== 'walk-in');
  if(hasCust){
  // Dah ada customer — papar baki mata + tier (mata resit ni dah diberi masa checkout)
  const norm = (typeof normalisePhoneForMatch === 'function') ? normalisePhoneForMatch(s.customer_phone) : null;
  let c = null;
  if(Array.isArray(customersData)){
  if(norm) c = customersData.find(x => x.phone === norm);
+ if(!c && em) c = customersData.find(x => (x.email || '').toLowerCase() === em); // p1_1136
  if(!c && nm) c = customersData.find(x => (x.name || '').toLowerCase() === nm.toLowerCase());
  }
  if(!c) return;
