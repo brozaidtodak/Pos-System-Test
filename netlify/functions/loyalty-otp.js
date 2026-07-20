@@ -22,6 +22,11 @@ const FROM_ADDR = process.env.LOYALTY_FROM || process.env.RECEIPT_FROM || '10 CA
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
+// p1_1142 — AKAUN TESTER (Zaid: "pakai email dan password dummy... tak nak pakai email personal").
+// Email dummy ni TAK terima OTP sebenar; kod tetap di bawah diterima terus (macam password).
+// Skop: SATU akaun tester sahaja (customers id 5068, data palsu) — akaun customer lain kekal OTP.
+const TESTER_LOGIN = { email: 'tester@10camp.com', code: '101010' };
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -201,6 +206,21 @@ exports.handler = async (event) => {
   if (!isEmail(email)) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Email tak sah' }) };
 
   try {
+    // ---------- p1_1142: TESTER (kod tetap, tiada email dihantar) ----------
+    if (email === TESTER_LOGIN.email) {
+      if (action === 'send' || action === 'signup') {
+        return { statusCode: 200, headers: cors, body: JSON.stringify({ sent: true, tester: true }) };
+      }
+      if (action === 'verify') {
+        if (String(body.code || '').trim() !== TESTER_LOGIN.code) {
+          return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: false, error: 'Kod salah.' }) };
+        }
+        const payload = await loyaltyPayload(email);
+        if (!payload) return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: false, error: 'Akaun tester tak dijumpai dlm DB.' }) };
+        return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true, session_token: mintSession(email), ...payload }) };
+      }
+    }
+
     // ---------- SEND ----------
     if (action === 'send') {
       const custs = await sb(`/customers?email=eq.${encodeURIComponent(email)}&select=id,name&limit=1`);
