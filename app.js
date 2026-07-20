@@ -16633,22 +16633,40 @@ window.__setPinSubmit = async function(){
 };
 
 // PIN dots visual feedback
+// p1_1144 — dots dinamik 4-8: asas 4 titik; digit ke-5+ tambah titik (dulu kekal 4 titik
+// walau __pinKey terima 8 — staf ingat "app terima 4 digit je" & PIN 6-digit nampak buntu).
 window.__pinUpdateDots = function(value) {
- const dots = document.querySelectorAll('#pinDotsDisplay .pin-dot');
+ const wrap = document.getElementById('pinDotsDisplay');
+ if(!wrap) return;
  const len = (value || '').length;
- dots.forEach((d, i) => d.classList.toggle('is-filled', i < len));
+ const need = Math.max(4, Math.min(Math.max(len, 4), 8));
+ while(wrap.children.length > need) wrap.removeChild(wrap.lastChild);
+ while(wrap.children.length < need){ const s = document.createElement('span'); s.className = 'pin-dot'; wrap.appendChild(s); }
+ Array.from(wrap.children).forEach((d, i) => d.classList.toggle('is-filled', i < len));
 };
 
-// Auto-submit when PIN reaches typical length (4-6 digits)
-let __pinAutoSubmitTimer = null;
+// p1_1144 — auto-submit PINTAR utk PIN 4-8 digit. Dulu: submit buta 400ms lepas digit ke-4 —
+// staf PIN 6-digit yang taip perlahan kena potong pada 4 (ralat "PIN salah"). Kini: pada tiap
+// digit ke-4+, cuba DETECT senyap dulu — padan → terus login; tak padan → tunggu digit
+// seterusnya; berhenti taip 1.4s tanpa padanan → submit utk papar ralat (staf tak tergantung).
+let __pinAutoSubmitTimer = null, __pinErrTimer = null;
 window.__pinAutoSubmit = function(value) {
- clearTimeout(__pinAutoSubmitTimer);
+ clearTimeout(__pinAutoSubmitTimer); clearTimeout(__pinErrTimer);
  if(value.length < 4) return;
- // Debounce: wait 400ms after last keystroke (so 5/6-digit PINs aren't cut short)
- __pinAutoSubmitTimer = setTimeout(() => {
- const cur = (document.getElementById('pinLoginInput')||{}).value || '';
- if(cur.length>= 4) window.submitPinLogin();
- }, 400);
+ __pinAutoSubmitTimer = setTimeout(async () => {
+ const cur = (document.getElementById('pinLoginInput') || {}).value || '';
+ if(cur.length < 4) return;
+ let matched = false;
+ try { matched = !!(await window.__detectUserByPin(cur)); } catch(e){}
+ const now = (document.getElementById('pinLoginInput') || {}).value || '';
+ if(now !== cur) return; // staf dah taip lagi — kitaran baru akan urus
+ if(matched){ window.submitPinLogin(); return; }
+ if(cur.length >= 8){ window.submitPinLogin(); return; } // penuh — papar ralat terus
+ __pinErrTimer = setTimeout(() => {
+ const c2 = (document.getElementById('pinLoginInput') || {}).value || '';
+ if(c2 === cur && c2.length >= 4) window.submitPinLogin(); // berhenti taip — papar ralat
+ }, 1400);
+ }, 300);
 };
 
 // p1_647 (Langkah A) — turn a PIN login into a REAL authenticated Supabase session
