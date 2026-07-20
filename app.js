@@ -32836,6 +32836,14 @@ window.openCustomerDetail = function(id) {
  + '<div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">'
  + '<button onclick="window.openEditCustomerModal(\'' + cid.replace(/'/g,"\\'") + '\')" style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-300,#FDBA74); color:var(--primary-800,#7C4A1A); padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="edit-3" style="width:13px;height:13px;"></i> Edit</button>'
  + (waLink ? '<a href="' + waLink + '" target="_blank" rel="noopener" style="background:#E6F0E4; border:1px solid #ABC6A0; color:#34522F; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="message-circle" style="width:13px;height:13px;"></i> WhatsApp</a>' : '')
+ // p1_1128 — WA Mata: peringatan baki mata + diskaun tier siap-taip (tier/mata dari data live)
+ + (waLink ? (() => {
+ const wt = (typeof window.__custTier === 'function') ? window.__custTier(c.total_spent) : null;
+ const wAvail = (typeof window.__custPointsAvail === 'function') ? window.__custPointsAvail(c) : (c.points || 0);
+ if(!wt) return '';
+ const wMsg = 'Hai ' + ((c.name || '').split(' ')[0] || 'kawan') + '! Dari 10 CAMP \u{1F3D5}️ Anda ahli ' + wt.name + ' — ada ' + wAvail + ' mata terkumpul & diskaun ' + (wt.autoPct || 0) + '% pada item terpilih bila singgah kedai. Semak mata & ganjaran anda bila-bila: https://www.10camp.com/loyalty.html';
+ return '<a href="' + waLink + '?text=' + encodeURIComponent(wMsg).replace(/'/g, '%27') + '" target="_blank" rel="noopener" style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-300,#FDBA74); color:var(--primary-800,#7C4A1A); padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;" title="Hantar peringatan baki mata via WhatsApp"><i data-lucide="award" style="width:13px;height:13px;"></i> WA Mata</a>';
+ })() : '')
  + (mailLink ? '<a href="' + mailLink + '" style="background:var(--primary-100,#FFEDD5); border:1px solid var(--primary-300,#FDBA74); color:#101010; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="mail" style="width:13px;height:13px;"></i> Email</a>' : '')
  + (telLink ? '<a href="' + telLink + '" style="background:#F8EFD7; border:1px solid #E7C66A; color:#7A5410; padding:8px 12px; border-radius:6px; text-decoration:none; font-size:12px; font-weight:700; min-height:36px; display:inline-flex; align-items:center; gap:5px;"><i data-lucide="phone" style="width:13px;height:13px;"></i> Call</a>' : '')
  + '</div>'

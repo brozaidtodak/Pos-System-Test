@@ -76,9 +76,16 @@ function checkSession(token) {
 
 // ---- p1_1059: payload loyalti dikongsi (verify + session) ----
 async function loyaltyPayload(email) {
-  const custs = await sb(`/customers?email=eq.${encodeURIComponent(email)}&select=id,name,phone,points,points_redeemed,total_spent,total_orders&limit=1`);
+  const custs = await sb(`/customers?email=eq.${encodeURIComponent(email)}&select=id,name,phone,points,points_redeemed,total_spent,total_orders,created_at&limit=1`);
   const c = custs && custs[0];
   if (!c) return null;
+  // p1_1128 — status baju percuma tahun ini (Silver/VIP 1×/tahun) utk papar dlm portal
+  let shirtClaimed = false;
+  try {
+    const yr = new Date().getFullYear();
+    const claims = await sb(`/loyalty_shirt_claims?customer_id=eq.${c.id}&claim_year=eq.${yr}&select=id&limit=1`);
+    shirtClaimed = !!(claims && claims.length);
+  } catch (e) { /* table tiada / ralat — biar false, portal papar "belum" */ }
   let purchases = [];
   try {
     purchases = await sb(`/sales_history?customer_email=eq.${encodeURIComponent(email)}&select=created_at,total,total_amount,channel,items&order=created_at.desc&limit=15`) || [];
@@ -89,7 +96,8 @@ async function loyaltyPayload(email) {
     return { date: s.created_at, total: Number(s.total != null ? s.total : s.total_amount) || 0, channel: s.channel || 'POS', items: cnt };
   });
   return {
-    customer: { name: c.name || '', points: Number(c.points) || 0, points_redeemed: Number(c.points_redeemed) || 0, total_spent: Number(c.total_spent) || 0, total_orders: Number(c.total_orders) || 0 },
+    // p1_1128 — phone utk QR Kad Ahli (staf scan di kaunter), member_since + shirt_claimed utk paparan kad
+    customer: { name: c.name || '', phone: c.phone || '', points: Number(c.points) || 0, points_redeemed: Number(c.points_redeemed) || 0, total_spent: Number(c.total_spent) || 0, total_orders: Number(c.total_orders) || 0, member_since: c.created_at || null, shirt_claimed: shirtClaimed },
     purchases: pSlim
   };
 }
