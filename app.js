@@ -1770,7 +1770,7 @@ window.__saRender = function(){
  let html = window.__saHistory.map(m => '<div class="sa-bubble sa-bubble--' + (m.role==='user'?'me':(m.typing?'bot sa-bubble--typing':'bot')) + '">' + esc(m.content) + '</div>').join('');
  // Keadaan kosong (welcome je) → tunjuk chip soalan contoh untuk isi ruang + senang staf tekan
  if(window.__saHistory.filter(m => m.role==='user' || !m.typing).length <= 1 && !window.__saBusy){
-  const sugg = ['Macam mana buat refund?','Macam mana check stok?','Macam mana buka shift?','SOP cuti macam mana?'];
+  const sugg = ['Macam mana buat refund?','Macam mana check stok?','Macam mana tebus mata customer?','SOP cuti macam mana?']; // p1_1145 — buka shift dibuang (butang dah tiada)
   html += '<div class="sa-chips">' + sugg.map(s => '<button type="button" class="sa-chip" data-q="'+esc(s)+'" onclick="window.__saAsk(this.getAttribute(\'data-q\'))">'+esc(s)+'</button>').join('') + '</div>';
  }
  box.innerHTML = html;
