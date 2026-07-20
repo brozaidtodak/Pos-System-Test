@@ -799,6 +799,37 @@ window.__dsRedeemCatalog = function(){
  }).map(p => ({ sku: p.sku, name: p.name || p.sku, price: parseFloat(p.price) || 0, stok: stock[String(p.sku).toUpperCase()] || 0 }))
  .sort((a, b) => a.price - b.price);
 };
+// p1_1137 — cache katalog dead stock 5 minit (kira sekali, dipakai picker + skrin customer;
+// scan salesHistory 60 hari tiap panggilan mahal kalau ulang pada setiap ketikan input)
+window.__dsCatalogCached = function(){
+ try {
+ const c = window.__dsCatalogCacheV1;
+ if(c && (Date.now() - c.at) < 5 * 60000) return c.items;
+ if(!window.__fullSalesLoaded && !window.__isAppDataCapped()) return []; // data belum cukup — jangan kira separuh
+ const items = window.__dsRedeemCatalog();
+ window.__dsCatalogCacheV1 = { at: Date.now(), items: items };
+ return items;
+ } catch(e){ return []; }
+};
+// p1_1137 — blok loyalty utk Customer Display (Zaid: "customer pilih redeem SEBELUM bayar —
+// display apa yang dia boleh redeem"): mata + top barang mampu-tebus + tebusan dipilih.
+window.__cpDisplayLoyalty = function(){
+ try {
+ const m = window.__cpRedeemCustomer; if(!m) return null;
+ const tk = String(window.getCustomerTier(m)).toLowerCase();
+ const t = window.__custTier(m.total_spent);
+ const avail = window.__custPointsAvail(m);
+ const rate = ((window.LOYALTY_REDEEMS && window.LOYALTY_REDEEMS[tk]) || []).reduce((r, x) => x.type === 'deadstock' ? (x.rate || r) : r, 0.4);
+ const afford = window.__dsCatalogCached().map(it => ({ name: it.name, price: it.price, mata: Math.ceil(it.price / rate) })).filter(x => x.mata <= avail);
+ const pend = window.__pendingRedeem;
+ return {
+ name: m.name || '', tier: t.name, avail: avail, rate: rate,
+ redeemables: afford.slice(0, 6),
+ more: Math.max(0, afford.length - 6),
+ chosen: (pend && pend.type === 'deadstock') ? { label: pend.label || '', cost: pend.cost || 0 } : null
+ };
+ } catch(e){ return null; }
+};
 window.__dsPickerCtx = null;
 window.__dsOpenRedeemPicker = function(match, tierKey, rate, avail){
  const all = window.__dsRedeemCatalog();
@@ -14869,6 +14900,7 @@ window.writeCustomerDisplayCart = function() {
  customer: __c ? { name: __c.name || null, is_member: !!__c.is_member, tier: __c.tier || __c.member_tier || null } : null,
  vip: window.__currentCheckoutVip || null,
  autoDiscount: !!window.VIP_AUTO_DISCOUNT, // p1_369 — skrin pelanggan ikut flag yang sama
+ loyalty: (typeof window.__cpDisplayLoyalty === 'function') ? window.__cpDisplayLoyalty() : null, // p1_1137
  updatedAt: new Date().toISOString()
  };
  localStorage.setItem('customerDisplayCart_v1', JSON.stringify(payload));
@@ -36693,7 +36725,7 @@ window.cpVipLookup = function() {
 
  window.__currentCheckoutVip = null;
  const banner = document.getElementById('cpVipBanner');
- if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; window.__cpRedeemCustomer = null; window.__pendingRedeem = null; cpRecomputeTotal(); return; }
+ if(!match) { banner.classList.remove('is-shown'); banner.innerHTML = ''; window.__cpRedeemCustomer = null; window.__pendingRedeem = null; cpRecomputeTotal(); try { window.writeCustomerDisplayCart(); } catch(e){} return; } // p1_1137 — clear panel skrin customer
 
  const tier = (typeof getCustomerTier === 'function') ? getCustomerTier(match) : null;
  if(tier) {
@@ -36729,6 +36761,7 @@ window.cpVipLookup = function() {
  }
  }
  cpRecomputeTotal();
+ try { window.writeCustomerDisplayCart(); } catch(e){} // p1_1137 — skrin customer: mata + boleh tebus
 };
 
 // Customer autocomplete (UX-3.2)

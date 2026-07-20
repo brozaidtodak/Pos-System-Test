@@ -195,6 +195,16 @@
             </div>
     </main>
 
+    <!-- p1_1137 — panel loyalty: customer nampak mata dia + apa boleh tebus SEBELUM bayar -->
+    <div id="loyaltyStrip" style="display:none; background:#101010; color:#FAF6EF; padding:14px 40px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+            <div id="loyHead" style="font-size:15px; font-weight:800;"></div>
+            <div id="loyChosen" style="font-size:13px; font-weight:800; color:#7DE3A5;"></div>
+        </div>
+        <div id="loyItems" style="display:flex; gap:10px; overflow-x:auto; margin-top:10px; padding-bottom:4px;"></div>
+        <div id="loyNote" style="font-size:11.5px; color:#8A847B; margin-top:8px;"></div>
+    </div>
+
     <footer>
         <div class="totals">
             <div class="total-meta" id="totalMeta">
@@ -269,6 +279,36 @@ function render() {
     }
     const emptyMsg = document.getElementById('emptyMsg');
     if (emptyMsg) emptyMsg.textContent = (cust && cust.name) ? ('Selamat datang, ' + cust.name + '!') : 'Selamat datang ke 10 CAMP';
+
+    // p1_1137 — panel loyalty: customer nampak & PILIH tebusan sebelum bayar (beritahu staf)
+    (function () {
+        const strip = document.getElementById('loyaltyStrip');
+        if (!strip) return;
+        const L = payload && payload.loyalty;
+        if (!L || !(L.avail > 0)) { strip.style.display = 'none'; return; }
+        strip.style.display = 'block';
+        const first = String(L.name || '').split(' ')[0];
+        document.getElementById('loyHead').innerHTML =
+            (first ? esc(first) + ', anda' : 'Anda') + ' ada <span style="color:#CD7C32;">' + L.avail + ' mata</span>'
+            + ' <span style="font-size:11.5px; font-weight:600; color:#8A847B;">(ahli ' + esc(L.tier || '') + ' &middot; 1 mata = RM ' + Number(L.rate || 0).toFixed(2) + ')</span>';
+        document.getElementById('loyChosen').textContent = L.chosen
+            ? '✓ Tebusan dipilih: ' + L.chosen.label + ' (−' + L.chosen.cost + ' mata)'
+            : '';
+        const itemsEl = document.getElementById('loyItems');
+        if (L.redeemables && L.redeemables.length) {
+            itemsEl.style.display = 'flex';
+            itemsEl.innerHTML = L.redeemables.map(r =>
+                '<div style="flex:0 0 auto; background:#1a1714; border:1px solid #2c2620; border-radius:10px; padding:10px 14px; min-width:170px; max-width:230px;">'
+                + '<div style="font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(r.name) + '</div>'
+                + '<div style="font-size:11px; color:#8A847B; margin-top:2px;">RM ' + fmt(r.price) + ' &middot; <b style="color:#7DE3A5;">' + Number(r.mata).toLocaleString() + ' mata</b></div>'
+                + '</div>').join('');
+            document.getElementById('loyNote').textContent = 'Barang PERCUMA yang anda boleh tebus dengan mata hari ini'
+                + (L.more > 0 ? ' (+' + L.more + ' lagi)' : '') + ' — beritahu staf pilihan anda sebelum bayar.';
+        } else {
+            itemsEl.style.display = 'none'; itemsEl.innerHTML = '';
+            document.getElementById('loyNote').textContent = 'Kumpul lagi mata untuk mula tebus barang percuma — setiap RM10 belanja = 1 mata.';
+        }
+    })();
 
     if (items.length === 0) {
         empty.style.display = 'flex';
