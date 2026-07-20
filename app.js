@@ -15117,6 +15117,12 @@ window.__proofClearFile = function() {
 window.__cartProofRefresh = function() {
  const row = document.getElementById('cartProofRow');
  if(!row) return;
+ // p1_1147 — Snap Resit pra-checkout DIBUANG (Zaid: "buang snap resit, kekalkan selepas
+ // pembayaran utk update ke all orders"). Bukti bayar kini diurus SELEPAS bayar sahaja:
+ // All Orders / Payment Proofs > butang "Resit (n/3)" (__ppManageProofs, sehingga 3 gambar).
+ // Pulih: buang 2 baris ni (aliran upload-masa-checkout p1_920 masih utuh di belakang).
+ row.innerHTML = '';
+ return;
  const T = (k) => (typeof window.t === 'function' ? window.t(k) : k); // p1_404 — i18n
  const f = window.__proofState && window.__proofState.file;
  if(f) {
