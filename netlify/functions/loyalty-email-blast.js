@@ -40,9 +40,13 @@ async function sb(path, opts = {}) {
 function isEmail(e) { return typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// p1_1133 — poster kempen dlm email (Zaid: "letak poster tu semasa email customer").
+// Di-hos di site (email perlu URL awam); poster-4 A4 versi 800px. SYNC dgn pratonton app.js.
+const POSTER_URL = 'https://www.10camp.com/assets/promo/poster-claim-point-2026.png';
+
 // Render body template → HTML berjenama (gaya sama email OTP loyalty-otp.js).
 // Token per penerima: {name} {mata} {tier} {kadar}. Baris kosong = perenggan.
-function renderEmail(bodyTpl, r) {
+function renderEmail(bodyTpl, r, withPoster) {
   const firstName = String(r.name || 'kawan').split(' ')[0];
   const filled = String(bodyTpl || '')
     .replace(/\{name\}/g, firstName)
@@ -50,9 +54,13 @@ function renderEmail(bodyTpl, r) {
     .replace(/\{tier\}/g, String(r.tier || ''))
     .replace(/\{kadar\}/g, r.kadar != null ? ('RM ' + Number(r.kadar).toFixed(2)) : '');
   const paras = esc(filled).split(/\n\s*\n/).map(p => `<p style="font-size:14px; color:#374151; line-height:1.7; margin:0 0 14px;">${p.replace(/\n/g, '<br>')}</p>`).join('');
+  const posterHtml = withPoster
+    ? `<a href="https://www.10camp.com/loyalty.html" style="display:block; margin:18px 0;"><img src="${POSTER_URL}" alt="Claim point anda sebelum 31 Disember 2026 — 10 CAMP Rewards" style="width:100%; display:block; border-radius:8px; border:1px solid #E5E7EB;"></a>`
+    : '';
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; max-width:480px; margin:0 auto; padding:24px;">
     <div style="text-align:center; font-weight:800; font-size:20px; color:#CD7C32; letter-spacing:1px;">10 CAMP REWARDS</div>
     <div style="margin-top:18px;">${paras}</div>
+    ${posterHtml}
     <div style="text-align:center; margin:20px 0;">
       <a href="https://www.10camp.com/loyalty.html" style="display:inline-block; background:#CD7C32; color:#101010; font-weight:800; font-size:14px; text-decoration:none; padding:12px 26px; border-radius:10px;">Semak Mata &amp; Barang Boleh Tebus</a>
     </div>
@@ -88,7 +96,7 @@ exports.handler = async (event) => {
   let sent = 0; const failures = [];
   for (let i = 0; i < recipients.length; i += 100) {
     const chunk = recipients.slice(i, i + 100).map(r => ({
-      from: FROM_ADDR, to: r.email, subject: subject, html: renderEmail(bodyTpl, r)
+      from: FROM_ADDR, to: r.email, subject: subject, html: renderEmail(bodyTpl, r, body.with_poster !== false)
     }));
     try {
       const res = await fetch('https://api.resend.com/emails/batch', {

@@ -42634,6 +42634,7 @@ window.__mbOpen = function(){
  + '<input id="mbSubject" style="width:100%; padding:9px 12px; border:1px solid #DDD; border-radius:8px; font-size:13px; font-family:inherit; margin:4px 0 10px;" value="">'
  + '<label style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase;">Isi email — token: {name} {mata} {tier} {kadar}</label>'
  + '<textarea id="mbBody" rows="9" style="width:100%; padding:10px 12px; border:1px solid #DDD; border-radius:8px; font-size:13px; font-family:inherit; margin-top:4px; resize:vertical;"></textarea>'
+ + '<label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; margin-top:8px; cursor:pointer;"><input id="mbPoster" type="checkbox" checked style="width:16px; height:16px; flex:0 0 auto; margin:0;"> Sertakan poster kempen "Claim Point" dalam email</label>'
  + '<div style="font-size:11px; color:#9CA3AF; margin:4px 0 12px;">Email akan dibalut template berjenama 10 CAMP + butang ke Loyalty Portal secara automatik.</div>'
  + '<div style="display:flex; gap:8px; justify-content:flex-end;">'
  + '<button onclick="if(confirm(\'Tutup tanpa hantar?\')) document.getElementById(\'mbOverlay\').remove()" style="background:#F3F4F6; border:0; border-radius:8px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;">Batal</button>'
@@ -42674,14 +42675,18 @@ window.__mbPreview = function(){
  const bodyTpl = (document.getElementById('mbBody') || {}).value || '';
  if(!subject.trim() || !bodyTpl.trim()){ if(typeof showToast === 'function') showToast('Subjek & isi email wajib diisi.', 'warn'); return; }
  st.subject = subject; st.body = bodyTpl; st.chosen = chosen;
+ st.withPoster = !!((document.getElementById('mbPoster') || { checked: true }).checked); // p1_1133
  const s = chosen[0];
  // Render pratonton SAMA macam server (token + perenggan) supaya apa yg staf nampak = apa yg dihantar
  const filled = bodyTpl.replace(/\{name\}/g, String(s.name || 'kawan').split(' ')[0]).replace(/\{mata\}/g, s.mata).replace(/\{tier\}/g, s.tier).replace(/\{kadar\}/g, 'RM ' + Number(s.kadar).toFixed(2));
  const escP = (x) => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
  const paras = escP(filled).split(/\n\s*\n/).map(p => '<p style="font-size:14px; color:#374151; line-height:1.7; margin:0 0 14px;">' + p.replace(/\n/g, '<br>') + '</p>').join('');
+ // p1_1133 — poster dlm pratonton MESTI sama dgn apa server hantar (URL sama)
+ const posterPrev = st.withPoster ? '<a style="display:block; margin:18px 0;"><img src="https://www.10camp.com/assets/promo/poster-claim-point-2026.png" alt="Poster Claim Point" style="width:100%; display:block; border-radius:8px; border:1px solid #E5E7EB;"></a>' : '';
  const emailHtml = '<div style="font-family:-apple-system,sans-serif; max-width:480px; margin:0 auto; padding:24px;">'
  + '<div style="text-align:center; font-weight:800; font-size:20px; color:#CD7C32; letter-spacing:1px;">10 CAMP REWARDS</div>'
  + '<div style="margin-top:18px;">' + paras + '</div>'
+ + posterPrev
  + '<div style="text-align:center; margin:20px 0;"><a href="#" style="display:inline-block; background:#CD7C32; color:#101010; font-weight:800; font-size:14px; text-decoration:none; padding:12px 26px; border-radius:10px;">Semak Mata &amp; Barang Boleh Tebus</a></div>'
  + '<p style="font-size:11px; color:#9CA3AF; margin-top:18px; line-height:1.6;">10 CAMP &middot; Cyberjaya &middot; admin@10camp.com<br>Tak mahu email macam ni lagi? Balas email ini dan tulis "berhenti".</p></div>';
  const old = document.getElementById('mbPrevOverlay'); if(old) old.remove();
@@ -42706,7 +42711,7 @@ window.__mbSend = async function(){
  const res = await fetch('/.netlify/functions/loyalty-email-blast', {
  method: 'POST',
  headers: window.__authHeaderSync({ 'Content-Type': 'application/json' }),
- body: JSON.stringify({ subject: st.subject, body: st.body, recipients: st.chosen.map(t => ({ email: t.email, name: t.name, mata: t.mata, tier: t.tier, kadar: t.kadar })) })
+ body: JSON.stringify({ subject: st.subject, body: st.body, with_poster: st.withPoster !== false, recipients: st.chosen.map(t => ({ email: t.email, name: t.name, mata: t.mata, tier: t.tier, kadar: t.kadar })) })
  });
  const j = await res.json().catch(() => ({}));
  if(res.ok && j.ok){
