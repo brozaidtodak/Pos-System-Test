@@ -5759,7 +5759,7 @@
  <div class="admin-card" style="padding:14px; margin-bottom:14px;">
  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; align-items:end;">
  <div style="grid-column: 1 / -1;"><label class="small-lbl" data-i18n="ao_search_label">Cari (customer / sku / phone)</label><input type="text" id="aoSearch" class="login-input" placeholder="zaid / BD005 / 60123..." style="margin:0;" oninput="window.renderAllOrders && window.renderAllOrders()"></div>
- <div><label class="small-lbl" data-i18n="ao_channel">Channel</label>
+ <div style="display:none;"><label class="small-lbl" data-i18n="ao_channel">Channel</label>
  <select id="aoChannel" class="login-input" style="margin:0;" onchange="window.renderAllOrders && window.renderAllOrders()">
  <option value="" data-i18n="ao_opt_all">Semua</option>
  <option value="walkin" data-i18n="ao_ch_walkin">POS Cashier (kedai)</option>
@@ -5781,7 +5781,7 @@
  <option value="Refunded" data-i18n="ao_st_refunded">Refunded</option>
  </select>
  </div>
- <div><label class="small-lbl" data-i18n="ao_sort">Susun</label>
+ <div style="display:none;"><label class="small-lbl" data-i18n="ao_sort">Susun</label>
  <select id="aoSort" class="login-input" style="margin:0;" onchange="window.renderAllOrders && window.renderAllOrders()">
  <option value="id_desc" selected data-i18n="ao_sort_id_desc">Order # menurun (terbaru dulu)</option>
  <option value="id_asc" data-i18n="ao_sort_id_asc">Order # menaik (#0000 ke atas)</option>
@@ -5789,7 +5789,7 @@
  <option value="date_asc" data-i18n="ao_sort_date_asc">Tarikh terlama dulu</option>
  </select>
  </div>
- <div><label class="small-lbl" data-i18n="ao_period">Tempoh</label>
+ <div style="display:none;"><label class="small-lbl" data-i18n="ao_period">Tempoh</label>
  <select id="aoPeriod" class="login-input" style="margin:0;" onchange="window.__aoPeriodChange && window.__aoPeriodChange()">
  <option value="today" data-i18n="ao_pd_today">Hari Ini</option>
  <option value="yesterday" data-i18n="ao_pd_yesterday">Semalam</option>
@@ -5813,6 +5813,7 @@
  <button onclick="window.openAddOnlineOrder()" class="btn-brand-dark"><i data-lucide="globe" style="width:14px;height:14px;"></i> <span data-i18n="ao_add_online">Tambah Online Order</span></button>
  <button onclick="window.__aoPrintPickingList && window.__aoPrintPickingList()" class="btn-brand-secondary" title="Cetak senarai barang untuk semua order Perlu Pack (ikut filter semasa), disusun ikut lokasi rak"><i data-lucide="clipboard-list" style="width:14px;height:14px;"></i> <span data-i18n="ao_print_pick">Cetak Senarai Pick</span></button>
  <button id="aoRefreshBtn" onclick="window.__aoRefresh && window.__aoRefresh()" class="btn-brand-secondary" title="Tarik order terkini dari pangkalan data (termasuk order baru dari Shopee/TikTok)"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> <span data-i18n="ao_refresh">Refresh</span></button>
+ <button onclick="window.__aoResetFilters && window.__aoResetFilters()" class="btn-brand-secondary" title="Kosongkan semua tapisan (cari, channel, status, tempoh) — kembali ke Semua"><i data-lucide="filter-x" style="width:14px;height:14px;"></i> <span data-i18n="ao_reset">Reset Filter</span></button>
  <button onclick="window.__aoExportCsv && window.__aoExportCsv(false)" class="btn-brand-secondary" title="Export semua order yang ditapis sekarang ke fail CSV (Excel)"><i data-lucide="download" style="width:14px;height:14px;"></i> <span data-i18n="ao_export">Export CSV</span></button>
  <button onclick="window.__aoExportReceipts && window.__aoExportReceipts()" class="btn-brand-secondary" title="Export hanya order yang ADA resit / bukti bayar (gambar). Sertakan link resit."><i data-lucide="receipt" style="width:14px;height:14px;"></i> <span data-i18n="ao_export_receipts">Export Resit</span></button>
  <span style="flex:1;"></span>
@@ -5849,10 +5850,33 @@
  <thead style="background:var(--card-bg); position:sticky; top:0; z-index:5;">
  <tr>
  <th style="text-align:center; padding:10px; width:36px;"><input type="checkbox" id="aoSelectAll" onchange="window.__aoSelectAllPage && window.__aoSelectAllPage(this.checked)" title="Pilih semua dalam halaman ini" style="width:15px; height:15px; cursor:pointer;"></th>
- <th style="text-align:left; padding:10px; cursor:pointer; user-select:none;" onclick="window.__aoSortBy && window.__aoSortBy('date')" title="Klik untuk susun ikut tarikh / masa"><span data-i18n="ao_th_date">Tarikh</span><span id="aoSortDateArrow" style="color:var(--primary);"></span></th>
+ <th style="text-align:left; padding:8px 10px; user-select:none; min-width:118px;">
+   <span onclick="window.__aoSortBy && window.__aoSortBy('date')" title="Klik untuk susun ikut tarikh / masa" style="cursor:pointer;"><span data-i18n="ao_th_date">Tarikh</span><span id="aoSortDateArrow" style="color:var(--primary);"></span></span>
+   <select id="aoPeriodHdr" onclick="event.stopPropagation()" onchange="var m=document.getElementById('aoPeriod'); if(m){m.value=this.value;} window.__aoPeriodChange&&window.__aoPeriodChange();" title="Tapis ikut tempoh" style="display:block; margin-top:4px; width:100%; font-size:11px; padding:3px 5px; border:1px solid var(--border-color,#E5E7EB); border-radius:5px; background:#fff; color:#374151; font-weight:600; cursor:pointer;">
+     <option value="today" data-i18n="ao_pd_today">Hari Ini</option>
+     <option value="yesterday" data-i18n="ao_pd_yesterday">Semalam</option>
+     <option value="7" data-i18n="ao_pd_7">7 hari</option>
+     <option value="30" data-i18n="ao_pd_30">30 hari</option>
+     <option value="90" data-i18n="ao_pd_90">90 hari</option>
+     <option value="365" data-i18n="ao_pd_12mo">12 bulan</option>
+     <option value="custom" data-i18n="ao_pd_custom">Julat tarikh...</option>
+     <option value="all" selected data-i18n="ao_opt_all">Semua</option>
+   </select>
+ </th>
  <th style="text-align:left; padding:10px; cursor:pointer; user-select:none;" onclick="window.__aoSortBy && window.__aoSortBy('id')" title="Klik untuk susun ikut nombor order"><span data-i18n="ao_th_order">Order</span><span id="aoSortIdArrow" style="color:var(--primary);"></span></th>
  <th style="text-align:left; padding:10px;" data-i18n="ao_th_customer">Pelanggan</th>
- <th style="text-align:left; padding:10px;" data-i18n="ao_th_channel">Channel</th>
+ <th style="text-align:left; padding:8px 10px; min-width:118px;">
+   <span data-i18n="ao_th_channel">Channel</span>
+   <select id="aoChannelHdr" onchange="var m=document.getElementById('aoChannel'); if(m){m.value=this.value;} window.renderAllOrders&&window.renderAllOrders();" title="Tapis ikut channel" style="display:block; margin-top:4px; width:100%; font-size:11px; padding:3px 5px; border:1px solid var(--border-color,#E5E7EB); border-radius:5px; background:#fff; color:#374151; font-weight:600; cursor:pointer;">
+     <option value="" data-i18n="ao_opt_all">Semua</option>
+     <option value="walkin" data-i18n="ao_ch_walkin">POS Cashier</option>
+     <option value="online" data-i18n="ao_ch_online">Online (semua)</option>
+     <option value="WhatsApp">WhatsApp</option>
+     <option value="Shopee">Shopee</option>
+     <option value="TikTok Shop">TikTok Shop</option>
+     <option value="Web EasyStore">Web EasyStore</option>
+   </select>
+ </th>
  <th style="text-align:left; padding:10px;" data-i18n="ao_th_method">Kaedah</th>
  <th style="text-align:left; padding:10px;" data-i18n="ao_th_status">Status</th>
  <th style="text-align:right; padding:10px;" data-i18n="ao_th_items">Items</th>
@@ -13258,7 +13282,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1136"></script>
+ <script src="app.js?v=1137"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

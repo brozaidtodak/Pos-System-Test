@@ -31964,6 +31964,17 @@ window.__aoPeriodChange = function(){
  window.__aoPage = 1;
  window.renderAllOrders && window.renderAllOrders();
 };
+// p1_1172 — Reset semua tapisan (cari/channel/status/tempoh/susun) → kembali ke Semua. Hide Test tak diubah.
+window.__aoResetFilters = function(){
+ const set = (id, v) => { const e = document.getElementById(id); if(e) e.value = v; };
+ set('aoSearch',''); set('aoChannel',''); set('aoStatus',''); set('aoSort','id_desc');
+ set('aoPeriod','all'); set('aoDateFrom',''); set('aoDateTo','');
+ set('aoChannelHdr',''); set('aoPeriodHdr','all');
+ const wrap = document.getElementById('aoCustomRange'); if(wrap) wrap.style.display='none';
+ window.__aoPage = 1;
+ window.renderAllOrders && window.renderAllOrders();
+ if(window.showToast) showToast('Tapisan direset.', 'success');
+};
 // p1_328 — tukar halaman pagination + scroll ke atas jadual
 window.__aoGoPage = function(target){
  window.__aoPage = target;
@@ -32268,6 +32279,8 @@ window.renderAllOrders = function() {
  const channel = document.getElementById('aoChannel')?.value || '';
  const status = document.getElementById('aoStatus')?.value || '';
  const hideTest = !!document.getElementById('aoHideTest')?.checked;
+ // p1_1172 — segerak dropdown header (Channel & Tarikh) dgn state toolbar tersembunyi
+ try { const _chH=document.getElementById('aoChannelHdr'); if(_chH) _chH.value=channel; const _pd=document.getElementById('aoPeriod'), _pdH=document.getElementById('aoPeriodHdr'); if(_pd&&_pdH) _pdH.value=_pd.value; } catch(e){}
  const ONLINE_CHANNELS = ['shopee', 'tiktok', 'whatsapp', 'easystore'];
  let filtered = window.__aoGetFiltered();
 
@@ -32377,7 +32390,7 @@ window.renderAllOrders = function() {
  })()}
  <td style="padding:10px; white-space:nowrap;">
  <button onclick="window.__ppEditSale && window.__ppEditSale(${s.id})" style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-300,#FDBA74); color:var(--primary-800,#7C4A1A); padding:4px 10px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700;"><i data-lucide="edit-3" style="width:10px;height:10px;vertical-align:-1px;"></i> Edit</button>
- <button onclick="window.__aoToggleTest && window.__aoToggleTest(${s.id}, ${s.is_test ? 'false' : 'true'})" title="${s.is_test ? 'Tanda sebagai jualan SEBENAR (masuk balik komisen/laporan)' : 'Tanda sebagai TEST order — tak masuk komisen staff & laporan'}" style="display:inline-flex; align-items:center; gap:5px; width:auto; white-space:nowrap; background:${s.is_test ? '#E7C66A' : '#fff'}; border:1px solid ${s.is_test ? '#CE9420' : '#E5E7EB'}; color:${s.is_test ? '#5E3F0C' : '#6B7280'}; padding:4px 12px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700; margin-left:5px;"><i data-lucide="flask-conical" style="width:11px;height:11px;"></i> ${s.is_test ? 'Marked as test order' : 'Identify as test order'}</button>
+ <button onclick="window.__aoToggleTest && window.__aoToggleTest(${s.id}, ${s.is_test ? 'false' : 'true'})" title="${s.is_test ? 'Order TEST — klik untuk tanda jualan SEBENAR (masuk balik komisen/laporan)' : 'Tanda sebagai TEST order — tak masuk komisen staff & laporan'}" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:26px; background:${s.is_test ? '#E7C66A' : '#fff'}; border:1px solid ${s.is_test ? '#CE9420' : '#E5E7EB'}; color:${s.is_test ? '#5E3F0C' : '#9CA3AF'}; border-radius:5px; cursor:pointer; margin-left:5px;"><i data-lucide="flask-conical" style="width:13px;height:13px;"></i></button>
  </td>
  </tr>`;
  }).join('');
@@ -38799,6 +38812,7 @@ window.I18N = {
  ao_add_online: { bm: 'Tambah Online Order', en: 'Add Online Order' },
  ao_print_pick: { bm: 'Cetak Senarai Pick', en: 'Print Pick List' },
  ao_refresh: { bm: 'Muat Semula', en: 'Refresh' },
+ ao_reset: { bm: 'Reset Filter', en: 'Reset Filter' },
  ao_export: { bm: 'Eksport CSV', en: 'Export CSV' },
  ao_export_receipts: { bm: 'Export Resit', en: 'Export Receipts' },
  ao_hide_test: { bm: 'Sorok Ujian', en: 'Hide Test' },
