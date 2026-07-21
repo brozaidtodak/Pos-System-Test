@@ -596,14 +596,17 @@ window.__mktDeleteContent = async function(id){
 
 // =================== 2b) TIKTOK LIVE (p1_1111) ===================
 // Ariff (atau mana-mana staf) log masa sesi LIVE TikTok → sistem kira order channel
-// "TikTok Shop" yang masuk DALAM tempoh tu → komisen 5% dari MARGIN (SKIM — rasmi Bos/Aliff).
+// "TikTok Shop" yang masuk DALAM tempoh tu → komisen 3% dari JUALAN/GMV (SKIM — rasmi Bos/Aliff).
 window.__liveSessCache = [];
 window.__liveLoadSess = async function(){ try { const r = await db.from('live_sessions').select('*').order('session_date',{ascending:false}).order('start_at',{ascending:false}).limit(120); window.__liveSessCache = r.data||[]; } catch(e){ window.__liveSessCache=[]; } return window.__liveSessCache; };
-window.__liveKomisenPct = 5;
+// p1_1167 (Zaid 21 Jul) — komisen live = 3% ATAS JUALAN (GMV), turun dari 5%. Model "5% atas margin"
+// di-PARK (draf masa depan). Kadar disimpan di sini + app.js guna (window.__liveKomisenPct||3).
+window.__liveKomisenPct = 3; // 3% ATAS JUALAN (GMV) — bukan margin
 // p1_1165 — Pilihan A (Zaid): sistem padan order ikut tetingkap masa TAPI terlebih kira — ada order
 // TikTok Shop dlm tempoh live yang BUKAN dari live (customer beli via carian/video lain). TikTok tahu
 // tepat, kita teka. FIX: pulangkan SENARAI order dipadan; komisen kira dari order DISERTAKAN sahaja
 // (excluded_order_ids = order yg staf/pengurus untick sbb bukan dari live). Rujuk GMV TikTok utk untick.
+// margin masih dikira di sini utk rujukan/draf masa depan tapi TIDAK dipakai utk komisen.
 window.__liveCalc = function(sess){
  const out = { orders:0, jualan:0, margin:0, adaKosSemua:true, list:[] };
  if(typeof salesHistory==='undefined' || !Array.isArray(salesHistory)) return out;
@@ -650,6 +653,37 @@ window.__liveToggleOrder = async function(sessId, orderId){
   if(window.showToast) showToast(i===-1?'Order dikeluarkan dari komisen live.':'Order dimasukkan semula.', 'success');
  } catch(e){ if(window.showToast) showToast('Gagal kemas kini: '+e.message, 'error'); }
 };
+// p1_1166 — Angka Rasmi TikTok (Zaid/Ariff): padan-masa & attribution TikTok takrifan berbeza (kadang
+// terlebih, kadang terkurang) — takkan padan 100%. Sumber kebenaran = "Live GMV" rasmi TikTok (settle lps
+// tengah malam). Bila diisi (live_sales_rm), komisen dikira dari GMV rasmi × kadar margin dari order dipadan
+// (fallback margin default kalau tiada order). Kosong = guna auto padan-masa.
+// p1_1167 — komisen = 3% ATAS JUALAN (GMV). GMV = angka rasmi TikTok (kalau diisi) ATAU jualan padan-masa.
+window.__liveKom = function(x, c){
+ const pct = (window.__liveKomisenPct||3)/100;
+ let off = x.live_sales_rm;
+ off = (off!=null && off!=='' && !isNaN(parseFloat(off))) ? parseFloat(off) : null;
+ const gmv = (off!=null) ? off : (c ? c.jualan : 0);
+ return { gmv: gmv, kom: Math.round(gmv*pct*100)/100, rasmi: (off!=null) };
+};
+// p1_1166 — simpan/padam angka rasmi TikTok (guna kolum live_sales_rm sedia ada)
+window.__liveSetOfficial = async function(sessId, clear){
+ const sess = (window.__liveSessCache||[]).find(function(s){ return String(s.id)===String(sessId); });
+ if(!sess) return;
+ let val = null;
+ if(!clear){
+  const el = document.getElementById('lvOff-'+sessId);
+  const raw = el ? String(el.value).trim() : '';
+  if(raw!==''){ const n = parseFloat(raw); if(isNaN(n) || n<0){ if(window.showToast) showToast('Angka tak sah.','error'); return; } val = n; }
+ }
+ try {
+  const r = await db.from('live_sessions').update({ live_sales_rm: val }).eq('id', sessId);
+  if(r.error) throw r.error;
+  sess.live_sales_rm = val;
+  window.__liveKeepOpen = sessId; // buka semula panel selepas render
+  window.renderTikTokLive();
+  if(window.showToast) showToast(val==null?'Kembali ke kiraan auto padan-masa.':'Angka rasmi TikTok disimpan — komisen dikira semula.','success');
+ } catch(e){ if(window.showToast) showToast('Gagal simpan: '+e.message,'error'); }
+};
 window.__liveSaveSess = async function(){
  const g = function(id){ const el=document.getElementById(id); return el?el.value:''; };
  const tarikh = g('lvDate'), mula = g('lvStart'), tamat = g('lvEnd');
@@ -685,7 +719,7 @@ window.renderTikTokLive = async function(){
  const staffOpts = ((typeof authUsers!=='undefined'&&authUsers)||[]).filter(function(x){return (x.dept||'').indexOf('External')===-1;}).map(function(x){ return '<option value="'+E(x.name)+'"'+(x.name===(u.name||'')?' selected':'')+'>'+E(x.name)+'</option>'; }).join('');
  const form = '<div class="admin-card" style="padding:16px;margin-bottom:16px;">'
   + '<strong style="font-size:13.5px;"><i data-lucide="radio" style="width:15px;height:15px;vertical-align:-2px;color:var(--primary);"></i> Rekod Sesi LIVE</strong>'
-  + '<p style="font-size:11.5px;color:var(--text-muted);margin:4px 0 12px;">Lepas habis live, masukkan masa mula & tamat. Sistem sendiri kira order TikTok Shop yang masuk DALAM tempoh tu dan komisen '+window.__liveKomisenPct+'% dari margin. Live lepas tengah malam? Sistem faham (tamat < mula = esok).</p>'
+  + '<p style="font-size:11.5px;color:var(--text-muted);margin:4px 0 12px;">Lepas habis live, masukkan masa mula & tamat. Sistem sendiri kira order TikTok Shop yang masuk DALAM tempoh tu dan komisen '+window.__liveKomisenPct+'% dari jualan (GMV). Live lepas tengah malam? Sistem faham (tamat < mula = esok).</p>'
   + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:end;">'
   + '<div><label style="font-size:10.5px;font-weight:700;color:#374151;">Staf</label><select id="lvStaff" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:7px;font-size:12.5px;">'+staffOpts+'</select></div>'
   + '<div><label style="font-size:10.5px;font-weight:700;color:#374151;">Tarikh</label><input type="date" id="lvDate" style="width:100%;padding:8px;border:1px solid var(--border-color);border-radius:7px;font-size:12.5px;"></div>'
@@ -700,15 +734,16 @@ window.renderTikTokLive = async function(){
   const boleh = boss || namaHost === (u.name||'');
   const adaMasa = !!(x.start_at && x.end_at);
   let masa, ordersTxt, jualanTxt, komTxt;
+  let cCalc = null;
   if(adaMasa){
-   const c = window.__liveCalc(x);
-   const kom = Math.round(c.margin * (window.__liveKomisenPct/100) * 100)/100;
-   if(boleh) totKom += kom;
+   cCalc = window.__liveCalc(x);
+   const k = window.__liveKom(x, cCalc);   // p1_1166 — komisen auto ATAU dari angka rasmi TikTok
+   if(boleh) totKom += k.kom;
    const d0 = new Date(x.start_at), d1 = new Date(x.end_at);
    masa = d0.toLocaleDateString('ms-MY',{day:'numeric',month:'short'})+' '+d0.toLocaleTimeString('ms-MY',{hour:'2-digit',minute:'2-digit'})+' – '+d1.toLocaleTimeString('ms-MY',{hour:'2-digit',minute:'2-digit'});
-   ordersTxt = String(c.orders);
-   jualanTxt = 'RM '+Math.round(c.jualan).toLocaleString();
-   komTxt = boleh ? ('RM '+kom.toFixed(2)+(c.adaKosSemua?'':' *')) : '—';
+   ordersTxt = String(cCalc.orders);
+   jualanTxt = 'RM '+Math.round(k.gmv).toLocaleString() + (k.rasmi?' <span title="Angka rasmi TikTok Live GMV" style="display:inline-block;font-size:9px;font-weight:800;color:#345E43;background:#E7F0E9;border-radius:4px;padding:1px 5px;vertical-align:1px;">RASMI</span>':'');
+   komTxt = boleh ? ('RM '+k.kom.toFixed(2)) : '—';
   } else {
    // rekod lama (import Jun / Kaedah B manual): tiada masa mula-tamat, GMV diisi tangan
    masa = (x.session_date ? new Date(x.session_date+'T00:00').toLocaleDateString('ms-MY',{day:'numeric',month:'short'}) : '?')+' <span style="font-size:10px;color:#9CA3AF;">(rekod lama — GMV manual, tiada masa)</span>';
@@ -717,11 +752,32 @@ window.renderTikTokLive = async function(){
    komTxt = '—';
   }
   const nota = x.note || x.notes;
-  // p1_1165 — baris order boleh-buka (Pilihan A): tick/untick order dari komisen live
+  // p1_1165/p1_1166 — panel boleh-buka: kotak Angka Rasmi TikTok + senarai order (tick/untick)
   let detailRow = '';
   if(adaMasa){
-   const c2 = window.__liveCalc(x);
+   const c2 = cCalc || window.__liveCalc(x);
+   const adaRasmi = (x.live_sales_rm!=null && x.live_sales_rm!=='' && !isNaN(parseFloat(x.live_sales_rm)));
+   // --- kotak Angka Rasmi TikTok (hanya utk yang boleh urus) ---
+   let officialBox = '';
+   if(boleh){
+    officialBox = '<div style="background:#fff;border:1px solid var(--primary-200,#FED7AA);border-radius:9px;padding:11px 13px;margin:4px 0 12px;">'
+     + '<div style="font-size:11.5px;font-weight:800;color:var(--primary-800,#7C4A1A);margin-bottom:4px;"><i data-lucide="badge-check" style="width:13px;height:13px;vertical-align:-2px;"></i> Angka Rasmi TikTok — Live GMV</div>'
+     + '<div style="font-size:10.5px;color:#6B7280;margin-bottom:8px;line-height:1.5;">Baca nilai <b>Live GMV</b> di TikTok Seller → Data Analysis → Live (settle lepas tengah malam). Bila diisi, komisen '+window.__liveKomisenPct+'% dikira dari angka RASMI ni — bukan padan-masa. Kosongkan &amp; Simpan = kembali ke auto.</div>'
+     + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+     + '<span style="font-size:12.5px;color:#6B7280;font-weight:700;">RM</span>'
+     + '<input id="lvOff-'+x.id+'" type="number" step="0.01" min="0" value="'+(adaRasmi?parseFloat(x.live_sales_rm):'')+'" placeholder="cth: 1000.00" style="flex:1;min-width:120px;max-width:170px;padding:8px 10px;border:1px solid var(--border-color);border-radius:7px;font-size:13px;">'
+     + '<button onclick="window.__liveSetOfficial('+x.id+')" style="padding:8px 15px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">Simpan</button>'
+     + (adaRasmi ? '<button onclick="window.__liveSetOfficial('+x.id+',true)" style="padding:8px 12px;background:none;border:1px solid var(--border-color);color:#6B7280;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">Guna Auto</button>' : '')
+     + '</div>'
+     + (adaRasmi ? '<div style="font-size:11px;color:#345E43;margin-top:8px;font-weight:700;">✔ Guna angka rasmi RM '+parseFloat(x.live_sales_rm).toFixed(2)+' &middot; komisen '+window.__liveKomisenPct+'% = RM '+window.__liveKom(x,c2).kom.toFixed(2)+'</div>' : '')
+     + '</div>';
+   }
+   // --- senarai order (rujukan / tick-untick) ---
+   let orderBlock = '';
    if(c2.list.length){
+    const hdr = adaRasmi
+     ? 'Order TikTok Shop dalam tempoh live (rujukan sahaja — komisen ikut angka rasmi di atas):'
+     : 'Order TikTok Shop dalam tempoh live — untick yang BUKAN dari live:';
     const orderRows = c2.list.map(function(o){
      const tm = new Date(o.at).toLocaleTimeString('ms-MY',{hour:'2-digit',minute:'2-digit'});
      const cb = boleh ? '<input type="checkbox" '+(o.excluded?'':'checked')+' onclick="window.__liveToggleOrder('+x.id+','+o.id+')" style="width:15px;height:15px;flex:0 0 auto;margin:0;accent-color:var(--primary);cursor:pointer;">' : (o.excluded?'✗':'✓');
@@ -729,19 +785,22 @@ window.renderTikTokLive = async function(){
       + '<span style="flex:0 0 auto;">'+cb+'</span>'
       + '<span style="flex:1;color:#6B7280;">#'+o.id+' &middot; '+tm+' &middot; '+o.nItem+' item</span>'
       + '<span style="font-weight:700;'+(o.excluded?'text-decoration:line-through;':'')+'">RM '+o.jualan.toFixed(2)+'</span>'
-      + '<span style="width:74px;text-align:right;color:#9CA3AF;font-size:10.5px;">komisen '+(o.excluded?'—':('RM '+(o.margin*window.__liveKomisenPct/100).toFixed(2)))+'</span>'
+      + '<span style="width:74px;text-align:right;color:#9CA3AF;font-size:10.5px;">'+(adaRasmi?'':('komisen '+(o.excluded?'—':('RM '+(o.jualan*(window.__liveKomisenPct||3)/100).toFixed(2)))))+'</span>'
       + '</div>';
     }).join('');
-    detailRow = '<tr id="liveDet-'+x.id+'" style="display:none;background:#FBFAF7;"><td colspan="6" style="padding:6px 14px 12px;">'
-     + '<div style="font-size:11px;color:#6B7280;margin:4px 0 6px;font-weight:700;">Order TikTok Shop dalam tempoh live — untick yang BUKAN dari live (rujuk GMV di TikTok Data Analysis):</div>'
-     + orderRows + '</td></tr>';
+    orderBlock = '<div style="font-size:11px;color:#6B7280;margin:2px 0 6px;font-weight:700;">'+hdr+'</div>'+orderRows;
+   } else {
+    orderBlock = '<div style="font-size:11px;color:#9CA3AF;padding:6px 0;">Tiada order TikTok Shop dipadan dalam tempoh masa ni'+(adaRasmi?' — komisen guna angka rasmi + margin anggaran.':'.')+'</div>';
    }
+   const openNow = (window.__liveKeepOpen!=null && String(window.__liveKeepOpen)===String(x.id));
+   detailRow = '<tr id="liveDet-'+x.id+'" style="display:'+(openNow?'table-row':'none')+';background:#FBFAF7;"><td colspan="6" style="padding:8px 14px 12px;">'
+    + officialBox + orderBlock + '</td></tr>';
   }
   const canExpand = adaMasa && detailRow;
   return '<tr style="border-bottom:1px solid #F3F4F6;'+(adaMasa?'':'opacity:.7;')+'">'
    + '<td style="padding:8px 10px;font-size:12px;font-weight:700;">'+E(namaHost)+'</td>'
    + '<td style="padding:8px 10px;font-size:12px;">'+masa+(nota?('<div style="font-size:10.5px;color:#9CA3AF;">'+E(String(nota).slice(0,50))+'</div>'):'')+'</td>'
-   + '<td style="padding:8px 10px;text-align:right;font-size:12px;">'+ordersTxt+(canExpand?(' <button onclick="var d=document.getElementById(\'liveDet-'+x.id+'\');d.style.display=d.style.display===\'none\'?\'table-row\':\'none\';this.textContent=d.style.display===\'none\'?\'semak\':\'tutup\';" style="margin-left:4px;background:none;border:1px solid var(--primary-300,#FDBA74);color:var(--primary-800,#7C4A1A);border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;">semak</button>'):'')+'</td>'
+   + '<td style="padding:8px 10px;text-align:right;font-size:12px;">'+ordersTxt+(canExpand?(' <button onclick="var d=document.getElementById(\'liveDet-'+x.id+'\');d.style.display=d.style.display===\'none\'?\'table-row\':\'none\';this.textContent=d.style.display===\'none\'?\'semak\':\'tutup\';" style="margin-left:4px;background:none;border:1px solid var(--primary-300,#FDBA74);color:var(--primary-800,#7C4A1A);border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;">'+((window.__liveKeepOpen!=null && String(window.__liveKeepOpen)===String(x.id))?'tutup':'semak')+'</button>'):'')+'</td>'
    + '<td style="padding:8px 10px;text-align:right;font-size:12px;">'+jualanTxt+'</td>'
    + '<td style="padding:8px 10px;text-align:right;font-size:12px;font-weight:800;color:'+(boleh?'#345E43':'#9CA3AF')+';">'+komTxt+'</td>'
    + '<td style="padding:8px 10px;text-align:center;">'+((boss||x.created_by===(u.name||''))?('<button onclick="window.__liveDelSess('+x.id+')" style="background:none;border:1px solid #E0B3A9;color:#7C2A20;padding:3px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:700;">Padam</button>'):'')+'</td>'
@@ -749,13 +808,14 @@ window.renderTikTokLive = async function(){
  }).join('');
  const table = sess.length
   ? '<div class="admin-card" style="padding:16px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong style="font-size:13px;">Sesi LIVE ('+sess.length+')</strong>'+((boss||sess.some(function(x){return (x.host_name||x.staff_name)===(u.name||'');}))?('<span style="font-size:12px;font-weight:800;color:#345E43;">Jumlah komisen anggaran: RM '+totKom.toFixed(2)+'</span>'):'')+'</div>'
-    + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Staf</th><th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Masa LIVE</th><th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Order TikTok</th><th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Jualan</th><th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Komisen 5% margin</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    + '<p style="font-size:10.5px;color:#9CA3AF;margin:8px 0 0;">Komisen = '+window.__liveKomisenPct+'% dari MARGIN (jualan − kos) order channel TikTok Shop dalam tempoh live. Tanda * = ada item tanpa kos (margin dikira kurang). SKIM ANGGARAN — bayaran rasmi keputusan Bos / Aliff. Nota: order TikTok sync masuk POS berkala — angka mungkin ambil masa sikit untuk penuh.</p></div>'
+    + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#FAFAFA;"><th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Staf</th><th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Masa LIVE</th><th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Order TikTok</th><th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Jualan</th><th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:#9CA3AF;">Komisen '+window.__liveKomisenPct+'% jualan</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<p style="font-size:10.5px;color:#9CA3AF;margin:8px 0 0;">Komisen = '+window.__liveKomisenPct+'% dari JUALAN (GMV) order TikTok Shop dalam tempoh live (anggaran padan-masa). Tekan <b>semak</b> untuk untick order bukan-live, atau isi <b>Angka Rasmi TikTok</b> (Live GMV rasmi — tag RASMI). Komisen bulan ini dibayar pada gaji bulan depan. SKIM ANGGARAN — bayaran rasmi keputusan Bos / Aliff.</p></div>'
   : '<div class="admin-card" style="padding:24px;text-align:center;color:#9CA3AF;font-size:12.5px;">Belum ada sesi direkod. Lepas habis live TikTok, rekod masa kat atas — komisen dikira automatik.</div>';
  body.innerHTML = '<div class="rp-wrap">'
-  + '<div class="rp-header"><div><h2 class="rp-title"><i data-lucide="radio" style="width:22px;height:22px;color:var(--primary);"></i> TikTok LIVE</h2><p class="rp-subtitle">Rekod masa sesi live — order TikTok Shop dalam tempoh tu dikira, komisen '+window.__liveKomisenPct+'% dari margin untuk host.</p></div></div>'
+  + '<div class="rp-header"><div><h2 class="rp-title"><i data-lucide="radio" style="width:22px;height:22px;color:var(--primary);"></i> TikTok LIVE</h2><p class="rp-subtitle">Rekod masa sesi live — order TikTok Shop dalam tempoh tu dikira, komisen '+window.__liveKomisenPct+'% dari jualan (GMV) untuk host.</p></div></div>'
   + form + table + '</div>';
  try { const d=document.getElementById('lvDate'); if(d && !d.value){ const n=new Date(); d.value = n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); } } catch(e){}
+ window.__liveKeepOpen = null; // p1_1166 — reset selepas render (paksa-buka sekali sahaja)
  if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
 };
 
