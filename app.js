@@ -1539,7 +1539,7 @@ window.setRosterYear = function(y) {
 
 let moyySettings = {
  target: 10000,
- commRate: 5
+ commRate: 3 // p1_1168 (Zaid 21 Jul) — default komisen in-store 5%->3% (both channel 3%)
 };
 
 // p1_144 — staffProfiles now Supabase-backed (was hardcoded literal — leave balance reset on refresh).
@@ -19671,7 +19671,7 @@ window.switchMgmtTab = function(tabId, pillId) {
 
 window.updateMoyySettings = function() {
  moyySettings.target = parseFloat(document.getElementById("moyyTargetInput").value) || 10000;
- moyySettings.commRate = parseFloat(document.getElementById("moyyCommInput").value) || 5;
+ moyySettings.commRate = parseFloat(document.getElementById("moyyCommInput").value) || 3;
  alert(`Sasaran Jualan dikemaskini: RM ${moyySettings.target} | Komisen: ${moyySettings.commRate}%`);
  renderSalesMgmtTarget();
 };
@@ -23637,7 +23637,7 @@ function __getCommissionRate(staffName) {
  if (sid && rates[sid] !== undefined) return parseFloat(rates[sid])||0;
  if (u && u.commission_rate !== undefined) return parseFloat(u.commission_rate)||0;
  if (typeof moyySettings !== 'undefined' && moyySettings.commRate !== undefined) return parseFloat(moyySettings.commRate)||0;
- return 5; // sensible default
+ return 3; // p1_1168 (Zaid 21 Jul) — default in-store 5%->3%, selaras komisen live 3% (both channel)
 }
 // p1_729 — Muat peta kadar komisen dari server (staff_report_submissions, satu baris config).
 // Report yang tulis; semua view (termasuk cashier My Commission) baca dari sini = single source.
@@ -24318,7 +24318,7 @@ window.renderCommissionReport = function() {
  '</tr></thead><tbody>' + trows + '</tbody>' +
  (rows.length ? '<tfoot><tr style="border-top:2px solid #EEEEEE; background:#FAFAF9;"><td style="padding:11px 12px; font-weight:800;">JUMLAH</td><td style="padding:11px 12px; text-align:center; font-weight:800;">' + totOrders + '</td><td style="padding:11px 12px; text-align:right; font-weight:800;">' + fmt(totNet) + '</td><td></td><td style="padding:11px 12px; text-align:right; font-weight:800; color:var(--primary-500,#CD7C32);">' + fmt(totComm) + '</td></tr></tfoot>' : '') +
  '</table></div>' +
- '<p style="font-size:11.5px; color:#9CA3AF; margin:12px 2px 0;">Komisen in-store = Base (harga × qty − diskaun, tolak diskaun order) × Kadar%. Kadar default 5% — ubah per staf di kolum Kadar (disimpan setempat). <strong>Komisen LIVE TikTok = ' + (window.__liveKomisenPct||3) + '% atas JUALAN (GMV)</strong> — diasingkan, tak ikut kadar in-store. Komisen sebulan dibayar pada gaji bulan berikutnya. Klik baris staf untuk lihat transaksi. Order Cancelled/Void tak dikira; Refund ditolak. <strong>Nota:</strong> ini alat kiraan & laporan — bayaran komisen automatik belum aktif.</p>';
+ '<p style="font-size:11.5px; color:#9CA3AF; margin:12px 2px 0;">Komisen in-store = Base (harga × qty − diskaun, tolak diskaun order) × Kadar%. Kadar default 3% — ubah per staf di kolum Kadar (disimpan setempat). <strong>Komisen LIVE TikTok = ' + (window.__liveKomisenPct||3) + '% atas JUALAN (GMV)</strong> — diasingkan, tak ikut kadar in-store. Komisen sebulan dibayar pada gaji bulan berikutnya. Klik baris staf untuk lihat transaksi. Order Cancelled/Void tak dikira; Refund ditolak. <strong>Nota:</strong> ini alat kiraan & laporan — bayaran komisen automatik belum aktif.</p>';
  if(typeof lucide !== 'undefined') try { lucide.createIcons(); } catch(e){}
 };
 
