@@ -1539,7 +1539,7 @@ window.setRosterYear = function(y) {
 
 let moyySettings = {
  target: 10000,
- commRate: 3 // p1_1168 (Zaid 21 Jul) — default komisen in-store 5%->3% (both channel 3%)
+ commRate: 5 // widget target sahaja; kadar komisen sebenar = __commDefaultRate (ikut tarikh, p1_1169)
 };
 
 // p1_144 — staffProfiles now Supabase-backed (was hardcoded literal — leave balance reset on refresh).
@@ -3298,7 +3298,7 @@ window.__mwSubmit = async function() {
 window.__ensureMarketing = function(){
  if(window.__mktLoaded) return Promise.resolve();
  return window.__mktLoading || (window.__mktLoading = new Promise(function(res,rej){
-  var s=document.createElement('script'); s.src='marketing.js?v=18'; // p1_1167
+  var s=document.createElement('script'); s.src='marketing.js?v=19'; // p1_1169
   s.onload=function(){ window.__mktLoaded=true; res(); };
   s.onerror=function(){ window.__mktLoading=null; rej(new Error('marketing.js gagal muat')); };
   document.head.appendChild(s);
@@ -19671,7 +19671,7 @@ window.switchMgmtTab = function(tabId, pillId) {
 
 window.updateMoyySettings = function() {
  moyySettings.target = parseFloat(document.getElementById("moyyTargetInput").value) || 10000;
- moyySettings.commRate = parseFloat(document.getElementById("moyyCommInput").value) || 3;
+ moyySettings.commRate = parseFloat(document.getElementById("moyyCommInput").value) || 5;
  alert(`Sasaran Jualan dikemaskini: RM ${moyySettings.target} | Komisen: ${moyySettings.commRate}%`);
  renderSalesMgmtTarget();
 };
@@ -19714,8 +19714,9 @@ function renderSalesMgmtTarget() {
  if(domAriff) domAriff.innerHTML = `RM ${ariffTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${ariffPct}%;background:var(--primary);height:100%;border-radius:5px;"></div></div>`;
  if(domIrfan) domIrfan.innerHTML = `RM ${irfanTotal.toFixed(2)} / RM ${moyySettings.target} <br><div style="width:100%;background:#eee;height:5px;border-radius:5px;"><div style="width:${irfanPct}%;background:#101010;height:100%;border-radius:5px;"></div></div>`;
  
- if(commAriff) commAriff.textContent = `RM ${(ariffTotal * (moyySettings.commRate / 100)).toFixed(2)}`;
- if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * (moyySettings.commRate / 100)).toFixed(2)}`;
+ const __wRate = (window.__commDefaultRate ? window.__commDefaultRate() : moyySettings.commRate); // p1_1169 — kadar semasa ikut tarikh
+ if(commAriff) commAriff.textContent = `RM ${(ariffTotal * (__wRate / 100)).toFixed(2)}`;
+ if(commIrfan) commIrfan.textContent = `RM ${(irfanTotal * (__wRate / 100)).toFixed(2)}`;
 
  // 3. Render Omnichannel Dist
  const tbodyOmni = document.getElementById("salesChannelTbody");
@@ -23623,8 +23624,23 @@ window.loadAdminAttendance = async function() {
  tbody.innerHTML = html;
 }
 
-// p4_1: per-staff commission rate lookup with fallback chain
-function __getCommissionRate(staffName) {
+// p1_1169 (Zaid 21 Jul) — kadar komisen DEFAULT ikut tarikh jualan: 5% sebelum 1 Sep 2026,
+// 3% mulai jualan 1 Sep 2026 (dibayar gaji Okt). Berlaku KEDUA-DUA channel (in-store + live).
+// 3% BUKAN muktamad — akan dinilai semula bila data cukup. Tukar cutover/kadar di sini sahaja.
+window.__COMM_RATE_CUTOVER_YM = '2026-09'; // jualan mulai bulan ni = kadar baru
+window.__COMM_RATE_BEFORE = 5;             // sebelum cutover
+window.__COMM_RATE_AFTER  = 3;             // mulai cutover
+window.__commDefaultRate = function(forDate){
+ let ym;
+ try {
+  if(forDate == null){ const n=new Date(); ym = n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
+  else if(typeof forDate === 'string'){ const m = forDate.match(/^(\d{4})-(\d{2})/); if(m){ ym = m[1]+'-'+m[2]; } else { const d=new Date(forDate); ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); } }
+  else { const d = (forDate instanceof Date)?forDate:new Date(forDate); ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+ } catch(e){ ym = '2026-01'; }
+ return ym >= window.__COMM_RATE_CUTOVER_YM ? window.__COMM_RATE_AFTER : window.__COMM_RATE_BEFORE;
+};
+// p4_1: per-staff commission rate lookup with fallback chain (forDate → kadar default ikut tarikh)
+function __getCommissionRate(staffName, forDate) {
  const u = (typeof authUsers !== 'undefined' && Array.isArray(authUsers))
  ? authUsers.find(a => a.name === staffName) : null;
  const sid = u ? u.staff_id : null;
@@ -23636,8 +23652,8 @@ function __getCommissionRate(staffName) {
  let rates = {}; try { rates = JSON.parse(localStorage.getItem('staffCommissionRates_v1')||'{}'); } catch(e){}
  if (sid && rates[sid] !== undefined) return parseFloat(rates[sid])||0;
  if (u && u.commission_rate !== undefined) return parseFloat(u.commission_rate)||0;
- if (typeof moyySettings !== 'undefined' && moyySettings.commRate !== undefined) return parseFloat(moyySettings.commRate)||0;
- return 3; // p1_1168 (Zaid 21 Jul) — default in-store 5%->3%, selaras komisen live 3% (both channel)
+ // p1_1169 — TIADA override staf: default ikut tarikh jualan (5% sebelum Sep 2026, 3% mulai Sep 2026)
+ return window.__commDefaultRate ? window.__commDefaultRate(forDate) : 5;
 }
 // p1_729 — Muat peta kadar komisen dari server (staff_report_submissions, satu baris config).
 // Report yang tulis; semua view (termasuk cashier My Commission) baca dari sini = single source.
@@ -23747,7 +23763,7 @@ window.__cmExport = function(forceOwn) {
    const base = Math.abs(window.__saleCommissionBase(s));
    const isRefund = recv < 0;
    const signedBase = isRefund ? -base : base;
-   const rate = __getCommissionRate(s.staff_name || '');
+   const rate = __getCommissionRate(s.staff_name || '', s.created_at); // p1_1169 — kadar ikut tarikh jualan
    const comm = round2(signedBase * rate / 100);
    sumBase = round2(sumBase + signedBase); sumComm = round2(sumComm + comm);
    const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
@@ -24090,8 +24106,8 @@ window.__crComputeMonth = function(ym) {
  const usersByName = {}; if(typeof authUsers !== 'undefined' && Array.isArray(authUsers)) authUsers.forEach(u => usersByName[u.name] = u);
  const rows = Object.values(byStaff).map(r => {
   const net = round2(r.posBase - r.refunds), totalBase = round2(net + r.live);
-  const rate = __getCommissionRate(r.name);
-  const liveComm = round2(r.live * (window.__liveKomisenPct || 3) / 100); // p1_1167 — live 3% atas GMV, asing dari kadar in-store
+  const rate = __getCommissionRate(r.name, ym); // p1_1169 — kadar ikut bulan
+  const liveComm = round2(r.live * (window.__commDefaultRate ? window.__commDefaultRate(ym) : 3) / 100); // p1_1169 — live kadar ikut bulan
   const comm = round2(net * rate / 100 + liveComm);
   const u = usersByName[r.name];
   return Object.assign({}, r, { net, totalBase, rate, comm, liveComm, staffId: u ? u.staff_id : null });
@@ -24130,7 +24146,7 @@ window.__crRenderRingkasan = function() {
  const d = window.__crComputeMonth(ym);
  let monthLabel = ym, nextLabel = ''; try { const p = ym.split('-'); monthLabel = new Date(Number(p[0]),Number(p[1])-1,1).toLocaleDateString('en-MY',{month:'long',year:'numeric'}); nextLabel = new Date(Number(p[0]),Number(p[1]),1).toLocaleDateString('en-MY',{month:'long',year:'numeric'}); } catch(e){}
  let html = '<div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin:2px 0 16px;">'
-  + '<div><div style="font-weight:800; font-size:15px;">Ringkasan Komisen — ' + esc(monthLabel) + '</div><div style="font-size:11.5px; color:#9CA3AF; margin-top:2px;">Berapa patut dibayar setiap staf untuk ' + esc(monthLabel) + ' (POS base × kadar + live TikTok ' + (window.__liveKomisenPct||3) + '% GMV).</div></div>'
+  + '<div><div style="font-weight:800; font-size:15px;">Ringkasan Komisen — ' + esc(monthLabel) + '</div><div style="font-size:11.5px; color:#9CA3AF; margin-top:2px;">Berapa patut dibayar setiap staf untuk ' + esc(monthLabel) + ' (POS base × kadar + live TikTok ' + (window.__commDefaultRate?window.__commDefaultRate(ym):3) + '% GMV).</div></div>'
   + '<label style="font-size:12px; color:#374151; display:inline-flex; align-items:center; gap:6px;">Bulan <input type="month" value="' + ym + '" onchange="window.__crSetRkMonth(this.value)" style="padding:6px 9px; border:1px solid #E5E7EB; border-radius:8px; font-size:12px;"></label>'
   + '</div>';
  // p1_768 — konvensyen gaji: komisen bulan X dibayar dlm gaji bulan X+1 (Zaid)
@@ -24164,7 +24180,7 @@ window.__crRenderRingkasan = function() {
    html += '<div style="padding:13px 16px; border-bottom:' + (i<d.rows.length-1?'1px solid #F3F4F6':'none') + '; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">'
     + '<div style="flex:1; min-width:170px;">'
     + '<div style="font-weight:800; font-size:13.5px; color:#101010;">' + esc(r.name) + '</div>'
-    + '<div style="font-size:11px; color:#9CA3AF; margin-top:2px;">POS ' + money(r.net) + ' × ' + r.rate + '%' + (r.live?' · <span style="color:var(--primary-500,#CD7C32); font-weight:700;">Live ' + money(r.live) + ' × ' + (window.__liveKomisenPct||3) + '% = ' + money(r.liveComm) + '</span>':'') + ' · ' + r.orders + ' order' + (r.refunds?' · <span style="color:#B23A2E;">refund -' + money(r.refunds) + '</span>':'') + '</div>'
+    + '<div style="font-size:11px; color:#9CA3AF; margin-top:2px;">POS ' + money(r.net) + ' × ' + r.rate + '%' + (r.live?' · <span style="color:var(--primary-500,#CD7C32); font-weight:700;">Live ' + money(r.live) + ' × ' + Math.round(r.liveComm/r.live*100) + '% = ' + money(r.liveComm) + '</span>':'') + ' · ' + r.orders + ' order' + (r.refunds?' · <span style="color:#B23A2E;">refund -' + money(r.refunds) + '</span>':'') + '</div>'
     + '<div style="height:7px; background:#F3F4F6; border-radius:5px; margin-top:7px; overflow:hidden;"><div style="height:100%; width:' + pct + '%; background:linear-gradient(90deg,var(--primary-500,#CD7C32),#E0A567);"></div></div>'
     + '</div>'
     + '<div style="display:flex; align-items:center; gap:16px;">'
@@ -24189,7 +24205,7 @@ window.__crExportRingkasan = function() {
  if(!d.rows.length) { if(window.showToast) showToast('Tiada data untuk export.', 'warn'); return; }
  let monthLabel = ym; try { const p = ym.split('-'); monthLabel = new Date(Number(p[0]),Number(p[1])-1,1).toLocaleDateString('en-MY',{month:'long',year:'numeric'}); } catch(e){}
  const esc = (v) => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
- const lvPct = (window.__liveKomisenPct||3);
+ const lvPct = (window.__commDefaultRate ? window.__commDefaultRate(ym) : 3); // p1_1169 — kadar live ikut bulan
  const lines = [['Staf','POS Base (RM)','Kadar POS (%)','Komisen POS (RM)','Live TikTok GMV (RM)','Kadar Live (%)','Komisen Live (RM)','Jumlah Komisen (RM)'].join(',')];
  d.rows.forEach(r => { const posComm = round2(r.net * r.rate / 100); lines.push([esc(r.name), r.net.toFixed(2), r.rate, posComm.toFixed(2), r.live.toFixed(2), lvPct, (r.liveComm||0).toFixed(2), r.comm.toFixed(2)].join(',')); });
  lines.push('');
@@ -24264,9 +24280,9 @@ window.renderCommissionReport = function() {
  // utk era Feb-Mei 2026) + live_sessions. Tiada lagi merge Kaedah A (elak double-count). Buang '—' (online tak ber-attribution).
  const rows = Object.values(byStaff).filter(r => r.name !== '—').map(r => {
  const net = round2(r.gross - r.refunds);
- const rate = __getCommissionRate(r.name);
+ const rate = __getCommissionRate(r.name, range.start); // p1_1169 — kadar ikut tempoh
  const liveG = round2(liveBase[r.name] || 0);
- const liveComm = round2(liveG * (window.__liveKomisenPct || 3) / 100); // p1_1167 — live 3% GMV, asing dari kadar in-store
+ const liveComm = round2(liveG * (window.__commDefaultRate ? window.__commDefaultRate(range.start) : 3) / 100); // p1_1169 — live kadar ikut tempoh
  const comm = round2(net * rate / 100 + liveComm);
  const u = usersByName[r.name];
  return { ...r, net, rate, comm, liveComm, aComm: 0, staffId: u ? u.staff_id : null, live: liveG };
@@ -24287,7 +24303,7 @@ window.renderCommissionReport = function() {
  return '<tr onclick="window.__cmShowStaffSales && window.__cmShowStaffSales(\'' + esc(String(r.name).replace(/'/g,"\\'")) + '\')" style="cursor:pointer; border-bottom:1px solid #F3F4F6;">' +
  '<td style="padding:10px 12px; font-weight:700;">' + esc(r.name) + '</td>' +
  '<td style="padding:10px 12px; text-align:center;">' + r.orders + (r.refundCount ? ' <span style="color:#B23A2E; font-size:10px;">(' + r.refundCount + ' refund)</span>' : '') + '</td>' +
- '<td style="padding:10px 12px; text-align:right; font-weight:700;">' + (r.net ? fmt(r.net) : '<span style="color:#9CA3AF;">—</span>') + (r.live ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">+ live TikTok ' + fmt(r.live) + ' → komisen ' + (window.__liveKomisenPct||3) + '% ' + fmt(r.liveComm) + '</div>' : '') + '</td>' +
+ '<td style="padding:10px 12px; text-align:right; font-weight:700;">' + (r.net ? fmt(r.net) : '<span style="color:#9CA3AF;">—</span>') + (r.live ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">+ live TikTok ' + fmt(r.live) + ' → komisen ' + Math.round(r.liveComm/r.live*100) + '% ' + fmt(r.liveComm) + '</div>' : '') + '</td>' +
  '<td style="padding:10px 12px; text-align:right; white-space:nowrap;">' + (r.net ? rateCell : '<span style="color:#9CA3AF;">—</span>') + '</td>' +
  '<td style="padding:10px 12px; text-align:right; font-weight:800; color:var(--primary-500,#CD7C32);">' + fmt(r.comm) + (r.aComm ? '<div style="font-size:10px; color:#9CA3AF; font-weight:600;">Kaedah A ' + fmt(r.aComm) + '</div>' : '') + '</td>' +
  '</tr>';
@@ -24318,7 +24334,7 @@ window.renderCommissionReport = function() {
  '</tr></thead><tbody>' + trows + '</tbody>' +
  (rows.length ? '<tfoot><tr style="border-top:2px solid #EEEEEE; background:#FAFAF9;"><td style="padding:11px 12px; font-weight:800;">JUMLAH</td><td style="padding:11px 12px; text-align:center; font-weight:800;">' + totOrders + '</td><td style="padding:11px 12px; text-align:right; font-weight:800;">' + fmt(totNet) + '</td><td></td><td style="padding:11px 12px; text-align:right; font-weight:800; color:var(--primary-500,#CD7C32);">' + fmt(totComm) + '</td></tr></tfoot>' : '') +
  '</table></div>' +
- '<p style="font-size:11.5px; color:#9CA3AF; margin:12px 2px 0;">Komisen in-store = Base (harga × qty − diskaun, tolak diskaun order) × Kadar%. Kadar default 3% — ubah per staf di kolum Kadar (disimpan setempat). <strong>Komisen LIVE TikTok = ' + (window.__liveKomisenPct||3) + '% atas JUALAN (GMV)</strong> — diasingkan, tak ikut kadar in-store. Komisen sebulan dibayar pada gaji bulan berikutnya. Klik baris staf untuk lihat transaksi. Order Cancelled/Void tak dikira; Refund ditolak. <strong>Nota:</strong> ini alat kiraan & laporan — bayaran komisen automatik belum aktif.</p>';
+ '<p style="font-size:11.5px; color:#9CA3AF; margin:12px 2px 0;">Komisen in-store = Base (harga × qty − diskaun, tolak diskaun order) × Kadar%. Komisen LIVE TikTok = Kadar% × JUALAN (GMV), diasingkan. <strong>Kadar semasa: 5% (jualan sebelum 1 Sep 2026), 3% (jualan mulai 1 Sep 2026)</strong> — kedua-dua channel; sistem auto-tukar ikut tarikh jualan. 3% belum muktamad, akan dinilai semula bila data cukup. Boleh override per staf di kolum Kadar. Komisen sebulan dibayar pada gaji bulan berikutnya. Order Cancelled/Void tak dikira; Refund ditolak. <strong>Nota:</strong> ini alat kiraan & laporan — bayaran komisen automatik belum aktif.</p>';
  if(typeof lucide !== 'undefined') try { lucide.createIcons(); } catch(e){}
 };
 
@@ -24360,15 +24376,16 @@ window.renderPersonalCommission = function() {
  else { gross = round2(gross + base); txCount++; }
  });
  const net = round2(gross - refunds);
- const rate = __getCommissionRate(staffName);
- // p1_1167 — komisen LIVE = 3% ATAS JUALAN (GMV) host ni dlm tempoh, diasingkan dari kadar in-store
- let liveGmv = 0;
+ const rate = __getCommissionRate(staffName, range.start); // p1_1169 — kadar ikut tempoh
+ // p1_1167/p1_1169 — komisen LIVE atas JUALAN (GMV) host, kadar ikut tarikh SESI (5% sblm Sep 2026, 3% mulai Sep)
+ let liveGmv = 0, liveComm = 0;
  (window.__liveSessions || []).forEach(ls => {
  if((ls.host_name || '') !== staffName) return;
  if(range.start && range.end && ls.session_date){ const t = new Date(ls.session_date + 'T12:00').getTime(); if(!(t >= range.start.getTime() && t <= range.end.getTime())) return; }
- liveGmv = round2(liveGmv + (Number(ls.live_sales_rm) || 0));
+ const g = Number(ls.live_sales_rm) || 0;
+ liveGmv = round2(liveGmv + g);
+ liveComm = round2(liveComm + g * (window.__commDefaultRate ? window.__commDefaultRate(ls.session_date) : 3) / 100);
  });
- const liveComm = round2(liveGmv * (window.__liveKomisenPct || 3) / 100);
  const earned = round2(net * rate / 100 + liveComm);
  return { staffName, gross, refunds, net, rate, earned, liveGmv, liveComm, txCount, refundCount, sales: own };
  }
@@ -24493,7 +24510,7 @@ window.renderPersonalCommission = function() {
  // p1_1167 — baris ringkasan komisen LIVE (3% GMV) utk host, supaya kad "Komisen Aku" & jadual padan
  let liveRowHtml = '';
  if (personal.liveComm > 0) {
- const lvPct = (window.__liveKomisenPct || 3);
+ const lvPct = personal.liveGmv > 0 ? Math.round(personal.liveComm / personal.liveGmv * 100) : (window.__commDefaultRate ? window.__commDefaultRate() : 3); // p1_1169 — kadar berkesan sebenar
  liveRowHtml = '<tr style="background:#FBF7EC;">'
  + '<td colspan="3" style="font-weight:700;"><i data-lucide="radio" style="width:11px;height:11px;vertical-align:-1px; color:var(--primary);"></i> SESI LIVE TikTok · GMV live ('+hesc(range.label)+')</td>'
  + '<td style="text-align:right; font-weight:bold; color:#3F7350;">RM '+personal.liveGmv.toFixed(2)+'</td>'
@@ -24572,7 +24589,7 @@ window.__cmShowStaffSales = function(staffName) {
  if (range.start && range.end) { const t = s.created_at ? new Date(s.created_at).getTime() : 0; if (!(t >= range.start.getTime() && t <= range.end.getTime())) return false; }
  return true;
  }).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
- const rate = (typeof __getCommissionRate === 'function') ? __getCommissionRate(staffName) : 0;
+ const rate = (typeof __getCommissionRate === 'function') ? __getCommissionRate(staffName, range.start) : 0; // p1_1169 — kadar ikut tempoh
  let gross = 0, refunds = 0;
  own.forEach(s => { const recv = parseFloat(s.total_amount || s.total || 0) || 0; const base = Math.abs(window.__saleCommissionBase(s)); if (recv < 0) refunds = round2(refunds + base); else gross = round2(gross + base); });
  // p1_737 — selit jualan LIVE TikTok (live_sessions) host ni dlm tempoh
@@ -24581,13 +24598,13 @@ window.__cmShowStaffSales = function(staffName) {
  if(range.start && range.end && ls.session_date) { const t = new Date(ls.session_date + 'T12:00').getTime(); if(!(t >= range.start.getTime() && t <= range.end.getTime())) return false; }
  return true;
  }).sort((a,b) => String(b.session_date).localeCompare(String(a.session_date)));
- let liveGross = 0; liveRows.forEach(ls => { liveGross = round2(liveGross + (Number(ls.live_sales_rm) || 0)); });
- const liveComm = round2(liveGross * (window.__liveKomisenPct || 3) / 100); // p1_1167 — live 3% GMV, asing dari kadar in-store
+ // p1_1169 — komisen live kadar ikut tarikh SESI (5% sblm Sep 2026, 3% mulai Sep)
+ let liveGross = 0, liveComm = 0; liveRows.forEach(ls => { const g = Number(ls.live_sales_rm) || 0; liveGross = round2(liveGross + g); liveComm = round2(liveComm + g * (window.__commDefaultRate ? window.__commDefaultRate(ls.session_date) : 3) / 100); });
  const net = round2(gross - refunds); // in-store sahaja (live tak dilipat)
  const earned = round2(net * rate / 100 + liveComm);
  const fmt = (n) => 'RM ' + Number(n).toLocaleString('en-MY', { minimumFractionDigits:2, maximumFractionDigits:2 });
  const liveBody = liveRows.map(ls => {
- const amt = Number(ls.live_sales_rm) || 0; const comm = round2(amt * (window.__liveKomisenPct || 3) / 100); // p1_1167 — live 3% GMV
+ const amt = Number(ls.live_sales_rm) || 0; const comm = round2(amt * (window.__commDefaultRate ? window.__commDefaultRate(ls.session_date) : 3) / 100); // p1_1169 — live kadar ikut tarikh sesi
  const dt = ls.session_date ? new Date(ls.session_date + 'T12:00').toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'}) : '-';
  return `<tr style="background:#FBF7EC;">
  <td style="padding:9px 10px; white-space:nowrap;">${esc(dt)}</td>
