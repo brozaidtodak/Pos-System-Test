@@ -310,12 +310,15 @@ window.__applyPosAppScope = function(){
  try { window.__posAppApplyLiveTab(); } catch(e){}
  try { setTimeout(window.__liveNudgeCheck, 4000); } catch(e){}
 };
-// p1_1112 — TAB "LIVE" DALAM APK UTK ARIFF SAHAJA (Zaid: "set dekat APK Ariff sahaja").
-// Staf lain tak nampak tab ni; web/back-office kekal akses via Marketing → Kandungan.
+// p1_1112 — TAB "LIVE" DALAM APK. p1_1164 — Zaid: Tarmizi (Kael) kini LIVE + komisen juga (dulu Ariff sahaja).
+// __LIVE_HOSTS = staf yang buat TikTok LIVE + layak komisen 5% margin dari jualan masa live.
+// Tambah nama di sini bila ada host baru. Komisen auto-attribute ikut host_name === nama staf.
+window.__LIVE_HOSTS = ['Ariff', 'Tarmizi Kael'];
+window.__isLiveHost = function(u){ return !!(u && window.__LIVE_HOSTS.indexOf(u.name) !== -1); };
 window.__posAppApplyLiveTab = function(){
  try {
   const u = window.currentUser || {};
-  if(!window.__isPOSApp || u.name !== 'Ariff') return;
+  if(!window.__isPOSApp || !window.__isLiveHost(u)) return;
   if(!(window.__POS_APP_TABS||[]).some(function(t){ return t.key==='live'; }))
    window.__POS_APP_TABS.push({ key:'live', icon:'radio', label:'LIVE', sections:['tiktokLiveSection'], title:'TikTok LIVE', render:'renderTikTokLive' });
   const bar = document.getElementById('posAppTabBar');
@@ -335,14 +338,14 @@ window.__posAppApplyLiveTab = function(){
 window.__liveNudgeCheck = async function(){
  try {
   const u = window.currentUser || {};
-  if(!window.__isPOSApp || u.name !== 'Ariff') return;
+  if(!window.__isPOSApp || !window.__isLiveHost(u)) return; // p1_1164 — Ariff + Tarmizi Kael
   if(typeof db === 'undefined' || !db) return;
   const now = new Date();
   if(now.getHours() < 17) return;
   const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   try { if(localStorage.getItem('posLiveNudge_' + today)) return; } catch(e){}
   if(document.getElementById('liveNudgeOverlay')) return;
-  const { data } = await db.from('live_sessions').select('id').eq('host_name','Ariff').eq('session_date', today).limit(1);
+  const { data } = await db.from('live_sessions').select('id').eq('host_name', u.name).eq('session_date', today).limit(1); // p1_1164 — semak rekod host ini, bukan hardcode Ariff
   if(data && data.length){ try { localStorage.setItem('posLiveNudge_' + today, 'done'); } catch(e){} return; }
   const ov = document.createElement('div');
   ov.id = 'liveNudgeOverlay';
@@ -350,7 +353,7 @@ window.__liveNudgeCheck = async function(){
   ov.innerHTML = '<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:var(--font-main,Poppins),sans-serif;text-align:center;">'
    + '<i data-lucide="radio" style="width:34px;height:34px;color:var(--primary);"></i>'
    + '<div style="font-size:16px;font-weight:800;color:#101010;margin:10px 0 6px;">Rekod sesi LIVE sebelum balik</div>'
-   + '<p style="font-size:12.5px;color:#6B7280;line-height:1.6;margin:0 0 16px;">Ariff, kalau hari ni ada buat LIVE TikTok, masukkan masa mula &amp; tamat SEKARANG — komisen 5% margin dikira dari rekod ni. Tak rekod = tak dikira.</p>'
+   + '<p style="font-size:12.5px;color:#6B7280;line-height:1.6;margin:0 0 16px;">' + (u.name ? hesc(String(u.name).split(' ')[0]) : 'Hai') + ', kalau hari ni ada buat LIVE TikTok, masukkan masa mula &amp; tamat SEKARANG — komisen 5% margin dikira dari rekod ni. Tak rekod = tak dikira.</p>'
    + '<button onclick="document.getElementById(\'liveNudgeOverlay\').remove(); window.__posAppGo(\'live\');" style="width:100%;background:var(--primary);color:#fff;border:none;padding:13px;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer;">Rekod Sekarang</button>'
    + '<button onclick="try{localStorage.setItem(\'posLiveNudge_' + today + '\',\'tiada\')}catch(e){}; document.getElementById(\'liveNudgeOverlay\').remove();" style="width:100%;margin-top:8px;background:#fff;border:1.5px solid var(--border-color,#E5E7EB);color:#374151;padding:11px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;">Tiada LIVE hari ni</button>'
    + '<button onclick="document.getElementById(\'liveNudgeOverlay\').remove();" style="width:100%;margin-top:6px;background:none;border:none;color:#9CA3AF;padding:6px;font-size:11.5px;font-weight:600;cursor:pointer;">Ingatkan lagi nanti</button>'
@@ -24012,7 +24015,9 @@ window.__loadLiveSessions = async function() {
 };
 window.__crSaveLiveSession = async function() {
  const d = document.getElementById('lsDate')?.value;
- const host = (document.getElementById('lsHost')?.value || 'Ariff').trim() || 'Ariff';
+ // p1_1164 — host default = staf semasa (bukan hardcode Ariff) supaya komisen Tarmizi auto-attribute
+ const __defHost = (window.currentUser && window.currentUser.name) || 'Ariff';
+ const host = (document.getElementById('lsHost')?.value || __defHost).trim() || __defHost;
  const salesV = document.getElementById('lsSales')?.value;
  const itemsV = document.getElementById('lsItems')?.value;
  const sales = salesV === '' || salesV == null ? null : parseFloat(salesV);
@@ -24045,7 +24050,7 @@ window.__crLiveSessionsHtml = function() {
  '<div style="font-size:11px; color:#9CA3AF; margin-bottom:10px;">Aliff ambil <strong>jualan live dari rekod TikTok</strong> → key-in di sini. Jumlah ni masuk komisen host (Ariff) untuk Kaedah B.</div>' +
  '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px;">' +
  '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Tarikh</label><br><input type="date" id="lsDate" style="border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
- '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Host</label><br><input type="text" id="lsHost" value="Ariff" style="width:100px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
+ '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Host</label><br><input type="text" id="lsHost" value="' + ((window.currentUser && window.currentUser.name) || 'Ariff') + '" style="width:120px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
  '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">LIVE-attributed GMV (RM)</label><br><input type="number" step="0.01" id="lsSales" placeholder="0.00" style="width:170px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
  '<div><label style="font-size:10.5px; color:#6B7280; font-weight:700;">Items sold (pilihan)</label><br><input type="number" id="lsItems" placeholder="0" style="width:110px; border:1px solid #E5E7EB; border-radius:6px; padding:6px;"></div>' +
  '<button onclick="window.__crSaveLiveSession()" style="background:var(--primary-500,#CD7C32); color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer;">+ Log sesi</button>' +
