@@ -21,6 +21,13 @@ const FROM_ADDR = process.env.LOYALTY_FROM || process.env.RECEIPT_FROM || '10 CA
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const MAX_RECIPIENTS = 500;
+// p1_1157 — KUOTA HARIAN (Zaid: "limitkan kepada 70 customer sehari so Resend tak limit...
+// standby 30 tu untuk customer dapat e-receipt"). Resend free ~100/hari → 70 kempen + 30 rezab
+// transaksi. Dikira ikut hari MYT; kaunter dlm app_settings 'mata_blast_daily'. Penerima yang
+// berjaya dihantar ditanda customers.last_blast_at → client auto-sambung ke customer SETERUSNYA esok.
+const BLAST_DAILY_LIMIT = 70;
+const DAILY_KEY = 'mata_blast_daily';
+const mytToday = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -102,17 +109,34 @@ exports.handler = async (event) => {
 
   // Bersih + dedupe penerima
   const seen = new Set();
-  const recipients = (Array.isArray(body.recipients) ? body.recipients : []).filter(r => {
+  let recipients = (Array.isArray(body.recipients) ? body.recipients : []).filter(r => {
     const e = String(r && r.email || '').trim().toLowerCase();
     if (!isEmail(e) || seen.has(e)) return false;
     seen.add(e); r.email = e; return true;
   }).slice(0, MAX_RECIPIENTS);
   if (!recipients.length) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Tiada penerima sah' }) };
 
+  // p1_1157 — kuatkuasa kuota harian 70 (server-side, tak boleh bypass dari client)
+  const today = mytToday();
+  let sentToday = 0;
+  try {
+    const dRow = await sb(`/app_settings?key=eq.${DAILY_KEY}&select=value&limit=1`);
+    const v = dRow && dRow[0] && dRow[0].value;
+    if (v && v.date === today) sentToday = Number(v.count) || 0;
+  } catch (_) {}
+  const allowed = BLAST_DAILY_LIMIT - sentToday;
+  if (allowed <= 0) {
+    return { statusCode: 429, headers: cors, body: JSON.stringify({ error: 'Kuota harian blast (' + BLAST_DAILY_LIMIT + '/hari) dah habis — sambung esok. 30 slot Resend direzab untuk e-receipt.', remaining_today: 0 }) };
+  }
+  const requestedTotal = recipients.length;
+  const deferred = Math.max(0, requestedTotal - allowed);
+  recipients = recipients.slice(0, allowed);
+
   // Hantar batch 100-100 (had Resend /emails/batch)
-  let sent = 0; const failures = [];
+  let sent = 0; const failures = []; const sentEmails = [];
   for (let i = 0; i < recipients.length; i += 100) {
-    const chunk = recipients.slice(i, i + 100).map(r => ({
+    const part = recipients.slice(i, i + 100);
+    const chunk = part.map(r => ({
       from: FROM_ADDR, to: r.email, subject: subject, html: renderEmail(bodyTpl, r, body.with_poster !== false)
     }));
     try {
@@ -122,10 +146,21 @@ exports.handler = async (event) => {
         body: JSON.stringify(chunk)
       });
       const rd = await res.json().catch(() => ({}));
-      if (res.ok) sent += chunk.length;
+      if (res.ok) { sent += chunk.length; part.forEach(r => sentEmails.push(r.email)); }
       else failures.push(`batch ${i / 100 + 1}: ${rd.message || res.status}`);
     } catch (e) { failures.push(`batch ${i / 100 + 1}: ${String(e.message || e).slice(0, 120)}`); }
     if (i + 100 < recipients.length) await new Promise(r => setTimeout(r, 600)); // hormat rate limit
+  }
+
+  // p1_1157 — kemaskini kaunter harian + tanda last_blast_at (client exclude yg dah terima → esok auto-sambung)
+  try {
+    await sb(`/app_settings?on_conflict=key`, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ key: DAILY_KEY, value: { date: today, count: sentToday + sent } }]) });
+  } catch (_) {}
+  for (let i = 0; i < sentEmails.length; i += 50) {
+    const grp = sentEmails.slice(i, i + 50).map(e => '"' + e.replace(/"/g, '') + '"').join(',');
+    try {
+      await sb(`/customers?email=in.(${encodeURIComponent(grp)})`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ last_blast_at: new Date().toISOString() }) });
+    } catch (_) {}
   }
 
   // Rekod (best-effort — kegagalan log JANGAN gagalkan penghantaran yang dah jadi)
@@ -137,5 +172,5 @@ exports.handler = async (event) => {
     await sb('/app_settings?on_conflict=key', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ key: 'mata_blast_last', value: { at: new Date().toISOString(), by: staffEmail, subject, sent, total: recipients.length } }]) });
   } catch (_) {}
 
-  return { statusCode: failures.length && !sent ? 502 : 200, headers: cors, body: JSON.stringify({ ok: sent > 0, sent, total: recipients.length, failures }) };
+  return { statusCode: failures.length && !sent ? 502 : 200, headers: cors, body: JSON.stringify({ ok: sent > 0, sent, total: requestedTotal, deferred, remaining_today: Math.max(0, BLAST_DAILY_LIMIT - sentToday - sent), failures }) };
 };

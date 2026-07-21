@@ -42893,10 +42893,15 @@ window.__mbDefaultSubject = 'Mata anda kini boleh tukar barang percuma di 10 CAM
 window.__mbDefaultBody = 'Hai {name}!\n\nBerita baik — mata 10 CAMP Rewards anda sekarang ada nilai sebenar. Anda ahli {tier} dengan {mata} mata terkumpul, dan setiap mata bernilai {kadar} untuk tukar dengan barang pilihan di kedai.\n\nCara tebus senang je: singgah kedai 10 CAMP Cyberjaya, beli macam biasa (RM50 ke atas), dan pilih barang percuma anda terus di kaunter. Senarai penuh barang boleh tebus ada dalam portal — tekan butang di bawah.\n\nJumpa di kedai!';
 window.__mbTargets = function(minMata, consentOnly){
  const custs = Array.isArray(customersData) ? customersData : [];
+ // p1_1157 — langkau yang DAH terima blast dlm 30 hari (last_blast_at ditanda server selepas
+ // hantar) → kempen berperingkat 70/hari auto-sambung ke customer seterusnya setiap hari
+ window.__mbSkippedRecent = 0;
  return custs.filter(c => {
  if(!c || !c.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return false;
  if(consentOnly && !c.accepts_email_marketing) return false;
- return (typeof window.__custPointsAvail === 'function' ? window.__custPointsAvail(c) : (Number(c.points)||0)) >= minMata;
+ if((typeof window.__custPointsAvail === 'function' ? window.__custPointsAvail(c) : (Number(c.points)||0)) < minMata) return false;
+ if(c.last_blast_at && (Date.now() - new Date(c.last_blast_at).getTime()) < 30 * 86400000){ window.__mbSkippedRecent++; return false; }
+ return true;
  }).map(c => {
  const t = window.__custTier(c.total_spent);
  return { id: c.id, email: String(c.email).toLowerCase(), name: c.name || '', mata: window.__custPointsAvail(c), tier: t.name, kadar: (window.LOYALTY_REDEEMS && window.LOYALTY_REDEEMS[t.key] || []).reduce((r, x) => x.type === 'deadstock' ? (x.rate || r) : r, 0.4) };
@@ -42925,6 +42930,7 @@ window.__mbOpen = function(){
  + '<label>Mata minimum <input id="mbMin" type="number" value="0" min="0" style="width:70px; padding:6px 8px; border:1px solid #DDD; border-radius:7px; font-family:inherit;" onchange="window.__mbRefresh()"></label>'
  + '<label style="display:inline-flex; align-items:center; gap:5px;"><input id="mbConsent" type="checkbox" onchange="window.__mbRefresh()" style="width:16px; height:16px; flex:0 0 auto; margin:0;"> Hanya yang ada consent</label>'
  + '<span style="font-size:11px; color:#168C50; font-weight:700;">✓ Email ada butang consent — jawapan customer auto-update sistem</span>'
+ + '<span id="mbQuotaNote" style="font-size:11px; color:#B8860B; font-weight:700;">Kuota: max 70 email/hari (30 direzab utk e-resit) — baki auto-sambung esok, yang dah terima dilangkau 30 hari</span>'
  + '<span id="mbCount" style="font-weight:800; color:var(--primary-800,#7C4A1A);"></span></div>'
  + '<div id="mbList" style="max-height:200px; overflow-y:auto; border:1px solid #EEE; border-radius:8px; margin-bottom:14px;"></div>'
  + '<label style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase;">Subjek</label>'
@@ -42962,7 +42968,8 @@ window.__mbRefresh = function(){
 window.__mbCountUpd = function(){
  const st = window.__mbState; if(!st) return;
  const n = (st.targets || []).filter(t => !st.unchecked[t.email]).length;
- const el = document.getElementById('mbCount'); if(el) el.textContent = n + ' penerima dipilih';
+ const skip = window.__mbSkippedRecent || 0;
+ const el = document.getElementById('mbCount'); if(el) el.textContent = n + ' penerima dipilih' + (skip ? ' · ' + skip + ' dah terima (dilangkau)' : '');
 };
 window.__mbPreview = function(){
  const st = window.__mbState; if(!st) return;
@@ -43019,7 +43026,15 @@ window.__mbSend = async function(){
  body: JSON.stringify({ subject: st.subject, body: st.body, with_poster: st.withPoster !== false, recipients: part })
  });
  const j = await res.json().catch(() => ({}));
- if(res.ok && j.ok){ sent += (j.sent || 0); failures = failures.concat(j.failures || []); }
+ if(res.ok && j.ok){
+ sent += (j.sent || 0); failures = failures.concat(j.failures || []);
+ // p1_1157 — kuota harian 70 capai: berhenti; baki auto-sambung esok (yg dah terima dilangkau)
+ if(j.remaining_today === 0 || (j.deferred || 0) > 0){
+ if(typeof showToast === 'function') showToast('Kuota harian capai: ' + sent + ' dihantar hari ini. Baki ' + (all.length - sent) + ' — buka semula kempen ESOK & tekan hantar (senarai auto-sambung).', 'warn');
+ break;
+ }
+ }
+ else if(res.status === 429){ if(typeof showToast === 'function') showToast(j.error || 'Kuota harian blast dah habis — sambung esok.', 'warn'); aborted = !sent; break; }
  else { failures.push('chunk ' + (i / CHUNK + 1) + ': ' + (j.error || res.status)); if(!sent){ aborted = true; break; } }
  }
  if(sent > 0){
