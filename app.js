@@ -31985,10 +31985,44 @@ window.__aoQuickView = function(key){
  window.__aoPage = 1;
  window.renderAllOrders && window.renderAllOrders();
 };
-// p1_1174 — buka/tutup baris preview barang (semua tr[data-aoitems=oid]) bila klik baris order
+// p1_1174 — bina HTML baris preview barang (header + tiap barang jajar lajur: Qty bawah ITEMS, Jumlah bawah RM)
+window.__aoBuildItemRows = function(s){
+ const esc = (x)=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+ const oid = s.id;
+ const arr = Array.isArray(s.items) ? s.items : [];
+ const mono = "font-family:'SF Mono',Menlo,monospace;";
+ const bg = 'background:#FBFAF7;';
+ const count = arr.reduce((n,it)=>n+(window.__aoItemQty?window.__aoItemQty(it):0),0);
+ let html = `<tr class="aoItemRow" data-aoitems="${oid}" style="${bg}"><td style="border:none;"></td><td colspan="10" style="padding:7px 12px 3px; font-size:10px; color:#9CA3AF; font-weight:700; text-transform:uppercase; letter-spacing:.5px; border:none;">${arr.length} jenis &middot; ${count} unit — tekan no. order (oren) untuk detail penuh</td></tr>`;
+ if(!arr.length){ return html + `<tr class="aoItemRow" data-aoitems="${oid}" style="${bg}"><td style="border:none;"></td><td colspan="10" style="padding:8px 10px; color:#9CA3AF; font-size:11.5px; border:none;">Tiada barang direkod.</td></tr>`; }
+ html += arr.map((it,ii)=>{
+  const iq = window.__aoItemQty ? window.__aoItemQty(it) : 0;
+  const iimg = (typeof window.__aoImgFor==='function') ? window.__aoImgFor(it.sku) : '';
+  const inm = String(it.name || it.sku || '-');
+  const up = parseFloat(it.price!=null?it.price:(it.unit_price!=null?it.unit_price:0))||0;
+  const lt = up*iq;
+  const last = (ii===arr.length-1);
+  const thumb = iimg
+   ? `<img src="${esc(iimg)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:50px;height:50px;object-fit:cover;border-radius:8px;border:1px solid #E5E7EB;flex:0 0 auto;display:block;"><span style="display:none;width:50px;height:50px;border:1px dashed #D1D5DB;border-radius:8px;align-items:center;justify-content:center;font-size:8px;color:#9CA3AF;flex:0 0 auto;">No Img</span>`
+   : `<span style="display:flex;width:50px;height:50px;border:1px dashed #D1D5DB;border-radius:8px;align-items:center;justify-content:center;font-size:8px;color:#9CA3AF;flex:0 0 auto;">No Img</span>`;
+  return `<tr class="aoItemRow" data-aoitems="${oid}" style="${bg} ${last?'box-shadow:inset 0 -2px 0 #EDE6DA;':''}">`
+   + `<td style="border:none;"></td>`
+   + `<td colspan="5" style="padding:7px 10px; border:none;"><div style="display:flex; align-items:center; gap:12px;">${thumb}<span style="font-size:12px; color:#374151; line-height:1.35;">${esc(inm.slice(0,110))}${it.sku?` <span style="color:#9CA3AF; font-size:10px; ${mono}">${esc(it.sku)}</span>`:''} <span style="color:#B0A597; font-size:11px; ${mono}">@ RM ${up.toFixed(2)}</span></span></div></td>`
+   + `<td style="padding:7px 10px; text-align:center; font-weight:800; color:var(--primary-600,#B86A26); font-size:13px; border:none;">&times;${iq}</td>`
+   + `<td style="padding:7px 10px; text-align:right; font-weight:800; color:#101010; font-size:12.5px; ${mono} border:none;">RM ${lt.toFixed(2)}</td>`
+   + `<td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td>`
+   + `</tr>`;
+ }).join('');
+ return html;
+};
+// p1_1174 — klik baris: bina preview ON-DEMAND kali pertama (elak lag render), lepas tu toggle papar/sorok
 window.__aoToggleItems = function(oid){
  var rows = document.querySelectorAll('tr[data-aoitems="' + oid + '"]');
- for(var i=0;i<rows.length;i++){ rows[i].style.display = (rows[i].style.display==='none' ? 'table-row' : 'none'); }
+ if(rows.length){ for(var i=0;i<rows.length;i++){ rows[i].style.display = (rows[i].style.display==='none' ? 'table-row' : 'none'); } return; }
+ var sale = (typeof salesHistory!=='undefined' && Array.isArray(salesHistory)) ? salesHistory.find(function(x){ return x.id===oid; }) : null;
+ if(!sale) return;
+ var mainRow = document.getElementById('aoRow-'+oid);
+ if(mainRow && window.__aoBuildItemRows) mainRow.insertAdjacentHTML('afterend', window.__aoBuildItemRows(sale));
 };
 // p1_328 — tukar halaman pagination + scroll ke atas jadual
 window.__aoGoPage = function(target){
@@ -32354,38 +32388,15 @@ window.renderAllOrders = function() {
  tbody.innerHTML = slice.map(s => {
  const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
  const itemsCount = Array.isArray(s.items) ? s.items.reduce((n, it) => n + window.__aoItemQty(it), 0) : 0;
- // p1_1174 — preview barang inline sbg BARIS SEBENAR yg jajar dgn lajur table (Qty bawah ITEMS, Jumlah bawah RM).
- // Buka/tutup dari klik baris. Detail penuh = klik no. order oren.
- const _oid = s.id;
- const _itemsArr = Array.isArray(s.items) ? s.items : []; // p1_1174 fix — deklarasi hilang masa refactor sebelum ni
- const _mono = "font-family:'SF Mono',Menlo,monospace;";
- const _bg = 'background:#FBFAF7;';
- const _hdrRow = `<tr class="aoItemRow" data-aoitems="${_oid}" style="display:none; ${_bg}"><td style="border:none;"></td><td colspan="10" style="padding:7px 12px 3px; font-size:10px; color:#9CA3AF; font-weight:700; text-transform:uppercase; letter-spacing:.5px; border:none;">${_itemsArr.length} jenis &middot; ${itemsCount} unit — tekan no. order (oren) untuk detail penuh</td></tr>`;
- const _itemRows = _hdrRow + (_itemsArr.length ? _itemsArr.map((it, _ii) => {
- const _iq = window.__aoItemQty(it);
- const _iimg = (typeof window.__aoImgFor === 'function') ? window.__aoImgFor(it.sku) : '';
- const _inm = String(it.name || it.sku || '-');
- const _up = parseFloat(it.price != null ? it.price : (it.unit_price != null ? it.unit_price : 0)) || 0; // harga seunit
- const _lt = _up * _iq; // jumlah baris
- const _last = (_ii === _itemsArr.length - 1);
- const _ithumb = _iimg
- ? `<img src="${escHtml(_iimg)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:50px;height:50px;object-fit:cover;border-radius:8px;border:1px solid #E5E7EB;flex:0 0 auto;display:block;"><span style="display:none;width:50px;height:50px;border:1px dashed #D1D5DB;border-radius:8px;align-items:center;justify-content:center;font-size:8px;color:#9CA3AF;flex:0 0 auto;">No Img</span>`
- : `<span style="display:flex;width:50px;height:50px;border:1px dashed #D1D5DB;border-radius:8px;align-items:center;justify-content:center;font-size:8px;color:#9CA3AF;flex:0 0 auto;">No Img</span>`;
- return `<tr class="aoItemRow" data-aoitems="${_oid}" style="display:none; ${_bg} ${_last?'box-shadow:inset 0 -2px 0 #EDE6DA;':''}">`
- + `<td style="border:none;"></td>`
- + `<td colspan="5" style="padding:7px 10px; border:none;"><div style="display:flex; align-items:center; gap:12px;">${_ithumb}<span style="font-size:12px; color:#374151; line-height:1.35;">${escHtml(_inm.slice(0,110))}${it.sku?` <span style="color:#9CA3AF; font-size:10px; ${_mono}">${escHtml(it.sku)}</span>`:''} <span style="color:#B0A597; font-size:11px; ${_mono}">@ RM ${_up.toFixed(2)}</span></span></div></td>`
- + `<td style="padding:7px 10px; text-align:center; font-weight:800; color:var(--primary-600,#B86A26); font-size:13px; border:none;">&times;${_iq}</td>`
- + `<td style="padding:7px 10px; text-align:right; font-weight:800; color:#101010; font-size:12.5px; ${_mono} border:none;">RM ${_lt.toFixed(2)}</td>`
- + `<td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td>`
- + `</tr>`;
- }).join('') : `<tr class="aoItemRow" data-aoitems="${_oid}" style="display:none; ${_bg}"><td style="border:none;"></td><td colspan="10" style="padding:8px 10px; color:#9CA3AF; font-size:11.5px; border:none;">Tiada barang direkod.</td></tr>`);
+ // p1_1174 — preview barang dibina ON-DEMAND bila baris diklik (window.__aoToggleItems → __aoBuildItemRows),
+ // supaya render awal ringan (dulu pra-render semua 200 order + carian gambar tiap barang = lambat).
  const ch = (s.channel || '').toLowerCase();
  const chIcon = (ch.includes('walk') || ch.includes('cashier')) ? 'store' : (ch.includes('shopee') ? 'shopping-cart' : (ch.includes('tiktok') ? 'video' : (ch.includes('whatsapp') ? 'message-circle' : (ch.includes('easystore') ? 'globe' : 'package'))));
  // p1_250 — Test badge + Test toggle button. is_test column dah exist + __ordMarkTest handler dah exist (line 5868).
  const isTest = !!s.is_test;
  const testBadge = isTest ? '<span style="background:#CE9420; color:#fff; padding:2px 6px; border-radius:4px; font-size:9.5px; font-weight:800; letter-spacing:0.3px; margin-left:4px; display:inline-flex; align-items:center; gap:3px;"><i data-lucide="flask-conical" style="width:9px;height:9px;"></i> TEST</span>' : '';
  const selChk = window.__aoSelected && window.__aoSelected.has(s.id);
- return `<tr onclick="if(event.target.closest('a,button,input,select,label,img'))return; window.__aoToggleItems&&window.__aoToggleItems(${s.id})" title="Klik baris untuk lihat barang ringkas" style="cursor:pointer; border-bottom:1px solid #F3F4F6; ${selChk ? 'background:rgba(184, 106, 38,.06);' : (isTest ? 'background:rgba(254,243,199,.18);' : '')}">
+ return `<tr id="aoRow-${s.id}" onclick="if(event.target.closest('a,button,input,select,label,img'))return; window.__aoToggleItems&&window.__aoToggleItems(${s.id})" title="Klik baris untuk lihat barang ringkas" style="cursor:pointer; border-bottom:1px solid #F3F4F6; ${selChk ? 'background:rgba(184, 106, 38,.06);' : (isTest ? 'background:rgba(254,243,199,.18);' : '')}">
  <td style="padding:10px; text-align:center;"><input type="checkbox" onchange="window.__aoToggleSelect(${s.id}, this.checked)" ${selChk ? 'checked' : ''} style="width:15px; height:15px; cursor:pointer;"></td>
  <td data-label="Tarikh" style="padding:10px;">${dt}</td>
  ${(() => {
@@ -32439,8 +32450,7 @@ window.renderAllOrders = function() {
  <button onclick="window.__ppEditSale && window.__ppEditSale(${s.id})" style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-300,#FDBA74); color:var(--primary-800,#7C4A1A); padding:4px 10px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700;"><i data-lucide="edit-3" style="width:10px;height:10px;vertical-align:-1px;"></i> Edit</button>
  <button onclick="window.__aoToggleTest && window.__aoToggleTest(${s.id}, ${s.is_test ? 'false' : 'true'})" title="${s.is_test ? 'Order TEST — klik untuk tanda jualan SEBENAR (masuk balik komisen/laporan)' : 'Tanda sebagai TEST order — tak masuk komisen staff & laporan'}" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:26px; background:${s.is_test ? '#E7C66A' : '#fff'}; border:1px solid ${s.is_test ? '#CE9420' : '#E5E7EB'}; color:${s.is_test ? '#5E3F0C' : '#9CA3AF'}; border-radius:5px; cursor:pointer; margin-left:5px;"><i data-lucide="flask-conical" style="width:13px;height:13px;"></i></button>
  </td>
- </tr>
- ${_itemRows}`;
+ </tr>`;
  }).join('');
  const aoFrom = filtered.length ? aoStart + 1 : 0;
  const aoTo = aoStart + slice.length;
