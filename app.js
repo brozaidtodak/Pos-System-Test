@@ -32374,7 +32374,7 @@ window.renderAllOrders = function() {
  return `<span style="background:${m.bg}; color:${m.fg}; padding:2px 8px; border-radius:4px; font-size:10.5px; font-weight:700;">${escHtml(m.label || '-')}</span>`;
  };
  // p1_328 — pagination (200/page) supaya semua order boleh diakses tanpa render semua sekali (elak lag iPad)
- const AO_PAGE_SIZE = 200;
+ const AO_PAGE_SIZE = 50; // p1_1175 (Zaid) — 50/halaman supaya load lebih cepat (dulu 200)
  const aoSig = [q, channel, status, document.getElementById('aoSort')?.value || '', document.getElementById('aoPeriod')?.value || '', document.getElementById('aoDateFrom')?.value || '', document.getElementById('aoDateTo')?.value || '', hideTest, !!window.__aoNoReceipt].join('|');
  if(window.__aoLastSig !== aoSig) { window.__aoPage = 1; window.__aoLastSig = aoSig; }
  const aoTotalPages = Math.max(1, Math.ceil(filtered.length / AO_PAGE_SIZE));
