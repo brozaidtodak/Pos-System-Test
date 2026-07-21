@@ -31985,6 +31985,11 @@ window.__aoQuickView = function(key){
  window.__aoPage = 1;
  window.renderAllOrders && window.renderAllOrders();
 };
+// p1_1174 — buka/tutup baris preview barang (semua tr[data-aoitems=oid]) bila klik baris order
+window.__aoToggleItems = function(oid){
+ var rows = document.querySelectorAll('tr[data-aoitems="' + oid + '"]');
+ for(var i=0;i<rows.length;i++){ rows[i].style.display = (rows[i].style.display==='none' ? 'table-row' : 'none'); }
+};
 // p1_328 — tukar halaman pagination + scroll ke atas jadual
 window.__aoGoPage = function(target){
  window.__aoPage = target;
@@ -32352,6 +32357,7 @@ window.renderAllOrders = function() {
  // p1_1174 — preview barang inline sbg BARIS SEBENAR yg jajar dgn lajur table (Qty bawah ITEMS, Jumlah bawah RM).
  // Buka/tutup dari klik baris. Detail penuh = klik no. order oren.
  const _oid = s.id;
+ const _itemsArr = Array.isArray(s.items) ? s.items : []; // p1_1174 fix — deklarasi hilang masa refactor sebelum ni
  const _mono = "font-family:'SF Mono',Menlo,monospace;";
  const _bg = 'background:#FBFAF7;';
  const _hdrRow = `<tr class="aoItemRow" data-aoitems="${_oid}" style="display:none; ${_bg}"><td style="border:none;"></td><td colspan="10" style="padding:7px 12px 3px; font-size:10px; color:#9CA3AF; font-weight:700; text-transform:uppercase; letter-spacing:.5px; border:none;">${_itemsArr.length} jenis &middot; ${itemsCount} unit — tekan no. order (oren) untuk detail penuh</td></tr>`;
@@ -32379,7 +32385,7 @@ window.renderAllOrders = function() {
  const isTest = !!s.is_test;
  const testBadge = isTest ? '<span style="background:#CE9420; color:#fff; padding:2px 6px; border-radius:4px; font-size:9.5px; font-weight:800; letter-spacing:0.3px; margin-left:4px; display:inline-flex; align-items:center; gap:3px;"><i data-lucide="flask-conical" style="width:9px;height:9px;"></i> TEST</span>' : '';
  const selChk = window.__aoSelected && window.__aoSelected.has(s.id);
- return `<tr onclick="if(event.target.closest('a,button,input,select,label,img'))return; var rows=document.querySelectorAll('tr[data-aoitems=\\'${s.id}\\']'); for(var i=0;i<rows.length;i++){rows[i].style.display=(rows[i].style.display==='none'?'table-row':'none');}" title="Klik baris untuk lihat barang ringkas" style="cursor:pointer; border-bottom:1px solid #F3F4F6; ${selChk ? 'background:rgba(184, 106, 38,.06);' : (isTest ? 'background:rgba(254,243,199,.18);' : '')}">
+ return `<tr onclick="if(event.target.closest('a,button,input,select,label,img'))return; window.__aoToggleItems&&window.__aoToggleItems(${s.id})" title="Klik baris untuk lihat barang ringkas" style="cursor:pointer; border-bottom:1px solid #F3F4F6; ${selChk ? 'background:rgba(184, 106, 38,.06);' : (isTest ? 'background:rgba(254,243,199,.18);' : '')}">
  <td style="padding:10px; text-align:center;"><input type="checkbox" onchange="window.__aoToggleSelect(${s.id}, this.checked)" ${selChk ? 'checked' : ''} style="width:15px; height:15px; cursor:pointer;"></td>
  <td data-label="Tarikh" style="padding:10px;">${dt}</td>
  ${(() => {
