@@ -13,7 +13,9 @@
 // Env: RESEND_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY (semua dah set utk loyalty-otp).
 
 const { requireStaff } = require('./_auth');
+const crypto = require('crypto');
 
+const CONSENT_SECRET = process.env.INTERNAL_FN_SECRET || ''; // p1_1156 — tandatangan link consent
 const RESEND_KEY = process.env.RESEND_API_KEY || '';
 const FROM_ADDR = process.env.LOYALTY_FROM || process.env.RECEIPT_FROM || '10 CAMP Rewards <admin@10camp.com>';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://asehjdnfzoypbwfeazra.supabase.co';
@@ -57,6 +59,20 @@ function renderEmail(bodyTpl, r, withPoster) {
   const posterHtml = withPoster
     ? `<a href="https://www.10camp.com/loyalty.html" style="display:block; margin:18px 0;"><img src="${POSTER_URL}" alt="Claim point anda sebelum 31 Disember 2026 — 10 CAMP Rewards" style="width:100%; display:block; border-radius:8px; border:1px solid #E5E7EB;"></a>`
     : '';
+  // p1_1156 — blok pengesahan consent satu-klik (Zaid: blast semua + tanya consent dlm email).
+  // Link bertandatangan HMAC → loyalty-consent.js update accepts_email_marketing terus.
+  let consentHtml = '';
+  if (CONSENT_SECRET && r.email) {
+    const e64 = Buffer.from(String(r.email), 'utf8').toString('base64url');
+    const s = crypto.createHmac('sha256', CONSENT_SECRET).update('consent|' + r.email).digest('hex');
+    const base = `https://www.10camp.com/.netlify/functions/loyalty-consent?e=${e64}&s=${s}`;
+    consentHtml = `<div style="margin:22px 0 4px; padding:16px; background:#FAF6EF; border:1px solid #F0C896; border-radius:12px; text-align:center;">
+      <p style="font-size:13px; color:#374151; margin:0 0 12px; font-weight:600;">Nak terus terima berita, tawaran &amp; info mata dari 10 CAMP?</p>
+      <a href="${base}&a=yes" style="display:inline-block; background:#168C50; color:#FFFFFF; font-weight:800; font-size:13px; text-decoration:none; padding:10px 20px; border-radius:8px; margin:0 4px;">✅ Ya, teruskan</a>
+      <a href="${base}&a=no" style="display:inline-block; background:#FFFFFF; color:#6B7280; font-weight:700; font-size:13px; text-decoration:none; padding:10px 20px; border-radius:8px; border:1px solid #D1D5DB; margin:0 4px;">Berhenti</a>
+      <p style="font-size:10.5px; color:#9CA3AF; margin:10px 0 0;">Satu klik sahaja — pilihan anda disimpan serta-merta.</p>
+    </div>`;
+  }
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; max-width:480px; margin:0 auto; padding:24px;">
     <div style="text-align:center; font-weight:800; font-size:20px; color:#CD7C32; letter-spacing:1px;">10 CAMP REWARDS</div>
     <div style="margin-top:18px;">${paras}</div>
@@ -64,7 +80,8 @@ function renderEmail(bodyTpl, r, withPoster) {
     <div style="text-align:center; margin:20px 0;">
       <a href="https://www.10camp.com/loyalty.html" style="display:inline-block; background:#CD7C32; color:#101010; font-weight:800; font-size:14px; text-decoration:none; padding:12px 26px; border-radius:10px;">Semak Mata &amp; Barang Boleh Tebus</a>
     </div>
-    <p style="font-size:11px; color:#9CA3AF; margin-top:18px; line-height:1.6;">10 CAMP &middot; Cyberjaya &middot; admin@10camp.com<br>Tak mahu email macam ni lagi? Balas email ini dan tulis "berhenti".</p>
+    ${consentHtml}
+    <p style="font-size:11px; color:#9CA3AF; margin-top:18px; line-height:1.6;">10 CAMP &middot; Cyberjaya &middot; admin@10camp.com<br>Anda terima email ini kerana anda pelanggan berdaftar 10 CAMP. Guna butang di atas untuk urus langganan.</p>
   </div>`;
 }
 

@@ -42911,7 +42911,8 @@ window.__mbOpen = function(){
  if(typeof showToast === 'function') showToast('Nota: blast terakhir ' + new Date(last.at).toLocaleDateString('en-MY') + ' (' + (last.sent || 0) + ' email). Elak hantar kerap sangat.', 'warn');
  }
  } catch(e){}
- window.__mbState = { min: 100, consent: true, unchecked: {} };
+ // p1_1156 — Zaid: bypass consent (email kini ada butang pengesahan consent sendiri) + default semua
+ window.__mbState = { min: 0, consent: false, unchecked: {} };
  const ov = document.createElement('div');
  ov.id = 'mbOverlay';
  ov.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:3800; display:flex; align-items:flex-start; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top)); overflow-y:auto;';
@@ -42921,8 +42922,9 @@ window.__mbOpen = function(){
  + '<button onclick="if(confirm(\'Tutup tanpa hantar?\')) document.getElementById(\'mbOverlay\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#999; padding:4px 8px;">×</button></div>'
  + '<div style="font-size:11.5px; color:#6B7280; margin-bottom:12px;">Dari: <b>admin@10camp.com</b> · penerima ikut tapisan di bawah · <b>pratonton wajib sebelum hantar</b></div>'
  + '<div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12.5px;">'
- + '<label>Mata minimum <input id="mbMin" type="number" value="100" min="0" style="width:70px; padding:6px 8px; border:1px solid #DDD; border-radius:7px; font-family:inherit;" onchange="window.__mbRefresh()"></label>'
- + '<label style="display:inline-flex; align-items:center; gap:5px;"><input id="mbConsent" type="checkbox" checked onchange="window.__mbRefresh()" style="width:16px; height:16px; flex:0 0 auto; margin:0;"> Hanya yang setuju terima email (consent)</label>'
+ + '<label>Mata minimum <input id="mbMin" type="number" value="0" min="0" style="width:70px; padding:6px 8px; border:1px solid #DDD; border-radius:7px; font-family:inherit;" onchange="window.__mbRefresh()"></label>'
+ + '<label style="display:inline-flex; align-items:center; gap:5px;"><input id="mbConsent" type="checkbox" onchange="window.__mbRefresh()" style="width:16px; height:16px; flex:0 0 auto; margin:0;"> Hanya yang ada consent</label>'
+ + '<span style="font-size:11px; color:#168C50; font-weight:700;">✓ Email ada butang consent — jawapan customer auto-update sistem</span>'
  + '<span id="mbCount" style="font-weight:800; color:var(--primary-800,#7C4A1A);"></span></div>'
  + '<div id="mbList" style="max-height:200px; overflow-y:auto; border:1px solid #EEE; border-radius:8px; margin-bottom:14px;"></div>'
  + '<label style="font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase;">Subjek</label>'
@@ -43002,25 +43004,36 @@ window.__mbSend = async function(){
  const st = window.__mbState; if(!st || !st.chosen || !st.chosen.length) return;
  const btn = document.getElementById('mbSendBtn');
  if(btn){ btn.disabled = true; btn.textContent = 'Menghantar…'; }
+ // p1_1156 — HANTAR BERPERINGKAT: had server 500/panggilan + elak timeout function utk blast
+ // besar (2,450 email). Client pecah 400-400, panggil berurutan, progress pada butang.
+ const CHUNK = 400;
+ const all = st.chosen.map(t => ({ email: t.email, name: t.name, mata: t.mata, tier: t.tier, kadar: t.kadar }));
+ let sent = 0, failures = [], aborted = false;
  try {
+ for(let i = 0; i < all.length; i += CHUNK){
+ const part = all.slice(i, i + CHUNK);
+ if(btn) btn.textContent = 'Menghantar ' + Math.min(i + part.length, all.length) + '/' + all.length + '…';
  const res = await fetch('/.netlify/functions/loyalty-email-blast', {
  method: 'POST',
  headers: window.__authHeaderSync({ 'Content-Type': 'application/json' }),
- body: JSON.stringify({ subject: st.subject, body: st.body, with_poster: st.withPoster !== false, recipients: st.chosen.map(t => ({ email: t.email, name: t.name, mata: t.mata, tier: t.tier, kadar: t.kadar })) })
+ body: JSON.stringify({ subject: st.subject, body: st.body, with_poster: st.withPoster !== false, recipients: part })
  });
  const j = await res.json().catch(() => ({}));
- if(res.ok && j.ok){
- try { localStorage.setItem('mataBlastLast_v1', JSON.stringify({ at: new Date().toISOString(), sent: j.sent, subject: st.subject })); } catch(e){}
- if(typeof showToast === 'function') showToast('Terhantar: ' + j.sent + '/' + j.total + ' email dari admin@10camp.com' + (j.failures && j.failures.length ? ' (' + j.failures.length + ' batch gagal)' : ''), 'success');
+ if(res.ok && j.ok){ sent += (j.sent || 0); failures = failures.concat(j.failures || []); }
+ else { failures.push('chunk ' + (i / CHUNK + 1) + ': ' + (j.error || res.status)); if(!sent){ aborted = true; break; } }
+ }
+ if(sent > 0){
+ try { localStorage.setItem('mataBlastLast_v1', JSON.stringify({ at: new Date().toISOString(), sent: sent, subject: st.subject })); } catch(e){}
+ if(typeof showToast === 'function') showToast('Terhantar: ' + sent + '/' + all.length + ' email dari admin@10camp.com' + (failures.length ? ' — ' + failures.length + ' isu (semak kuota Resend kalau banyak gagal)' : ''), failures.length ? 'warn' : 'success');
  const pv = document.getElementById('mbPrevOverlay'); if(pv) pv.remove();
  const ov = document.getElementById('mbOverlay'); if(ov) ov.remove();
  } else {
- if(typeof showToast === 'function') showToast('Gagal hantar: ' + (j.error || res.status), 'error');
- if(btn){ btn.disabled = false; btn.textContent = 'Sahkan & Hantar ' + st.chosen.length + ' email'; }
+ if(typeof showToast === 'function') showToast('Gagal hantar: ' + (failures[0] || 'ralat tidak diketahui'), 'error');
+ if(btn){ btn.disabled = false; btn.textContent = 'Sahkan & Hantar ' + all.length + ' email'; }
  }
  } catch(e){
- if(typeof showToast === 'function') showToast('Ralat rangkaian: ' + e.message, 'error');
- if(btn){ btn.disabled = false; btn.textContent = 'Sahkan & Hantar ' + st.chosen.length + ' email'; }
+ if(typeof showToast === 'function') showToast('Ralat rangkaian: ' + e.message + (sent ? ' — ' + sent + ' dah terhantar sebelum ralat' : ''), 'error');
+ if(btn){ btn.disabled = false; btn.textContent = 'Sahkan & Hantar ' + all.length + ' email'; }
  }
 };
 
