@@ -32349,6 +32349,17 @@ window.renderAllOrders = function() {
  tbody.innerHTML = slice.map(s => {
  const dt = s.created_at ? new Date(s.created_at).toLocaleString('en-MY', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
  const itemsCount = Array.isArray(s.items) ? s.items.reduce((n, it) => n + window.__aoItemQty(it), 0) : 0;
+ // p1_1174 — preview barang inline (gambar + nama + qty); buka/tutup dari lajur Items. Detail penuh = klik no. order.
+ const _itemsArr = Array.isArray(s.items) ? s.items : [];
+ const _itemsPreview = _itemsArr.length ? _itemsArr.map(it => {
+ const _iq = window.__aoItemQty(it);
+ const _iimg = (typeof window.__aoImgFor === 'function') ? window.__aoImgFor(it.sku) : '';
+ const _inm = String(it.name || it.sku || '-');
+ const _ithumb = _iimg
+ ? `<img src="${escHtml(_iimg)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #E5E7EB;flex:0 0 auto;display:block;"><span style="display:none;width:40px;height:40px;border:1px dashed #D1D5DB;border-radius:6px;align-items:center;justify-content:center;font-size:7.5px;color:#9CA3AF;flex:0 0 auto;">No Img</span>`
+ : `<span style="display:flex;width:40px;height:40px;border:1px dashed #D1D5DB;border-radius:6px;align-items:center;justify-content:center;font-size:7.5px;color:#9CA3AF;flex:0 0 auto;">No Img</span>`;
+ return `<div style="display:flex;align-items:center;gap:11px;padding:6px 2px;border-bottom:1px solid #F1EFEA;">${_ithumb}<span style="flex:1;font-size:11.5px;color:#374151;line-height:1.35;">${escHtml(_inm.slice(0,90))}${it.sku?` <span style="color:#9CA3AF;font-size:10px;font-family:'SF Mono',Menlo,monospace;">${escHtml(it.sku)}</span>`:''}</span><span style="flex:0 0 auto;font-weight:800;color:var(--primary-600,#B86A26);font-size:13px;">&times;${_iq}</span></div>`;
+ }).join('') : '<div style="color:#9CA3AF;font-size:11.5px;padding:6px 2px;">Tiada barang direkod.</div>';
  const ch = (s.channel || '').toLowerCase();
  const chIcon = (ch.includes('walk') || ch.includes('cashier')) ? 'store' : (ch.includes('shopee') ? 'shopping-cart' : (ch.includes('tiktok') ? 'video' : (ch.includes('whatsapp') ? 'message-circle' : (ch.includes('easystore') ? 'globe' : 'package'))));
  // p1_250 — Test badge + Test toggle button. is_test column dah exist + __ordMarkTest handler dah exist (line 5868).
@@ -32371,7 +32382,7 @@ window.renderAllOrders = function() {
  <td data-label="Pelanggan" style="padding:10px;"><strong>${escHtml((s.customer_name||'Walk-In').slice(0, 30))}</strong>${s.customer_phone ? `<br><span style="font-size:11px; color:#6B7280;">${escHtml(s.customer_phone)}</span>` : ''}</td>
  <td data-label="Channel" style="padding:10px;"><span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px;"><i data-lucide="${chIcon}" style="width:12px;height:12px; color:var(--primary);"></i> ${escHtml(s.channel || '-')}</span></td>
  <td data-label="Status" style="padding:10px;">${statusBadge(s.status)}</td>
- <td style="padding:10px; text-align:right;">${itemsCount}</td>
+ <td style="padding:10px; text-align:right;"><button onclick="(function(){var r=document.getElementById('aoItems-${s.id}'); if(r){r.style.display=(r.style.display==='none'?'table-row':'none');}})()" title="Lihat barang ringkas (gambar + kuantiti)" style="background:none; border:1px solid var(--primary-200,#FED7AA); border-radius:6px; padding:2px 9px; cursor:pointer; font-size:11.5px; font-weight:700; color:var(--primary-800,#7C4A1A); display:inline-flex; align-items:center; gap:4px;">${itemsCount} <i data-lucide="chevron-down" style="width:12px;height:12px;"></i></button></td>
  <td data-label="Jumlah" style="padding:10px; text-align:right; font-weight:700;">RM ${(parseFloat(s.total_amount||s.total||0)).toFixed(2)}</td>
  ${(() => {
  // p1_526 — Resit column boleh KLIK → Urus Resit (sehingga 3) untuk SEMUA order.
@@ -32409,7 +32420,11 @@ window.renderAllOrders = function() {
  <button onclick="window.__ppEditSale && window.__ppEditSale(${s.id})" style="background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-300,#FDBA74); color:var(--primary-800,#7C4A1A); padding:4px 10px; border-radius:5px; cursor:pointer; font-size:10.5px; font-weight:700;"><i data-lucide="edit-3" style="width:10px;height:10px;vertical-align:-1px;"></i> Edit</button>
  <button onclick="window.__aoToggleTest && window.__aoToggleTest(${s.id}, ${s.is_test ? 'false' : 'true'})" title="${s.is_test ? 'Order TEST — klik untuk tanda jualan SEBENAR (masuk balik komisen/laporan)' : 'Tanda sebagai TEST order — tak masuk komisen staff & laporan'}" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:26px; background:${s.is_test ? '#E7C66A' : '#fff'}; border:1px solid ${s.is_test ? '#CE9420' : '#E5E7EB'}; color:${s.is_test ? '#5E3F0C' : '#9CA3AF'}; border-radius:5px; cursor:pointer; margin-left:5px;"><i data-lucide="flask-conical" style="width:13px;height:13px;"></i></button>
  </td>
- </tr>`;
+ </tr>
+ <tr id="aoItems-${s.id}" style="display:none; background:#FBFAF7;"><td colspan="11" style="padding:6px 16px 12px;">
+ <div style="font-size:10px; color:#9CA3AF; font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin:4px 0 6px;">${_itemsArr.length} jenis &middot; ${itemsCount} unit — tekan no. order (oren) untuk detail penuh</div>
+ ${_itemsPreview}
+ </td></tr>`;
  }).join('');
  const aoFrom = filtered.length ? aoStart + 1 : 0;
  const aoTo = aoStart + slice.length;
