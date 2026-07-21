@@ -911,7 +911,13 @@ window.__dsPickRedeem = function(sku){
  window.__pendingRedeem = { customer_id: ctx.match.id, tier: ctx.tier, type: 'deadstock', label: 'Tebus ' + sku + ' — ' + (it.name || ''), cost: mata, rm: unitRm, sku: sku };
  window.__dsCloseRedeemPicker();
  if(typeof cpRecomputeTotal === 'function') cpRecomputeTotal();
- if(typeof window.cpVipLookup === 'function') window.cpVipLookup();
+ // p1_1162 BUGFIX (jumpa masa QA): cpVipLookup baca medan cpCust* (dlm PANEL BAYAR). Bila tebus
+ // dari SHEET TROLI mobile (panel belum buka), medan kosong → no-match → cpVipLookup NULL-kan
+ // __pendingRedeem yang baru diset = customer kena caj penuh + mata tak ditolak. Panggil HANYA
+ // kalau panel bayar terbuka (medan terisi); sheet troli refresh sendiri.
+ const __cpOpen = (document.getElementById('cpCustName') || {}).value && document.getElementById('checkoutPanel') && document.getElementById('checkoutPanel').classList.contains('is-open');
+ if(__cpOpen && typeof window.cpVipLookup === 'function') window.cpVipLookup();
+ else if(document.getElementById('posRedeemSheet') && typeof window.__posRedeemSheetRefresh === 'function') window.__posRedeemSheetRefresh();
  if(typeof showToast === 'function') showToast('Tebus ' + sku + ': −' + mata + ' mata bila bayar, barang RM ' + unitRm.toFixed(2) + ' percuma. Pastikan serahkan barang!', 'success');
 };
 // ============ tamat p1_1130 ============
