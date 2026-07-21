@@ -5825,6 +5825,9 @@
  </div>
  </div>
 
+ <!-- p1_1173 — chip pantas (quick view): satu-tekan tapis Belum Bayar / Perlu Pack / Dah Hantar / Tiada Resit -->
+ <div id="aoChips" style="display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px;"></div>
+
  <!-- p1_331 — bar tindakan bulk (muncul bila ada order dipilih) -->
  <div id="aoBulkBar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; background:var(--primary-50,#FFF8F0); border:1px solid var(--primary-200,#FED7AA); border-radius:10px; padding:10px 14px; margin-bottom:14px;">
  <span style="font-size:13px; font-weight:700; color:var(--primary-800,#7C4A1A);"><strong id="aoBulkCount">0</strong> order dipilih</span>
@@ -5877,7 +5880,7 @@
      <option value="Web EasyStore">Web EasyStore</option>
    </select>
  </th>
- <th style="text-align:left; padding:10px;" data-i18n="ao_th_method">Kaedah</th>
+ <!-- p1_1173 — lajur Kaedah bayar disorok (tunjuk dalam modal detail order); kurang bersepah -->
  <th style="text-align:left; padding:10px;" data-i18n="ao_th_status">Status</th>
  <th style="text-align:right; padding:10px;" data-i18n="ao_th_items">Items</th>
  <th style="text-align:right; padding:10px;">RM</th>
@@ -5889,7 +5892,7 @@
  </tr>
  </thead>
  <tbody id="aoTbody">
- <tr><td colspan="12" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>
+ <tr><td colspan="11" style="text-align:center; color:#999; padding:32px;">Loading...</td></tr>
  </tbody>
  </table>
  </div>
@@ -13282,7 +13285,7 @@
   </div>
  </div>
  <!-- JS Core -->
- <script src="app.js?v=1137"></script>
+ <script src="app.js?v=1138"></script>
  <!-- p1_975 — daftar Service Worker untuk OFFLINE PENUH. HTML network-first (sentiasa fresh
       bila online) + cache fallback bila offline. Lihat sw.js untuk strategi elak kod basi. -->
  <script>

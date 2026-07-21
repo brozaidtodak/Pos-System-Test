@@ -31970,10 +31970,20 @@ window.__aoResetFilters = function(){
  set('aoSearch',''); set('aoChannel',''); set('aoStatus',''); set('aoSort','id_desc');
  set('aoPeriod','all'); set('aoDateFrom',''); set('aoDateTo','');
  set('aoChannelHdr',''); set('aoPeriodHdr','all');
+ window.__aoNoReceipt = false;
  const wrap = document.getElementById('aoCustomRange'); if(wrap) wrap.style.display='none';
  window.__aoPage = 1;
  window.renderAllOrders && window.renderAllOrders();
  if(window.showToast) showToast('Tapisan direset.', 'success');
+};
+// p1_1173 — chip pantas: satu-tekan tukar quick view (status / tiada resit)
+window.__aoQuickView = function(key){
+ const st = document.getElementById('aoStatus');
+ window.__aoNoReceipt = (key === 'noreceipt');
+ if(key === 'noreceipt'){ if(st) st.value = ''; }
+ else if(st){ st.value = (key==='pending' ? 'Pending' : (key==='pack' ? 'To Fulfil' : (key==='shipped' ? 'Processing' : ''))); }
+ window.__aoPage = 1;
+ window.renderAllOrders && window.renderAllOrders();
 };
 // p1_328 — tukar halaman pagination + scroll ke atas jadual
 window.__aoGoPage = function(target){
@@ -31999,6 +32009,7 @@ window.__aoGetFiltered = function(){
  else if(channel === 'online') { if(!ONLINE_CHANNELS.some(c => chLower.includes(c))) return false; }
  else if(channel && s.channel !== channel) return false;
  if(status && window.__aoStatusMeta(s.status).canon !== status) return false;
+ if(window.__aoNoReceipt){ const _pf = window.__ppGetProofs ? window.__ppGetProofs(s) : (s.payment_proof_url ? [s.payment_proof_url] : []); if(_pf.length) return false; } // p1_1173 — chip Tiada Resit
  if(q) {
  const itemsTxt = Array.isArray(s.items) ? s.items.map(i => (i.sku || '') + ' ' + (i.name || '')).join(' ') : '';
  const md = s.metadata || {};
@@ -32298,12 +32309,19 @@ window.renderAllOrders = function() {
  document.getElementById('aoStats').innerHTML = `
  <div class="stat-card"><div class="stat-card__label"><i data-lucide="receipt" style="width:13px;height:13px; color:var(--primary);"></i> ${_t('ao_kpi_orders','Jumlah Order')}</div><div class="stat-card__value">${filtered.length.toLocaleString()}</div></div>
  <div class="stat-card" style="border-left-color:#4E7C4A;" title="${_t('ao_kpi_netsales_t','Jualan bersih — tidak termasuk order Batal/Refund')}${deadCount ? ' (' + deadCount + ')' : ''}"><div class="stat-card__label"><i data-lucide="trending-up" style="width:13px;height:13px; color:#4E7C4A;"></i> ${_t('ao_kpi_netsales','Jualan Bersih')}</div><div class="stat-card__value">RM ${total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
- <div class="stat-card" style="border-left-color:var(--primary-500,#CD7C32);" title="${_t('ao_kpi_aov_t','Purata nilai setiap order')}"><div class="stat-card__label"><i data-lucide="bar-chart-3" style="width:13px;height:13px; color:var(--primary-500,#CD7C32);"></i> ${_t('ao_kpi_aov','Purata / Order')}</div><div class="stat-card__value">RM ${aov.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
- <div class="stat-card" style="border-left-color:var(--secondary);"><div class="stat-card__label"><i data-lucide="store" style="width:13px;height:13px; color:var(--secondary);"></i> ${_t('ao_kpi_walkin','Walk-in')}</div><div class="stat-card__value">${walkinCount}</div></div>
- <div class="stat-card" style="border-left-color:var(--primary-500,#CD7C32);"><div class="stat-card__label"><i data-lucide="globe" style="width:13px;height:13px; color:var(--primary-500,#CD7C32);"></i> ${_t('ao_kpi_online','Online')}</div><div class="stat-card__value">${onlineCount}</div></div>
- <div class="stat-card" style="border-left-color:#CE9420; cursor:pointer;" onclick="(function(){var e=document.getElementById('aoStatus'); if(e){e.value='To Fulfil'; window.renderAllOrders&&window.renderAllOrders();}})()" title="${_t('ao_kpi_tofulfil_t','Klik untuk tapis order yang perlu di-pack')}"><div class="stat-card__label"><i data-lucide="package" style="width:13px;height:13px; color:#CE9420;"></i> ${_t('ao_kpi_tofulfil','Perlu Pack')}</div><div class="stat-card__value">${toFulfil}</div></div>
- <div class="stat-card" style="border-left-color:var(--primary-600,#B86A26); cursor:pointer;" onclick="(function(){var e=document.getElementById('aoStatus'); if(e){e.value='Processing'; window.renderAllOrders&&window.renderAllOrders();}})()" title="${_t('ao_kpi_shipped_t','Klik untuk tapis order yang dah dihantar')}"><div class="stat-card__label"><i data-lucide="truck" style="width:13px;height:13px; color:var(--primary-600,#B86A26);"></i> ${_t('ao_kpi_shipped','Dah Hantar')}</div><div class="stat-card__value">${processing}</div></div>
+ <div class="stat-card" style="border-left-color:var(--primary-500,#CD7C32);" title="${_t('ao_kpi_aov_t','Purata nilai setiap order')} · Walk-in ${walkinCount} / Online ${onlineCount}"><div class="stat-card__label"><i data-lucide="bar-chart-3" style="width:13px;height:13px; color:var(--primary-500,#CD7C32);"></i> ${_t('ao_kpi_aov','Purata / Order')}</div><div class="stat-card__value">RM ${aov.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+ <div class="stat-card" style="border-left-color:#CE9420; cursor:pointer;" onclick="window.__aoQuickView && window.__aoQuickView('pack')" title="${_t('ao_kpi_tofulfil_t','Klik untuk tapis order yang perlu di-pack')}"><div class="stat-card__label"><i data-lucide="package" style="width:13px;height:13px; color:#CE9420;"></i> ${_t('ao_kpi_tofulfil','Perlu Pack')}</div><div class="stat-card__value">${toFulfil}</div></div>
+ <div class="stat-card" style="border-left-color:var(--primary-600,#B86A26); cursor:pointer;" onclick="window.__aoQuickView && window.__aoQuickView('shipped')" title="${_t('ao_kpi_shipped_t','Klik untuk tapis order yang dah dihantar')}"><div class="stat-card__label"><i data-lucide="truck" style="width:13px;height:13px; color:var(--primary-600,#B86A26);"></i> ${_t('ao_kpi_shipped','Dah Hantar')}</div><div class="stat-card__value">${processing}</div></div>
  `;
+
+ // p1_1173 — chip pantas (quick view): highlight ikut tapisan semasa
+ const _chipHost = document.getElementById('aoChips');
+ if(_chipHost){
+ const _noRcp = !!window.__aoNoReceipt;
+ const _activeKey = _noRcp ? 'noreceipt' : (status==='Pending'?'pending':(status==='To Fulfil'?'pack':(status==='Processing'?'shipped':(status===''?'all':''))));
+ const _chip = (key,label,icon) => { const on=(_activeKey===key); return `<button onclick="window.__aoQuickView && window.__aoQuickView('${key}')" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid ${on?'var(--primary-500,#CD7C32)':'#E5E7EB'};background:${on?'var(--primary-500,#CD7C32)':'#fff'};color:${on?'#fff':'#374151'};"><i data-lucide="${icon}" style="width:12px;height:12px;"></i> ${label}</button>`; };
+ _chipHost.innerHTML = _chip('all','Semua','layers') + _chip('pending','Belum Bayar','clock') + _chip('pack','Perlu Pack','package') + _chip('shipped','Dah Hantar','truck') + _chip('noreceipt','Tiada Resit','receipt');
+ }
 
  if(filtered.length === 0) {
  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:#999; padding:32px;">Tiada order match filter. Cuba clear filter atau tambah order baru.</td></tr>';
@@ -32318,7 +32336,7 @@ window.renderAllOrders = function() {
  };
  // p1_328 — pagination (200/page) supaya semua order boleh diakses tanpa render semua sekali (elak lag iPad)
  const AO_PAGE_SIZE = 200;
- const aoSig = [q, channel, status, document.getElementById('aoSort')?.value || '', document.getElementById('aoPeriod')?.value || '', document.getElementById('aoDateFrom')?.value || '', document.getElementById('aoDateTo')?.value || '', hideTest].join('|');
+ const aoSig = [q, channel, status, document.getElementById('aoSort')?.value || '', document.getElementById('aoPeriod')?.value || '', document.getElementById('aoDateFrom')?.value || '', document.getElementById('aoDateTo')?.value || '', hideTest, !!window.__aoNoReceipt].join('|');
  if(window.__aoLastSig !== aoSig) { window.__aoPage = 1; window.__aoLastSig = aoSig; }
  const aoTotalPages = Math.max(1, Math.ceil(filtered.length / AO_PAGE_SIZE));
  if(!window.__aoPage || window.__aoPage < 1) window.__aoPage = 1;
@@ -32352,7 +32370,6 @@ window.renderAllOrders = function() {
  })()}
  <td data-label="Pelanggan" style="padding:10px;"><strong>${escHtml((s.customer_name||'Walk-In').slice(0, 30))}</strong>${s.customer_phone ? `<br><span style="font-size:11px; color:#6B7280;">${escHtml(s.customer_phone)}</span>` : ''}</td>
  <td data-label="Channel" style="padding:10px;"><span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px;"><i data-lucide="${chIcon}" style="width:12px;height:12px; color:var(--primary);"></i> ${escHtml(s.channel || '-')}</span></td>
- <td data-label="Bayar" style="padding:10px; font-size:11.5px;">${escHtml(s.payment_method || '-')}</td>
  <td data-label="Status" style="padding:10px;">${statusBadge(s.status)}</td>
  <td style="padding:10px; text-align:right;">${itemsCount}</td>
  <td data-label="Jumlah" style="padding:10px; text-align:right; font-weight:700;">RM ${(parseFloat(s.total_amount||s.total||0)).toFixed(2)}</td>
