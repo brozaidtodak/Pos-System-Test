@@ -689,6 +689,23 @@ window.__tierBadgeHtml = function(c){
 // Redeem yang dipilih staf untuk transaksi semasa (mata ditolak bila bayar sahaja).
 window.__pendingRedeem = null;
 window.__cpRedeemCustomer = null;
+// p1_1179 — kelayakan diskaun tier dikira SEKALI, dipakai 2 tempat: preview kad ganjaran
+// (staf nampak AWAL item mana layak — isu Irfan 22 Jul: barang promo -50% kena block tapi
+// staf tak faham kenapa) + __cpApplyRedeem (kiraan sebenar). Margin ikut cost_price.
+window.__tierDiscEligibility = function(minMargin){
+ const costMap = {};
+ (Array.isArray(masterProducts) ? masterProducts : []).forEach(p => { if(p.sku) costMap[String(p.sku).toUpperCase()] = parseFloat(p.cost_price || 0) || 0; });
+ const out = { eligibleTotal: 0, eligibleCount: 0, skipCount: 0, cartCount: 0 };
+ (Array.isArray(cart) ? cart : []).forEach(it => {
+ out.cartCount++;
+ const price = Number(it.price) || 0, qty = Number(it.quantity) || 0;
+ const cost = costMap[String(it.sku || '').toUpperCase()] || 0;
+ const margin = (price > 0 && cost > 0) ? ((price - cost) / price * 100) : -1;
+ if(margin >= (minMargin || 0)) { out.eligibleTotal += price * qty; out.eligibleCount++; }
+ else out.skipCount++;
+ });
+ return out;
+};
 // Panel ganjaran dalam banner checkout: tier + mata + 3 butang redeem tier tu.
 window.__cpRedeemPanelHtml = function(match, tier, pct){
  const tk = String(tier).toLowerCase();
@@ -705,10 +722,24 @@ window.__cpRedeemPanelHtml = function(match, tier, pct){
  const isPend = pend && pend.idx === i && pend.tier === tk;
  const costTxt = r.type === 'deadstock' ? 'mata ikut barang' : (r.cost > 0 ? (r.cost + ' mata') : 'percuma');
  const afford = r.cost <= 0 || avail >= r.cost;
- const bg = isPend ? '#4E7C4A' : (afford ? '#fff' : '#F3F4F6');
- const fg = isPend ? '#fff' : (afford ? '#374151' : '#9CA3AF');
+ // p1_1179 — status kelayakan AWAL pada kad Diskaun tier (isu Irfan: baru tahu bila tekan).
+ let enabled = afford, statusHtml = '';
+ if(r.type === 'tier_disc'){
+ const el = window.__tierDiscEligibility(r.minMargin);
+ if(!el.cartCount){
+ statusHtml = '<br><span style="font-weight:600; font-size:10px; color:#9CA3AF;">Troli kosong — masukkan barang dulu</span>';
+ } else if(el.eligibleCount === 0){
+ enabled = false;
+ statusHtml = '<br><span style="font-weight:700; font-size:10px; color:#B23A2E;">✗ Tak layak — barang promo/margin nipis (' + el.skipCount + ' item)</span>';
+ } else {
+ const rmPrev = el.eligibleTotal * (r.pct || 0) / 100;
+ statusHtml = '<br><span style="font-weight:700; font-size:10px; color:#168C50;">✓ ' + el.eligibleCount + ' item layak → −RM' + rmPrev.toFixed(2) + (el.skipCount ? ' · ' + el.skipCount + ' promo tak termasuk' : '') + '</span>';
+ }
+ }
+ const bg = isPend ? '#4E7C4A' : (enabled ? '#fff' : '#F3F4F6');
+ const fg = isPend ? '#fff' : (enabled ? '#374151' : '#9CA3AF');
  const bd = isPend ? '#4E7C4A' : '#E5E7EB';
- return '<button type="button" ' + (afford ? '' : 'disabled') + ' onclick="window.__cpApplyRedeem(' + i + ')" style="text-align:left; flex:1; min-width:118px; padding:7px 9px; border:1px solid ' + bd + '; background:' + bg + '; color:' + fg + '; border-radius:9px; cursor:' + (afford ? 'pointer' : 'not-allowed') + '; font-size:11.5px; font-weight:700;">' + (isPend ? '(dipilih) ' : '') + hesc(r.label) + '<br><span style="font-weight:600; font-size:10px; opacity:.85;">' + costTxt + '</span></button>';
+ return '<button type="button" ' + (enabled ? '' : 'disabled') + ' onclick="window.__cpApplyRedeem(' + i + ')" style="text-align:left; flex:1; min-width:118px; padding:7px 9px; border:1px solid ' + bd + '; background:' + bg + '; color:' + fg + '; border-radius:9px; cursor:' + (enabled ? 'pointer' : 'not-allowed') + '; font-size:11.5px; font-weight:700;">' + (isPend ? '(dipilih) ' : '') + hesc(r.label) + '<br><span style="font-weight:600; font-size:10px; opacity:.85;">' + costTxt + '</span>' + statusHtml + '</button>';
  }).join('');
  const foot = pend ? '<button type="button" onclick="window.__cpClearRedeem()" style="margin-top:6px; background:none; border:0; color:#B23A2E; font-size:11px; font-weight:700; cursor:pointer;">Batal redeem</button>' : '';
  return head + '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">' + btns + '</div>' + foot;
@@ -753,25 +784,17 @@ window.__cpApplyRedeem = function(idx){
  if(r.type === 'tier_disc'){
  // p1_1060 — diskaun HANYA pada item terpilih = margin semasa >= minMargin (kira dari cost_price).
  // Item tiada kos / margin nipis TAK layak — lindung margin (arahan Zaid: VIP 45 / Silver 40 / Bronze 35).
- const costMap = {};
- (Array.isArray(masterProducts) ? masterProducts : []).forEach(p => { if(p.sku) costMap[String(p.sku).toUpperCase()] = parseFloat(p.cost_price || 0) || 0; });
- let eligibleTotal = 0, eligibleCount = 0, skipCount = 0;
- (Array.isArray(cart) ? cart : []).forEach(it => {
- const price = Number(it.price) || 0, qty = Number(it.quantity) || 0;
- const cost = costMap[String(it.sku || '').toUpperCase()] || 0;
- const margin = (price > 0 && cost > 0) ? ((price - cost) / price * 100) : -1;
- if(margin >= (r.minMargin || 0)) { eligibleTotal += price * qty; eligibleCount++; }
- else skipCount++;
- });
- if(eligibleCount === 0){ if(typeof showToast === 'function') showToast('Tiada item dalam troli layak (margin bawah ' + r.minMargin + '% / tiada kos). Diskaun tier tak boleh diberi.', 'warn'); return; }
- const discRm = round2(eligibleTotal * (r.pct || 0) / 100);
+ // p1_1179 — kiraan dipindah ke __tierDiscEligibility (kongsi dgn preview kad ganjaran).
+ const el = window.__tierDiscEligibility(r.minMargin);
+ if(el.eligibleCount === 0){ if(typeof showToast === 'function') showToast('Tiada item layak — barang promo / margin bawah ' + r.minMargin + '% / tiada kos dikecualikan dari diskaun tier. (Customer masih boleh tebus mata → barang.)', 'warn'); return; }
+ const discRm = round2(el.eligibleTotal * (r.pct || 0) / 100);
  const dt = document.getElementById('cpDiscType'); if(dt) dt.value = 'rm';
  const da = document.getElementById('cpDiscAmt'); if(da) da.value = discRm.toFixed(2);
- const dr = document.getElementById('cpDiscReason'); if(dr) dr.value = 'Diskaun tier ' + r.pct + '% — ' + eligibleCount + ' item layak (walk-in)';
+ const dr = document.getElementById('cpDiscReason'); if(dr) dr.value = 'Diskaun tier ' + r.pct + '% — ' + el.eligibleCount + ' item layak (walk-in)';
  window.__pendingRedeem = { customer_id: match.id, tier: tk, idx: idx, type: r.type, label: r.label, cost: 0, rm: discRm, pct: r.pct || 0 };
  if(typeof cpRecomputeTotal === 'function') cpRecomputeTotal();
  if(typeof window.cpVipLookup === 'function') window.cpVipLookup();
- if(typeof showToast === 'function') showToast('Diskaun ' + r.pct + '%: ' + eligibleCount + ' item layak → −RM ' + discRm.toFixed(2) + (skipCount ? ' (' + skipCount + ' item tak layak)' : ''), 'success');
+ if(typeof showToast === 'function') showToast('Diskaun ' + r.pct + '%: ' + el.eligibleCount + ' item layak → −RM ' + discRm.toFixed(2) + (el.skipCount ? ' (' + el.skipCount + ' item promo/margin nipis tak termasuk)' : ''), 'success');
  return;
  }
  if(r.type === 'shirt'){
