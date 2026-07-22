@@ -13817,14 +13817,12 @@ function renderPOS(searchTerm = "") {
  </div>
  <div class="product-card__badges">
  <span class="sku-badge">${p.sku}</span>
- ${p.brand ? `<span class="cat-badge">${p.brand}</span>` : (p.category ? `<span class="cat-badge">${p.category}</span>` : '')}
- ${cleanColor ? `<span class="cat-badge" style="background:#FAF6EF; color:var(--primary-500,#CD7C32); border:1px solid var(--primary-500,#CD7C32); font-weight:600;" title="Warna / variant">${cleanColor.replace(/"/g, '&quot;')}</span>` : ''}
- ${isOnSale ? `<span class="cat-badge" style="background:#0F172A; color:#FFFFFF;">-${offPct}%</span>` : ''}
- ${p.location_bin ? `<span class="cat-badge" style="background:#F8EFD7; color:#7A5410; font-family:'SF Mono',Menlo,monospace; letter-spacing:0.3px;" title="Lokasi gudang">${p.location_bin}</span>` : ''}
+ ${cleanColor ? `<span class="cat-badge" style="background:#FAF6EF; color:#7A5410; border:1px solid #EADFD0; font-weight:600; text-transform:none;" title="Warna / variant">${cleanColor.replace(/"/g, '&quot;')}</span>` : ''}
+ ${isOnSale ? `<span class="cat-badge" style="background:var(--primary, #FF4D00); color:#141414;">-${offPct}%</span>` : ''}
  </div>
  <h3 class="product-card__title" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
- <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : (totalStock <= (window.__POS_LOW_STOCK || 3) ? ' style="color:#B45309; font-weight:700;"' : '')}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
+ <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : (totalStock <= (window.__POS_LOW_STOCK || 3) ? ' style="color:#B45309; font-weight:700;"' : '')}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'}`}${p.location_bin ? ` <span style="color:#9CA3AF; font-family:ui-monospace,Menlo,monospace; font-size:10px;" title="Lokasi gudang">· ${p.location_bin}</span>` : ''}</p>
  <div class="pos-card-step" style="display:none;"></div>
  </div>
  `;
@@ -47292,16 +47290,17 @@ window.__pdbRefresh = async function(btn){
 (function(){
  const st = document.createElement('style');
  st.id = 'posCardStepCss';
+ // p1_1186 — REDESIGN ringan (Zaid: stepper tebal border hitam "juling mata"): pill lembut
+ // tulang #F4F2EC, bulatan kecil utk -/+ (oren = tindakan sahaja), qty mono, TIADA label teks.
  st.textContent = ''
-  + '.pos-card-info{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:#141414;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;box-shadow:0 1px 5px rgba(0,0,0,.22);}'
+  + '.pos-card-info{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(255,255,255,.85);color:#6E6A5E;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.15);}'
   + '.pos-card-info:active{transform:scale(.9);}'
-  + '.pos-card-step{display:flex;align-items:center;gap:0;margin-top:7px;border:2px solid #141414;border-radius:8px;overflow:hidden;background:#fff;}'
-  + '.pcs-btn{flex:0 0 42px;height:36px;border:none;background:#F4F2EC;color:#141414;font-size:19px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}'
-  + '.pcs-btn:active{background:#E4E0D2;}'
+  + '.pos-card-step{display:flex;align-items:center;justify-content:space-between;margin-top:6px;border-radius:999px;background:#F4F2EC;padding:3px;}'
+  + '.pcs-btn{flex:0 0 28px;width:28px;height:28px;border:none;border-radius:50%;background:#fff;color:#141414;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.08);}'
+  + '.pcs-btn:active{transform:scale(.92);}'
   + '.pcs-btn.pcs-plus{background:var(--primary,#FF4D00);color:#141414;}'
-  + '.pcs-qty{flex:1;text-align:center;font-weight:800;font-size:14px;color:#141414;font-family:var(--font-mono,monospace);}'
-  + '.pcs-qty small{display:block;font-size:8.5px;font-weight:700;color:#6E6A5E;letter-spacing:.5px;line-height:1;}'
-  + '@keyframes posCardFlash{0%{box-shadow:0 0 0 3px rgba(22,140,80,.65);}100%{box-shadow:0 0 0 3px rgba(22,140,80,0);}}'
+  + '.pcs-qty{flex:1;text-align:center;font-weight:700;font-size:13px;color:#141414;font-family:var(--font-mono,monospace);}'
+  + '@keyframes posCardFlash{0%{box-shadow:0 0 0 3px rgba(22,140,80,.55);}100%{box-shadow:0 0 0 3px rgba(22,140,80,0);}}'
   + '.pos-card-flash{animation:posCardFlash .55s ease-out;}';
  document.head.appendChild(st);
 
@@ -47327,7 +47326,7 @@ window.__pdbRefresh = async function(btn){
     slot.style.display = 'flex';
     // + terus tambah SKU kad ni (kad = variant spesifik, tak perlu picker semula)
     slot.innerHTML = '<button type="button" class="pcs-btn" onclick="event.stopPropagation(); window.__posCardMinus(\'' + e + '\')" aria-label="Kurang satu">−</button>'
-     + '<span class="pcs-qty">' + f.qty + '<small>DLM TROLI</small></span>'
+     + '<span class="pcs-qty" title="Kuantiti dalam troli">' + f.qty + '</span>'
      + '<button type="button" class="pcs-btn pcs-plus" onclick="event.stopPropagation(); addToCart(\'' + e + '\')" aria-label="Tambah satu">+</button>';
    });
   } catch(e){}
