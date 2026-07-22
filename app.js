@@ -47098,9 +47098,13 @@ window.__pdbRefresh = async function(btn){
   body.innerHTML = 'Memuatkan data jualan ' + mv + '… (boleh ambil beberapa saat)';
   try {
    const start = new Date(mv + '-01T00:00:00+08:00');
-   const endMyt = new Date(mv + '-01T00:00:00+08:00'); endMyt.setUTCMonth(endMyt.getUTCMonth()+1); // 1hb bulan depan 00:00 MYT
+   // GOTCHA: JANGAN setUTCMonth atas objek Date (31 Mei +1 bulan = "31 Jun" → lompat 1 Jul,
+   // report tercuri sehari bulan depan — ditangkap QA v1150). Bina string 1hb bulan depan terus.
+   const y = parseInt(mv.slice(0,4),10), m = parseInt(mv.slice(5,7),10);
+   const nY = m === 12 ? y+1 : y, nM = m === 12 ? 1 : m+1;
+   const endMyt = new Date(nY + '-' + String(nM).padStart(2,'0') + '-01T00:00:00+08:00');
    const sales = await tdFetchSales(start.toISOString(), endMyt.toISOString());
-   const lastDay = new Date(endMyt.getTime() - 24*3600e3).toISOString().slice(0,10);
+   const lastDay = new Date(Date.UTC(nY, nM-1, 1) - 86400000).toISOString().slice(0,10);
    const reconMap = await tdFetchRecon(mv + '-01', lastDay);
    const d = tdBuildRows(sales, reconMap);
    window.__tdData = { month: mv, rows: d.rows, totGross: d.totGross, totNet: d.totNet };
