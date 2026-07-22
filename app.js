@@ -13823,6 +13823,7 @@ function renderPOS(searchTerm = "") {
  <h3 class="product-card__title" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
  <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : (totalStock <= (window.__POS_LOW_STOCK || 3) ? ' style="color:#B45309; font-weight:700;"' : '')}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'}`}${p.location_bin ? ` <span style="color:#9CA3AF; font-family:ui-monospace,Menlo,monospace; font-size:10px;" title="Lokasi gudang">· ${p.location_bin}</span>` : ''}</p>
+ <button type="button" class="pos-card-add" onclick="event.stopPropagation(); window.posOpenVariants('${skuEsc}')" title="Tambah ke troli (produk bervariant: pilih variant dulu)">Tambah</button>
  <div class="pos-card-step" style="display:none;"></div>
  </div>
  `;
@@ -47326,6 +47327,9 @@ window.__pdbRefresh = async function(btn){
     const prev = parseInt(card.getAttribute('data-qtyprev') || '0', 10);
     if(f.qty > prev){ card.classList.remove('pos-card-flash'); void card.offsetWidth; card.classList.add('pos-card-flash'); }
     card.setAttribute('data-qtyprev', String(f.qty));
+    // p1_1187 — butang "Tambah" <-> stepper bertukar ganti ikut ada/tiada dlm troli
+    const addBtn = card.querySelector('.pos-card-add');
+    if(addBtn) addBtn.style.display = f.qty ? 'none' : '';
     if(!f.qty){ slot.style.display = 'none'; slot.innerHTML = ''; return; }
     const e = jsEsc(base);
     slot.style.display = 'flex';
