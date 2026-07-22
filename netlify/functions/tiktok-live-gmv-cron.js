@@ -35,10 +35,13 @@ exports.handler = async (event) => {
         const cipher = await ensureShopCipher(tok);
 
         // Tetingkap: 3 hari terakhir (MYT). end_date_lt eksklusif = esok.
+        // ?days=N (max 60) utk backfill sejarah lama secara manual (run sekali).
+        let days = parseInt(event && event.queryStringParameters && event.queryStringParameters.days, 10) || 3;
+        if (days < 1) days = 1; if (days > 60) days = 60;
         const myt = new Date(Date.now() + 8 * 3600e3);
         const ymd = (d) => d.toISOString().slice(0, 10);
         const endLt = ymd(new Date(myt.getTime() + 24 * 3600e3));
-        const startGe = ymd(new Date(myt.getTime() - 3 * 24 * 3600e3));
+        const startGe = ymd(new Date(myt.getTime() - days * 24 * 3600e3));
         out.window = { start_date_ge: startGe, end_date_lt: endLt };
 
         // 1) Sesi live rasmi TikTok (pagination page_token)
