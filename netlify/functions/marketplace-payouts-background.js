@@ -44,55 +44,72 @@ exports.handler = async (event) => {
     const dry = !!p.dry;
     const days = Math.min(Math.max(parseInt(p.days || '21', 10) || 21, 7), 90);
     const sinceMs = Date.now() - days * 24 * 3600e3;
-    const out = { dry, days, tiktok: { lines: 0, orders: 0, err: null }, shopee: { orders: 0, windows: 0, err: null }, upserted: 0 };
-    const ledger = {}; // order_sn -> { channel, gross, net_payout, order_date }
+    const out = { dry, days, tiktok: { lines: 0, orders: 0, errs: [] }, shopee: { orders: 0, windows: 0, errs: [] }, upserted: 0 };
 
-    // 1) TikTok — bulk statement lines, SUM per order_id
-    try {
-        const j = await fetchJson(`${SITE_URL}/api/tiktok-finance?mode=rows&from=${ymd(sinceMs)}&to=${ymd(Date.now() + 24 * 3600e3)}`);
-        for (const r of (j.rows || [])) {
-            const oid = String(r.order_id || '').trim();
-            if (!oid) continue;
-            out.tiktok.lines++;
-            const slot = ledger[oid] = ledger[oid] || { channel: 'TikTok', gross: 0, net_payout: 0, order_date: r.order_date || null };
-            slot.gross = round2(slot.gross + (Number(r.gross) || 0));
-            slot.net_payout = round2(slot.net_payout + (Number(r.net_payout) || 0));
-            if (r.order_date && (!slot.order_date || r.order_date < slot.order_date)) slot.order_date = r.order_date;
+    // Tulis progres selepas TIAP chunk (sub-endpoint boleh timeout utk window besar —
+    // satu window gagal TAK boleh hilangkan hasil window lain; dilihat run pertama 90d).
+    async function flush(ledger) {
+        const rows = Object.keys(ledger).map(sn => Object.assign({ order_sn: sn, updated_at: new Date().toISOString() }, ledger[sn]));
+        if (dry || !rows.length) return;
+        for (let i = 0; i < rows.length; i += 200) {
+            await sb('POST', '/marketplace_payouts?on_conflict=order_sn', rows.slice(i, i + 200),
+                { Prefer: 'resolution=merge-duplicates,return=minimal' });
+            out.upserted += Math.min(200, rows.length - i);
         }
-        out.tiktok.orders = Object.keys(ledger).length;
-    } catch (e) { out.tiktok.err = String(e.message || e).slice(0, 150); }
+    }
 
-    // 2) Shopee — escrow per-order, tetingkap 15 hari
-    try {
+    // 1) TikTok — bulk statement lines, tetingkap 30 hari, SUM per order_id.
+    // NOTA: order yang line-nya terbelah antara 2 tetingkap ditulis 2x — merge-duplicates
+    // ambil yang terakhir; jarang (statement order sama biasanya satu batch) dan cron
+    // harian 21-hari akan betulkan.
+    {
         let cursor = sinceMs;
         while (cursor < Date.now()) {
-            const to = Math.min(cursor + 15 * 24 * 3600e3, Date.now());
-            out.shopee.windows++;
-            const j = await fetchJson(`${SITE_URL}/api/shopee-sync?mode=escrow&from=${ymd(cursor)}&to=${ymd(to)}`);
-            for (const r of (j.rows || [])) {
-                if (!r.order_sn || r.error) continue;
-                out.shopee.orders++;
-                ledger[String(r.order_sn)] = {
-                    channel: 'Shopee',
-                    gross: round2(r.gross),
-                    net_payout: round2(r.net_payout),
-                    order_date: r.order_date || null
-                };
-            }
+            const to = Math.min(cursor + 30 * 24 * 3600e3, Date.now() + 24 * 3600e3);
+            const ledger = {};
+            try {
+                const j = await fetchJson(`${SITE_URL}/api/tiktok-finance?mode=rows&from=${ymd(cursor)}&to=${ymd(to)}`);
+                for (const r of (j.rows || [])) {
+                    const oid = String(r.order_id || '').trim();
+                    if (!oid) continue;
+                    out.tiktok.lines++;
+                    const slot = ledger[oid] = ledger[oid] || { channel: 'TikTok', gross: 0, net_payout: 0, order_date: r.order_date || null };
+                    slot.gross = round2(slot.gross + (Number(r.gross) || 0));
+                    slot.net_payout = round2(slot.net_payout + (Number(r.net_payout) || 0));
+                    if (r.order_date && (!slot.order_date || r.order_date < slot.order_date)) slot.order_date = r.order_date;
+                }
+                out.tiktok.orders += Object.keys(ledger).length;
+                await flush(ledger);
+            } catch (e) { out.tiktok.errs.push(ymd(cursor) + ': ' + String(e.message || e).slice(0, 100)); }
             cursor = to;
-            if (out.shopee.windows >= 7) break; // pagar keselamatan
         }
-    } catch (e) { out.shopee.err = String(e.message || e).slice(0, 150); }
-
-    const rows = Object.keys(ledger).map(sn => Object.assign({ order_sn: sn, updated_at: new Date().toISOString() }, ledger[sn]));
-    out.total_orders = rows.length;
-    if (dry) return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(out) };
-
-    // 3) Upsert berkelompok 200
-    for (let i = 0; i < rows.length; i += 200) {
-        await sb('POST', '/marketplace_payouts?on_conflict=order_sn', rows.slice(i, i + 200),
-            { Prefer: 'resolution=merge-duplicates,return=minimal' });
-        out.upserted += Math.min(200, rows.length - i);
     }
+
+    // 2) Shopee — escrow per-order, tetingkap 10 hari; window gagal dicatat, loop teruskan.
+    {
+        let cursor = sinceMs;
+        while (cursor < Date.now()) {
+            const to = Math.min(cursor + 10 * 24 * 3600e3, Date.now());
+            out.shopee.windows++;
+            const ledger = {};
+            try {
+                const j = await fetchJson(`${SITE_URL}/api/shopee-sync?mode=escrow&from=${ymd(cursor)}&to=${ymd(to)}`);
+                for (const r of (j.rows || [])) {
+                    if (!r.order_sn || r.error) continue;
+                    out.shopee.orders++;
+                    ledger[String(r.order_sn)] = {
+                        channel: 'Shopee',
+                        gross: round2(r.gross),
+                        net_payout: round2(r.net_payout),
+                        order_date: r.order_date || null
+                    };
+                }
+                await flush(ledger);
+            } catch (e) { out.shopee.errs.push(ymd(cursor) + ': ' + String(e.message || e).slice(0, 100)); }
+            cursor = to;
+            if (out.shopee.windows >= 12) break; // pagar keselamatan
+        }
+    }
+
     return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(out) };
 };
