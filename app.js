@@ -209,9 +209,11 @@ window.__POS_APP_TABS = [
  { key:'cashier',    icon:'shopping-cart',  label:'Cashier', sections:['posSection'],           title:'POS / Cashier' },
  { key:'orders',     icon:'receipt',        label:'Orders',  sections:['allOrdersSection'],     title:'All Orders',    render:'renderAllOrders' },
  { key:'commission', icon:'coins',          label:'Komisen', sections:['commissionSection'],     title:'My Commission', render:'renderPersonalCommission' },
- { key:'stock',      icon:'clipboard-check',label:'Stok',    sections:['checkSessionsSection'], title:'Stock Take',    render:'renderCheckSessions' }
+ { key:'stock',      icon:'clipboard-check',label:'Stok',    sections:['checkSessionsSection'], title:'Stock Take',    render:'renderCheckSessions' },
  // p1_1029 — BACK TO BASICS: mobile shell = Cashier / Orders / Komisen / Stock Take SAHAJA.
  // Notify DIBUANG dari mobile (kekal di back office). Tanya AI di top bar juga dibuang (bawah).
+ // p1_1176 — tab Task: staf nampak tugasan SENDIRI dari Bos; Bos nampak papan semua staf.
+ { key:'tasks',      icon:'list-todo',      label:'Task',    sections:['staffTasksSection'],    title:'Tugasan',       render:'renderStaffTasks' }
 ];
 // Top bar native: tajuk skrin semasa + butang logout.
 window.__injectPosAppTopBar = function(){
@@ -17524,6 +17526,13 @@ function loginAs(user, opts) {
  // Capability-based visibility — clear all role-style hides, then only show what role allows
  document.querySelectorAll(".sales-only,.inv-only,.mgmt-only,.boss-only")
 .forEach(el => el.style.display = ""); // reset inline (let CSS class system take over)
+
+ // p1_1176 — sidebar "Tugasan Staf" (papan semua staf) = Bos SAHAJA. Gate id-based
+ // (bukan class boss-only sebab reset di atas clear inline display class tu).
+ try {
+  const stEl = document.getElementById('navStaffTasksBoss');
+  if(stEl) stEl.style.display = (typeof window.isBoss === 'function' && window.isBoss(user)) ? 'flex' : 'none';
+ } catch(e){}
 
  // p1_20: per-staff mode access overlay — overrides role caps entirely
  if(typeof window.refreshAllModeTabsVisibility === 'function') {
@@ -46765,5 +46774,186 @@ window.__pdbRefresh = async function(btn){
   } else {
    window.__miniDashRender();
   }
+ };
+})();
+
+// ==============================================
+// p1_1176 — TUGASAN STAF (Bos beri tugasan → staf buat)
+// Staf (app tab "Task"): nampak & update tugasan SENDIRI sahaja (Mula → Siap).
+// Bos (sidebar back office "Tugasan Staf", gate isBoss): borang beri tugasan +
+// papan semua staf — nampak siapa tengah buat apa. Table: public.staff_tasks.
+// ==============================================
+(function(){
+ const ST_META = {
+  baru: { label:'Belum Mula',  bg:'#F4F2EC', fg:'#6E6A5E', bd:'#B9B4A6' },
+  buat: { label:'Tengah Buat', bg:'rgba(var(--primary-rgb,255,77,0),.12)', fg:'var(--primary, #FF4D00)', bd:'var(--primary, #FF4D00)' },
+  siap: { label:'Siap',        bg:'rgba(22,140,80,.10)', fg:'#168C50', bd:'#168C50' }
+ };
+ function stPill(status){
+  const m = ST_META[status] || ST_META.baru;
+  return '<span style="display:inline-block; padding:2px 10px; border-radius:999px; font-size:10.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; background:'+m.bg+'; color:'+m.fg+'; border:1px solid '+m.bd+';">'+m.label+'</span>';
+ }
+ function stWhen(iso){
+  if(!iso) return '';
+  try { return new Date(iso).toLocaleString('ms-MY', { timeZone:'Asia/Kuala_Lumpur', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); } catch(e){ return ''; }
+ }
+ function stStaffList(){
+  const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
+  return list.filter(u => u.staff_id !== 'TST001' && u.staff_id !== 'REV001');
+ }
+ async function stFetchAll(){
+  try {
+   const { data, error } = await db.from('staff_tasks').select('*').order('created_at', { ascending:false }).limit(500);
+   if(error) throw error;
+   return data || [];
+  } catch(e){ console.warn('stFetchAll', e); if(window.showToast) showToast('Gagal muat tugasan. Cuba lagi.', 'error'); return []; }
+ }
+
+ // Kad satu tugasan (dikongsi view Bos + staf). forBoss=true tambah butang padam.
+ function stCard(t, forBoss){
+  const canAct = !forBoss && window.currentUser && t.assigned_to === window.currentUser.staff_id;
+  let actions = '';
+  if(canAct && t.status === 'baru')
+   actions = '<button onclick="window.__stSetStatus('+t.id+',\'buat\')" style="border:2px solid #141414; background:#fff; color:#141414; font-family:var(--font-main,inherit); font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:4px; cursor:pointer;"><i data-lucide="play" style="width:13px;height:13px;vertical-align:-2px;"></i> Mula Buat</button>';
+  if(canAct && t.status === 'buat')
+   actions = '<button onclick="window.__stSetStatus('+t.id+',\'siap\')" style="border:2px solid #141414; background:var(--primary, #FF4D00); color:#141414; font-family:var(--font-main,inherit); font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:4px; cursor:pointer; box-shadow:3px 3px 0 #141414;"><i data-lucide="check" style="width:13px;height:13px;vertical-align:-2px;"></i> Tanda Siap</button>';
+  if(forBoss)
+   actions += '<button onclick="window.__stDelete('+t.id+')" title="Padam tugasan" style="border:1px solid #B9B4A6; background:#fff; color:#6E6A5E; font-size:11.5px; padding:6px 10px; border-radius:4px; cursor:pointer; margin-left:6px;"><i data-lucide="trash-2" style="width:12px;height:12px;vertical-align:-2px;"></i></button>';
+  const doneStyle = t.status === 'siap' ? 'opacity:.62;' : '';
+  const activeStyle = t.status === 'buat' ? 'border-left:4px solid var(--primary, #FF4D00);' : 'border-left:4px solid transparent;';
+  return '<div style="background:#fff; border:1px solid var(--border-color, #B9B4A6); '+activeStyle+doneStyle+' border-radius:8px; padding:12px 14px; margin-bottom:8px;">'
+   + '<div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">'
+   + '<div style="flex:1; min-width:160px;">'
+   + '<div style="font-weight:700; font-size:14px; color:#141414; '+(t.status==='siap'?'text-decoration:line-through;':'')+'">'+escapeHtml(t.title)+'</div>'
+   + (t.notes ? '<div style="font-size:12.5px; color:#6E6A5E; margin-top:3px; white-space:pre-wrap;">'+escapeHtml(t.notes)+'</div>' : '')
+   + '<div style="font-size:11px; color:#6E6A5E; margin-top:6px; font-family:var(--font-mono, monospace);">'
+   + (forBoss ? escapeHtml(t.assigned_to_name || t.assigned_to)+' · ' : '')
+   + 'Diberi '+stWhen(t.created_at)
+   + (t.started_at ? ' · Mula '+stWhen(t.started_at) : '')
+   + (t.done_at ? ' · Siap '+stWhen(t.done_at) : '')
+   + '</div></div>'
+   + '<div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">'+stPill(t.status)+(actions?'<span style="display:inline-flex;">'+actions+'</span>':'')+'</div>'
+   + '</div></div>';
+ }
+
+ // ---------- VIEW STAF (app tab Task): tugasan AKU sahaja ----------
+ function stRenderMine(el, tasks){
+  const u = window.currentUser || {};
+  const mine = tasks.filter(t => t.assigned_to === u.staff_id);
+  const buat = mine.filter(t => t.status === 'buat');
+  const baru = mine.filter(t => t.status === 'baru');
+  const cutoff = Date.now() - 14*24*3600*1000;
+  const siap = mine.filter(t => t.status === 'siap' && new Date(t.done_at || t.updated_at || t.created_at).getTime() > cutoff);
+  let html = '<div style="max-width:680px; margin:0 auto; padding:14px 14px 40px;">'
+   + '<div style="font-weight:900; font-size:19px; color:#141414; margin-bottom:2px;">Tugasan Aku</div>'
+   + '<div style="font-size:12px; color:#6E6A5E; margin-bottom:14px;">Tekan <b>Mula Buat</b> bila mula, <b>Tanda Siap</b> bila habis — Bos nampak status terus.</div>';
+  if(!mine.length){
+   html += '<div style="text-align:center; padding:44px 16px; color:#6E6A5E;"><i data-lucide="clipboard-check" style="width:34px;height:34px;opacity:.5;"></i><div style="margin-top:10px; font-size:13.5px;">Tiada tugasan buat masa ni. Steady!</div></div>';
+  } else {
+   if(buat.length) html += '<div style="font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--primary, #FF4D00); margin:10px 0 6px;">Tengah Buat</div>' + buat.map(t=>stCard(t,false)).join('');
+   if(baru.length) html += '<div style="font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#6E6A5E; margin:14px 0 6px;">Belum Mula</div>' + baru.map(t=>stCard(t,false)).join('');
+   if(siap.length) html += '<div style="font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#168C50; margin:14px 0 6px;">Siap (14 hari)</div>' + siap.map(t=>stCard(t,false)).join('');
+  }
+  html += '</div>';
+  el.innerHTML = html;
+ }
+
+ // ---------- VIEW BOS (back office): borang beri + papan semua staf ----------
+ function stRenderBoss(el, tasks){
+  const staffOpts = stStaffList().filter(u => !(typeof window.isBoss === 'function' && window.isBoss(u)))
+   .map(u => '<option value="'+u.staff_id+'">'+escapeHtml(u.name)+' ('+u.staff_id+')</option>').join('');
+  const cutoff = Date.now() - 14*24*3600*1000;
+  const visible = tasks.filter(t => t.status !== 'siap' || new Date(t.done_at || t.updated_at || t.created_at).getTime() > cutoff);
+  // kumpul ikut staf — susun: yang ada "tengah buat" dulu
+  const byStaff = {};
+  visible.forEach(t => { (byStaff[t.assigned_to] = byStaff[t.assigned_to] || { name: t.assigned_to_name || t.assigned_to, list: [] }).list.push(t); });
+  const groups = Object.keys(byStaff).map(sid => ({ sid, name: byStaff[sid].name, list: byStaff[sid].list }));
+  groups.sort((a,b) => (b.list.some(t=>t.status==='buat')?1:0) - (a.list.some(t=>t.status==='buat')?1:0) || a.name.localeCompare(b.name));
+  const nBuat = visible.filter(t=>t.status==='buat').length;
+
+  let html = '<div style="max-width:860px; margin:0 auto; padding:14px 14px 40px;">'
+   + '<div style="font-weight:900; font-size:20px; color:#141414;">Tugasan Staf</div>'
+   + '<div style="font-size:12.5px; color:#6E6A5E; margin:2px 0 14px;">Papan ni Bos sahaja nampak. Staf hanya nampak tugasan sendiri dalam app (tab Task).</div>'
+   // Borang beri tugasan
+   + '<div style="background:#FFFDF6; border:2px solid #141414; border-radius:8px; padding:14px; margin-bottom:18px;">'
+   + '<div style="font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#141414; margin-bottom:10px;"><i data-lucide="plus-circle" style="width:13px;height:13px;vertical-align:-2px;"></i> Beri Tugasan Baru</div>'
+   + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">'
+   + '<select id="stAddWho" style="flex:1; min-width:170px; padding:9px 10px; border:1px solid var(--border-color, #B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px; background:#fff;"><option value="">— Pilih staf —</option>'+staffOpts+'</select>'
+   + '<input id="stAddTitle" type="text" maxlength="140" placeholder="Tugasan apa? cth: Susun stok rak khemah" style="flex:2; min-width:220px; padding:9px 10px; border:1px solid var(--border-color, #B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px;">'
+   + '</div>'
+   + '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">'
+   + '<input id="stAddNotes" type="text" maxlength="300" placeholder="Nota tambahan (opsional)" style="flex:1; min-width:220px; padding:9px 10px; border:1px solid var(--border-color, #B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px;">'
+   + '<button onclick="window.__stAdd()" style="border:3px solid #141414; background:var(--primary, #FF4D00); color:#141414; font-family:var(--font-main,inherit); font-weight:800; font-size:13px; padding:9px 20px; border-radius:4px; cursor:pointer; box-shadow:4px 4px 0 #141414;">Hantar Tugasan</button>'
+   + '</div></div>'
+   // Ringkas
+   + '<div style="font-size:12px; color:#6E6A5E; margin-bottom:10px;">'+visible.length+' tugasan aktif/baru siap · <b style="color:var(--primary, #FF4D00);">'+nBuat+' tengah dibuat sekarang</b></div>';
+
+  if(!groups.length){
+   html += '<div style="text-align:center; padding:36px; color:#6E6A5E; font-size:13.5px;">Belum ada tugasan. Beri yang pertama kat atas.</div>';
+  } else {
+   groups.forEach(g => {
+    const active = g.list.find(t=>t.status==='buat');
+    html += '<div style="margin-bottom:16px;">'
+     + '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">'
+     + '<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#141414; color:#F4F2EC; font-weight:800; font-size:12px;">'+escapeHtml((g.name||'?').charAt(0).toUpperCase())+'</span>'
+     + '<b style="font-size:14px; color:#141414;">'+escapeHtml(g.name)+'</b>'
+     + '<span style="font-size:11px; color:#6E6A5E; font-family:var(--font-mono, monospace);">'+g.sid+'</span>'
+     + (active ? '<span style="font-size:11.5px; color:var(--primary, #FF4D00); font-weight:700;">— tengah buat: '+escapeHtml(active.title)+'</span>' : '<span style="font-size:11.5px; color:#6E6A5E;">— tiada yang tengah dibuat</span>')
+     + '</div>'
+     + g.list.map(t=>stCard(t,true)).join('')
+     + '</div>';
+   });
+  }
+  html += '</div>';
+  el.innerHTML = html;
+  // badge sidebar: berapa tugasan tengah dibuat
+  try { const b = document.getElementById('staffTasksBossBadge'); if(b){ b.textContent = nBuat; b.style.display = nBuat ? 'inline-block' : 'none'; } } catch(e){}
+ }
+
+ window.renderStaffTasks = async function(){
+  const el = document.getElementById('staffTasksSection');
+  if(!el || !window.currentUser) return;
+  if(!el.innerHTML) el.innerHTML = '<div style="padding:30px; text-align:center; color:#6E6A5E; font-size:13px;">Memuatkan tugasan…</div>';
+  const tasks = await stFetchAll();
+  const boss = typeof window.isBoss === 'function' && window.isBoss(window.currentUser);
+  if(boss) stRenderBoss(el, tasks); else stRenderMine(el, tasks);
+  if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
+ };
+
+ window.__stAdd = async function(){
+  const who = (document.getElementById('stAddWho')||{}).value || '';
+  const title = ((document.getElementById('stAddTitle')||{}).value || '').trim();
+  const notes = ((document.getElementById('stAddNotes')||{}).value || '').trim();
+  if(!who){ if(window.showToast) showToast('Pilih staf dulu.', 'warn'); return; }
+  if(!title){ if(window.showToast) showToast('Tulis tugasan dulu.', 'warn'); return; }
+  const staff = stStaffList().find(u => u.staff_id === who);
+  try {
+   const { error } = await db.from('staff_tasks').insert([{ title, notes, assigned_to: who, assigned_to_name: (staff && staff.name) || who, assigned_by: (window.currentUser||{}).name || '' }]);
+   if(error) throw error;
+   if(window.showToast) showToast('Tugasan dihantar ke '+((staff && staff.name)||who)+'.', 'success');
+   window.renderStaffTasks();
+  } catch(e){ console.warn('stAdd', e); if(window.showToast) showToast('Gagal hantar tugasan.', 'error'); }
+ };
+
+ window.__stSetStatus = async function(id, status){
+  const patch = { status, updated_at: new Date().toISOString() };
+  if(status === 'buat') patch.started_at = new Date().toISOString();
+  if(status === 'siap') patch.done_at = new Date().toISOString();
+  try {
+   const { error } = await db.from('staff_tasks').update(patch).eq('id', id);
+   if(error) throw error;
+   if(window.showToast) showToast(status === 'siap' ? 'Siap! Kerja bagus.' : 'Okay, jom buat!', 'success');
+   window.renderStaffTasks();
+  } catch(e){ console.warn('stSetStatus', e); if(window.showToast) showToast('Gagal update status.', 'error'); }
+ };
+
+ window.__stDelete = async function(id){
+  if(!confirm('Padam tugasan ni?')) return;
+  try {
+   const { error } = await db.from('staff_tasks').delete().eq('id', id);
+   if(error) throw error;
+   if(window.showToast) showToast('Tugasan dipadam.', 'success');
+   window.renderStaffTasks();
+  } catch(e){ console.warn('stDelete', e); if(window.showToast) showToast('Gagal padam.', 'error'); }
  };
 })();
