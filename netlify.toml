@@ -229,6 +229,10 @@
 [functions."jadual-auto-cron"]
   schedule = "0 0 * * *"
 
+# p1_1180 — Auto-isi Angka Rasmi Live GMV dari TikTok Analytics API, daily 00:30 UTC = 08:30 MYT.
+[functions."tiktok-live-gmv-cron"]
+  schedule = "30 0 * * *"
+
 # p1_681 (#8) — Settlement reconciliation: POS marketplace orders vs Shopee escrow + TikTok
 # finance payouts. Daily 02:00 UTC (after settlements typically finalize). Writes settlement_recon.
 [functions."settlement-recon-background"]
