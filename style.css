@@ -580,3 +580,9 @@ body:has(#pinLoginOverlay[style*="flex"]) #mobileCartFloatingBar { display:none 
 .customer-row,
 .ps-list-row,
 .bc-cust-row { content-visibility:auto; contain-intrinsic-size:auto 64px; }
+
+/* p1_1176 — Tugasan Staf: sidebar papan Bos SAHAJA. Gate via body class (loginAs
+   toggle is-boss-user) sebab inline display kena clear oleh setActiveRail (app.js
+   ~1994: item tanpa data-group → style.display=''). CSS class kalis reset tu. */
+#navStaffTasksBoss { display: none; }
+body.is-boss-user #navStaffTasksBoss { display: flex; }

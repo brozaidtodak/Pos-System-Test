@@ -17527,11 +17527,11 @@ function loginAs(user, opts) {
  document.querySelectorAll(".sales-only,.inv-only,.mgmt-only,.boss-only")
 .forEach(el => el.style.display = ""); // reset inline (let CSS class system take over)
 
- // p1_1176 — sidebar "Tugasan Staf" (papan semua staf) = Bos SAHAJA. Gate id-based
- // (bukan class boss-only sebab reset di atas clear inline display class tu).
+ // p1_1176 — sidebar "Tugasan Staf" (papan semua staf) = Bos SAHAJA. Gate via body
+ // class + CSS (#navStaffTasksBoss dlm style.css) — inline display TAK boleh dipakai
+ // sebab setActiveRail (~1994) clear style.display item tanpa data-group tiap login.
  try {
-  const stEl = document.getElementById('navStaffTasksBoss');
-  if(stEl) stEl.style.display = (typeof window.isBoss === 'function' && window.isBoss(user)) ? 'flex' : 'none';
+  document.body.classList.toggle('is-boss-user', !!(typeof window.isBoss === 'function' && window.isBoss(user)));
  } catch(e){}
 
  // p1_20: per-staff mode access overlay — overrides role caps entirely
@@ -17692,6 +17692,7 @@ function handleLogout() {
  // Reset all role-style inline hides (next login starts fresh)
  document.querySelectorAll(".sales-only,.inv-only,.mgmt-only,.boss-only")
 .forEach(el => el.style.display = "");
+ document.body.classList.remove('is-boss-user'); // p1_1176 — staf seterusnya tak warisi papan Bos
 
  // Reset mode-tab capability gating
  document.querySelectorAll('.mode-tab').forEach(tab => { tab.style.display = ''; tab.disabled = false; });
