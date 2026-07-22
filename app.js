@@ -13805,12 +13805,15 @@ function renderPOS(searchTerm = "") {
  const __hasVideo = !!(p.metadata && typeof p.metadata === 'object' && p.metadata.video);  // p1_958
  // p1_959 — butang (+) dibuang (Zaid): seluruh kad boleh-tekan. Tekan GAMBAR -> media,
  // tekan mana-mana lagi -> posOpenVariants (1 variant = terus masuk troli, banyak = skrin pilih).
+ // p1_1185 (Zaid keliru zon tekan) — Square-style: butang (i) BULAT jelas atas gambar ganti link
+ // "desc"; bila item dlm troli, STEPPER [- qty +] muncul bawah kad (__posCardStepRefresh) + flash.
  htmlBuf += `
- <div class="product-card${isOOS ? ' is-oos' : ''}" onclick="window.posOpenVariants('${skuEsc}')" style="cursor:pointer;" title="Tap untuk pilih variant / masuk troli">
+ <div class="product-card${isOOS ? ' is-oos' : ''}" data-cardsku="${skuEsc}" onclick="window.posOpenVariants('${skuEsc}')" style="cursor:pointer;" title="Tap untuk pilih variant / masuk troli">
  ${isOOS ? `<span class="product-card__oos"><i data-lucide="x-circle" style="width:12px;height:12px;"></i> STOK HABIS</span>` : (totalStock <= (window.__POS_LOW_STOCK || 3) ? `<span class="product-card__low"><i data-lucide="alert-triangle" style="width:11px;height:11px;"></i> Stok rendah</span>` : '')}
  <div style="position:relative; border-radius:12px; overflow:hidden; margin-bottom:8px;">
  <img src="${window.__thumbUrl(thumb, 200)}" class="pos-zoom-trigger" loading="lazy" decoding="async" onclick="event.stopPropagation(); window.posOpenMedia('${skuEsc}')" title="Tap untuk lihat gambar & video" onerror="window.__imgThumbErr(this, '${String(thumb).replace(/'/g, "\\'")}')">
  ${__hasVideo ? `<span style="position:absolute; top:8px; left:8px; width:28px; height:28px; border-radius:50%; background:rgba(16,16,16,.62); color:#FAF6EF; display:flex; align-items:center; justify-content:center; z-index:2; pointer-events:none;" title="Ada video"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M8 5v14l11-7z"/></svg></span>` : ''}
+ <button type="button" class="pos-card-info" onclick="event.stopPropagation(); window.posOpenDesc('${skuEsc}')" title="Info & description produk" aria-label="Info produk"><i data-lucide="info" style="width:15px;height:15px;pointer-events:none;"></i></button>
  </div>
  <div class="product-card__badges">
  <span class="sku-badge">${p.sku}</span>
@@ -13822,7 +13825,7 @@ function renderPOS(searchTerm = "") {
  <h3 class="product-card__title" title="${safeName}">${cleanName}</h3>
  ${priceHtml}
  <p class="product-card__stock"${isOOS ? ' style="color:#9CA3AF;"' : (totalStock <= (window.__POS_LOW_STOCK || 3) ? ' style="color:#B45309; font-weight:700;"' : '')}>${isOOS ? `0 ${p.unit||'pcs'}` : `${totalStock} ${p.unit||'pcs'} ${(window.t?window.t('cs_in_stock'):'in stock')}`}</p>
- <span class="posDescLink" onclick="event.stopPropagation(); window.posOpenDesc('${skuEsc}')" title="Lihat description produk">desc</span>
+ <div class="pos-card-step" style="display:none;"></div>
  </div>
  `;
  });
@@ -14123,6 +14126,11 @@ function renderPOS(searchTerm = "") {
   vv.classList.add('show');
  };
  function closeVV(){ if(vv) vv.classList.remove('show'); }
+
+ // p1_1185 — helper utk stepper kad cashier: senarai SKU semua variant produk ni (family).
+ window.__posVariantSkus = function(sku){
+  try { const p=findProd(sku); if(!p) return [String(sku)]; const vs=variantsOf(p); return vs.length?vs.map(function(v){return v.sku;}):[p.sku]; } catch(e){ return [String(sku)]; }
+ };
 
  // ESC tutup
  document.addEventListener('keydown',function(e){
@@ -47278,4 +47286,75 @@ window.__pdbRefresh = async function(btn){
   w.document.close();
   setTimeout(function(){ try { w.print(); } catch(e){} }, 400);
  };
+})();
+
+// ==============================================
+// p1_1185 — KAD CASHIER SQUARE-STYLE (pilihan Zaid dari 3 mockup):
+// tap kad = tambah (kekal); butang (i) bulat atas gambar = info/description (ganti
+// link "desc" yang keliru); bila item dlm troli — STEPPER [- qty +] muncul bawah kad
+// + kad flash hijau tiap kali tambah. Kuantiti = SUM semua variant family produk tu.
+// ==============================================
+(function(){
+ const st = document.createElement('style');
+ st.id = 'posCardStepCss';
+ st.textContent = ''
+  + '.pos-card-info{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:#141414;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;box-shadow:0 1px 5px rgba(0,0,0,.22);}'
+  + '.pos-card-info:active{transform:scale(.9);}'
+  + '.pos-card-step{display:flex;align-items:center;gap:0;margin-top:7px;border:2px solid #141414;border-radius:8px;overflow:hidden;background:#fff;}'
+  + '.pcs-btn{flex:0 0 42px;height:36px;border:none;background:#F4F2EC;color:#141414;font-size:19px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}'
+  + '.pcs-btn:active{background:#E4E0D2;}'
+  + '.pcs-btn.pcs-plus{background:var(--primary,#FF4D00);color:#141414;}'
+  + '.pcs-qty{flex:1;text-align:center;font-weight:800;font-size:14px;color:#141414;font-family:var(--font-mono,monospace);}'
+  + '.pcs-qty small{display:block;font-size:8.5px;font-weight:700;color:#6E6A5E;letter-spacing:.5px;line-height:1;}'
+  + '@keyframes posCardFlash{0%{box-shadow:0 0 0 3px rgba(22,140,80,.65);}100%{box-shadow:0 0 0 3px rgba(22,140,80,0);}}'
+  + '.pos-card-flash{animation:posCardFlash .55s ease-out;}';
+ document.head.appendChild(st);
+
+ function famQty(base){
+  const fam = (window.__posVariantSkus ? window.__posVariantSkus(base) : [base]).map(function(s){ return String(s).toUpperCase(); });
+  let qty = 0; const lines = [];
+  (Array.isArray(cart) ? cart : []).forEach(function(it){
+   if(fam.indexOf(String(it.sku).toUpperCase()) !== -1){ qty += Number(it.quantity) || 0; lines.push(it); }
+  });
+  return { qty: qty, lines: lines };
+ }
+ const jsEsc = function(s){ return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); };
+
+ window.__posCardStepRefresh = function(){
+  try {
+   document.querySelectorAll('.product-card[data-cardsku]').forEach(function(card){
+    const base = card.getAttribute('data-cardsku');
+    const slot = card.querySelector('.pos-card-step'); if(!slot) return;
+    const f = famQty(base);
+    const prev = parseInt(card.getAttribute('data-qtyprev') || '0', 10);
+    if(f.qty > prev){ card.classList.remove('pos-card-flash'); void card.offsetWidth; card.classList.add('pos-card-flash'); }
+    card.setAttribute('data-qtyprev', String(f.qty));
+    if(!f.qty){ slot.style.display = 'none'; slot.innerHTML = ''; return; }
+    const e = jsEsc(base);
+    slot.style.display = 'flex';
+    slot.innerHTML = '<button type="button" class="pcs-btn" onclick="event.stopPropagation(); window.__posCardMinus(\'' + e + '\')" aria-label="Kurang satu">−</button>'
+     + '<span class="pcs-qty">' + f.qty + '<small>DLM TROLI</small></span>'
+     + '<button type="button" class="pcs-btn pcs-plus" onclick="event.stopPropagation(); window.posOpenVariants(\'' + e + '\')" aria-label="Tambah satu">+</button>';
+   });
+  } catch(e){}
+ };
+ window.__posCardMinus = function(base){
+  const f = famQty(base);
+  if(!f.lines.length) return;
+  if(f.lines.length > 1){
+   if(typeof showToast === 'function') showToast('Ada ' + f.lines.length + ' variant produk ni dlm troli — kurangkan dari troli.', 'warn');
+   return;
+  }
+  if(typeof decreaseQuantity === 'function') decreaseQuantity(f.lines[0].sku);
+ };
+ // Kemas kini stepper tiap kali troli / grid dilukis semula (monkey-patch — kedua-dua
+ // fungsi global, panggilan bare resolve ke window.* dlm skrip bukan-module).
+ if(typeof window.renderCart === 'function'){
+  const __oc = window.renderCart;
+  window.renderCart = function(){ const r = __oc.apply(this, arguments); try { window.__posCardStepRefresh(); } catch(e){} return r; };
+ }
+ if(typeof window.renderPOS === 'function'){
+  const __op = window.renderPOS;
+  window.renderPOS = function(){ const r = __op.apply(this, arguments); try { window.__posCardStepRefresh(); } catch(e){} return r; };
+ }
 })();
