@@ -47292,13 +47292,18 @@ window.__pdbRefresh = async function(btn){
  st.id = 'posCardStepCss';
  // p1_1186 — REDESIGN ringan (Zaid: stepper tebal border hitam "juling mata"): pill lembut
  // tulang #F4F2EC, bulatan kecil utk -/+ (oren = tindakan sahaja), qty mono, TIADA label teks.
+ // Selector MESTI .product-card .xxx — style.css:209 ada rule LAMA `.product-card button`
+ // (zaman butang + p1_959) yang paksa button oren 100% 44px; specificity 2 kelas kalahkan dia.
  st.textContent = ''
-  + '.pos-card-info{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(255,255,255,.85);color:#6E6A5E;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.15);}'
-  + '.pos-card-info:active{transform:scale(.9);}'
+  + '.product-card .pos-card-info{position:absolute;top:7px;right:7px;width:26px;height:26px;min-height:0;padding:0;margin:0;border-radius:50%;border:none;background:rgba(255,255,255,.85);color:#6E6A5E;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.15);}'
+  + '.product-card .pos-card-info:hover{background:rgba(255,255,255,.95);transform:none;}'
+  + '.product-card .pos-card-info:active{transform:scale(.9);}'
   + '.pos-card-step{display:flex;align-items:center;justify-content:space-between;margin-top:6px;border-radius:999px;background:#F4F2EC;padding:3px;}'
-  + '.pcs-btn{flex:0 0 28px;width:28px;height:28px;border:none;border-radius:50%;background:#fff;color:#141414;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.08);}'
-  + '.pcs-btn:active{transform:scale(.92);}'
-  + '.pcs-btn.pcs-plus{background:var(--primary,#FF4D00);color:#141414;}'
+  + '.product-card .pcs-btn{flex:0 0 28px;width:28px;height:28px;min-height:0;padding:0;margin:0;border:none;border-radius:50%;background:#fff;color:#141414;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.08);}'
+  + '.product-card .pcs-btn:hover{background:#fff;transform:none;}'
+  + '.product-card .pcs-btn:active{transform:scale(.92);}'
+  + '.product-card .pcs-btn.pcs-plus{background:var(--primary,#FF4D00);color:#141414;}'
+  + '.product-card .pcs-btn.pcs-plus:hover{background:var(--primary,#FF4D00);}'
   + '.pcs-qty{flex:1;text-align:center;font-weight:700;font-size:13px;color:#141414;font-family:var(--font-mono,monospace);}'
   + '@keyframes posCardFlash{0%{box-shadow:0 0 0 3px rgba(22,140,80,.55);}100%{box-shadow:0 0 0 3px rgba(22,140,80,0);}}'
   + '.pos-card-flash{animation:posCardFlash .55s ease-out;}';
