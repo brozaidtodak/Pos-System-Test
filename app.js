@@ -14127,11 +14127,6 @@ function renderPOS(searchTerm = "") {
  };
  function closeVV(){ if(vv) vv.classList.remove('show'); }
 
- // p1_1185 — helper utk stepper kad cashier: senarai SKU semua variant produk ni (family).
- window.__posVariantSkus = function(sku){
-  try { const p=findProd(sku); if(!p) return [String(sku)]; const vs=variantsOf(p); return vs.length?vs.map(function(v){return v.sku;}):[p.sku]; } catch(e){ return [String(sku)]; }
- };
-
  // ESC tutup
  document.addEventListener('keydown',function(e){
   if(e.key!=='Escape') return;
@@ -47310,13 +47305,11 @@ window.__pdbRefresh = async function(btn){
   + '.pos-card-flash{animation:posCardFlash .55s ease-out;}';
  document.head.appendChild(st);
 
- function famQty(base){
-  const fam = (window.__posVariantSkus ? window.__posVariantSkus(base) : [base]).map(function(s){ return String(s).toUpperCase(); });
-  let qty = 0; const lines = [];
-  (Array.isArray(cart) ? cart : []).forEach(function(it){
-   if(fam.indexOf(String(it.sku).toUpperCase()) !== -1){ qty += Number(it.quantity) || 0; lines.push(it); }
-  });
-  return { qty: qty, lines: lines };
+ // Kuantiti SKU kad tu SAHAJA (bukan family) — grid cashier = satu kad per variant;
+ // QA tangkap: family-qty buat kad variant lain (BD014) tunjuk qty BD013.
+ function cardQty(base){
+  const line = (Array.isArray(cart) ? cart : []).find(function(it){ return String(it.sku).toUpperCase() === String(base).toUpperCase(); });
+  return { qty: line ? (Number(line.quantity) || 0) : 0, line: line || null };
  }
  const jsEsc = function(s){ return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); };
 
@@ -47325,27 +47318,23 @@ window.__pdbRefresh = async function(btn){
    document.querySelectorAll('.product-card[data-cardsku]').forEach(function(card){
     const base = card.getAttribute('data-cardsku');
     const slot = card.querySelector('.pos-card-step'); if(!slot) return;
-    const f = famQty(base);
+    const f = cardQty(base);
     const prev = parseInt(card.getAttribute('data-qtyprev') || '0', 10);
     if(f.qty > prev){ card.classList.remove('pos-card-flash'); void card.offsetWidth; card.classList.add('pos-card-flash'); }
     card.setAttribute('data-qtyprev', String(f.qty));
     if(!f.qty){ slot.style.display = 'none'; slot.innerHTML = ''; return; }
     const e = jsEsc(base);
     slot.style.display = 'flex';
+    // + terus tambah SKU kad ni (kad = variant spesifik, tak perlu picker semula)
     slot.innerHTML = '<button type="button" class="pcs-btn" onclick="event.stopPropagation(); window.__posCardMinus(\'' + e + '\')" aria-label="Kurang satu">−</button>'
      + '<span class="pcs-qty">' + f.qty + '<small>DLM TROLI</small></span>'
-     + '<button type="button" class="pcs-btn pcs-plus" onclick="event.stopPropagation(); window.posOpenVariants(\'' + e + '\')" aria-label="Tambah satu">+</button>';
+     + '<button type="button" class="pcs-btn pcs-plus" onclick="event.stopPropagation(); addToCart(\'' + e + '\')" aria-label="Tambah satu">+</button>';
    });
   } catch(e){}
  };
  window.__posCardMinus = function(base){
-  const f = famQty(base);
-  if(!f.lines.length) return;
-  if(f.lines.length > 1){
-   if(typeof showToast === 'function') showToast('Ada ' + f.lines.length + ' variant produk ni dlm troli — kurangkan dari troli.', 'warn');
-   return;
-  }
-  if(typeof decreaseQuantity === 'function') decreaseQuantity(f.lines[0].sku);
+  const f = cardQty(base);
+  if(f.line && typeof decreaseQuantity === 'function') decreaseQuantity(f.line.sku);
  };
  // Kemas kini stepper tiap kali troli / grid dilukis semula (monkey-patch — kedua-dua
  // fungsi global, panggilan bare resolve ke window.* dlm skrip bukan-module).
