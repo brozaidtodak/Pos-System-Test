@@ -39587,6 +39587,7 @@ window.I18N = {
  lp_nav_brands: { bm: 'Jenama', en: 'Brands' },
  lp_nav_promo: { bm: 'Promo', en: 'Promo' },
  lp_nav_panduan: { bm: 'Panduan', en: 'Guides' },
+ lp_nav_acara: { bm: 'Acara', en: 'Events' },
  lp_nav_about: { bm: 'Tentang', en: 'About' },
  lp_nav_contact: { bm: 'Hubungi', en: 'Contact' },
  lp_aria_search: { bm: 'Cari produk', en: 'Search products' },
