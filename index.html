@@ -44,7 +44,7 @@
  <link rel="dns-prefetch" href="https://asehjdnfzoypbwfeazra.supabase.co">
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
- <link rel="stylesheet" href="design-tokens.css?v=179">
+ <link rel="stylesheet" href="design-tokens.css?v=180">
  <script src="landing-theme.js?v=2"></script>
  <!-- Supabase Core — p1_976: vendored (self-host) supaya tak bergantung CDN luar +
       di-cache oleh Service Worker. Elak "Auth tidak tersedia" bila CDN jsdelivr lambat/blocked.
@@ -62,6 +62,8 @@
  <script defer src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
  <!-- qrcode.min.js DIBUANG 2026-07-04: 0 guna dalam kod (dead weight boot). Re-add (lazy) bila bina DuitNow QR. -->
   <script defer data-site="pos" src="https://analytics.10camp.com/track.js"></script>
+  <!-- p1_1213 — /shop = page produk sendiri. Set kelas SEBELUM render (elak flash homepage). -->
+  <script>if(location.pathname.replace(/\/+$/,'')==='/shop')document.documentElement.classList.add('shop-page');</script>
 </head>
 <body>
  <!-- p1_1012 — Boot splash (kaunter iPad): tutup landing customer dari saat pertama sampai app tentukan POS/skrin-kunci. Skrip inline sinkron tanda <html> sebelum landing sempat paint. -->
@@ -1151,10 +1153,10 @@
  </a>
  <nav class="lp-nav" aria-label="Main navigation">
  <span class="nav-drop">
- <a href="#shop" class="lp-nav__link nav-drop__trigger" data-i18n="lp_nav_shop">Shop</a><span class="nav-drop__caret" aria-hidden="true">▾</span>
+ <a href="/shop" class="lp-nav__link nav-drop__trigger" data-i18n="lp_nav_shop">Shop</a><span class="nav-drop__caret" aria-hidden="true">▾</span>
  <span class="nav-drop__menu" role="menu">
  <a href="#brands" role="menuitem" data-i18n="lp_nav_brands">Brands</a>
- <a href="#shop" role="menuitem" data-i18n="lp_nav_category">Category</a>
+ <a href="/shop" role="menuitem" data-i18n="lp_nav_category">Category</a>
  <a href="#promo" role="menuitem" data-i18n="lp_nav_promo">Walk-in Promo</a>
  </span>
  </span>
@@ -1205,7 +1207,7 @@
  <h1 class="lp-hero__title"><span data-i18n="lp_hero_title_pre">Datang. Angkat.</span> <br><span class="lp-hero__brandmark" data-i18n="lp_hero_title_mark">Gerak.</span></h1>
  <p class="lp-hero__sub"><span data-i18n="lp_hero_sub_pre">Premium camping &amp; outdoor gear, supplied directly from</span> <span data-stat="brands">11</span> <span data-i18n="lp_hero_sub_post">trusted brands.</span></p>
  <div class="lp-hero__cta">
- <a href="#shop" class="lp-btn lp-btn--primary" data-i18n="lp_hero_cta_shop">Shop All Gear</a>
+ <a href="/shop" class="lp-btn lp-btn--primary" data-i18n="lp_hero_cta_shop">Shop All Gear</a>
  </div>
  <!-- p1_166 — Editorial hero: "Beli kami di:" text + 3 inline brand links (no pill buttons) -->
  <div class="lp-hero__channels">
@@ -1364,7 +1366,7 @@
  <h2 class="lp-h2" data-i18n="lp_coll_h2">Featured Collections</h2>
  </div>
  <div class="lp-collections__grid lp-collections__grid--2col">
- <a href="#shop" class="lp-collection lp-collection--lg" data-filter-brand="Naturehike">
+ <a href="/shop" class="lp-collection lp-collection--lg" data-filter-brand="Naturehike">
  <div class="lp-collection__bg" style="background-image:url('assets/brand/hero/collection-naturehike.jpg');"></div>
  <div class="lp-collection__overlay"></div>
  <div class="lp-collection__content">
@@ -1398,7 +1400,7 @@
  <p data-i18n="lp_about_p2">Visit us at our flagship store in Cyberjaya, or browse the full catalogue here and order via Shopee or TikTok Shop — shipped nationwide.</p>
  <div class="lp-about__cta">
  <a href="#contact" class="lp-btn lp-btn--primary lp-btn--sm" data-i18n="lp_about_cta_visit">Visit Our Store</a>
- <a href="#shop" class="lp-btn lp-btn--ghost lp-btn--sm" data-i18n="lp_about_cta_browse">Browse Catalogue</a>
+ <a href="/shop" class="lp-btn lp-btn--ghost lp-btn--sm" data-i18n="lp_about_cta_browse">Browse Catalogue</a>
  </div>
  </div>
  <div class="lp-about__media">

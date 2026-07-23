@@ -9,6 +9,16 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# p1_1213 — /shop = page produk sendiri (rewrite ke index.html; JS aktifkan mod shop-only via html.shop-page)
+[[redirects]]
+  from = "/shop"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/shop/"
+  to = "/index.html"
+  status = 200
+
 [[redirects]]
   from = "/api/translate"
   to = "/.netlify/functions/translate"
