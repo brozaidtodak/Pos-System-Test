@@ -17629,6 +17629,75 @@ window.applyRoleCapabilities = function(allowedModes) {
  });
 };
 
+// p1_1201 — WALK-IN PROMO (public landing) — in-store-only catalogue, admin-curated via
+// Marketing > Walk-in Promo. Anon reads walkin_promo_items (active=true only, per RLS) then
+// joins by sku against public_products (NOT products_master — anon blocked there, holds cost/margin).
+window.__walkinPromoCache = null;
+
+window.__loadWalkinPromoItems = async function() {
+ const { data: promoRows, error: promoErr } = await db
+  .from('walkin_promo_items')
+  .select('sku, promo_price, sort_order')
+  .eq('active', true)
+  .order('sort_order');
+ if (promoErr || !promoRows || !promoRows.length) return [];
+
+ const skus = promoRows.map(r => r.sku);
+ const { data: prodRows, error: prodErr } = await db
+  .from('public_products')
+  .select('sku, seo_name, name, brand, images, price, compare_at_price')
+  .in('sku', skus);
+ if (prodErr) return [];
+
+ const bySku = Object.fromEntries((prodRows || []).map(p => [p.sku, p]));
+ return promoRows
+  .map(r => {
+   const p = bySku[r.sku];
+   if (!p) return null;
+   return {
+    sku: r.sku,
+    promoPrice: r.promo_price,
+    wasPrice: p.compare_at_price || p.price || null,
+    name: p.seo_name || p.name || r.sku,
+    brand: p.brand || '',
+    image: (p.images && p.images[0]) || '',
+   };
+  })
+  .filter(Boolean);
+};
+
+window.__renderWalkinPromoManifest = function(filterText) {
+ const el = document.getElementById('walkinPromoManifest');
+ if (!el) return;
+ const q = (filterText || '').toLowerCase().trim();
+ const items = (window.__walkinPromoCache || []).filter(it =>
+  !q || it.name.toLowerCase().includes(q) || it.brand.toLowerCase().includes(q)
+ );
+ if (!items.length) {
+  el.innerHTML = `<p class="lp-walkin-promo__empty">${(window.__walkinPromoCache || []).length ? 'Tiada item sepadan.' : 'Belum ada promo walk-in buat masa ini.'}</p>`;
+  return;
+ }
+ el.innerHTML = items.map((it, i) => `
+  <div class="lp-walkin-promo__row">
+   <span class="lp-walkin-promo__row-name">${String(i + 1).padStart(2, '0')} — ${it.name}${it.brand ? ' / ' + it.brand.toUpperCase() : ''}</span>
+   <span class="lp-walkin-promo__row-price"><em>RM${Number(it.promoPrice).toFixed(2)}</em>${it.wasPrice ? `<s>RM${Number(it.wasPrice).toFixed(2)}</s>` : ''}</span>
+  </div>
+ `).join('');
+};
+
+window.__openWalkinPromoModal = async function() {
+ const overlay = document.getElementById('walkinPromoOverlay');
+ if (!overlay) return;
+ overlay.style.display = 'flex';
+ const search = document.getElementById('walkinPromoSearch');
+ if (search) search.value = '';
+ const manifest = document.getElementById('walkinPromoManifest');
+ if (manifest) manifest.innerHTML = '<p class="lp-walkin-promo__empty">Memuatkan…</p>';
+ window.__walkinPromoCache = await window.__loadWalkinPromoItems();
+ window.__renderWalkinPromoManifest('');
+ if (window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
 // p1_162 — Preview landing page while logged in (view as customer)
 window.previewLanding = function() {
  const shop = document.getElementById('shopAppLayout');
@@ -35624,6 +35693,90 @@ window.togglePromoActive = async function(id, newState) {
 // Override the old renderPromotions
 window.renderPromotions = window.renderPromotionsV2;
 
+// p1_1201 — WALK-IN PROMO admin (Marketing > Walk-in Promo). Staff-authenticated session writes
+// directly to walkin_promo_items (RLS grants full CRUD to `authenticated`, no service key needed).
+// Display lookups use masterProducts (already loaded client-side for staff) — name/brand/price
+// ONLY, never cost_price/margin, per Zaid's rule.
+window.renderWalkinPromoAdmin = async function() {
+ const skuListEl = document.getElementById('wpiSkuList');
+ if (skuListEl && Array.isArray(masterProducts)) {
+  skuListEl.innerHTML = masterProducts.slice(0, 3000)
+   .map(p => '<option value="' + String(p.sku || '').replace(/"/g, '&quot;') + '">' + String(p.name || '').replace(/"/g, '&quot;').slice(0, 50) + '</option>')
+   .join('');
+ }
+
+ const tbody = document.getElementById('walkinPromoTableBody');
+ if (!tbody) return;
+ try {
+  const { data: rows, error } = await db.from('walkin_promo_items').select('*').order('sort_order');
+  if (error) throw error;
+  if (!rows || !rows.length) {
+   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">Belum ada item. Tambah dari borang di atas.</td></tr>';
+   return;
+  }
+  tbody.innerHTML = rows.map(r => {
+   const p = window.__bundleProd ? window.__bundleProd(r.sku) : null;
+   const label = p ? `${p.name || r.sku}${p.brand ? ' — ' + p.brand : ''}` : r.sku + ' (SKU tak jumpa dlm Product Master)';
+   const refPrice = p && p.price != null ? 'RM' + Number(p.price).toFixed(2) : '—';
+   return `<tr>
+    <td><strong>${r.sku}</strong><br><span style="font-size:10px; color:#666;">${label}</span></td>
+    <td>${refPrice}</td>
+    <td style="font-weight:bold;">RM${Number(r.promo_price).toFixed(2)}</td>
+    <td>${r.sort_order != null ? r.sort_order : '-'}</td>
+    <td>
+     <span style="color:${r.active ? '#101010' : '#9CA3AF'}; font-weight:bold;">${r.active ? 'Aktif' : 'Tidak aktif'}</span>
+     <br><button onclick="window.__walkinPromoToggleActive(${r.id}, ${!r.active})" class="btn-primary" style="font-size:10px; padding:2px 8px; margin-top:4px;">${r.active ? 'Nyahaktifkan' : 'Aktifkan'}</button>
+    </td>
+    <td><button onclick="window.__walkinPromoRemove(${r.id})" style="background:none; border:1px solid #ECD2CA; color:#B23A2E; border-radius:6px; padding:3px 8px; font-size:10px; cursor:pointer;">Buang</button></td>
+   </tr>`;
+  }).join('');
+ } catch (e) {
+  tbody.innerHTML = `<tr><td colspan="6" style="color:#B23A2E;">Error: ${e.message}</td></tr>`;
+ }
+};
+
+window.__walkinPromoAddItem = async function() {
+ const skuEl = document.getElementById('wpiSku');
+ const priceEl = document.getElementById('wpiPrice');
+ const sortEl = document.getElementById('wpiSortOrder');
+ const sku = (skuEl?.value || '').trim().toUpperCase();
+ const promoPrice = parseFloat(priceEl?.value);
+ if (!sku) { showToast('Pilih barang dulu.', 'warn'); return; }
+ if (!(window.__bundleProd && window.__bundleProd(sku))) { showToast('SKU "' + sku + '" takde dalam Product Master.', 'warn'); return; }
+ if (!(promoPrice > 0)) { showToast('Masukkan harga promo yang sah.', 'warn'); return; }
+ const sortOrder = sortEl?.value !== '' && sortEl?.value != null ? parseInt(sortEl.value, 10) : 0;
+ try {
+  const { error } = await db.from('walkin_promo_items').insert([{
+   sku, promo_price: promoPrice, sort_order: sortOrder, active: true,
+  }]);
+  if (error) throw error;
+  showToast('Item ditambah.', 'success');
+  if (skuEl) skuEl.value = '';
+  if (priceEl) priceEl.value = '';
+  if (sortEl) sortEl.value = '';
+  await window.renderWalkinPromoAdmin();
+ } catch (e) { showToast('Ralat: ' + e.message, 'error'); }
+};
+
+window.__walkinPromoToggleActive = async function(id, newState) {
+ try {
+  const { error } = await db.from('walkin_promo_items').update({ active: newState, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+  showToast(`Item ${newState ? 'diaktifkan' : 'dinyahaktifkan'}.`, 'success');
+  await window.renderWalkinPromoAdmin();
+ } catch (e) { showToast('Ralat: ' + e.message, 'error'); }
+};
+
+window.__walkinPromoRemove = async function(id) {
+ if (!confirm('Buang item ni dari Walk-in Promo?')) return;
+ try {
+  const { error } = await db.from('walkin_promo_items').delete().eq('id', id);
+  if (error) throw error;
+  showToast('Item dibuang.', 'success');
+  await window.renderWalkinPromoAdmin();
+ } catch (e) { showToast('Ralat: ' + e.message, 'error'); }
+};
+
 // =============================================================
 // SPRINT C — CLOSE THE LOOP
 // =============================================================
@@ -39432,6 +39585,7 @@ window.I18N = {
  // p1_50 — Public storefront (lp_*)
  lp_nav_shop: { bm: 'Kedai', en: 'Shop' },
  lp_nav_brands: { bm: 'Jenama', en: 'Brands' },
+ lp_nav_promo: { bm: 'Promo', en: 'Promo' },
  lp_nav_panduan: { bm: 'Panduan', en: 'Guides' },
  lp_nav_about: { bm: 'Tentang', en: 'About' },
  lp_nav_contact: { bm: 'Hubungi', en: 'Contact' },

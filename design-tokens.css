@@ -912,6 +912,27 @@
 .lp-collections { padding: 56px 0; background: var(--lp-bg, #F9FAFB); }
 .lp-collections__grid { max-width: 1280px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; }
 .lp-collections__grid--2col { grid-template-columns: 2fr 1fr; }
+
+/* p1_1201 — WALK-IN PROMO — misi panel + manifest bernombor (first real use of this DESIGN.md component) */
+.lp-walkin-promo { padding: 0 24px 56px; }
+.lp-walkin-promo__box { max-width: 1232px; margin: 0 auto; background: var(--lp-surface, #FFF); border: 3px solid var(--lp-ink, #141414); box-shadow: 6px 6px 0 var(--lp-ink, #141414); border-radius: var(--lp-radius-card, 10px); padding: 28px 32px; cursor: pointer; transition: 0.16s ease-out; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; }
+.lp-walkin-promo__box:hover { transform: translate(2px, 2px); box-shadow: 4px 4px 0 var(--lp-ink, #141414); }
+.lp-walkin-promo__cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-family: var(--lp-font-mono, monospace); font-size: 12px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--lp-accent, #FF4D00); }
+
+.lp-walkin-promo__panel { background: var(--lp-surface, #FFF); border: 3px solid var(--lp-ink, #141414); box-shadow: 8px 8px 0 var(--lp-ink, #141414); border-radius: var(--lp-radius-card, 10px); max-width: 640px; width: 92%; max-height: 84vh; padding: 28px; text-align: left; position: relative; display: flex; flex-direction: column; }
+.lp-walkin-promo__close { position: absolute; top: 16px; right: 16px; border: none; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--lp-muted, #6E6A5E); }
+.lp-walkin-promo__close:hover { color: var(--lp-ink, #141414); }
+.lp-walkin-promo__search-wrap { position: relative; margin: 16px 0; color: var(--lp-muted, #6E6A5E); }
+.lp-walkin-promo__search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); }
+.lp-walkin-promo__search-wrap input { width: 100%; padding: 11px 14px 11px 36px; border: 1px solid var(--lp-line, #B9B4A6); border-radius: 4px; font-size: 14px; background: var(--lp-bg-warm, #FFFDF6); outline: none; font-family: var(--lp-font-body, inherit); }
+.lp-walkin-promo__search-wrap input:focus { border-color: var(--lp-accent, #FF4D00); }
+.lp-walkin-promo__manifest { overflow-y: auto; border-top: 1.5px solid var(--lp-ink, #141414); }
+.lp-walkin-promo__row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 2px; border-bottom: 1px dashed var(--lp-line, #B9B4A6); font-family: var(--lp-font-mono, monospace); font-size: 12.5px; color: var(--lp-ink, #141414); }
+.lp-walkin-promo__row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-walkin-promo__row-price { white-space: nowrap; font-weight: 600; }
+.lp-walkin-promo__row-price em { font-style: normal; color: var(--lp-accent, #FF4D00); }
+.lp-walkin-promo__row-price s { color: var(--lp-muted-2, #8A8577); font-weight: 400; margin-left: 6px; }
+.lp-walkin-promo__empty { text-align: center; color: var(--lp-muted, #6E6A5E); font-family: var(--lp-font-mono, monospace); font-size: 12.5px; padding: 32px 8px; }
 @media (max-width: 900px) { .lp-collections__grid, .lp-collections__grid--2col { grid-template-columns: 1fr; } }
 .lp-collection { position: relative; height: 320px; border-radius: 16px; overflow: hidden; text-decoration: none; color: #FFF; display: block; transition: 0.2s; }
 /* p1_984 (design-review #2) — signature topographic contour atas kad koleksi (sama bahasa visual dgn hero + kad Jualan) supaya tak nampak rata */
