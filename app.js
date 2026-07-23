@@ -46871,7 +46871,8 @@ window.__pdbRefresh = async function(btn){
   if(canAct && t.status === 'buat')
    actions = '<button onclick="window.__stSetStatus('+t.id+',\'siap\')" style="border:2px solid #141414; background:var(--primary, #FF4D00); color:#141414; font-family:var(--font-main,inherit); font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:4px; cursor:pointer; box-shadow:3px 3px 0 #141414;"><i data-lucide="check" style="width:13px;height:13px;vertical-align:-2px;"></i> Tanda Siap</button>';
   if(forBoss)
-   actions += '<button onclick="window.__stDelete('+t.id+')" title="Padam tugasan" style="border:1px solid #B9B4A6; background:#fff; color:#6E6A5E; font-size:11.5px; padding:6px 10px; border-radius:4px; cursor:pointer; margin-left:6px;"><i data-lucide="trash-2" style="width:12px;height:12px;vertical-align:-2px;"></i></button>';
+   actions += '<button onclick="window.__stEditTask('+t.id+')" title="Edit tugasan (p1_1197)" style="border:1px solid #B9B4A6; background:#fff; color:#141414; font-size:11.5px; padding:6px 10px; border-radius:4px; cursor:pointer; margin-left:6px;"><i data-lucide="pencil" style="width:12px;height:12px;vertical-align:-2px;"></i></button>'
+    + '<button onclick="window.__stDelete('+t.id+')" title="Padam tugasan" style="border:1px solid #B9B4A6; background:#fff; color:#6E6A5E; font-size:11.5px; padding:6px 10px; border-radius:4px; cursor:pointer; margin-left:6px;"><i data-lucide="trash-2" style="width:12px;height:12px;vertical-align:-2px;"></i></button>';
   const doneStyle = t.status === 'siap' ? 'opacity:.62;' : '';
   const late = t.__late === true || stIsLate(t);
   const activeStyle = t.status === 'buat' ? 'border-left:4px solid var(--primary, #FF4D00);' : (late ? 'border-left:4px solid #C62828;' : 'border-left:4px solid transparent;');
@@ -47132,6 +47133,7 @@ window.__pdbRefresh = async function(btn){
   if(!el.innerHTML) el.innerHTML = '<div style="padding:30px; text-align:center; color:#6E6A5E; font-size:13px;">Memuatkan tugasan…</div>';
   const tasks = await stFetchAll();
   const boss = typeof window.isBoss === 'function' && window.isBoss(window.currentUser);
+  window.__stLastTasks = tasks; // p1_1197 — utk borang edit tugasan Bos
   if(boss) stRenderBoss(el, tasks); else stRenderMine(el, tasks);
   if(window.lucide && lucide.createIcons) try { lucide.createIcons(); } catch(e){}
  };
@@ -47986,5 +47988,56 @@ window.__pdbRefresh = async function(btn){
    });
    body.innerHTML = html;
   } catch(e){ body.innerHTML = '<span style="color:#C62828;">Gagal muat: ' + thEsc(e.message||e) + '</span>'; }
+ };
+})();
+
+// ==============================================
+// p1_1197 — BOS EDIT TUGASAN STAF (Zaid: "buatkan supaya aku pun boleh edit task staff").
+// Butang pensel pada kad papan Senarai Penuh → sheet edit tajuk + nota (+ pindah staf).
+// Nota edit dicop "(diubah Bos)" dlm notes supaya staf sedar tugasan dikemaskini.
+// ==============================================
+(function(){
+ window.__stEditTask = function(id){
+  const t = (window.__stLastTasks || []).find(x => x.id === id);
+  if(!t){ if(typeof showToast === 'function') showToast('Tugasan tak dijumpai — refresh dulu.', 'warn'); return; }
+  let ov = document.getElementById('stEditSheet');
+  if(ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'stEditSheet';
+  ov.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:6060; display:flex; align-items:flex-end; justify-content:center;';
+  ov.onclick = function(e){ if(e.target === ov) ov.remove(); };
+  const staffOpts = (typeof authUsers !== 'undefined' ? authUsers : []).filter(u => u.staff_id !== 'TST001' && u.staff_id !== 'REV001')
+   .map(u => '<option value="' + u.staff_id + '" data-name="' + escapeHtml(u.name) + '"' + (u.staff_id === t.assigned_to ? ' selected' : '') + '>' + escapeHtml(u.name) + '</option>').join('');
+  ov.innerHTML = '<div style="background:#F4F2EC; width:100%; max-width:560px; border-radius:16px 16px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); font-family:var(--font-main,inherit);">'
+   + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">'
+   + '<h3 style="margin:0; font-size:16px; color:#141414;">Edit Tugasan</h3>'
+   + '<button onclick="document.getElementById(\'stEditSheet\').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#6E6A5E; padding:4px 8px;">×</button></div>'
+   + '<input id="stEtTitle" type="text" maxlength="140" value="' + escapeHtml(t.title) + '" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid var(--border-color,#B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px; margin-bottom:8px;">'
+   + '<input id="stEtNotes" type="text" maxlength="300" value="' + escapeHtml(t.notes || '') + '" placeholder="Nota" style="width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid var(--border-color,#B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px; margin-bottom:8px;">'
+   + '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">'
+   + '<select id="stEtWho" style="flex:1; min-width:160px; padding:9px 10px; border:1px solid var(--border-color,#B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px; background:#fff;">' + staffOpts + '</select>'
+   + '<button onclick="window.__stEditSave(' + t.id + ')" style="border:3px solid #141414; background:var(--primary,#FF4D00); color:#141414; font-family:var(--font-main,inherit); font-weight:800; font-size:13px; padding:9px 20px; border-radius:4px; cursor:pointer; box-shadow:3px 3px 0 #141414;">Simpan</button>'
+   + '</div>'
+   + '<div style="font-size:10.5px; color:#6E6A5E; margin-top:8px;">Status/masa tugasan tak diubah — hanya tajuk, nota & pemilik. Staf akan nampak perubahan serta-merta.</div>'
+   + '</div>';
+  document.body.appendChild(ov);
+ };
+ window.__stEditSave = async function(id){
+  const title = ((document.getElementById('stEtTitle')||{}).value || '').trim();
+  const notes = ((document.getElementById('stEtNotes')||{}).value || '').trim();
+  const sel = document.getElementById('stEtWho');
+  const who = sel ? sel.value : '';
+  const whoName = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].getAttribute('data-name') : who;
+  if(!title){ if(typeof showToast === 'function') showToast('Tajuk tak boleh kosong.', 'warn'); return; }
+  try {
+   const { error } = await db.from('staff_tasks').update({
+    title: title, notes: notes, assigned_to: who, assigned_to_name: whoName,
+    updated_at: new Date().toISOString()
+   }).eq('id', id);
+   if(error) throw error;
+   const ov = document.getElementById('stEditSheet'); if(ov) ov.remove();
+   if(typeof showToast === 'function') showToast('Tugasan dikemaskini.', 'success');
+   window.renderStaffTasks();
+  } catch(e){ if(typeof showToast === 'function') showToast('Gagal simpan: ' + (e.message || e), 'error'); }
  };
 })();
