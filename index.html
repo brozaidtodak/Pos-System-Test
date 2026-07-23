@@ -44,7 +44,7 @@
  <link rel="dns-prefetch" href="https://asehjdnfzoypbwfeazra.supabase.co">
  <link rel="preconnect" href="https://fonts.googleapis.com">
  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
- <link rel="stylesheet" href="design-tokens.css?v=178">
+ <link rel="stylesheet" href="design-tokens.css?v=179">
  <script src="landing-theme.js?v=2"></script>
  <!-- Supabase Core — p1_976: vendored (self-host) supaya tak bergantung CDN luar +
       di-cache oleh Service Worker. Elak "Auth tidak tersedia" bila CDN jsdelivr lambat/blocked.
@@ -1196,9 +1196,9 @@
 
  <!-- HERO with hikers background -->
  <section class="lp-hero" id="hero">
- <!-- p1_1163 — gradient shader hidup (WebGL) ganti foto pendaki (Zaid pilih); .lp-hero__bg kekal jadi fallback CSS bila WebGL tiada -->
- <canvas class="lp-hero__grad" id="lpHeroGrad"></canvas>
+ <!-- p1 — latar VIDEO event (staf pasang gear). data-src dimuat JS di desktop sahaja; mobile/reduced-motion = poster. .lp-hero__bg gradient oren kekal fallback bawah video. -->
  <div class="lp-hero__bg"></div>
+ <video class="lp-hero__video" muted loop playsinline preload="none" poster="/assets/hero/hero-event-poster.jpg" data-src="/assets/hero/hero-event.mp4" aria-hidden="true"></video>
  <div class="lp-hero__overlay"></div>
  <div class="lp-hero__content">
  <p class="lp-hero__eyebrow" data-i18n="lp_hero_eyebrow">Kelengkapan Camping &amp; Outdoor · Malaysia</p>
@@ -1222,6 +1222,16 @@
  </div>
  <p class="lp-hero__coords">2.9188° N, 101.6520° E — ELEV. 34M · CYBERJAYA</p>
  </div>
+ <script>
+ /* Hero video event — muat + main di desktop sahaja (mobile/reduced-motion = poster, jimat data) */
+ (function(){
+   var v = document.querySelector('.lp-hero__video'); if(!v) return;
+   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+   if (window.matchMedia('(max-width: 820px)').matches) return;
+   v.src = v.dataset.src;
+   v.play().catch(function(){});
+ })();
+ </script>
  </section>
 
  <!-- ACTIVITY GRID (p1_47) — primary navigation by activity -->
