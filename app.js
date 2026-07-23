@@ -46823,6 +46823,31 @@ window.__pdbRefresh = async function(btn){
   if(!iso) return '';
   try { return new Date(iso).toLocaleString('ms-MY', { timeZone:'Asia/Kuala_Lumpur', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); } catch(e){ return ''; }
  }
+ // p1_1193 (Pakej 1 #4) — masa RINGKAS: jam sahaja bila hari sama (kad harian), penuh bila lain hari
+ function stWhenShort(iso){
+  if(!iso) return '';
+  try {
+   const d = new Date(iso);
+   const sameDay = d.toISOString().slice(0,10) === new Date().toISOString().slice(0,10) || new Date(d.getTime()+8*3600e3).toISOString().slice(0,10) === new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+   return sameDay ? d.toLocaleTimeString('ms-MY', { timeZone:'Asia/Kuala_Lumpur', hour:'2-digit', minute:'2-digit' }) : stWhen(iso);
+  } catch(e){ return ''; }
+ }
+ // p1_1193 (Pakej 1 #2) — LEWAT: tajuk berprefix "HH:MM ·", slot dah lepas > 60 min, masih 'baru'
+ function stSlotMin(title){
+  const m = /^(\d{1,2}):(\d{2})\s*·/.exec(String(title||'')); if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+ }
+ function stNowMin(){
+  const d = new Date(Date.now() + 8*3600e3);
+  return d.getUTCHours()*60 + d.getUTCMinutes();
+ }
+ function stIsLate(t){
+  if(t.status !== 'baru') return false;
+  const slot = stSlotMin(t.title); if(slot == null) return false;
+  // hanya tugasan hari ini (auto pagi tadi) — bukan rekod lama
+  try { if(new Date(t.created_at).getTime() < Date.now() - 24*3600e3) return false; } catch(e){}
+  return stNowMin() > slot + 60;
+ }
  function stStaffList(){
   const list = (typeof authUsers !== 'undefined' && Array.isArray(authUsers)) ? authUsers : [];
   return list.filter(u => u.staff_id !== 'TST001' && u.staff_id !== 'REV001');
@@ -46848,18 +46873,25 @@ window.__pdbRefresh = async function(btn){
   if(forBoss)
    actions += '<button onclick="window.__stDelete('+t.id+')" title="Padam tugasan" style="border:1px solid #B9B4A6; background:#fff; color:#6E6A5E; font-size:11.5px; padding:6px 10px; border-radius:4px; cursor:pointer; margin-left:6px;"><i data-lucide="trash-2" style="width:12px;height:12px;vertical-align:-2px;"></i></button>';
   const doneStyle = t.status === 'siap' ? 'opacity:.62;' : '';
-  const activeStyle = t.status === 'buat' ? 'border-left:4px solid var(--primary, #FF4D00);' : 'border-left:4px solid transparent;';
+  const late = stIsLate(t);
+  const activeStyle = t.status === 'buat' ? 'border-left:4px solid var(--primary, #FF4D00);' : (late ? 'border-left:4px solid #C62828;' : 'border-left:4px solid transparent;');
+  // p1_1193 #4 — baris masa kemas: tugasan AUTO tak perlu "Diberi" (semua pagi sama);
+  // manual kekal "Diberi" (relevan). Masa ringkas jam sahaja utk hari sama.
+  const isAuto = t.assigned_by === 'Jadual Auto';
+  let metaBits = [];
+  if(forBoss) metaBits.push(escapeHtml(t.assigned_to_name || t.assigned_to));
+  if(!isAuto) metaBits.push('Diberi ' + stWhenShort(t.created_at));
+  if(t.started_at) metaBits.push('Mula ' + stWhenShort(t.started_at));
+  if(t.done_at) metaBits.push('Siap ' + stWhenShort(t.done_at));
+  const metaHtml = metaBits.length ? '<div style="font-size:10.5px; color:#9CA3AF; margin-top:5px; font-family:var(--font-mono, monospace);">' + metaBits.join(' · ') + '</div>' : '';
   return '<div style="background:#fff; border:1px solid var(--border-color, #B9B4A6); '+activeStyle+doneStyle+' border-radius:8px; padding:12px 14px; margin-bottom:8px;">'
    + '<div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap;">'
    + '<div style="flex:1; min-width:160px;">'
-   + '<div style="font-weight:700; font-size:14px; color:#141414; '+(t.status==='siap'?'text-decoration:line-through;':'')+'">'+escapeHtml(t.title)+'</div>'
+   + '<div style="font-weight:700; font-size:14px; color:#141414; '+(t.status==='siap'?'text-decoration:line-through;':'')+'">'+escapeHtml(t.title)
+   + (late ? ' <span style="display:inline-block; padding:1px 7px; border-radius:999px; font-size:9px; font-weight:800; letter-spacing:.5px; background:#C62828; color:#fff; vertical-align:2px;">LEWAT</span>' : '')
+   + '</div>'
    + (t.notes ? '<div style="font-size:12.5px; color:#6E6A5E; margin-top:3px; white-space:pre-wrap;">'+escapeHtml(t.notes)+'</div>' : '')
-   + '<div style="font-size:11px; color:#6E6A5E; margin-top:6px; font-family:var(--font-mono, monospace);">'
-   + (forBoss ? escapeHtml(t.assigned_to_name || t.assigned_to)+' · ' : '')
-   + 'Diberi '+stWhen(t.created_at)
-   + (t.started_at ? ' · Mula '+stWhen(t.started_at) : '')
-   + (t.done_at ? ' · Siap '+stWhen(t.done_at) : '')
-   + '</div></div>'
+   + metaHtml + '</div>'
    + '<div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">'+stPill(t.status)+(actions?'<span style="display:inline-flex;">'+actions+'</span>':'')+'</div>'
    + '</div></div>';
  }
@@ -46880,7 +46912,18 @@ window.__pdbRefresh = async function(btn){
    + '<div style="font-weight:900; font-size:19px; color:#141414;">Tugasan Aku</div>'
    + '<button onclick="window.__ttOpen(window.currentUser.staff_id, window.currentUser.name)" style="border:2px solid #141414; background:#fff; color:#141414; font-family:var(--font-main,inherit); font-weight:800; font-size:11.5px; padding:7px 13px; border-radius:999px; cursor:pointer;"><i data-lucide="calendar-cog" style="width:12px;height:12px;vertical-align:-2px;pointer-events:none;"></i> Jadual Saya</button>'
    + '</div>'
-   + '<div style="font-size:12px; color:#6E6A5E; margin-bottom:14px;">Tekan <b>Mula Buat</b> bila mula, <b>Tanda Siap</b> bila habis — Bos nampak status terus.</div>';
+   + '<div style="font-size:12px; color:#6E6A5E; margin-bottom:10px;">Tekan <b>Mula Buat</b> bila mula, <b>Tanda Siap</b> bila habis — Bos nampak status terus.</div>';
+  // p1_1193 #5 — progress hari ini: X/Y siap (tugasan hari ini sahaja)
+  (function(){
+   const todayStart = new Date(new Date(Date.now() + 8*3600e3).toISOString().slice(0,10) + 'T00:00:00+08:00').getTime();
+   const todays = mine.filter(t => new Date(t.created_at).getTime() >= todayStart || (t.done_at && new Date(t.done_at).getTime() >= todayStart) || t.status !== 'siap');
+   if(!todays.length) return;
+   const nS = todays.filter(t => t.status === 'siap').length;
+   const pct = Math.round(nS / todays.length * 100);
+   html += '<div style="display:flex; align-items:center; gap:9px; margin-bottom:14px;">'
+    + '<div style="flex:1; height:6px; background:#EEE9DD; border-radius:99px; overflow:hidden;"><div style="width:' + pct + '%; height:100%; background:#168C50; transition:width .3s;"></div></div>'
+    + '<span style="font-size:11.5px; font-weight:800; color:#141414; font-family:var(--font-mono, monospace); flex:0 0 auto;">' + nS + '/' + todays.length + ' siap</span></div>';
+  })();
   if(!mine.length){
    html += '<div style="text-align:center; padding:44px 16px; color:#6E6A5E;"><i data-lucide="clipboard-check" style="width:34px;height:34px;opacity:.5;"></i><div style="margin-top:10px; font-size:13.5px;">Tiada tugasan buat masa ni. Steady!</div></div>';
   } else {
@@ -46923,6 +46966,7 @@ window.__pdbRefresh = async function(btn){
    const list = (byId[u.staff_id] || []).sort((a,b) => (({buat:0, baru:1, siap:2}[a.status] - {buat:0, baru:1, siap:2}[b.status]) || String(a.title).localeCompare(String(b.title))));
    const nSiap = list.filter(t=>t.status==='siap').length;
    const nBuat = list.filter(t=>t.status==='buat').length;
+   const nLate = list.filter(stIsLate).length; // p1_1193 #8
    const shift = stShiftToday(u.name);
    const isOff = shift && OFF_CODES.indexOf(shift) !== -1;
    const ring = list.length ? Math.round(nSiap / list.length * 100) : 0;
@@ -46941,6 +46985,7 @@ window.__pdbRefresh = async function(btn){
     + '<span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:#141414; color:#F4F2EC; font-weight:800; font-size:11px; flex:0 0 auto;">' + escapeHtml((u.name||'?').charAt(0).toUpperCase()) + '</span>'
     + '<b style="font-size:13px; color:#141414; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(u.name) + '</b>'
     + '<button onclick="window.__ttOpen(\'' + u.staff_id + '\', \'' + escapeHtml(u.name).replace(/'/g, "\\'") + '\')" title="Edit jadual ' + escapeHtml(u.name) + '" style="flex:0 0 auto; width:24px; height:24px; border:1px solid var(--border-color,#B9B4A6); border-radius:6px; background:#fff; cursor:pointer; color:#6E6A5E; padding:0;"><i data-lucide="calendar-cog" style="width:12px;height:12px;pointer-events:none;"></i></button>'
+    + (nLate ? '<span style="font-size:9px; font-weight:800; letter-spacing:.5px; padding:1px 7px; border-radius:999px; background:#C62828; color:#fff; flex:0 0 auto;">' + nLate + ' LEWAT</span>' : '')
     + (shift ? '<span style="font-size:9px; font-weight:800; letter-spacing:.5px; padding:1px 7px; border-radius:999px; background:' + (isOff ? '#B23A2E' : '#141414') + '; color:#F4F2EC; flex:0 0 auto;">' + escapeHtml(shift) + '</span>' : '')
     + '</div>'
     + (list.length ? '<div style="display:flex; align-items:center; gap:7px; margin-bottom:7px;">'
@@ -46953,6 +46998,7 @@ window.__pdbRefresh = async function(btn){
   const tot = all.length, totSiap = all.filter(t=>t.status==='siap').length, totBuat = all.filter(t=>t.status==='buat').length;
   return '<div style="display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:#6E6A5E; margin-bottom:12px;">'
    + '<span><b style="color:#141414; font-size:15px;">' + tot + '</b> tugasan hari ini</span>'
+   + (function(){ const nL = all.filter(stIsLate).length; return nL ? '<span><b style="color:#C62828; font-size:15px;">' + nL + '</b> lewat</span>' : ''; })()
    + '<span><b style="color:#168C50; font-size:15px;">' + totSiap + '</b> siap</span>'
    + '<span><b style="color:var(--primary, #FF4D00); font-size:15px;">' + totBuat + '</b> tengah dibuat</span>'
    + '</div>'
@@ -46979,8 +47025,9 @@ window.__pdbRefresh = async function(btn){
    + '<div style="font-weight:900; font-size:20px; color:#141414;">Tugasan Staf</div>'
    + '<div style="font-size:12.5px; color:#6E6A5E; margin:2px 0 14px;">Papan ni Bos sahaja nampak. Staf hanya nampak tugasan sendiri dalam app (tab Task).</div>'
    // Borang beri tugasan
-   + '<div style="background:#FFFDF6; border:2px solid #141414; border-radius:8px; padding:14px; margin-bottom:18px;">'
-   + '<div style="font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#141414; margin-bottom:10px;"><i data-lucide="plus-circle" style="width:13px;height:13px;vertical-align:-2px;"></i> Beri Tugasan Baru</div>'
+   // p1_1193 #6 — borang collapse (di phone borang makan separuh skrin sebelum nampak papan)
+   + '<button onclick="window.__stFormOpen = !window.__stFormOpen; document.getElementById(\'stFormWrap\').style.display = window.__stFormOpen ? \'block\' : \'none\';" style="border:2px solid #141414; background:' + (window.__stFormOpen ? '#141414' : '#fff') + '; color:' + (window.__stFormOpen ? '#F4F2EC' : '#141414') + '; font-family:var(--font-main,inherit); font-weight:800; font-size:12px; padding:8px 16px; border-radius:999px; cursor:pointer; margin-bottom:12px;"><i data-lucide="plus-circle" style="width:13px;height:13px;vertical-align:-2px;pointer-events:none;"></i> Beri Tugasan</button>'
+   + '<div id="stFormWrap" style="display:' + (window.__stFormOpen ? 'block' : 'none') + '; background:#FFFDF6; border:2px solid #141414; border-radius:8px; padding:14px; margin-bottom:18px;">'
    + '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">'
    + '<select id="stAddWho" style="flex:1; min-width:170px; padding:9px 10px; border:1px solid var(--border-color, #B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px; background:#fff;"><option value="">— Pilih staf —</option>'+staffOpts+'</select>'
    + '<input id="stAddTitle" type="text" maxlength="140" placeholder="Tugasan apa? cth: Susun stok rak khemah" style="flex:2; min-width:220px; padding:9px 10px; border:1px solid var(--border-color, #B9B4A6); border-radius:4px; font-family:var(--font-main,inherit); font-size:13px;">'
@@ -47049,10 +47096,18 @@ window.__pdbRefresh = async function(btn){
   if(status === 'buat') patch.started_at = new Date().toISOString();
   if(status === 'siap') patch.done_at = new Date().toISOString();
   try {
+   // p1_1193 #3 — SATU kerja aktif: mula tugasan baru → tugasan lain aku yang 'buat'
+   // kembali 'baru' (status jujur; papan Bos nampak apa yang SEBENARNYA tengah dibuat)
+   if(status === 'buat' && window.currentUser){
+    const r0 = await db.from('staff_tasks').update({ status: 'baru', updated_at: new Date().toISOString() })
+     .eq('assigned_to', window.currentUser.staff_id).eq('status', 'buat').neq('id', id).select('id');
+    if(r0.data && r0.data.length && window.showToast) showToast('Tugasan lain ditangguh — satu kerja pada satu masa.', 'info');
+   }
    const { error } = await db.from('staff_tasks').update(patch).eq('id', id);
    if(error) throw error;
    if(window.showToast) showToast(status === 'siap' ? 'Siap! Kerja bagus.' : 'Okay, jom buat!', 'success');
    window.renderStaffTasks();
+   if(typeof window.__stTabBadgeRefresh === 'function') window.__stTabBadgeRefresh();
   } catch(e){ console.warn('stSetStatus', e); if(window.showToast) showToast('Gagal update status.', 'error'); }
  };
 
@@ -47721,4 +47776,50 @@ window.__pdbRefresh = async function(btn){
    window.__ttRender();
   } catch(e){ if(typeof showToast==='function') showToast('Gagal padam: '+(e.message||e), 'error'); }
  };
+})();
+
+// ==============================================
+// p1_1193 (Pakej 1 #9 + #11) — papan tugasan hidup + badge tab Task.
+// Auto-refresh 60s bila seksyen terpapar (skip bila borang Bos terbuka / sheet Jadual
+// Saya terbuka / kursor dlm input — jangan padam apa yang tengah ditaip).
+// Badge tab Task = kiraan tugasan aku belum siap (refresh 5 min + selepas tiap status).
+// ==============================================
+(function(){
+ window.__stTabBadgeRefresh = async function(){
+  try {
+   if(!window.currentUser || typeof db === 'undefined' || !db) return;
+   const btn = document.querySelector('#posAppTabBar .posAppTab[data-key="tasks"]');
+   if(!btn) return;
+   const { data } = await db.from('staff_tasks').select('id,status').eq('assigned_to', window.currentUser.staff_id).neq('status', 'siap').limit(50);
+   const n = (data || []).length;
+   let b = btn.querySelector('.stTabBadge');
+   if(!n){ if(b) b.remove(); return; }
+   if(!b){
+    b = document.createElement('span');
+    b.className = 'stTabBadge';
+    b.style.cssText = 'position:absolute; top:3px; right:calc(50% - 24px); min-width:16px; height:16px; line-height:16px; border-radius:999px; background:var(--primary,#FF4D00); color:#141414; font-size:9.5px; font-weight:800; text-align:center; padding:0 4px; pointer-events:none;';
+    btn.style.position = 'relative';
+    btn.appendChild(b);
+   }
+   b.textContent = n;
+  } catch(e){}
+ };
+ function stBusyTyping(){
+  try {
+   if(window.__stFormOpen) return true;                            // borang Bos terbuka
+   if(document.getElementById('ttSheet')) return true;             // Jadual Saya terbuka
+   const a = document.activeElement;
+   return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'));
+  } catch(e){ return false; }
+ }
+ setInterval(function(){
+  try {
+   if(document.hidden || stBusyTyping()) return;
+   const sec = document.getElementById('staffTasksSection');
+   if(sec && sec.style.display !== 'none' && window.currentUser && typeof window.renderStaffTasks === 'function') window.renderStaffTasks();
+  } catch(e){}
+ }, 60000);
+ setInterval(function(){ try { if(!document.hidden) window.__stTabBadgeRefresh(); } catch(e){} }, 300000);
+ setTimeout(function(){ try { window.__stTabBadgeRefresh(); } catch(e){} }, 7000);
+ setTimeout(function(){ try { window.__stTabBadgeRefresh(); } catch(e){} }, 25000);
 })();
