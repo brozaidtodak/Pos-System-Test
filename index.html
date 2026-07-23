@@ -1266,6 +1266,62 @@
  </div>
  </section>
 
+ <!-- WALK-IN PROMO (p1_1201) — in-store-only promo catalogue, admin-curated (Marketing > Walk-in Promo) -->
+ <section class="lp-walkin-promo" id="promo">
+ <div class="lp-walkin-promo__box" onclick="window.__openWalkinPromoModal()" onkeydown="if(event.key==='Enter'||event.key===' '){ event.preventDefault(); this.click(); }" role="button" tabindex="0">
+ <span class="lp-eyebrow">In-Store Only</span>
+ <h2 class="lp-h2">Walk-in Promo</h2>
+ <span class="lp-walkin-promo__cta">Lihat Senarai <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></span>
+ </div>
+ </section>
+
+ <!-- Walk-in Promo popup — manifest bernombor list, populated by app.js window.__loadWalkinPromoItems -->
+ <div id="walkinPromoOverlay" class="login-overlay" style="display:none; z-index:3700;" onclick="if(event.target===this) this.style.display='none'">
+ <div class="lp-walkin-promo__panel">
+ <button onclick="document.getElementById('walkinPromoOverlay').style.display='none'" class="lp-walkin-promo__close" aria-label="Close">×</button>
+ <span class="lp-eyebrow">In-Store Only</span>
+ <h2 class="lp-h2">Walk-in Promo</h2>
+ <p class="lp-section__sub">Diskaun khas untuk customer yang datang terus ke kedai — tak boleh redeem online.</p>
+ <div class="lp-walkin-promo__search-wrap">
+ <i data-lucide="search" style="width:15px;height:15px;"></i>
+ <input type="text" id="walkinPromoSearch" placeholder="Cari produk atau jenama…" oninput="window.__renderWalkinPromoManifest(this.value)">
+ </div>
+ <div id="walkinPromoManifest" class="lp-walkin-promo__manifest"></div>
+ </div>
+ </div>
+
+ <!-- MAIN SHOP -->
+ <section class="lp-shop" id="shop">
+ <div class="lp-section__head" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px;">
+ <div>
+ <span class="lp-eyebrow" data-i18n="lp_shop_eyebrow">Shop</span>
+ <h2 class="lp-h2" id="lpShopHeading" data-i18n="lp_shop_h2">All Products</h2>
+ </div>
+ <div class="lp-shop__search-wrap">
+ <i data-lucide="search" style="width:16px;height:16px;color:#9CA3AF;position:absolute;left:12px;top:50%;transform:translateY(-50%);"></i>
+ <input type="text" id="lpSearchInput" class="lp-shop__search" placeholder="Search by product name or brand…" data-i18n-placeholder="lp_search_placeholder" oninput="window.lpHandleSearch(this.value)">
+ </div>
+ </div>
+ <div class="lp-shop__filters" id="lpCategoryPills">
+ <!-- Category pills injected by JS -->
+ </div>
+ <div id="publicProductsList" class="products-grid lp-products-grid">
+ <!-- Skeletons inserted by JS until products load -->
+ </div>
+ </section>
+
+ <!-- p1_50 — SOLD-OUT SOCIAL PROOF STRIP -->
+ <section class="lp-soldout" id="lpSoldOutSection" style="display:none;">
+ <div class="lp-section__head">
+ <span class="lp-eyebrow" data-i18n="lp_soldout_eyebrow">Social Proof</span>
+ <h2 class="lp-h2" data-i18n="lp_soldout_h2">Popular — Out of Stock</h2>
+ <p class="lp-section__sub" data-i18n="lp_soldout_sub">Popular picks that sold out — ask us about restock.</p>
+ </div>
+ <div class="lp-soldout__strip" id="lpSoldOutStrip">
+ <!-- Cards injected by renderPopularSoldOut() -->
+ </div>
+ </section>
+
  <!-- BRANDS WE CARRY -->
  <section class="lp-brands" id="brands">
  <div class="lp-section__head">
@@ -1329,62 +1385,6 @@
  </div>
  </div>
  </div>
- </div>
- </section>
-
- <!-- WALK-IN PROMO (p1_1201) — in-store-only promo catalogue, admin-curated (Marketing > Walk-in Promo) -->
- <section class="lp-walkin-promo" id="promo">
- <div class="lp-walkin-promo__box" onclick="window.__openWalkinPromoModal()" onkeydown="if(event.key==='Enter'||event.key===' '){ event.preventDefault(); this.click(); }" role="button" tabindex="0">
- <span class="lp-eyebrow">In-Store Only</span>
- <h2 class="lp-h2">Walk-in Promo</h2>
- <span class="lp-walkin-promo__cta">Lihat Senarai <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></span>
- </div>
- </section>
-
- <!-- Walk-in Promo popup — manifest bernombor list, populated by app.js window.__loadWalkinPromoItems -->
- <div id="walkinPromoOverlay" class="login-overlay" style="display:none; z-index:3700;" onclick="if(event.target===this) this.style.display='none'">
- <div class="lp-walkin-promo__panel">
- <button onclick="document.getElementById('walkinPromoOverlay').style.display='none'" class="lp-walkin-promo__close" aria-label="Close">×</button>
- <span class="lp-eyebrow">In-Store Only</span>
- <h2 class="lp-h2">Walk-in Promo</h2>
- <p class="lp-section__sub">Diskaun khas untuk customer yang datang terus ke kedai — tak boleh redeem online.</p>
- <div class="lp-walkin-promo__search-wrap">
- <i data-lucide="search" style="width:15px;height:15px;"></i>
- <input type="text" id="walkinPromoSearch" placeholder="Cari produk atau jenama…" oninput="window.__renderWalkinPromoManifest(this.value)">
- </div>
- <div id="walkinPromoManifest" class="lp-walkin-promo__manifest"></div>
- </div>
- </div>
-
- <!-- MAIN SHOP -->
- <section class="lp-shop" id="shop">
- <div class="lp-section__head" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px;">
- <div>
- <span class="lp-eyebrow" data-i18n="lp_shop_eyebrow">Shop</span>
- <h2 class="lp-h2" id="lpShopHeading" data-i18n="lp_shop_h2">All Products</h2>
- </div>
- <div class="lp-shop__search-wrap">
- <i data-lucide="search" style="width:16px;height:16px;color:#9CA3AF;position:absolute;left:12px;top:50%;transform:translateY(-50%);"></i>
- <input type="text" id="lpSearchInput" class="lp-shop__search" placeholder="Search by product name or brand…" data-i18n-placeholder="lp_search_placeholder" oninput="window.lpHandleSearch(this.value)">
- </div>
- </div>
- <div class="lp-shop__filters" id="lpCategoryPills">
- <!-- Category pills injected by JS -->
- </div>
- <div id="publicProductsList" class="products-grid lp-products-grid">
- <!-- Skeletons inserted by JS until products load -->
- </div>
- </section>
-
- <!-- p1_50 — SOLD-OUT SOCIAL PROOF STRIP -->
- <section class="lp-soldout" id="lpSoldOutSection" style="display:none;">
- <div class="lp-section__head">
- <span class="lp-eyebrow" data-i18n="lp_soldout_eyebrow">Social Proof</span>
- <h2 class="lp-h2" data-i18n="lp_soldout_h2">Popular — Out of Stock</h2>
- <p class="lp-section__sub" data-i18n="lp_soldout_sub">Popular picks that sold out — ask us about restock.</p>
- </div>
- <div class="lp-soldout__strip" id="lpSoldOutStrip">
- <!-- Cards injected by renderPopularSoldOut() -->
  </div>
  </section>
 
