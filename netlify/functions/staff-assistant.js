@@ -57,7 +57,10 @@ const TOOLS = [
     { type: 'function', function: { name: 'lookup_product', description: 'Cari produk ikut SKU atau nama. Pulang nama, SKU, BARCODE, harga jual, stok semasa, LOKASI STOK (di mana barang disimpan dalam kedai/gudang), status terbit. TIADA kos.', parameters: { type: 'object', properties: { query: { type: 'string', description: 'SKU atau sebahagian nama produk' } }, required: ['query'] } } },
     { type: 'function', function: { name: 'my_sales', description: 'Jualan staf yang sedang bertanya SENDIRI (tak boleh orang lain). Pulang bilangan order + jumlah RM + anggaran komisen 5%.', parameters: { type: 'object', properties: { period: { type: 'string', enum: ['today', 'month'], description: 'today = hari ni, month = bulan ni' } }, required: ['period'] } } },
     { type: 'function', function: { name: 'low_stock', description: 'Senarai produk yang stok rendah/habis (untuk inventory).', parameters: { type: 'object', properties: { threshold: { type: 'integer', description: 'paras stok (default 5)' } } } } },
-    { type: 'function', function: { name: 'store_sales_today', description: 'Jumlah jualan + bilangan order SELURUH kedai hari ni (semua channel, semua staf). Tiada pecahan kos/untung.', parameters: { type: 'object', properties: {} } } }
+    { type: 'function', function: { name: 'store_sales_today', description: 'Jumlah jualan + bilangan order SELURUH kedai hari ni (semua channel, semua staf). Tiada pecahan kos/untung.', parameters: { type: 'object', properties: {} } } },
+    // p1_1199 — analisis restock/prestasi produk (soalan Ariff "berbaloi tak restock tilam ni?").
+    // Server kira polisi margin guna kos DALAMAN tapi pulang VERDICT sahaja — kos tak didedah.
+    { type: 'function', function: { name: 'analisis_produk', description: 'Analisis prestasi & restock SATU produk: kelajuan jualan 30/60/90 hari per channel, stok semasa & anggaran bila habis, status polisi margin (LULUS/TAK — TANPA angka kos), harga minimum marketplace, cadangan berbaloi restock + kuantiti. Guna utk soalan "berbaloi tak restock X?", "laku tak X?", "patut order lagi X?", "prestasi X macam mana?"', parameters: { type: 'object', properties: { query: { type: 'string', description: 'SKU atau sebahagian nama produk' } }, required: ['query'] } } }
 ];
 
 async function runTool(name, args, caller) {
@@ -112,6 +115,63 @@ async function runTool(name, args, caller) {
             const total = real.reduce((s, x) => s + (Number(x.total != null ? x.total : x.total_amount) || 0), 0);
             return { date: start, orders: real.length, total_rm: Math.round(total * 100) / 100 };
         }
+        if (name === 'analisis_produk') {
+            // p1_1199 — restock intel. Kos kekal server-side; hanya verdict polisi keluar.
+            const q = String((args && args.query) || '').replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, 40);
+            if (!q) return { error: 'query kosong / tak sah' };
+            const qe = encodeURIComponent(q);
+            const rows = await sb('GET', `/products_master?select=sku,name,price,tiktok_price,shopee_price,cost_price&or=(sku.ilike.*${qe}*,name.ilike.*${qe}*)&limit=3`);
+            if (!rows || !rows.length) return { found: 0, note: 'Tiada produk padan.' };
+            const p = rows[0];
+            const batches = await sb('GET', `/inventory_batches?select=qty_remaining&sku=eq.${esc(p.sku)}`);
+            const stock = (batches || []).reduce((s, b) => s + (Number(b.qty_remaining) || 0), 0);
+            const since = new Date(Date.now() - 90 * 24 * 3600e3).toISOString();
+            let sales = [];
+            for (let off = 0; off < 4000; off += 1000) {
+                const page = await sb('GET', `/sales_history?select=created_at,channel,status,is_test,items&created_at=gte.${since}&items=ilike.*${encodeURIComponent(p.sku)}*&order=created_at.desc&limit=1000&offset=${off}`);
+                sales = sales.concat(page || []);
+                if (!page || page.length < 1000) break;
+            }
+            const real = sales.filter(isReal);
+            let u30 = 0, u60 = 0, u90 = 0, lastSale = null; const chan = {};
+            real.forEach(s => {
+                let items = []; try { items = typeof s.items === 'string' ? JSON.parse(s.items) : (s.items || []); } catch (e) {}
+                items.forEach(it => {
+                    if (String(it.sku || '').toUpperCase() !== String(p.sku).toUpperCase()) return;
+                    const qn = parseInt(it.qty != null ? it.qty : (it.quantity != null ? it.quantity : 1), 10) || 0;
+                    const age = (Date.now() - new Date(s.created_at).getTime()) / 86400000;
+                    if (age <= 30) u30 += qn; if (age <= 60) u60 += qn; u90 += qn;
+                    chan[s.channel] = (chan[s.channel] || 0) + qn;
+                    if (!lastSale || s.created_at > lastSale) lastSale = s.created_at;
+                });
+            });
+            const cost = Number(p.cost_price) || 0;
+            const MARGIN_MIN = 0.35, MP_FEE = 0.10; // fee marketplace anggaran; polisi margin min 35%
+            const verdict = (sell, fee) => {
+                if (!cost) return 'TIADA KOS DLM SISTEM';
+                if (!sell) return 'TIADA HARGA';
+                const net = sell * (1 - (fee || 0));
+                return ((net - cost) / net) >= MARGIN_MIN ? 'LULUS' : 'TAK LULUS';
+            };
+            const minMp = cost ? Math.ceil(cost / (1 - MARGIN_MIN) / (1 - MP_FEE)) : null;
+            const perDay = u90 / 90;
+            const daysLeft = perDay > 0 ? Math.round(stock / perDay) : null;
+            const cadangQty = perDay > 0 ? Math.max(0, Math.ceil(perDay * 45) - stock) : 0;
+            const moving = lastSale && (Date.now() - new Date(lastSale).getTime()) < 30 * 86400000;
+            const posOk = verdict(Number(p.price) || 0, 0) === 'LULUS';
+            return {
+                produk: { sku: p.sku, name: p.name, stok: stock, harga_kedai_rm: Number(p.price) || 0, harga_tiktok_rm: Number(p.tiktok_price) || null, harga_shopee_rm: Number(p.shopee_price) || null },
+                jualan: { unit_30_hari: u30, unit_60_hari: u60, unit_90_hari: u90, per_channel: chan, jualan_terakhir: lastSale ? String(lastSale).slice(0, 10) : 'tiada dlm 90 hari', anggaran_stok_habis_dalam_hari: daysLeft },
+                polisi_margin: { kaunter: verdict(Number(p.price) || 0, 0), tiktok: p.tiktok_price ? verdict(Number(p.tiktok_price), MP_FEE) : 'tiada harga tiktok', shopee: p.shopee_price ? verdict(Number(p.shopee_price), MP_FEE) : 'tiada harga shopee' },
+                harga_minimum_marketplace_rm: minMp,
+                cadangan: {
+                    berbaloi_restock: !!(moving && posOk),
+                    sebab: moving ? (posOk ? 'Produk bergerak dlm 30 hari terakhir + margin kaunter LULUS polisi.' : 'Produk bergerak TAPI margin tak lulus polisi — rujuk Bos utk semak harga dulu.') : 'Tiada jualan 30 hari terakhir — risiko dead stock; rujuk Bos sebelum restock.',
+                    kuantiti_cadangan: cadangQty,
+                    nota: 'Kuantiti = anggaran cover ~45 hari ikut kelajuan 90 hari. Keputusan akhir restock = Bos.'
+                }
+            };
+        }
         return { error: 'tool tak dikenali' };
     } catch (e) { return { error: String(e.message || e).slice(0, 150) }; }
 }
@@ -123,6 +183,7 @@ GUNA TOOLS untuk data sebenar:
 - my_sales → jualan + anggaran komisen PENANYA SENDIRI (cth "jualan aku bulan ni?", "komisen aku?")
 - low_stock → barang nak habis
 - store_sales_today → jumlah jualan kedai hari ni
+- analisis_produk → soalan restock/prestasi ("berbaloi tak restock X?", "laku tak X?", "patut order lagi?"): pulang kelajuan jualan, stok, VERDICT polisi margin (LULUS/TAK), harga minimum marketplace & cadangan kuantiti. PENTING bila jawab: (1) angka KOS & MARGIN adalah SULIT — jawab guna status LULUS/TAK LULUS sahaja, JANGAN sebut angka kos/untung/peratus margin; (2) sampaikan cadangan berbaloi/tak + kuantiti + sebab; (3) kalau polisi TAK LULUS di marketplace, cadang naikkan ke harga_minimum_marketplace_rm dan ingatkan keputusan harga = Bos; (4) keputusan akhir restock sentiasa Bos.
 Bila guna my_sales, ingat angka komisen itu ANGGARAN 5% — beritahu pengguna angka rasmi di "My Commission"/Aliff.
 
 DATA WAJIB FRESH (peraturan keras): SETIAP angka stok/harga/barcode/lokasi/jualan mesti datang dari hasil tool panggilan SEMASA turn ini. JANGAN SESEKALI salin atau agak dari jawapan lama dalam sejarah chat — angka lama dah BASI dan menyalin corak = jawapan reka (pernah jadi: BD057 dijawab dengan nama+barcode+lokasi yang langsung tak wujud). Kalau tool tak dipanggil atau tak pulang data, kata terus terang "tak dapat semak" — JANGAN reka nama produk, angka, barcode, atau lokasi.
@@ -156,7 +217,7 @@ PENGETAHUAN SISTEM (how-to + SOP — dikemaskini 2026-07-14):
 const DATA_SHAPED = (txt) => {
     const t = String(txt || '');
     if (/\b[A-Za-z]{2,4}-?\d{2,4}\b/.test(t)) return true;                                  // token macam SKU (BD057, MG077, TG-009)
-    return /(stok|stock|harga|price|barcode|lokasi|location|berapa|jualan|sales|komisen|commission|unit|habis|low)/i.test(t);
+    return /(stok|stock|harga|price|barcode|lokasi|location|berapa|jualan|sales|komisen|commission|unit|habis|low|restock|berbaloi|laku|prestasi|order lagi|analisis)/i.test(t);
 };
 
 // ---- p1_1041 — GEMINI (primary, free tier): loop dgn function-calling, sama tools/KB ----
