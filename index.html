@@ -65,7 +65,10 @@
   <!-- p1_1213 — /shop = page produk sendiri. Set kelas SEBELUM render (elak flash homepage). -->
   <!-- p1_12xx — intro montage HANYA di homepage (pathname '/'); set kelas SEBELUM render supaya
        overlay tutup skrin serta-merta (elak flash kandungan sebelum animasi). -->
-  <script>(function(){var p=location.pathname.replace(/\/+$/,'');if(p==='/shop'){document.documentElement.classList.add('shop-page');}else if(p===''||p==='/index.html'){document.documentElement.classList.add('intro-on');}})();</script>
+  <script>(function(){var p=location.pathname.replace(/\/+$/,'');if(p==='/shop'){document.documentElement.classList.add('shop-page');return;}if(p!==''&&p!=='/index.html')return;
+  // p1_1231 — montage HANYA utk pengunjung awam (landing). Staf log masuk (backoffice) = LANGKAU.
+  var loggedIn=false;try{var raw=localStorage.getItem('sb-asehjdnfzoypbwfeazra-auth-token');if(raw){var s=JSON.parse(raw);var u=(s&&(s.user||(s.currentSession&&s.currentSession.user)))||null;loggedIn=!!(u&&u.email);}}catch(e){}
+  if(!loggedIn)document.documentElement.classList.add('intro-on');})();</script>
 </head>
 <body>
  <!-- p1_1012 — Boot splash (kaunter iPad): tutup landing customer dari saat pertama sampai app tentukan POS/skrin-kunci. Skrip inline sinkron tanda <html> sebelum landing sempat paint. -->
