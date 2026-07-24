@@ -13481,6 +13481,70 @@ window.__qsRenderPills = function() {
  if(window.lucide && lucide.createIcons) lucide.createIcons();
 };
 
+// ===== p1_1227 — JUAL PAKEJ (bundle) DI CASHIER =====
+// STRATEGI SELAMAT: tap kad pakej → tambah SKU anak ke troli (merge ikut SKU, guna corak addToCart
+// supaya TIADA baris SKU berganda → elak collision p_ref checkout) + SATU baris diskaun CUSTOM- utk
+// cecah harga pakej. Checkout (deduct_stock_fifo per SKU + rekod jualan) LANGSUNG TAK DISENTUH:
+// anak = SKU sebenar → ditolak stok FIFO macam biasa; baris CUSTOM- dilangkau deduct (laluan sedia ada).
+window.__cashierAddBundle = async function(id){
+ if(window.__bundles==null && typeof window.__bundleLoad==='function'){ try{ await window.__bundleLoad(); }catch(e){} }
+ const b = (window.__bundles||[]).find(x=>String(x.id)===String(id));
+ if(!b){ if(window.showToast) showToast('Pakej tak dijumpai.','warn'); return; }
+ const items = Array.isArray(b.items)?b.items:[];
+ if(!items.length){ if(window.showToast) showToast('Pakej kosong.','warn'); return; }
+ const bundlePrice = Number(b.price)||0;
+ // Semak boleh buat sekurang-kurangnya 1 set (warn kalau tak, tapi tetap benarkan — selaras dasar
+ // POS "boleh jual walau OOS", checkout akan tanda backorder).
+ const avail = (typeof window.__bundleAvail==='function') ? window.__bundleAvail(items) : 1;
+ if(avail < 1 && window.showToast) showToast('AMARAN: stok tak cukup buat pakej ni (0 set) — dijual backorder.','warn');
+ // Tambah anak-anak (merge ikut SKU) + kira jumlah retail utk baris diskaun.
+ let retailSum = 0;
+ items.forEach(it=>{
+  const sku = String(it.sku||'').toUpperCase(); if(!sku) return;
+  const qty = Number(it.qty)||1;
+  const p = (typeof window.__bundleProd==='function') ? window.__bundleProd(sku) : (masterProducts||[]).find(x=>String(x.sku).toUpperCase()===sku);
+  const unit = p ? (Number(p.price)||0) : 0;
+  retailSum = round2(retailSum + unit*qty);
+  const ex = cart.find(c=>c.sku===sku && !c.isCustom);
+  if(ex){ ex.quantity += qty; }
+  else { cart.push({ sku:sku, name:(p?(p.name||sku):sku), price:unit, quantity:qty, from_bundle:(b.bundle_sku||('BDL'+b.id)) }); }
+ });
+ // Baris diskaun CUSTOM- supaya total troli = harga pakej. Positif=diskaun (harga<retail), jarang negatif.
+ const disc = round2(retailSum - bundlePrice);
+ if(Math.abs(disc) >= 0.01){
+  cart.push({ sku:'CUSTOM-BDL-'+(b.bundle_sku||b.id)+'-'+Date.now().toString(36),
+   name:'Pakej: '+(b.name||'')+(disc>0?' — diskaun set':' — tambahan set'),
+   price: round2(-disc), quantity:1, isCustom:true, bundle_ref:(b.bundle_sku||('BDL'+b.id)) });
+ }
+ if(typeof renderCart==='function') renderCart();
+ if(window.showToast) showToast('Pakej "'+(b.name||'')+'" ditambah — RM'+bundlePrice.toFixed(2)+(disc>0?' (jimat RM'+disc.toFixed(2)+')':'')+'.','success');
+};
+
+// Render kad pakej aktif di cashier (mirror __qsRenderPills). Load __bundles sekali, render sync.
+window.__bundleQuickRender = function(){
+ const wrap = document.getElementById('bundleQuickWrap'); const el = document.getElementById('bundleQuickCards');
+ if(!wrap || !el) return;
+ if(window.__bundles == null){
+  if(!window.__bqLoading && typeof window.__bundleLoad==='function'){ window.__bqLoading=true; window.__bundleLoad().then(function(){ window.__bqLoading=false; try{ window.__bundleQuickRender(); }catch(e){} }); }
+  return;
+ }
+ const E = window.__bdlE || function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); };
+ const list = (window.__bundles||[]).filter(b=>b.active!==false);
+ if(!list.length){ wrap.style.display='none'; return; }
+ wrap.style.display='';
+ el.innerHTML = list.map(function(b){
+  const items = Array.isArray(b.items)?b.items:[];
+  const avail = (typeof window.__bundleAvail==='function') ? window.__bundleAvail(items) : 0;
+  const price = Number(b.price)||0; const oos = avail<1;
+  return '<button class="qs-pill" onclick="window.__cashierAddBundle(\''+b.id+'\')" style="background:'+(oos?'#FBF7F0':'#FFF')+'; border:1.5px solid '+(oos?'#E0B3A9':'var(--primary)')+'; color:'+(oos?'#B23A2E':'var(--primary)')+'; padding:6px 12px; border-radius:50px; font-size:11.5px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="'+E(b.name||'')+' · '+avail+' set boleh buat">'
+   +'<i data-lucide="package-2" style="width:13px;height:13px;"></i> '+E((b.name||'').slice(0,26))
+   +' <span style="font-weight:800;">RM'+price.toFixed(2)+'</span>'
+   +(oos?' <span style="font-size:9.5px; font-weight:800;">STOK 0</span>':' <span style="font-weight:500; opacity:.6;">'+avail+' set</span>')
+   +'</button>';
+ }).join('');
+ if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
 // p1_559 — Banner Sasaran Jualan bulan ini di skrin Cashier supaya SEMUA staff nampak objektif.
 // Guna sasaran sedia ada (dashMonthlyTarget_v1) + jualan sebenar bulan ni (salesHistory).
 window.__SALES_TARGET_MONTHS = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
@@ -13669,6 +13733,8 @@ function renderPOS(searchTerm = "") {
  window.__qsRenderPills();
  window.__qsRendered = true;
  }
+ // p1_1227 — kad PAKEJ (bundle) di cashier — render tiap kali (avail dikira semula; __bundles cached)
+ if(typeof window.__bundleQuickRender === 'function') { try { window.__bundleQuickRender(); } catch(e){} }
  // p1_209 — Brand quick-filter pills (top brands by product count, first render only)
  if(typeof window.__bpRenderBrandPills === 'function' && !window.__bpRendered) {
  window.__bpRenderBrandPills();
@@ -44497,7 +44563,7 @@ window.renderBundles = async function(){
  }).join('') : '<tr><td colspan="7" style="padding:20px; text-align:center; color:#6B7280;">Belum ada pakej. Bina pakej pertama guna borang di atas.</td></tr>';
 
  sec.innerHTML = '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="package-2" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Bundle / Pakej</h2>'
-  +'<p class="soft-note">Cantum beberapa barang jadi satu pakej (cth Camping Starter Pack). Pilih barang, set harga pakej — stok pakej dikira automatik dari stok barang dalam. <strong>Nota:</strong> jualan pakej di Cashier (auto-tolak stok barang) akan disambung kemudian.</p>'
+  +'<p class="soft-note">Cantum beberapa barang jadi satu pakej (cth Camping Starter Pack). Pilih barang, set harga pakej — stok pakej dikira automatik dari stok barang dalam. <strong>Boleh jual di Cashier:</strong> pakej aktif muncul sebagai kad "Pakej" di skrin Cashier — tap untuk masuk troli (stok anak auto-tolak FIFO masa bayar).</p>'
   +'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin:6px 0 16px;">'
     +'<div class="stat-card"><div style="font-size:12px; color:#6B7280;">Jumlah Pakej</div><div style="font-size:22px; font-weight:900;">'+list.length+'</div></div>'
     +'<div class="stat-card"><div style="font-size:12px; color:#6B7280;">Aktif</div><div style="font-size:22px; font-weight:900;">'+activeCount+'</div></div>'
