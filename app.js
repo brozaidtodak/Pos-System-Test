@@ -13532,17 +13532,71 @@ window.__bundleQuickRender = function(){
  const list = (window.__bundles||[]).filter(b=>b.active!==false);
  if(!list.length){ wrap.style.display='none'; return; }
  wrap.style.display='';
+ // p1_1230 — kad pakej guna gaya .product-card (gambar + nama + harga + info), sama macam produk lain.
  el.innerHTML = list.map(function(b){
   const items = Array.isArray(b.items)?b.items:[];
   const avail = (typeof window.__bundleAvail==='function') ? window.__bundleAvail(items) : 0;
   const price = Number(b.price)||0; const oos = avail<1;
-  return '<button class="qs-pill" onclick="window.__cashierAddBundle(\''+b.id+'\')" style="background:'+(oos?'#FBF7F0':'#FFF')+'; border:1.5px solid '+(oos?'#E0B3A9':'var(--primary)')+'; color:'+(oos?'#B23A2E':'var(--primary)')+'; padding:6px 12px; border-radius:50px; font-size:11.5px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="'+E(b.name||'')+' · '+avail+' set boleh buat">'
-   +'<i data-lucide="package-2" style="width:13px;height:13px;"></i> '+E((b.name||'').slice(0,26))
-   +' <span style="font-weight:800;">RM'+price.toFixed(2)+'</span>'
-   +(oos?' <span style="font-size:9.5px; font-weight:800;">STOK 0</span>':' <span style="font-weight:500; opacity:.6;">'+avail+' set</span>')
-   +'</button>';
+  // gambar = cover anak pertama
+  const first = items[0]; const fp = first ? window.__bundleProd(first.sku) : null;
+  const rawImg = fp ? ((window.__coverOf && window.__coverOf(fp)) || (Array.isArray(fp.images)&&fp.images[0]) || '') : '';
+  const thumb = rawImg ? (window.__thumbUrl ? window.__thumbUrl(rawImg,200) : rawImg) : (window.__IMG_PLACEHOLDER||'');
+  // deskripsi ringkas = kandungan
+  const contents = items.map(function(it){ const p=window.__bundleProd(it.sku); const nm=p?(p.name||it.sku):it.sku; return (it.qty||1)+'× '+E(window.__bundleShortName(nm)); }).join(' · ');
+  return '<div class="product-card'+(oos?' is-oos':'')+'" onclick="window.__cashierAddBundle(\''+b.id+'\')" style="cursor:pointer;" title="Tap untuk masuk troli">'
+   +(oos?'<span class="product-card__oos"><i data-lucide="x-circle" style="width:12px;height:12px;"></i> STOK 0</span>':'')
+   +'<div style="position:relative; border-radius:12px; overflow:hidden; margin-bottom:8px;">'
+     +'<img src="'+thumb+'" loading="lazy" decoding="async" style="width:100%; aspect-ratio:1; object-fit:cover; display:block; background:#F3F0EA;" onerror="this.onerror=null;this.src=window.__IMG_PLACEHOLDER||\'\';">'
+     +'<span style="position:absolute; top:8px; left:8px; background:var(--primary-500,#CD7C32); color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:50px; z-index:2;">PAKEJ</span>'
+     +'<button type="button" class="pos-card-info" onclick="event.stopPropagation(); window.__bundleInfoPopup(\''+b.id+'\')" title="Info & kandungan pakej" aria-label="Info pakej"><i data-lucide="info" style="width:15px;height:15px;pointer-events:none;"></i></button>'
+   +'</div>'
+   +'<div class="product-card__badges"><span class="cat-badge" style="background:#FAF6EF; color:#7A5410; border:1px solid #EADFD0; font-weight:600;">'+items.length+' barang</span></div>'
+   +'<h3 class="product-card__title" title="'+E(b.name||'')+'">'+E(b.name||'')+'</h3>'
+   +'<p style="font-size:10.5px; color:#9CA3AF; line-height:1.4; margin:1px 0 5px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">'+contents+'</p>'
+   +'<p class="price">RM '+price.toFixed(2)+'</p>'
+   +'<p class="product-card__stock"'+(oos?' style="color:#9CA3AF;"':'')+'>'+(oos?'0 set':avail+' set')+'</p>'
+   +'<button type="button" class="pos-card-add" onclick="event.stopPropagation(); window.__cashierAddBundle(\''+b.id+'\')">Tambah Pakej</button>'
+   +'</div>';
  }).join('');
  if(window.lucide && lucide.createIcons) lucide.createIcons();
+};
+
+// p1_1230 — nama pendek bersih dari nama produk berselerak ("BD016 | BLACKDOG _ Canopy | ...")
+window.__bundleShortName = function(nm){
+ let s = String(nm||''); const parts = s.split('|').map(function(x){return x.trim();}).filter(Boolean);
+ const alphaScore = function(x){ return (String(x).match(/[A-Za-z]{3,}/g)||[]).length; };
+ let cand = parts.sort(function(a,b){return alphaScore(b)-alphaScore(a);})[0] || s;
+ if(cand.indexOf('_')>=0) cand = cand.split('_').pop().trim();
+ cand = cand.replace(/\b[A-Z]{2,6}\d{2,}[A-Z0-9-]*\b/g,' ').replace(/\b[A-Z]{1,4}\d{2,3}(?:-\d{2,3})*\b/g,' ').replace(/\s+/g,' ').trim();
+ return (cand||s).slice(0,22);
+};
+
+// p1_1230 — modal info pakej (kandungan + gambar anak + harga + jimat + butang tambah)
+window.__bundleInfoPopup = function(id){
+ const b=(window.__bundles||[]).find(function(x){return String(x.id)===String(id);}); if(!b) return;
+ const E = window.__bdlE || function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); };
+ const items = Array.isArray(b.items)?b.items:[];
+ const rows = items.map(function(it){ const p=window.__bundleProd(it.sku); const nm=p?(p.name||it.sku):it.sku; const img=(window.__skuThumbHtml?window.__skuThumbHtml(it.sku,42):'');
+  return '<div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #F0EDE8;">'+img
+   +'<div style="flex:1; min-width:0;"><div style="font-weight:600; font-size:13px; color:#101010;">'+E(window.__bundleShortName(nm))+'</div>'
+   +'<div style="font-size:11px; color:#9CA3AF; font-family:ui-monospace,monospace;">'+E(it.sku)+' × '+(it.qty||1)+'</div></div></div>'; }).join('');
+ const sum = (typeof window.__bundleSum==='function')?window.__bundleSum(items):0; const price=Number(b.price)||0; const save=sum-price;
+ let ov=document.getElementById('bdlInfoOverlay'); if(ov) ov.remove();
+ ov=document.createElement('div'); ov.id='bdlInfoOverlay';
+ ov.style.cssText='position:fixed; inset:0; background:rgba(16,16,16,.5); z-index:100000; display:flex; align-items:center; justify-content:center; padding:20px;';
+ ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+ ov.innerHTML='<div style="background:#fff; border-radius:16px; max-width:420px; width:100%; max-height:82vh; overflow:auto; padding:20px;" onclick="event.stopPropagation();">'
+  +'<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:2px;"><div style="font-size:17px; font-weight:800; color:#101010;">'+E(b.name||'')+'</div><button onclick="var o=document.getElementById(\'bdlInfoOverlay\'); if(o)o.remove();" style="border:none; background:none; font-size:24px; color:#9CA3AF; cursor:pointer; line-height:1;">×</button></div>'
+  +'<div style="font-size:12.5px; color:#6B7280; margin-bottom:'+((b.notes)?'4px':'10px')+';">Pakej · '+items.length+' barang</div>'
+  +((b.notes)?'<div style="font-size:12.5px; color:#5b5048; margin-bottom:10px;">'+E(b.notes)+'</div>':'')
+  +'<div style="margin:6px 0 12px;">'+rows+'</div>'
+  +(sum>0?'<div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:2px;"><span style="color:#6B7280;">Harga asal</span><span style="text-decoration:line-through; color:#9CA3AF;">RM'+sum.toFixed(2)+'</span></div>':'')
+  +'<div style="display:flex; justify-content:space-between; font-size:16px; font-weight:800;"><span>Harga pakej</span><span>RM'+price.toFixed(2)+'</span></div>'
+  +((save>0)?'<div style="display:flex; justify-content:space-between; font-size:13px; color:#2F5A2C; font-weight:700; margin-top:2px;"><span>Jimat customer</span><span>RM'+save.toFixed(2)+'</span></div>':'')
+  +'<button onclick="window.__cashierAddBundle(\''+b.id+'\'); var o=document.getElementById(\'bdlInfoOverlay\'); if(o)o.remove();" style="width:100%; margin-top:16px; background:var(--primary-500,#CD7C32); color:#fff; border:none; border-radius:10px; padding:13px; font-weight:800; font-size:14px; cursor:pointer;">Tambah ke Troli — RM'+price.toFixed(2)+'</button>'
+  +'</div>';
+ document.body.appendChild(ov);
+ if(window.lucide && lucide.createIcons) try{ lucide.createIcons(); }catch(e){}
 };
 
 // p1_559 — Banner Sasaran Jualan bulan ini di skrin Cashier supaya SEMUA staff nampak objektif.
