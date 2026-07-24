@@ -34617,7 +34617,10 @@ window.__computeDeptAlerts = function(){
   count:belowCost.length, rows:belowCost.slice(0,12).map(p=>({a:p.sku, b:'RM'+(Number(p.price)||0).toFixed(2)+' < kos RM'+(Number(p.cost_price)||0).toFixed(2)})),
   action:{label:'Kalkulator Harga', onclick:"document.querySelector('[data-tab=nav_sys_calc]')?.click()"} });
  // D) Margin bawah lantai (sales + pricing, warn) — count + sampel
- const belowFloor = MP.filter(p=>{ const pr=Number(p.price)||0, c=Number(p.cost_price)||0; if(!(pr>0 && c>0 && pr>=c)) return false; const fm=(p.floor_margin_pct!=null && p.floor_margin_pct!=='')?Number(p.floor_margin_pct):floorDefault; return ((pr-c)/pr*100) < fm; });
+ // p1_1224 — RULE Zaid: DEAD STOCK (0 jualan 60 hari) DIKECUALIKAN drpd lantai margin 35% —
+ // dibenarkan margin nipis utk clear stok mati. Guna definisi sama Ejen Dead Stock (__bundleDeadSet).
+ const __deadSet = (typeof window.__bundleDeadSet==='function') ? window.__bundleDeadSet() : new Set();
+ const belowFloor = MP.filter(p=>{ const pr=Number(p.price)||0, c=Number(p.cost_price)||0; if(!(pr>0 && c>0 && pr>=c)) return false; if(__deadSet.has(String(p.sku||'').toUpperCase())) return false; const fm=(p.floor_margin_pct!=null && p.floor_margin_pct!=='')?Number(p.floor_margin_pct):floorDefault; return ((pr-c)/pr*100) < fm; });
  if(belowFloor.length) out.push({ key:'below_floor_cat', dept:['sales','pricing'], sev:'warn', icon:'percent',
   title:'Margin bawah lantai ('+floorDefault+'%)', desc:'Dijual atas kos tapi margin bawah sasaran minimum. Semak harga di Kalkulator.',
   count:belowFloor.length, rows:belowFloor.slice(0,8).map(p=>{ const pr=Number(p.price)||0,c=Number(p.cost_price)||0; return {a:p.sku, b:Math.round((pr-c)/pr*100)+'% margin'}; }),
@@ -44286,6 +44289,50 @@ window.__bundleSum = function(items){
  return (items||[]).reduce((s,it)=>{ const p=window.__bundleProd(it.sku); return s + (p?(Number(p.price)||0):0)*(Number(it.qty)||0); }, 0);
 };
 
+// p1_1224 — GUARD MARGIN pakej: jumlah KOS (cost_price) barang dlm set + kira berapa item kos tiada.
+// Guna cost_price (SULIT) — hanya wujud utk role yg boleh baca kos (mgmt). Kalau tiada, margin disorok.
+window.__BUNDLE_MARGIN_FLOOR = 35; // % minimum (selaras dasar margin 10 CAMP + lantai Ejen AI)
+window.__bundleCost = function(items){
+ let cost=0, missing=0, known=0;
+ (items||[]).forEach(it=>{ const p=window.__bundleProd(it.sku); const c=p?(Number(p.cost_price)||0):0; const q=Number(it.qty)||0;
+  if(c>0){ cost+=c*q; known++; } else { missing++; } });
+ return { cost:cost, missing:missing, known:known };
+};
+// harga minimum utk capai margin lantai: cost / (1 - floor/100)
+window.__bundleFloorPrice = function(cost){ const f=(window.__BUNDLE_MARGIN_FLOOR||35)/100; return f<1 ? cost/(1-f) : cost; };
+
+// p1_1224 — SET SKU DEAD STOCK (definisi sama Ejen Dead Stock: published, stok>0, 0 jualan 60 hari).
+// TANPA tapisan margin (beza dgn __dsRedeemCatalog loyalty). RULE Zaid: pakej yg ada dead stock
+// DIBENARKAN margin bawah 35% (tujuan clear stok mati). Cache 5 min — elak scan salesHistory tiap ketik.
+window.__bundleDeadSet = function(){
+ const c = window.__bdlDeadCache; if(c && (Date.now()-c.at) < 5*60000) return c.set;
+ const set = new Set();
+ // Kalau sales belum dimuat penuh, JANGAN anggap apa-apa dead (elak benarkan margin nipis silap).
+ if(!window.__fullSalesLoaded && !(window.__isAppDataCapped && window.__isAppDataCapped())){ return set; }
+ const cutoff = Date.now() - 60*86400000;
+ const VOIDS = ['voided','cancelled','canceled','refunded'];
+ const sold = {};
+ (Array.isArray(salesHistory)?salesHistory:[]).forEach(s=>{
+  if(!s || s.is_test) return;
+  if(VOIDS.includes(String(s.status||'').toLowerCase())) return;
+  if(!s.created_at || new Date(s.created_at).getTime() < cutoff) return;
+  let items=s.items; if(typeof items==='string'){ try{items=JSON.parse(items);}catch(e){items=[];} }
+  if(!Array.isArray(items)) return;
+  items.forEach(it=>{ const k=String(it&&it.sku||'').toUpperCase(); if(k) sold[k]=true; });
+ });
+ const stock = {};
+ (Array.isArray(inventoryBatches)?inventoryBatches:[]).forEach(b=>{ if(b.sku){ const k=String(b.sku).toUpperCase(); stock[k]=(stock[k]||0)+(Number(b.qty_remaining)||0); } });
+ (Array.isArray(masterProducts)?masterProducts:[]).forEach(p=>{
+  const k=String(p.sku||'').toUpperCase(); if(!k) return;
+  if(typeof isPublished==='function' && !isPublished(p)) return;
+  if((stock[k]||0)>0 && !sold[k]) set.add(k);
+ });
+ window.__bdlDeadCache = { at:Date.now(), set:set };
+ return set;
+};
+// pakej ada dead stock? (mana-mana item)
+window.__bundleHasDead = function(items){ const ds=window.__bundleDeadSet(); return (items||[]).some(it=>ds.has(String(it.sku||'').toUpperCase())); };
+
 // berapa set pakej boleh dibuat = min(floor(stok/qty))
 window.__bundleAvail = function(items){
  if(!items||!items.length) return 0;
@@ -44326,14 +44373,40 @@ window.__bundleRenderDraft = function(){
  const priceEl=document.getElementById('bdlPrice');
  if(priceEl && !priceEl.dataset.touched){ priceEl.value=sum.toFixed(2); }
  const price=Number(priceEl?priceEl.value:0)||0, save=sum-price;
+ // p1_1224 — GUARD MARGIN: kos anak (cost_price) vs harga pakej. Dead stock DIKECUALIKAN drpd lantai 35%.
+ const cInfo=window.__bundleCost(d); const cost=cInfo.cost; const known=cInfo.known;
+ const floor=window.__BUNDLE_MARGIN_FLOOR||35;
+ const profit=price-cost; const margin=price>0?(profit/price*100):0;
+ const hasDead=window.__bundleHasDead(d);
+ const floorPrice=window.__bundleFloorPrice(cost);
+ // warna margin: hijau ≥floor, amber floor-half..floor, merah <half atau rugi
+ const mCol = profit<=0 ? '#B23A2E' : (margin>=floor ? '#4E7C4A' : (margin>=floor/2 ? '#C68A1A' : '#B23A2E'));
  const prev=document.getElementById('bdlPreview');
  if(prev){
-  prev.innerHTML='<div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">'
+  let html='<div style="display:flex; gap:18px; flex-wrap:wrap; align-items:center;">'
    +'<div><div style="font-size:11px; color:#6B7280;">Jumlah harga asal</div><div style="font-weight:800;">RM'+sum.toFixed(2)+'</div></div>'
    +'<div><div style="font-size:11px; color:#6B7280;">Harga pakej</div><div style="font-weight:800;">RM'+price.toFixed(2)+'</div></div>'
-   +'<div><div style="font-size:11px; color:#6B7280;">Jimat customer</div><div style="font-weight:800; color:'+(save>0?'#4E7C4A':(save<0?'#B23A2E':'#6B7280'))+';">RM'+save.toFixed(2)+(sum>0?' ('+Math.round(save/sum*100)+'%)':'')+'</div></div>'
-   +'<div><div style="font-size:11px; color:#6B7280;">Boleh buat sekarang</div><div style="font-weight:800;">'+avail+' set</div></div>'
-   +'</div>'+(save<0?'<div style="margin-top:6px; color:#B23A2E; font-size:12px;">Harga pakej lebih mahal dari jumlah asal — pastikan betul.</div>':'');
+   +'<div><div style="font-size:11px; color:#6B7280;">Jimat customer</div><div style="font-weight:800; color:'+(save>0?'#4E7C4A':(save<0?'#B23A2E':'#6B7280'))+';">RM'+save.toFixed(2)+(sum>0?' ('+Math.round(save/sum*100)+'%)':'')+'</div></div>';
+  if(known>0){
+   html+='<div><div style="font-size:11px; color:#6B7280;">Kos barang</div><div style="font-weight:800;">RM'+cost.toFixed(2)+(cInfo.missing>0?' <span style="font-size:10px;color:#C68A1A;">(+'+cInfo.missing+' kos tiada)</span>':'')+'</div></div>'
+    +'<div><div style="font-size:11px; color:#6B7280;">Untung</div><div style="font-weight:800; color:'+mCol+';">RM'+profit.toFixed(2)+'</div></div>'
+    +'<div><div style="font-size:11px; color:#6B7280;">Margin</div><div style="font-weight:900; color:'+mCol+';">'+margin.toFixed(1)+'%'+(hasDead?' <span title="ada stok mati" style="font-size:9.5px;font-weight:800;color:#7C2A20;background:#FAF0EE;padding:1px 6px;border-radius:50px;vertical-align:1px;">DEAD OK</span>':'')+'</div></div>';
+  }
+  html+='<div><div style="font-size:11px; color:#6B7280;">Boleh buat sekarang</div><div style="font-weight:800;">'+avail+' set</div></div>'
+   +'</div>';
+  // baris amaran / panduan margin
+  if(save<0){ html+='<div style="margin-top:6px; color:#B23A2E; font-size:12px;">Harga pakej lebih mahal dari jumlah asal — pastikan betul.</div>'; }
+  if(known>0){
+   if(profit<=0){
+    html+='<div style="margin-top:8px; padding:8px 11px; border-radius:8px; background:#FAF0EE; color:#7C2A20; font-size:12.5px; font-weight:600;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px;"></i> RUGI — harga pakej ('+price.toFixed(2)+') bawah kos barang (RM'+cost.toFixed(2)+').'+(hasDead?' Ada stok mati, tapi bawah KOS pun — pastikan memang sengaja clear.':' Naikkan harga.')+'</div>'; }
+   else if(margin<floor && !hasDead){
+    html+='<div style="margin-top:8px; padding:8px 11px; border-radius:8px; background:#FEF6E7; color:#8A5A00; font-size:12.5px; font-weight:600;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-2px;"></i> Margin nipis ('+margin.toFixed(1)+'%) — bawah minimum '+floor+'%. Untuk '+floor+'%, harga min <strong>RM'+floorPrice.toFixed(2)+'</strong>. Naikkan harga atau kurangkan kos barang.</div>'; }
+   else if(margin<floor && hasDead){
+    html+='<div style="margin-top:8px; padding:8px 11px; border-radius:8px; background:#EEF6EE; color:#2F5A2C; font-size:12.5px; font-weight:600;"><i data-lucide="check-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Margin '+margin.toFixed(1)+'% (bawah '+floor+'%) DIBENARKAN — pakej ada stok mati, tujuan clear. OK.</div>'; }
+   else {
+    html+='<div style="margin-top:8px; padding:8px 11px; border-radius:8px; background:#EEF6EE; color:#2F5A2C; font-size:12.5px; font-weight:600;"><i data-lucide="check-circle" style="width:14px;height:14px;vertical-align:-2px;"></i> Margin sihat ('+margin.toFixed(1)+'%). Bagus.</div>'; }
+  }
+  prev.innerHTML=html;
  }
  if(window.lucide && window.lucide.createIcons) window.lucide.createIcons();
 };
@@ -44403,18 +44476,25 @@ window.renderBundles = async function(){
  const rows = list.length ? list.map(b=>{
   const items=Array.isArray(b.items)?b.items:[];
   const sum=window.__bundleSum(items), save=sum-(Number(b.price)||0), avail=window.__bundleAvail(items);
+  // p1_1224 — margin per pakej (dead stock dikecualikan drpd lantai 35%)
+  const bp=Number(b.price)||0; const cI=window.__bundleCost(items); const bcost=cI.known>0?cI.cost:0;
+  const bprofit=bp-bcost, bmargin=bp>0?(bprofit/bp*100):0, bdead=window.__bundleHasDead(items);
+  const bFloor=window.__BUNDLE_MARGIN_FLOOR||35;
+  const bmCol = cI.known===0 ? '#9CA3AF' : (bprofit<=0 ? '#B23A2E' : (bmargin>=bFloor ? '#4E7C4A' : (bdead ? '#2F5A2C' : '#C68A1A')));
+  const bmTxt = cI.known===0 ? '—' : (bmargin.toFixed(1)+'%'+(bmargin<bFloor ? (bdead ? ' <span title="stok mati — dibenarkan" style="font-size:9px;font-weight:800;color:#7C2A20;background:#FAF0EE;padding:0 5px;border-radius:50px;">DEAD OK</span>' : ' <span title="bawah '+bFloor+'%" style="color:#B23A2E;">⚠</span>') : ''));
   const itemsTxt=items.map(it=>{ const p=window.__bundleProd(it.sku); return (it.qty||1)+'x '+E((p?(p.name||it.sku):it.sku).slice(0,28)); }).join(', ');
   return '<tr style="border-bottom:1px solid #E5E7EB;"><td style="padding:8px 10px;"><div style="font-weight:700;">'+E(b.name||'')+(b.active===false?' <span style="color:#9CA3AF; font-weight:500; font-size:11px;">(off)</span>':'')+'</div><div style="color:#9CA3AF; font-size:11px;">'+E(b.bundle_sku||'')+'</div></td>'
    +'<td style="padding:8px 10px; color:#6B7280; font-size:12px; max-width:260px;">'+itemsTxt+'</td>'
    +'<td style="padding:8px 10px; font-weight:800;">RM'+(Number(b.price)||0).toFixed(2)+'</td>'
    +'<td style="padding:8px 10px; color:'+(save>0?'#4E7C4A':'#6B7280')+';">RM'+save.toFixed(2)+'</td>'
+   +'<td style="padding:8px 10px; font-weight:800; color:'+bmCol+';">'+bmTxt+'</td>'
    +'<td style="padding:8px 10px; font-weight:700; color:'+(avail>0?'#4E7C4A':'#B23A2E')+';">'+avail+' set</td>'
    +'<td style="padding:8px 10px; white-space:nowrap;">'
      +'<button onclick="window.__bundleEdit('+b.id+')" title="Edit" style="background:none;border:0;cursor:pointer;color:var(--primary,var(--primary-500,#CD7C32)); margin-right:6px;"><i data-lucide="pencil" style="width:15px;height:15px;"></i></button>'
      +'<button onclick="window.__bundleToggleActive('+b.id+')" title="On/Off" style="background:none;border:0;cursor:pointer;color:#6B7280; margin-right:6px;"><i data-lucide="power" style="width:15px;height:15px;"></i></button>'
      +'<button onclick="window.__bundleDelete('+b.id+')" title="Padam" style="background:none;border:0;cursor:pointer;color:#B23A2E;"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button>'
    +'</td></tr>';
- }).join('') : '<tr><td colspan="6" style="padding:20px; text-align:center; color:#6B7280;">Belum ada pakej. Bina pakej pertama guna borang di atas.</td></tr>';
+ }).join('') : '<tr><td colspan="7" style="padding:20px; text-align:center; color:#6B7280;">Belum ada pakej. Bina pakej pertama guna borang di atas.</td></tr>';
 
  sec.innerHTML = '<h2 class="section-title" data-skip-title-sync style="margin-top:20px;"><i data-lucide="package-2" style="width:22px;height:22px;vertical-align:middle;margin-right:6px;"></i> Bundle / Pakej</h2>'
   +'<p class="soft-note">Cantum beberapa barang jadi satu pakej (cth Camping Starter Pack). Pilih barang, set harga pakej — stok pakej dikira automatik dari stok barang dalam. <strong>Nota:</strong> jualan pakej di Cashier (auto-tolak stok barang) akan disambung kemudian.</p>'
@@ -44456,7 +44536,7 @@ window.renderBundles = async function(){
     +'</div>'
   +'</div>'
   +'<div class="admin-card" style="padding:0; overflow:hidden;">'
-    +'<table style="width:100%; border-collapse:collapse; font-size:13.5px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Pakej</th><th style="padding:8px 10px;">Kandungan</th><th style="padding:8px 10px;">Harga</th><th style="padding:8px 10px;">Jimat</th><th style="padding:8px 10px;">Boleh buat</th><th style="padding:8px 10px;"></th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<table style="width:100%; border-collapse:collapse; font-size:13.5px;"><thead><tr style="text-align:left; background:var(--card-bg,#fff); border-bottom:2px solid #D1D5DB;"><th style="padding:8px 10px;">Pakej</th><th style="padding:8px 10px;">Kandungan</th><th style="padding:8px 10px;">Harga</th><th style="padding:8px 10px;">Jimat</th><th style="padding:8px 10px;">Margin</th><th style="padding:8px 10px;">Boleh buat</th><th style="padding:8px 10px;"></th></tr></thead><tbody>'+rows+'</tbody></table>'
   +'</div>';
  window.__bundleRenderDraft();
  try { window.__agentSugLoad(); } catch(e){} // p1_1062 — muat cadangan ejen (async, isi #agentSugWrap)
