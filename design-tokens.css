@@ -980,6 +980,8 @@ html.shop-page .lp-shop { padding-top: 8px; }
 .lp-walkin-promo__search-wrap input { width: 0; padding: 0; margin: 0; border: none; opacity: 0; font-size: 13px; background: var(--lp-bg-warm, #FFFDF6); outline: none; font-family: var(--lp-font-body, inherit); pointer-events: none; transition: width 0.18s ease-out, opacity 0.15s ease-out, padding 0.18s ease-out, margin 0.18s ease-out; }
 .lp-walkin-promo__search-wrap.is-open input { width: 150px; padding: 7px 10px; margin-right: 6px; border: 1px solid var(--lp-line, #B9B4A6); border-radius: 4px; opacity: 1; pointer-events: auto; }
 .lp-walkin-promo__search-wrap.is-open input:focus { border-color: var(--lp-accent, #FF4D00); }
+.lp-walkin-promo__search-label { font-family: var(--lp-font-mono, monospace); font-size: 11px; font-weight: 600; letter-spacing: 0.4px; color: var(--lp-muted, #6E6A5E); margin-right: 8px; white-space: nowrap; }
+.lp-walkin-promo__search-wrap.is-open .lp-walkin-promo__search-label { display: none; }
 .lp-walkin-promo__search-toggle { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: 0 0 auto; border: 1.5px solid var(--lp-ink, #141414); border-radius: 50%; background: var(--lp-surface, #FFF); color: var(--lp-ink, #141414); cursor: pointer; }
 .lp-walkin-promo__search-wrap.is-open .lp-walkin-promo__search-toggle { background: var(--lp-ink, #141414); color: #FFF; }
 .lp-walkin-promo__search-wrap input:focus { border-color: var(--lp-accent, #FF4D00); }
