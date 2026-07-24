@@ -17684,6 +17684,7 @@ window.__renderWalkinPromoManifest = function(filterText) {
    <div class="lp-walkin-promo__card">
     <div class="lp-walkin-promo__card-imgwrap">
      ${pct != null ? `<span class="lp-walkin-promo__card-badge">-${pct}%</span>` : ''}
+     <span class="lp-walkin-promo__card-sku">${String(it.sku).replace(/"/g, '&quot;')}</span>
      ${it.image
       ? `<img src="${it.image}" alt="${nameEsc}" loading="lazy">`
       : `<span class="lp-walkin-promo__card-noimg"><i data-lucide="image-off" style="width:22px;height:22px;"></i></span>`}
