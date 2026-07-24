@@ -17965,6 +17965,20 @@ window.lpSetSort = function(mode) {
     renderPublicStorefront();
 };
 
+// p1_1217 — TAPIS HARGA (price bucket). Sticky merentas navigasi kumpulan/jenama/kategori.
+window.lpPriceBucket = ''; // '' | '0-50' | '50-150' | '150-300' | '300+'
+window.lpPriceBuckets = [
+    { key: '0-50',    i18n: 'lp_price_u50',     test: p => p > 0 && p < 50 },
+    { key: '50-150',  i18n: 'lp_price_50_150',  test: p => p >= 50 && p < 150 },
+    { key: '150-300', i18n: 'lp_price_150_300', test: p => p >= 150 && p < 300 },
+    { key: '300+',    i18n: 'lp_price_300',     test: p => p >= 300 }
+];
+window.lpSetPriceBucket = function(bucket) {
+    window.lpPriceBucket = bucket || '';
+    publicCurrentPage = 1;
+    renderPublicStorefront();
+};
+
 window.lpHandleSearch = function(val) {
     window.lpSearchTerm = (val || '').toLowerCase().trim();
     publicCurrentPage = 1;
@@ -18124,6 +18138,24 @@ window.lpRenderGroupPills = function() {
     if(window.lucide && lucide.createIcons) lucide.createIcons();
 };
 
+// p1_1217 — HARGA pills (price buckets). Kiraan dari window.lpPriceBucketCounts (diisi oleh
+// renderPublicStorefront sebelum tapis harga, jadi ikut konteks tapisan lain semasa).
+window.lpRenderPricePills = function() {
+    const wrap = document.getElementById('lpPricePills');
+    if(!wrap || !window.lpPriceBuckets) return;
+    const counts = window.lpPriceBucketCounts || {};
+    const allLabel = window.t ? window.t('lp_price_all') : 'Semua Harga';
+    let html = `<button class="lp-pill ${!window.lpPriceBucket ? 'lp-pill--active' : ''}" onclick="window.lpSetPriceBucket('')">${allLabel}</button>`;
+    window.lpPriceBuckets.forEach(b => {
+        const n = counts[b.key] || 0;
+        if(n === 0 && window.lpPriceBucket !== b.key) return; // sorok baldi kosong (kecuali yg aktif)
+        const label = window.t ? window.t(b.i18n) : b.key;
+        const active = window.lpPriceBucket === b.key ? 'lp-pill--active' : '';
+        html += `<button class="lp-pill ${active}" onclick="window.lpSetPriceBucket('${b.key}')">${label} (${n})</button>`;
+    });
+    wrap.innerHTML = html;
+};
+
 // p1_1216 — bar ringkasan: kiraan produk + chip tapisan aktif (boleh buang satu-satu) + kosongkan semua
 window.lpRenderFilterSummary = function(count) {
     const wrap = document.getElementById('lpFilterSummary');
@@ -18140,6 +18172,10 @@ window.lpRenderFilterSummary = function(count) {
     if(window.lpActiveCategory && window.lpActiveCategory !== 'SALE') chips += chip(window.lpActiveCategory, "window.lpFilterCategory('')");
     if(window.lpActiveCategory === 'SALE') chips += chip('Sale', "window.lpFilterCategory('')");
     if(window.lpSearchTerm) chips += chip('"' + window.lpSearchTerm + '"', "window.lpClearSearch()");
+    if(window.lpPriceBucket) {
+        const _pb = (window.lpPriceBuckets || []).find(x => x.key === window.lpPriceBucket);
+        if(_pb) chips += chip(window.t ? window.t(_pb.i18n) : _pb.key, "window.lpSetPriceBucket('')");
+    }
     const hasFilter = !!chips;
     wrap.innerHTML =
         `<span class="lp-shop__count"><strong>${count}</strong> ${unit}</span>` +
@@ -18162,6 +18198,7 @@ window.lpClearAllFilters = function() {
     window.lpActiveActivity = '';
     window.lpActiveBrand = '';
     window.lpActiveCategory = '';
+    window.lpPriceBucket = ''; // p1_1217
     const inp = document.getElementById('lpSearchInput');
     if(inp) inp.value = '';
     publicCurrentPage = 1;
@@ -18796,6 +18833,16 @@ function renderPublicStorefront() {
         const ps = variants.map(v => parseFloat(v.price || 0)).filter(p => p > 0);
         return ps.length ? Math.min(...ps) : Infinity; // else "Mulai dari" min; RM0 "semak harga" tenggelam
     };
+    // p1_1217 — TAPIS HARGA: kira bilangan per baldi (set penuh sebelum tapis harga, ikut konteks
+    // kumpulan/jenama/kategori/carian semasa) → render pill, kemudian tapis groups ikut baldi terpilih.
+    const __priceCounts = {};
+    groups.forEach(g => { const dp = __dispPrice(g); (window.lpPriceBuckets || []).forEach(b => { if(b.test(dp)) __priceCounts[b.key] = (__priceCounts[b.key] || 0) + 1; }); });
+    window.lpPriceBucketCounts = __priceCounts;
+    if(window.lpRenderPricePills) window.lpRenderPricePills();
+    if(window.lpPriceBucket) {
+        const _pb = (window.lpPriceBuckets || []).find(x => x.key === window.lpPriceBucket);
+        if(_pb) groups = groups.filter(g => _pb.test(__dispPrice(g)));
+    }
     const __groupName = (variants) => ((window.lpParseProductName ? window.lpParseProductName(variants[0]).title : variants[0].name) || '').toLowerCase();
     const __groupNew = (variants) => {
         const t = variants[0] && (variants[0].created_at || variants[0].createdAt);
@@ -39783,6 +39830,12 @@ window.I18N = {
  lp_showing_n: { bm: 'Menunjukkan', en: 'Showing' },
  lp_clear_all: { bm: 'Kosongkan semua', en: 'Clear all' },
  lp_pick_group_hint: { bm: 'Pilih kumpulan di atas untuk tapis lebih halus', en: 'Pick a collection above to narrow down' },
+ lp_filter_price: { bm: 'Harga', en: 'Price' },
+ lp_price_all: { bm: 'Semua Harga', en: 'All Prices' },
+ lp_price_u50: { bm: 'Bawah RM50', en: 'Under RM50' },
+ lp_price_50_150: { bm: 'RM50–150', en: 'RM50–150' },
+ lp_price_150_300: { bm: 'RM150–300', en: 'RM150–300' },
+ lp_price_300: { bm: 'RM300+', en: 'RM300+' },
  lp_nav_promo: { bm: 'Promo Walk-in', en: 'Walk-in Promo' },
  lp_nav_panduan: { bm: 'Blog', en: 'Blog' },
  lp_nav_acara: { bm: 'Acara', en: 'Events' },
